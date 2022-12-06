@@ -17,10 +17,13 @@ type Like struct {
 }
 
 func NewLike(entity_type string, entity_id primitive.ObjectID, liked_by string) Like {
+	created_at := time.Now()
 	return Like{
 		EntityType: entity_type,
 		EntityId:   entity_id,
 		LikedBy:    liked_by,
 		IsDeleted:  false,
+		CreatedAt:  created_at,
+		UpdatedAt:  created_at,
 	}
 }

@@ -5,49 +5,94 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
-func (handlers *likeHandlers) FetchPostLikes(c *gin.Context) {
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
+func parseLikeResponse(like entities.Like) requests.LikeResponse {
+	var response requests.LikeResponse
 
-	// fetch post data
-	_, err := handlers.postHelper.FindPostByIdHelper(post_id, headers[utils.HeadersApiKey])
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
+	response.ID = like.ID
+	response.UserId = like.LikedBy
+	response.CreatedAt = int(like.CreatedAt.UnixMilli())
+	response.UpdatedAt = int(like.UpdatedAt.UnixMilli())
+
+	return response
+}
+
+func parseMultipleLikeResponse(likes []entities.Like) []requests.LikeResponse {
+	response := []requests.LikeResponse{}
+
+	for _, like := range likes {
+		response = append(response, parseLikeResponse(like))
 	}
 
+	return response
+}
+
+func parseFetchLikeResponse(likes []entities.Like, total_count int) requests.FetchLikesResponse {
+	var response requests.FetchLikesResponse
+
+	response.Success = true
+	response.TotalCount = total_count
+	response.Likes = parseMultipleLikeResponse(likes)
+
+	return response
+}
+
+func fetchEntityLikesCount(helper interfaces.LikeHelper, entity_id string, entity_type string) (int64, error) {
 	// like filter data
 	like_filter_data := gin.H{
-		"entity_id":   post_id,
-		"entity_type": constants.PostEntityType,
+		"entity_id":   entity_id,
+		"entity_type": entity_type,
 		"is_deleted":  false,
 	}
 
 	// fetch likes count using helper method
-	likes_count, err := handlers.likeHelper.CountLikeHelper(like_filter_data)
+	likes_count, err := helper.CountLikeHelper(like_filter_data)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+		return 0, err
+	}
+
+	return likes_count, nil
+}
+
+func fetchEntityLikes(helper interfaces.LikeHelper, entity_id string, entity_type string,
+	filterOpts map[string]interface{}) ([]entities.Like, error) {
+	// like filter data
+	like_filter_data := gin.H{
+		"entity_id":   entity_id,
+		"entity_type": entity_type,
+		"is_deleted":  false,
 	}
 
 	// fetch like using helper method
-	like_results, err := handlers.likeHelper.FindLikeHelper(like_filter_data)
+	like_results, err := helper.FindLikeHelper(like_filter_data, filterOpts)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+		return nil, err
 	}
 
-	// return final response
-	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
-		"total_count": likes_count,
-		"likes":       like_results,
-	})
+	return like_results, nil
+}
+
+func fetchSpecificMemberLikesOnEntity(helper interfaces.LikeHelper, entity_id string, entity_type string,
+	member_id string) ([]entities.Like, error) {
+	// like filter data
+	like_filter_data := gin.H{
+		"entity_id":   entity_id,
+		"entity_type": entity_type,
+		"liked_by":    member_id,
+	}
+
+	// fetch like using helper method
+	like_results, err := helper.FindLikeHelper(like_filter_data, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	return like_results, nil
 }
 
 func (handlers *likeHandlers) LikePost(c *gin.Context) {
@@ -56,21 +101,15 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 	post_id := c.Param("post_id")
 
 	// fetch post using helper method
-	post_data, err := handlers.postHelper.FindPostByIdHelper(post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// like filter data
-	like_filter_data := gin.H{
-		"entity_id":   post_data.ID,
-		"entity_type": constants.PostEntityType,
-		"liked_by":    headers[utils.HeadersMemberId],
-	}
-
-	// fetch like using helper method
-	like_results, err := handlers.likeHelper.FindLikeHelper(like_filter_data)
+	// fetch member like on entity
+	like_results, err := fetchSpecificMemberLikesOnEntity(handlers.likeHelper, post_id, constants.PostEntityType,
+		headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -95,7 +134,7 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 		}
 
 		// update like using the helper method
-		err = handlers.likeHelper.UpdateLikeHelper(like_filter_data, like_update_data)
+		err = handlers.likeHelper.UpdateLikeByIdHelper(like_data.ID, like_update_data)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -138,6 +177,43 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 	})
 }
 
+func (handlers *likeHandlers) FetchPostLikes(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	post_id := c.Param("post_id")
+
+	// fetch post data
+	_, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch likes count using helper method
+	likes_count, err := fetchEntityLikesCount(handlers.likeHelper, post_id, constants.PostEntityType)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// filter options
+	like_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch like using helper method
+	like_results, err := fetchEntityLikes(handlers.likeHelper, post_id, constants.PostEntityType, like_filter_options)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count)))
+}
+
 func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -145,43 +221,22 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 	comment_id := c.Param("comment_id")
 
 	// fetch post using helper method
-	post_data, err := handlers.postHelper.FindPostByIdHelper(post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// comment filter data
-	comment_filter_data := gin.H{
-		"_id":        comment_id,
-		"is_deleted": false,
-		"post_id":    post_data.ID,
-	}
-
 	// fetch comment using helper method
-	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data)
+	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// validation of comment
-	if len(comment_results) == 0 {
-		utils.GeneralAPIValidationError(c, "Invalid comment_id sent")
-		return
-	}
-
-	comment_data := comment_results[0]
-
-	// like filter data
-	like_filter_data := gin.H{
-		"entity_id":   comment_id,
-		"entity_type": constants.CommentEntityType,
-		"liked_by":    headers[utils.HeadersMemberId],
-	}
-
-	// fetch like using helper method
-	like_results, err := handlers.likeHelper.FindLikeHelper(like_filter_data)
+	// fetch member like on entity
+	like_results, err := fetchSpecificMemberLikesOnEntity(handlers.likeHelper, comment_id, constants.CommentEntityType,
+		headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -206,7 +261,7 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 		}
 
 		// update like using the helper method
-		err = handlers.likeHelper.UpdateLikeHelper(like_filter_data, like_update_data)
+		err = handlers.likeHelper.UpdateLikeByIdHelper(like_data.ID, like_update_data)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -248,6 +303,51 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
+}
+
+func (handlers *likeHandlers) FetchCommentLikes(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	post_id := c.Param("post_id")
+	comment_id := c.Param("comment_id")
+
+	// fetch post data
+	_, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch comment using helper method
+	_, err = fetchComment(handlers.commentHelper, comment_id, post_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch likes count using helper method
+	likes_count, err := fetchEntityLikesCount(handlers.likeHelper, comment_id, constants.CommentEntityType)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// filter options
+	like_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch like using helper method
+	like_results, err := fetchEntityLikes(handlers.likeHelper, comment_id, constants.CommentEntityType, like_filter_options)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count)))
 }
 
 type likeHandlers struct {
