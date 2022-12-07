@@ -38,25 +38,42 @@ func (helper *postHelper) CreatePostHelper(text string, api_key string, user_id 
 	return err
 }
 
-func (helper *postHelper) FindPostHelper(filter map[string]interface{}) ([]entities.Post, error) {
+func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error) {
+	fOpts := mergeFilterOptions(filterOptions)
+
 	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id"})
 	if err != nil {
 		return nil, err
 	}
 
-	results, err := helper.postRepository.Find(filter)
+	results, err := helper.postRepository.Find(filter, &fOpts)
 
 	return results, err
 }
 
 func (helper *postHelper) UpdatePostByIdHelper(post_id primitive.ObjectID, update map[string]interface{}) error {
+	set_data := gin.H{}
 
-	update["updated_at"] = time.Now()
-	update_data := gin.H{"$set": update}
+	if _, ok := update["$set"]; ok {
+		set_data = update["$set"].(gin.H)
+	}
+	set_data["updated_at"] = time.Now()
+	update["$set"] = set_data
 
-	err := helper.postRepository.Update(gin.H{"_id": post_id}, update_data)
+	err := helper.postRepository.Update(gin.H{"_id": post_id}, update)
 
 	return err
+}
+
+func (helper *postHelper) CountPostHelper(filter map[string]interface{}) (int64, error) {
+	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id"})
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := helper.postRepository.Count(filter)
+
+	return count, err
 }
 
 type postHelper struct {

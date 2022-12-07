@@ -42,7 +42,7 @@ func main() {
 	activityHelper := helpers.NewActivityHelper(activityRepository)
 
 	routes.PostRouter(routerGroup, postHelper, likeHelper, commentHelper, saveHelper, activityHelper)
-	routes.UserRouter(routerGroup, activityHelper)
+	routes.UserRouter(routerGroup, activityHelper, likeHelper, commentHelper, postHelper, saveHelper)
 
 	log.Printf("application version: %s", AppVersion)
 	log.Fatal(router.Run(":8080"))

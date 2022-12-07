@@ -1,6 +1,9 @@
 package helpers
 
 import (
+	"time"
+
+	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -13,16 +16,42 @@ func (helper *saveHelper) CreateSaveHelper(entity_type string, entity_id primiti
 	return save_id, err
 }
 
-func (helper *saveHelper) FindSaveHelper(filter map[string]interface{}) ([]entities.Save, error) {
-	results, err := helper.saveRepository.Find(filter)
+func (helper *saveHelper) FindSaveHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Save, error) {
+	fOpts := mergeFilterOptions(filterOptions)
+
+	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := helper.saveRepository.Find(filter, &fOpts)
 
 	return results, err
 }
 
-func (helper *saveHelper) UpdateSaveHelper(filter map[string]interface{}, update map[string]interface{}) error {
-	err := helper.saveRepository.Update(filter, update)
+func (helper *saveHelper) UpdateSaveByIdHelper(activity_id primitive.ObjectID, update map[string]interface{}) error {
+	set_data := gin.H{}
+
+	if _, ok := update["$set"]; ok {
+		set_data = update["$set"].(gin.H)
+	}
+	set_data["updated_at"] = time.Now()
+	update["$set"] = set_data
+
+	err := helper.saveRepository.Update(gin.H{"_id": activity_id}, update)
 
 	return err
+}
+
+func (helper *saveHelper) CountSaveHelper(filter map[string]interface{}) (int64, error) {
+	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := helper.saveRepository.Count(filter)
+
+	return count, err
 }
 
 type saveHelper struct {

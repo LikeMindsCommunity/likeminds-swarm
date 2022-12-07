@@ -8,10 +8,10 @@ import (
 
 func PostRouter(routerGroup *gin.RouterGroup, postHelper interfaces.PostHelper, likeHelper interfaces.LikeHelper,
 	commentHelper interfaces.CommentHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper) {
-	postHandlers := handlers.NewPostHandlers(postHelper, likeHelper, commentHelper, activityHelper)
+	postHandlers := handlers.NewPostHandlers(postHelper, likeHelper, commentHelper, activityHelper, saveHelper)
 	commentHandlers := handlers.NewCommentHandlers(commentHelper, likeHelper, postHelper, activityHelper)
 	likeHandlers := handlers.NewLikeHandlers(postHelper, likeHelper, commentHelper, activityHelper)
-	saveHandlers := handlers.NewSaveHandlers(saveHelper, postHelper)
+	saveHandlers := handlers.NewSaveHandlers(saveHelper, likeHelper, commentHelper, postHelper)
 
 	postGroup := routerGroup.Group("post")
 	postGroup.POST("/", postHandlers.CreatePost)

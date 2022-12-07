@@ -6,6 +6,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (repository *postRepository) Create(post *entities.Post) error {
@@ -15,9 +16,9 @@ func (repository *postRepository) Create(post *entities.Post) error {
 	return err
 }
 
-func (repository *postRepository) Find(filter map[string]interface{}) ([]entities.Post, error) {
+func (repository *postRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Post, error) {
 	coll := repository.db.Collection("post")
-	cursor, err := coll.Find(context.TODO(), filter)
+	cursor, err := coll.Find(context.TODO(), filter, filterOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -35,6 +36,16 @@ func (repository *postRepository) Update(filter map[string]interface{}, update m
 	_, err := coll.UpdateOne(context.TODO(), filter, update)
 
 	return err
+}
+
+func (repository *postRepository) Count(filter map[string]interface{}) (int64, error) {
+	coll := repository.db.Collection("post")
+	count, err := coll.CountDocuments(context.TODO(), filter)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 type postRepository struct {

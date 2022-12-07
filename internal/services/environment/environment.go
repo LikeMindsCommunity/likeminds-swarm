@@ -17,7 +17,6 @@ func LoadGoDotEnv() {
 	}
 
 	environmentPath := filepath.Join(dir, "config/.env")
-	log.Println(environmentPath)
 	if err := godotenv.Load(environmentPath); err != nil {
 		log.Println("No .env file found")
 	}

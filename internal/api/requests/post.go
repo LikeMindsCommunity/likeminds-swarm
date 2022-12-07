@@ -38,12 +38,18 @@ type PostResponse struct {
 	IsDeleted     bool               `json:"is_deleted,omitempty"`
 	DeletedBy     string             `json:"deleted_by,omitempty"`
 	DeleteReason  string             `json:"delete_reason,omitempty"`
+	IsSaved       bool               `json:"is_saved"`
 	CreatedAt     int                `json:"created_at"`
 	UpdatedAt     int                `json:"updated_at"`
 }
 
 type FetchPostResponse struct {
 	PostResponse
-	IsSaved bool              `json:"is_saved"`
 	Replies []CommentResponse `json:"replies"`
+}
+
+type FetchUserMultiplePostResponse struct {
+	Success    bool           `json:"success"`
+	TotalCount int            `json:"total_count"`
+	Posts      []PostResponse `json:"posts"`
 }

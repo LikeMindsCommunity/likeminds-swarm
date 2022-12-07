@@ -17,10 +17,13 @@ type Save struct {
 }
 
 func NewSave(entity_type string, entity_id primitive.ObjectID, saved_by string) Save {
+	created_at := time.Now()
 	return Save{
 		EntityType: entity_type,
 		EntityId:   entity_id,
 		SavedBy:    saved_by,
 		IsDeleted:  false,
+		CreatedAt:  created_at,
+		UpdatedAt:  created_at,
 	}
 }

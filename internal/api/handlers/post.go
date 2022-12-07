@@ -12,8 +12,19 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
+func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse,
+	posts_count int64) requests.FetchUserMultiplePostResponse {
+	response := requests.FetchUserMultiplePostResponse{}
+
+	response.Success = true
+	response.Posts = posts
+	response.TotalCount = int(posts_count)
+
+	return response
+}
+
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	post entities.Post) requests.PostResponse {
+	saveHelper interfaces.SaveHelper, post entities.Post, user_id string) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 	var response requests.PostResponse
@@ -27,6 +38,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
 	response.IsDeleted = post.IsDeleted
+	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
@@ -35,6 +47,17 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 
 	response.CreatedAt = int(post.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
+
+	return response
+}
+
+func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
+	saveHelper interfaces.SaveHelper, posts []entities.Post, user_id string) []requests.PostResponse {
+	response := []requests.PostResponse{}
+
+	for _, post := range posts {
+		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, post, user_id))
+	}
 
 	return response
 }
@@ -63,7 +86,7 @@ func fetchPost(helper interfaces.PostHelper, post_id string, api_key string) (*e
 	}
 
 	// fetch post using helper method
-	post_results, err := helper.FindPostHelper(post_filter_data)
+	post_results, err := helper.FindPostHelper(post_filter_data, gin.H{})
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +192,8 @@ func (handlers *postHandlers) FetchPost(c *gin.Context) {
 		return
 	}
 
-	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper, *post_data)
+	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+		*post_data, headers[utils.HeadersMemberId])
 	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results)
 	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper, post_response, replies_response)
 
@@ -257,19 +281,61 @@ func (handlers *postHandlers) PinPost(c *gin.Context) {
 	})
 }
 
+func (handlers *postHandlers) FetchUserCreatedPosts(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	user_id := c.Param("user_id")
+
+	// post filter data
+	post_filter_data := gin.H{
+		"user_id":    user_id,
+		"is_deleted": false,
+		"api_key":    headers[utils.HeadersApiKey],
+	}
+
+	// fetch posts count using helper method
+	posts_count, err := handlers.postHelper.CountPostHelper(post_filter_data)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// filter options
+	post_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch post using helper method
+	post_results, err := handlers.postHelper.FindPostHelper(post_filter_data, post_filter_options)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	created_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+		post_results, user_id)
+
+	// return final response
+	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response, posts_count))
+}
+
 type postHandlers struct {
 	postHelper     interfaces.PostHelper
 	likeHelper     interfaces.LikeHelper
 	commentHelper  interfaces.CommentHelper
 	activityHelper interfaces.ActivityHelper
+	saveHelper     interfaces.SaveHelper
 }
 
 func NewPostHandlers(postHelper interfaces.PostHelper, likeHelper interfaces.LikeHelper,
-	commentHelper interfaces.CommentHelper, activityHelper interfaces.ActivityHelper) *postHandlers {
+	commentHelper interfaces.CommentHelper, activityHelper interfaces.ActivityHelper, saveHelper interfaces.SaveHelper) *postHandlers {
 	return &postHandlers{
 		postHelper:     postHelper,
 		likeHelper:     likeHelper,
 		commentHelper:  commentHelper,
 		activityHelper: activityHelper,
+		saveHelper:     saveHelper,
 	}
 }
