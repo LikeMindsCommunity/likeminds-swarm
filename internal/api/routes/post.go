@@ -8,8 +8,8 @@ import (
 
 func PostRouter(routerGroup *gin.RouterGroup, postHelper interfaces.PostHelper, likeHelper interfaces.LikeHelper,
 	commentHelper interfaces.CommentHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper) {
-	postHandlers := handlers.NewPostHandlers(postHelper)
-	commentHandlers := handlers.NewCommentHandlers(commentHelper, postHelper)
+	postHandlers := handlers.NewPostHandlers(postHelper, likeHelper, commentHelper, activityHelper)
+	commentHandlers := handlers.NewCommentHandlers(commentHelper, likeHelper, postHelper, activityHelper)
 	likeHandlers := handlers.NewLikeHandlers(postHelper, likeHelper, commentHelper, activityHelper)
 	saveHandlers := handlers.NewSaveHandlers(saveHelper, postHelper)
 
@@ -21,7 +21,10 @@ func PostRouter(routerGroup *gin.RouterGroup, postHelper interfaces.PostHelper, 
 	postGroup.GET("/:post_id/like", likeHandlers.FetchPostLikes)
 	postGroup.PUT("/:post_id/like", likeHandlers.LikePost)
 	postGroup.PUT("/:post_id/save", saveHandlers.SavePost)
-	postGroup.POST("/:post_id/comment/*comment_id", commentHandlers.CommentPostOrComment)
+	postGroup.GET("/:post_id/comment/:comment_id", commentHandlers.FetchComment)
+	postGroup.POST("/:post_id/comment", commentHandlers.CommentPost)
+	postGroup.POST("/:post_id/comment/:comment_id", commentHandlers.ReplyComment)
 	postGroup.DELETE("/:post_id/comment/:comment_id", commentHandlers.DeleteComment)
+	postGroup.GET("/:post_id/comment/:comment_id/like", likeHandlers.FetchCommentLikes)
 	postGroup.PUT("/:post_id/comment/:comment_id/like", likeHandlers.LikeComment)
 }

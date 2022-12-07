@@ -14,8 +14,6 @@ type PostRepository interface {
 
 type PostHelper interface {
 	CreatePostHelper(text string, api_key string, user_id string, attachments []requests.Attachment) error
-	FindPostByIdHelper(post_id string, api_key string) (*entities.Post, error)
 	FindPostHelper(filter map[string]interface{}) ([]entities.Post, error)
 	UpdatePostByIdHelper(post_id primitive.ObjectID, update map[string]interface{}) error
-	UpdatePostHelper(filter map[string]interface{}, update map[string]interface{}) error
 }

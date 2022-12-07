@@ -1,16 +1,85 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
+func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
+	post entities.Post) requests.PostResponse {
+	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
+	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
+	var response requests.PostResponse
+
+	response.ID = post.ID
+	response.Text = post.Text
+	response.ApiKey = post.ApiKey
+	response.IsPinned = post.IsPinned
+	response.UserId = post.UserId
+	response.Attachments = post.Attachments
+	response.LikesCount = int(likes_count)
+	response.CommentsCount = int(replies_count)
+	response.IsDeleted = post.IsDeleted
+
+	if post.IsDeleted {
+		response.DeleteReason = post.DeleteReason
+		response.DeletedBy = post.DeletedBy
+	}
+
+	response.CreatedAt = int(post.CreatedAt.UnixMilli())
+	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
+
+	return response
+}
+
+func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
+	parsed_post requests.PostResponse, replies []requests.CommentResponse) requests.FetchPostResponse {
+	var response requests.FetchPostResponse
+
+	response.PostResponse = parsed_post
+
+	if len(replies) > 0 {
+		response.Replies = replies
+	} else {
+		response.Replies = []requests.CommentResponse{}
+	}
+
+	return response
+}
+
+func fetchPost(helper interfaces.PostHelper, post_id string, api_key string) (*entities.Post, error) {
+	// post filter data
+	post_filter_data := gin.H{
+		"_id":        post_id,
+		"is_deleted": false,
+		"api_key":    api_key,
+	}
+
+	// fetch post using helper method
+	post_results, err := helper.FindPostHelper(post_filter_data)
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of post_id
+	if len(post_results) == 0 {
+		return nil, fmt.Errorf("invalid post_id sent")
+	}
+
+	return &post_results[0], nil
+}
+
 func (handlers *postHandlers) CreatePost(c *gin.Context) {
+	// fetch headers
+	headers := utils.GetHeaders(c)
+
 	// validation of request body
 	var createPostRequest requests.CreatePostRequest
 	if err := c.ShouldBindJSON(&createPostRequest); err != nil {
@@ -18,12 +87,8 @@ func (handlers *postHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// fetch headers
-	headers := utils.GetHeaders(c)
-
 	// validation of attachment objects
 	for _, element := range createPostRequest.Attachments {
-
 		switch element.FileType {
 		case constants.ImageWidget:
 			if element.FileUrl == "" {
@@ -78,19 +143,47 @@ func (handlers *postHandlers) FetchPost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 
-	post_data, err := handlers.postHelper.FindPostByIdHelper(post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
+	comment_filter_data := gin.H{
+		"level":      constants.CommentBaseLevel,
+		"is_deleted": false,
+		"post_id":    post_id,
+	}
+
+	// filter options
+	comment_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch comment using helper method
+	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, comment_filter_options)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper, *post_data)
+	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results)
+	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper, post_response, replies_response)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"post":    post_data,
+		"post":    fetch_post_response,
 	})
 }
 
 func (handlers *postHandlers) DeletePost(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	post_id := c.Param("post_id")
+
 	// validation of request body
 	var deletePostRequest requests.DeletePostRequest
 	if err := c.ShouldBindJSON(&deletePostRequest); err != nil {
@@ -98,12 +191,8 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 		return
 	}
 
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
-
 	// fetch post using helper method
-	post_data, err := handlers.postHelper.FindPostByIdHelper(post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -129,7 +218,13 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 		return
 	}
 
-	// TODO-create activity of post deletion
+	// create delete activity
+	err = createActivity(handlers.activityHelper, constants.DeleteAction, post_data.ID, constants.PostEntityType,
+		post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -143,14 +238,14 @@ func (handlers *postHandlers) PinPost(c *gin.Context) {
 	post_id := c.Param("post_id")
 
 	// fetch post using helper method
-	post_data, err := handlers.postHelper.FindPostByIdHelper(post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// update post using the helper method
-	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, gin.H{"is_pinned": true})
+	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, gin.H{"is_pinned": !post_data.IsPinned})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -163,9 +258,18 @@ func (handlers *postHandlers) PinPost(c *gin.Context) {
 }
 
 type postHandlers struct {
-	postHelper interfaces.PostHelper
+	postHelper     interfaces.PostHelper
+	likeHelper     interfaces.LikeHelper
+	commentHelper  interfaces.CommentHelper
+	activityHelper interfaces.ActivityHelper
 }
 
-func NewPostHandlers(postHelper interfaces.PostHelper) *postHandlers {
-	return &postHandlers{postHelper: postHelper}
+func NewPostHandlers(postHelper interfaces.PostHelper, likeHelper interfaces.LikeHelper,
+	commentHelper interfaces.CommentHelper, activityHelper interfaces.ActivityHelper) *postHandlers {
+	return &postHandlers{
+		postHelper:     postHelper,
+		likeHelper:     likeHelper,
+		commentHelper:  commentHelper,
+		activityHelper: activityHelper,
+	}
 }

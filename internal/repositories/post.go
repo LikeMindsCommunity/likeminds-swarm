@@ -2,20 +2,13 @@ package repositories
 
 import (
 	"context"
-	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (repository *postRepository) Create(post *entities.Post) error {
-	created_at := time.Now()
-	post.CreatedAt = created_at
-	post.UpdatedAt = created_at
-
 	coll := repository.db.Collection("post")
 	_, err := coll.InsertOne(context.TODO(), post)
 
@@ -23,16 +16,8 @@ func (repository *postRepository) Create(post *entities.Post) error {
 }
 
 func (repository *postRepository) Find(filter map[string]interface{}) ([]entities.Post, error) {
-	var err error
-	filterOptions := options.Find()
-
-	err = convertMultipleHexIdsToObjectIds(filter, []string{"_id"})
-	if err != nil {
-		return nil, err
-	}
-
 	coll := repository.db.Collection("post")
-	cursor, err := coll.Find(context.TODO(), filter, filterOptions)
+	cursor, err := coll.Find(context.TODO(), filter)
 	if err != nil {
 		return nil, err
 	}
@@ -46,17 +31,8 @@ func (repository *postRepository) Find(filter map[string]interface{}) ([]entitie
 }
 
 func (repository *postRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
-	var err error
-	update["updated_at"] = time.Now()
-	update_data := gin.H{"$set": update}
-
-	err = convertMultipleHexIdsToObjectIds(filter, []string{"_id"})
-	if err != nil {
-		return err
-	}
-
 	coll := repository.db.Collection("post")
-	_, err = coll.UpdateOne(context.TODO(), filter, update_data)
+	_, err := coll.UpdateOne(context.TODO(), filter, update)
 
 	return err
 }

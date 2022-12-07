@@ -21,6 +21,7 @@ type Post struct {
 }
 
 func NewPost(text string, api_key string, user_id string, attachments []interface{}) Post {
+	created_at := time.Now()
 	return Post{
 		Text:        text,
 		ApiKey:      api_key,
@@ -28,5 +29,7 @@ func NewPost(text string, api_key string, user_id string, attachments []interfac
 		UserId:      user_id,
 		Attachments: attachments,
 		IsDeleted:   false,
+		CreatedAt:   created_at,
+		UpdatedAt:   created_at,
 	}
 }
