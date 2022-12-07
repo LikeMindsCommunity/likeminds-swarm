@@ -21,6 +21,7 @@ type Comment struct {
 }
 
 func NewComment(text string, postId primitive.ObjectID, level int, userId string) Comment {
+	created_at := time.Now()
 	return Comment{
 		Text:      text,
 		PostId:    postId,
@@ -28,5 +29,7 @@ func NewComment(text string, postId primitive.ObjectID, level int, userId string
 		UserId:    userId,
 		Replies:   []primitive.ObjectID{},
 		IsDeleted: false,
+		CreatedAt: created_at,
+		UpdatedAt: created_at,
 	}
 }

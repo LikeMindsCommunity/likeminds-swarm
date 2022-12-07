@@ -30,7 +30,7 @@ func (helper *likeHelper) FindLikeHelper(filter map[string]interface{}, filterOp
 }
 
 func (helper *likeHelper) UpdateLikeByIdHelper(like_id primitive.ObjectID, update map[string]interface{}) error {
-	var set_data gin.H
+	set_data := gin.H{}
 
 	if _, ok := update["$set"]; ok {
 		set_data = update["$set"].(gin.H)
@@ -49,7 +49,7 @@ func (helper *likeHelper) CountLikeHelper(filter map[string]interface{}) (int64,
 		return 0, err
 	}
 
-	count, err := helper.likeRepository.CountById(filter)
+	count, err := helper.likeRepository.Count(filter)
 
 	return count, err
 }

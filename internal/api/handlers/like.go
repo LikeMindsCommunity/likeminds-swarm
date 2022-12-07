@@ -141,34 +141,15 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 		}
 	}
 
-	// activity filter data
-	activity_filter_data := gin.H{
-		"entity_id":   post_id,
-		"entity_type": constants.PostEntityType,
-		"action":      constants.LikeAction,
-		"action_by":   headers[utils.HeadersMemberId],
-		"action_on":   post_data.UserId,
-	}
-
-	// fetch activity using helper method
-	activity_results, err := handlers.activityHelper.FindActivityHelper(activity_filter_data)
+	// create like activity
+	err = createActivity(handlers.activityHelper, constants.LikeAction, post_data.ID, constants.PostEntityType,
+		post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     post_id,
+		})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
-	}
-
-	// checking of existing like activity
-	if len(activity_results) == 0 {
-		// create activity using the helper method
-		_, err = handlers.activityHelper.CreateActivityHelper(headers[utils.HeadersMemberId], post_data.UserId, post_data.ApiKey,
-			constants.PostEntityType, post_data.ID, constants.LikeAction, gin.H{
-				"entity_type": constants.PostEntityType,
-				"post_id":     post_id,
-			})
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
 	}
 
 	// return final response
@@ -268,35 +249,16 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 		}
 	}
 
-	// activity filter data
-	activity_filter_data := gin.H{
-		"entity_id":   comment_id,
-		"entity_type": constants.CommentEntityType,
-		"action":      constants.LikeAction,
-		"action_by":   headers[utils.HeadersMemberId],
-		"action_on":   comment_data.UserId,
-	}
-
-	// fetch activity using helper method
-	activity_results, err := handlers.activityHelper.FindActivityHelper(activity_filter_data)
+	// create like activity
+	err = createActivity(handlers.activityHelper, constants.LikeAction, comment_data.ID, constants.CommentEntityType,
+		post_data.ApiKey, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
+			"entity_type": constants.CommentEntityType,
+			"post_id":     post_id,
+			"comment_id":  comment_id,
+		})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
-	}
-
-	// checking of existing like activity
-	if len(activity_results) == 0 {
-		// create activity using the helper method
-		_, err = handlers.activityHelper.CreateActivityHelper(headers[utils.HeadersMemberId], comment_data.UserId, post_data.ApiKey,
-			constants.CommentEntityType, comment_data.ID, constants.LikeAction, gin.H{
-				"entity_type": constants.CommentEntityType,
-				"post_id":     post_id,
-				"comment_id":  comment_id,
-			})
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
 	}
 
 	// return final response

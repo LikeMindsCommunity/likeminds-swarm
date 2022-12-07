@@ -2,7 +2,9 @@ package helpers
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -14,7 +16,7 @@ func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) s
 	var cta string = ""
 
 	switch action {
-	case constants.LikeAction:
+	case constants.LikeAction, constants.AlsoCommentAction, constants.CommentAction:
 		if entity_type, ok := cta_data["entity_type"]; ok {
 			if post_id, ok := cta_data["post_id"]; ok {
 				switch entity_type {
@@ -39,7 +41,7 @@ func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) s
 	return cta
 }
 
-func (helper *activityHelper) CreateActivityHelper(action_by string, action_on string, api_key string, entity_type string,
+func (helper *activityHelper) CreateActivityHelper(action_by string, action_on []string, api_key string, entity_type string,
 	entity_id primitive.ObjectID, action string, cta_data map[string]interface{}) (interface{}, error) {
 	cta := fetchActivityCtaForAction(action, cta_data)
 	activity := entities.NewActivity(action_by, action_on, api_key, entity_type, entity_id, action, cta)
@@ -49,13 +51,26 @@ func (helper *activityHelper) CreateActivityHelper(action_by string, action_on s
 }
 
 func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}) ([]entities.Activity, error) {
+	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	if err != nil {
+		return nil, err
+	}
+
 	results, err := helper.activityRepository.Find(filter)
 
 	return results, err
 }
 
-func (helper *activityHelper) UpdateActivityHelper(filter map[string]interface{}, update map[string]interface{}) error {
-	err := helper.activityRepository.Update(filter, update)
+func (helper *activityHelper) UpdateActivityByIdHelper(activity_id primitive.ObjectID, update map[string]interface{}) error {
+	var set_data gin.H
+
+	if _, ok := update["$set"]; ok {
+		set_data = update["$set"].(gin.H)
+	}
+	set_data["updated_at"] = time.Now()
+	update["$set"] = set_data
+
+	err := helper.activityRepository.Update(gin.H{"_id": activity_id}, update)
 
 	return err
 }

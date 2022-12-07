@@ -39,7 +39,7 @@ func (repository *likeRepository) Update(filter map[string]interface{}, update m
 	return err
 }
 
-func (repository *likeRepository) CountById(filter map[string]interface{}) (int64, error) {
+func (repository *likeRepository) Count(filter map[string]interface{}) (int64, error) {
 	coll := repository.db.Collection("like")
 	count, err := coll.CountDocuments(context.TODO(), filter)
 	if err != nil {

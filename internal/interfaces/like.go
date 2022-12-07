@@ -10,7 +10,7 @@ type LikeRepository interface {
 	Create(like *entities.Like) (interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Like, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
-	CountById(filter map[string]interface{}) (int64, error)
+	Count(filter map[string]interface{}) (int64, error)
 	Aggregate(query []interface{}) (interface{}, error)
 }
 

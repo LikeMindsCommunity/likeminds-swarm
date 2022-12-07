@@ -1,6 +1,8 @@
 package repositories
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 func convertHexIdToObjectId(filter map[string]interface{}, key string) error {
 	var err error
