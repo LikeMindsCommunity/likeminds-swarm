@@ -251,18 +251,44 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
-	// TODO- handle tag logic
-
-	// create comment activity
-	err = createActivity(handlers.activityHelper, constants.CommentAction, post_data.ID, constants.PostEntityType,
-		post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
-			"entity_type": constants.CommentEntityType,
-			"post_id":     post_id,
-			"comment_id":  comment_id.(primitive.ObjectID).Hex(),
-		})
+	tagged_members, err := getTaggedUsers(createCommentRequest.Text)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	var is_creator_tagged bool = false
+
+	for _, member := range tagged_members {
+		if member == post_data.UserId {
+			is_creator_tagged = true
+		}
+
+		// create tag activity
+		err = createActivity(handlers.activityHelper, constants.TagAction, comment_id.(primitive.ObjectID), constants.CommentEntityType,
+			post_data.ApiKey, headers[utils.HeadersMemberId], member, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     post_id,
+				"comment_id":  comment_id.(primitive.ObjectID).Hex(),
+			})
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+	}
+
+	if !is_creator_tagged {
+		// create comment activity
+		err = createActivity(handlers.activityHelper, constants.CommentAction, post_data.ID, constants.PostEntityType,
+			post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     post_id,
+				"comment_id":  comment_id.(primitive.ObjectID).Hex(),
+			})
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 	}
 
 	// return final response
@@ -326,18 +352,44 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 		return
 	}
 
-	// TODO- handle tag logic
-
-	// create comment activity
-	err = createActivity(handlers.activityHelper, constants.CommentAction, comment_data.ID, constants.CommentEntityType,
-		post_data.ApiKey, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
-			"entity_type": constants.CommentEntityType,
-			"post_id":     post_id,
-			"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
-		})
+	tagged_members, err := getTaggedUsers(createCommentRequest.Text)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	var is_creator_tagged bool = false
+
+	for _, member := range tagged_members {
+		if member == comment_data.UserId {
+			is_creator_tagged = true
+		}
+
+		// create tag activity
+		err = createActivity(handlers.activityHelper, constants.TagAction, new_comment_id.(primitive.ObjectID), constants.CommentEntityType,
+			post_data.ApiKey, headers[utils.HeadersMemberId], member, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     post_id,
+				"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
+			})
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+	}
+
+	if !is_creator_tagged {
+		// create comment activity
+		err = createActivity(handlers.activityHelper, constants.CommentAction, comment_data.ID, constants.CommentEntityType,
+			post_data.ApiKey, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     post_id,
+				"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
+			})
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 	}
 
 	// return final response

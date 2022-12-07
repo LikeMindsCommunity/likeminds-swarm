@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"regexp"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -42,4 +43,20 @@ func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
 	}
 
 	return filter_options, nil
+}
+
+func getTaggedUsers(text string) ([]string, error) {
+	tagged_members := []string{}
+	pattern, err := regexp.Compile("route://[member member_profile]+/(?P<user_id>[0-9]+)")
+	if err != nil {
+		return nil, err
+	}
+
+	allSubstringMatches := pattern.FindAllStringSubmatch(text, -1)
+
+	for _, occurance := range allSubstringMatches {
+		tagged_members = append(tagged_members, occurance[1])
+	}
+
+	return tagged_members, nil
 }

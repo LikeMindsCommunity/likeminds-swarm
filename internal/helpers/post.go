@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (helper *postHelper) CreatePostHelper(text string, api_key string, user_id string, attachments []requests.Attachment) error {
+func (helper *postHelper) CreatePostHelper(text string, api_key string, user_id string, attachments []requests.Attachment) (interface{}, error) {
 	var post_attachments []interface{}
 
 	for _, element := range attachments {
@@ -33,9 +33,9 @@ func (helper *postHelper) CreatePostHelper(text string, api_key string, user_id 
 	}
 
 	post := entities.NewPost(text, api_key, user_id, post_attachments)
-	err := helper.postRepository.Create(&post)
+	post_id, err := helper.postRepository.Create(&post)
 
-	return err
+	return post_id, err
 }
 
 func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error) {

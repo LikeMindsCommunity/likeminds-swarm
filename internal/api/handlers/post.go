@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse,
@@ -148,11 +149,30 @@ func (handlers *postHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// create post using the helper method
-	err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, headers[utils.HeadersApiKey],
+	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, headers[utils.HeadersApiKey],
 		headers[utils.HeadersMemberId], createPostRequest.Attachments)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	tagged_members, err := getTaggedUsers(createPostRequest.Text)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	for _, member := range tagged_members {
+		// create tag activity
+		err = createActivity(handlers.activityHelper, constants.TagAction, post_id.(primitive.ObjectID), constants.PostEntityType,
+			headers[utils.HeadersApiKey], headers[utils.HeadersMemberId], member, gin.H{
+				"entity_type": constants.PostEntityType,
+				"post_id":     post_id,
+			})
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 	}
 
 	// return final response

@@ -16,7 +16,7 @@ func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) s
 	var cta string = ""
 
 	switch action {
-	case constants.LikeAction, constants.AlsoCommentAction, constants.CommentAction:
+	case constants.LikeAction, constants.AlsoCommentAction, constants.CommentAction, constants.TagAction:
 		if entity_type, ok := cta_data["entity_type"]; ok {
 			if post_id, ok := cta_data["post_id"]; ok {
 				switch entity_type {

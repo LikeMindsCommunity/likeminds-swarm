@@ -9,11 +9,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (repository *postRepository) Create(post *entities.Post) error {
+func (repository *postRepository) Create(post *entities.Post) (interface{}, error) {
 	coll := repository.db.Collection("post")
-	_, err := coll.InsertOne(context.TODO(), post)
+	result, err := coll.InsertOne(context.TODO(), post)
 
-	return err
+	return result.InsertedID, err
 }
 
 func (repository *postRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Post, error) {
