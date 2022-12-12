@@ -186,7 +186,7 @@ func (handlers *postHandlers) FetchPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
-	param_is_cm := c.Query("is_cm")
+	param_is_cm := c.Query("user_is_cm")
 	is_cm := false
 
 	if param_is_cm == "true" {
@@ -257,9 +257,11 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 
 	// update data
 	update_data := gin.H{
-		"is_deleted":    true,
-		"delete_reason": deletePostRequest.DeleteReason,
-		"deleted_by":    headers[utils.HeadersMemberId],
+		"$set": gin.H{
+			"is_deleted":    true,
+			"delete_reason": deletePostRequest.DeleteReason,
+			"deleted_by":    headers[utils.HeadersMemberId],
+		},
 	}
 
 	// update post using the helper method
@@ -295,8 +297,15 @@ func (handlers *postHandlers) PinPost(c *gin.Context) {
 		return
 	}
 
+	// update data
+	update_data := gin.H{
+		"$set": gin.H{
+			"is_pinned": !post_data.IsPinned,
+		},
+	}
+
 	// update post using the helper method
-	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, gin.H{"is_pinned": !post_data.IsPinned})
+	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, update_data)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

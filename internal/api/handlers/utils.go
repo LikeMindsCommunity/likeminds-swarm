@@ -11,12 +11,22 @@ import (
 
 func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	// fetch and validate query params
-	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
+	ParamPage := c.DefaultQuery("page", "0")
+	ParamPageSize := c.DefaultQuery("page_size", "0")
+	if ParamPage == "" {
+		ParamPage = "0"
+	}
+
+	if ParamPageSize == "" {
+		ParamPageSize = "0"
+	}
+
+	page, err := strconv.Atoi(ParamPage)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	page_size, err := strconv.Atoi(c.DefaultQuery("page_size", "0"))
+	page_size, err := strconv.Atoi(ParamPageSize)
 	if err != nil {
 		return 0, 0, err
 	}

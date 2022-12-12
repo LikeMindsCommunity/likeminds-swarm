@@ -23,7 +23,7 @@ func PostRouter(routerGroup *gin.RouterGroup, postHelper interfaces.PostHelper, 
 	postGroup.PUT("/:post_id/save", saveHandlers.SavePost)
 	postGroup.GET("/:post_id/comment/:comment_id", commentHandlers.FetchComment)
 	postGroup.POST("/:post_id/comment", commentHandlers.CommentPost)
-	postGroup.POST("/:post_id/comment/:comment_id", commentHandlers.ReplyComment)
+	postGroup.POST("/:post_id/comment/:comment_id/comment", commentHandlers.ReplyComment)
 	postGroup.DELETE("/:post_id/comment/:comment_id", commentHandlers.DeleteComment)
 	postGroup.GET("/:post_id/comment/:comment_id/like", likeHandlers.FetchCommentLikes)
 	postGroup.PUT("/:post_id/comment/:comment_id/like", likeHandlers.LikeComment)
