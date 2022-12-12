@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 )
 
 func fetchPaginationParams(c *gin.Context) (int, int, error) {
@@ -59,4 +61,53 @@ func getTaggedUsers(text string) ([]string, error) {
 	}
 
 	return tagged_members, nil
+}
+
+func parseMenuItems(menu_items []string) []requests.MenuResponse {
+	output_menu_items := []requests.MenuResponse{}
+
+	for _, value := range menu_items {
+		menu_item := requests.MenuResponse{}
+		menu_item.Title = value
+		output_menu_items = append(output_menu_items, menu_item)
+	}
+
+	return output_menu_items
+}
+
+func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool) []string {
+	var output_menu_items []string
+	switch entity_type {
+	case constants.PostEntityType:
+		if is_owner && is_cm {
+			output_menu_items = constants.GetIsOwnerIsCmPostMenuItems()
+		}
+
+		if is_owner && !is_cm {
+			output_menu_items = constants.GetIsOwnerNotIsCmPostMenuItems()
+		}
+
+		if !is_owner && is_cm {
+			output_menu_items = constants.GetNotIsOwnerIsCmPostMenuItems()
+		}
+
+		if !is_owner && !is_cm {
+			output_menu_items = constants.GetNotIsOwnerNotIsCmPostMenuItems()
+		}
+
+	case constants.CommentEntityType:
+		if is_owner {
+			output_menu_items = constants.GetIsOwnerCommentMenuItems()
+		}
+
+		if !is_owner && is_cm {
+			output_menu_items = constants.GetNotIsOwnerIsCmCommentMenuItems()
+		}
+
+		if !is_owner && !is_cm {
+			output_menu_items = constants.GetNotIsOwnerNotIsCmCommentMenuItems()
+		}
+	}
+
+	return output_menu_items
 }

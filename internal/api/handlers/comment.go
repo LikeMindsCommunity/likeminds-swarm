@@ -99,7 +99,7 @@ func fetchComment(helper interfaces.CommentHelper, comment_id string, post_id st
 }
 
 func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	comment entities.Comment) requests.CommentResponse {
+	comment entities.Comment, user_id string, is_cm bool) requests.CommentResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
 	var response requests.CommentResponse
 
@@ -109,6 +109,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.UserId = comment.UserId
 	response.LikesCount = int(likes_count)
 	response.IsDeleted = comment.IsDeleted
+	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.CommentEntityType, is_cm, user_id == comment.UserId, false))
 
 	if comment.Level == constants.CommentBaseLevel {
 		replies_count, _ := fetchCommentRepliesCount(commentHelper, comment.ID.Hex(), comment.PostId.Hex())
@@ -127,10 +128,10 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 }
 
 func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	comments []entities.Comment) []requests.CommentResponse {
+	comments []entities.Comment, user_id string, is_cm bool) []requests.CommentResponse {
 	var response []requests.CommentResponse
 	for _, comment := range comments {
-		response = append(response, parseCommentResponse(likeHelper, commentHelper, comment))
+		response = append(response, parseCommentResponse(likeHelper, commentHelper, comment, user_id, is_cm))
 	}
 
 	return response
@@ -138,7 +139,7 @@ func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelpe
 
 func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	raw_comment *entities.Comment, parsed_comment requests.CommentResponse,
-	replies []requests.CommentResponse) requests.FetchCommentResponse {
+	replies []requests.CommentResponse, user_id string, is_cm bool) requests.FetchCommentResponse {
 	var response requests.FetchCommentResponse
 
 	response.CommentResponse = parsed_comment
@@ -152,7 +153,7 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	if parsed_comment.Level > constants.CommentBaseLevel {
 		comment_data, err := fetchParentComment(commentHelper, raw_comment.ID, raw_comment.PostId)
 		if err == nil {
-			parent_comment_response := parseCommentResponse(likeHelper, commentHelper, *comment_data)
+			parent_comment_response := parseCommentResponse(likeHelper, commentHelper, *comment_data, user_id, is_cm)
 			response.ParentComment = &parent_comment_response
 		}
 	}
@@ -165,6 +166,12 @@ func (handlers *commentHandlers) FetchComment(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
+	param_is_cm := c.Query("is_cm")
+	is_cm := false
+
+	if param_is_cm == "true" {
+		is_cm = true
+	}
 
 	// fetch post data
 	_, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
@@ -201,10 +208,10 @@ func (handlers *commentHandlers) FetchComment(c *gin.Context) {
 		return
 	}
 
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results)
-	comment_response := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *comment_data)
+	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, headers[utils.HeadersMemberId], is_cm)
+	comment_response := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *comment_data, headers[utils.HeadersMemberId], is_cm)
 	fetch_comment_response := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_data,
-		comment_response, replies_response)
+		comment_response, replies_response, headers[utils.HeadersMemberId], is_cm)
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{

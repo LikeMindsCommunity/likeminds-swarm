@@ -23,6 +23,7 @@ type CommentResponse struct {
 	IsDeleted     bool               `json:"is_deleted,omitempty"`
 	DeletedBy     string             `json:"deleted_by,omitempty"`
 	DeleteReason  string             `json:"delete_reason,omitempty"`
+	MenuItems     []MenuResponse     `json:"menu_items"`
 	CreatedAt     int                `json:"created_at"`
 	UpdatedAt     int                `json:"updated_at"`
 }

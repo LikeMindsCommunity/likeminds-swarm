@@ -42,8 +42,14 @@ type PostResponse struct {
 	DeletedBy     string             `json:"deleted_by,omitempty"`
 	DeleteReason  string             `json:"delete_reason,omitempty"`
 	IsSaved       bool               `json:"is_saved"`
+	MenuItems     []MenuResponse     `json:"menu_items"`
 	CreatedAt     int                `json:"created_at"`
 	UpdatedAt     int                `json:"updated_at"`
+}
+
+type MenuResponse struct {
+	Title string `json:"title"`
+	Route string `json:"route,omitempty"`
 }
 
 type FetchPostResponse struct {

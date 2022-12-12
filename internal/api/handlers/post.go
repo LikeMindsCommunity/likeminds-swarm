@@ -25,7 +25,7 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []re
 }
 
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, post entities.Post, user_id string) requests.PostResponse {
+	saveHelper interfaces.SaveHelper, post entities.Post, user_id string, is_cm bool) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 	var response requests.PostResponse
@@ -40,6 +40,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.CommentsCount = int(replies_count)
 	response.IsDeleted = post.IsDeleted
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
+	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.PostEntityType, is_cm, user_id == post.UserId, post.IsPinned))
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
@@ -53,11 +54,11 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 }
 
 func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, posts []entities.Post, user_id string) []requests.PostResponse {
+	saveHelper interfaces.SaveHelper, posts []entities.Post, user_id string, is_cm bool) []requests.PostResponse {
 	response := []requests.PostResponse{}
 
 	for _, post := range posts {
-		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, post, user_id))
+		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, post, user_id, is_cm))
 	}
 
 	return response
@@ -185,6 +186,12 @@ func (handlers *postHandlers) FetchPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
+	param_is_cm := c.Query("is_cm")
+	is_cm := false
+
+	if param_is_cm == "true" {
+		is_cm = true
+	}
 
 	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
 	if err != nil {
@@ -213,8 +220,8 @@ func (handlers *postHandlers) FetchPost(c *gin.Context) {
 	}
 
 	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		*post_data, headers[utils.HeadersMemberId])
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results)
+		*post_data, headers[utils.HeadersMemberId], is_cm)
+	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, headers[utils.HeadersMemberId], is_cm)
 	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper, post_response, replies_response)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -305,6 +312,12 @@ func (handlers *postHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	user_id := c.Param("user_id")
+	param_is_cm := c.Query("is_cm")
+	is_cm := false
+
+	if param_is_cm == "true" {
+		is_cm = true
+	}
 
 	// post filter data
 	post_filter_data := gin.H{
@@ -335,7 +348,7 @@ func (handlers *postHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	created_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		post_results, user_id)
+		post_results, user_id, is_cm)
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response, posts_count))

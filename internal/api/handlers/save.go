@@ -108,6 +108,12 @@ func (handlers *saveHandlers) FetchUserSavedPosts(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	user_id := c.Param("user_id")
+	param_is_cm := c.Query("is_cm")
+	is_cm := false
+
+	if param_is_cm == "true" {
+		is_cm = true
+	}
 
 	if user_id != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
@@ -158,7 +164,7 @@ func (handlers *saveHandlers) FetchUserSavedPosts(c *gin.Context) {
 	}
 
 	saved_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		post_results, user_id)
+		post_results, user_id, is_cm)
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, saved_post_response, save_count))
