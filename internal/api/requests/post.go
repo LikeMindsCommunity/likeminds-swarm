@@ -1,6 +1,9 @@
 package requests
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type Attachment struct {
 	FileType   int    `json:"file_type" binding:"required"`
@@ -32,7 +35,7 @@ type PostResponse struct {
 	ApiKey        string             `json:"api_key"`
 	IsPinned      bool               `json:"is_pinned"`
 	UserId        string             `json:"user_id"`
-	Attachments   []interface{}      `json:"attachments"`
+	Attachments   []entities.Widget  `json:"attachments"`
 	LikesCount    int                `json:"likes_count"`
 	CommentsCount int                `json:"comments_count"`
 	IsDeleted     bool               `json:"is_deleted,omitempty"`

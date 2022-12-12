@@ -1,38 +1,14 @@
 package entities
 
-type ImageWidget struct {
-	FileType int    `json:"file_type" bson:"file_type"`
-	FileUrl  string `json:"file_url" bson:"file_url"`
-}
-
-type VideoWidget struct {
-	FileType int    `json:"file_type" bson:"file_type"`
-	FileUrl  string `json:"file_url" bson:"file_url"`
-}
-
-type DocumentWidget struct {
+type Widget struct {
 	FileType   int    `json:"file_type" bson:"file_type"`
-	FileUrl    string `json:"file_url" bson:"file_url"`
-	FileFormat string `json:"file_format" bson:"file_format"`
-	FileSize   string `json:"file_size" bson:"file_size"`
+	FileUrl    string `json:"file_url,omitempty" bson:"file_url,omitempty"`
+	FileFormat string `json:"file_format,omitempty" bson:"file_format,omitempty"`
+	FileSize   string `json:"file_size,omitempty" bson:"file_size,omitempty"`
 }
 
-func NewImageWidget(file_type int, file_url string) ImageWidget {
-	return ImageWidget{
-		FileType: file_type,
-		FileUrl:  file_url,
-	}
-}
-
-func NewVideoWidget(file_type int, file_url string) VideoWidget {
-	return VideoWidget{
-		FileType: file_type,
-		FileUrl:  file_url,
-	}
-}
-
-func NewDocumentWidget(file_type int, file_url string, file_format string, file_size string) DocumentWidget {
-	return DocumentWidget{
+func NewWidget(file_type int, file_url string, file_format string, file_size string) Widget {
+	return Widget{
 		FileType:   file_type,
 		FileUrl:    file_url,
 		FileFormat: file_format,

@@ -12,7 +12,7 @@ type Post struct {
 	ApiKey       string             `json:"api_key" bson:"api_key"`
 	IsPinned     bool               `json:"is_pinned" bson:"is_pinned"`
 	UserId       string             `json:"user_id" bson:"user_id"`
-	Attachments  []interface{}      `json:"attachments" bson:"attachments"`
+	Attachments  []Widget           `json:"attachments" bson:"attachments"`
 	IsDeleted    bool               `json:"is_deleted" bson:"is_deleted"`
 	DeletedBy    string             `json:"deleted_by" bson:"deleted_by,omitempty"`
 	DeleteReason string             `json:"delete_reason" bson:"delete_reason,omitempty"`
@@ -20,7 +20,7 @@ type Post struct {
 	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
-func NewPost(text string, api_key string, user_id string, attachments []interface{}) Post {
+func NewPost(text string, api_key string, user_id string, attachments []Widget) Post {
 	created_at := time.Now()
 	return Post{
 		Text:        text,

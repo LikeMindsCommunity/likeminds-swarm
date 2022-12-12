@@ -12,21 +12,22 @@ import (
 )
 
 func (helper *postHelper) CreatePostHelper(text string, api_key string, user_id string, attachments []requests.Attachment) (interface{}, error) {
-	var post_attachments []interface{}
+	var post_attachments []entities.Widget
+	default_string := ""
 
 	for _, element := range attachments {
 
 		switch element.FileType {
 		case constants.ImageWidget:
-			image_widget := entities.NewImageWidget(element.FileType, element.FileUrl)
+			image_widget := entities.NewWidget(element.FileType, element.FileUrl, default_string, default_string)
 			post_attachments = append(post_attachments, image_widget)
 
 		case constants.VideoWidget:
-			video_widget := entities.NewVideoWidget(element.FileType, element.FileUrl)
+			video_widget := entities.NewWidget(element.FileType, element.FileUrl, default_string, default_string)
 			post_attachments = append(post_attachments, video_widget)
 
 		case constants.DocumentWidget:
-			document_widget := entities.NewDocumentWidget(element.FileType, element.FileUrl, element.FileFormat, element.FileSize)
+			document_widget := entities.NewWidget(element.FileType, element.FileUrl, element.FileFormat, element.FileSize)
 			post_attachments = append(post_attachments, document_widget)
 		}
 
