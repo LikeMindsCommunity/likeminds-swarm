@@ -41,10 +41,10 @@ func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) s
 	return cta
 }
 
-func (helper *activityHelper) CreateActivityHelper(action_by string, action_on []string, api_key string, entity_type string,
+func (helper *activityHelper) CreateActivityHelper(action_by string, action_on []string, community_id int, entity_type string,
 	entity_id primitive.ObjectID, action string, cta_data map[string]interface{}) (interface{}, error) {
 	cta := fetchActivityCtaForAction(action, cta_data)
-	activity := entities.NewActivity(action_by, action_on, api_key, entity_type, entity_id, action, cta)
+	activity := entities.NewActivity(action_by, action_on, community_id, entity_type, entity_id, action, cta)
 	activity_id, err := helper.activityRepository.Create(&activity)
 
 	return activity_id, err

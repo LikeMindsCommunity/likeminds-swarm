@@ -32,7 +32,7 @@ type AttachmentResponse struct {
 type PostResponse struct {
 	ID            primitive.ObjectID `json:"_id"`
 	Text          string             `json:"text"`
-	ApiKey        string             `json:"api_key"`
+	Communityid   int                `json:"community_id"`
 	IsPinned      bool               `json:"is_pinned"`
 	UserId        string             `json:"user_id"`
 	Attachments   []entities.Widget  `json:"attachments"`

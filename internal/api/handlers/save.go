@@ -7,6 +7,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -58,8 +59,14 @@ func (handlers *saveHandlers) SavePost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -75,7 +82,7 @@ func (handlers *saveHandlers) SavePost(c *gin.Context) {
 	if len(save_results) == 0 {
 		// create save using the helper method
 		_, err := handlers.saveHelper.CreateSaveHelper(constants.PostEntityType, post_data.ID,
-			headers[utils.HeadersMemberId])
+			headers[utils.HeadersMemberId], community_id)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -115,6 +122,12 @@ func (handlers *saveHandlers) FetchUserSavedPosts(c *gin.Context) {
 		is_cm = true
 	}
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	if user_id != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
@@ -122,9 +135,10 @@ func (handlers *saveHandlers) FetchUserSavedPosts(c *gin.Context) {
 
 	// save filter data
 	save_filter_data := gin.H{
-		"entity_type": constants.PostEntityType,
-		"saved_by":    headers[utils.HeadersMemberId],
-		"is_deleted":  false,
+		"entity_type":  constants.PostEntityType,
+		"saved_by":     headers[utils.HeadersMemberId],
+		"community_id": community_id,
+		"is_deleted":   false,
 	}
 
 	// fetch save count using helper method

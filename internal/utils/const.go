@@ -1,12 +1,13 @@
 package utils
 
 const (
-	HeadersMemberId     string = "x-member-id"
-	HeadersVersionCode  string = "x-version-code"
-	HeadersPlatformCode string = "x-platform-code"
-	HeadersPlatformType string = "x-platform-type"
-	HeadersDeviceId     string = "x-device-id"
-	HeadersApiKey       string = "x-api-key"
+	HeadersMemberId      string = "x-member-id"
+	HeadersVersionCode   string = "x-version-code"
+	HeadersPlatformCode  string = "x-platform-code"
+	HeadersPlatformType  string = "x-platform-type"
+	HeadersDeviceId      string = "x-device-id"
+	HeadersApiKey        string = "x-api-key"
+	HeadersAcceptVersion string = "x-accept-version"
 )
 
 const (

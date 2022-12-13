@@ -28,19 +28,21 @@ func main() {
 	router.GET("", web.Home)
 	routerGroup := router.Group("/")
 
-	// Post routes
+	// Dependency injection of repositories
 	postRepository := repositories.NewPostRepository(db)
 	likeRepository := repositories.NewLikeRepository(db)
 	commentRepository := repositories.NewCommentRepository(db)
 	saveRepository := repositories.NewSaveRepository(db)
 	activityRepository := repositories.NewActivityRepository(db)
 
+	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)
 	likeHelper := helpers.NewLikeHelper(likeRepository)
 	commentHelper := helpers.NewCommentHelper(commentRepository)
 	saveHelper := helpers.NewSaveHelper(saveRepository)
 	activityHelper := helpers.NewActivityHelper(activityRepository)
 
+	// Routes
 	routes.PostRouter(routerGroup, postHelper, likeHelper, commentHelper, saveHelper, activityHelper)
 	routes.UserRouter(routerGroup, activityHelper, likeHelper, commentHelper, postHelper, saveHelper)
 

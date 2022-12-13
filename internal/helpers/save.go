@@ -9,8 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (helper *saveHelper) CreateSaveHelper(entity_type string, entity_id primitive.ObjectID, saved_by string) (interface{}, error) {
-	save := entities.NewSave(entity_type, entity_id, saved_by)
+func (helper *saveHelper) CreateSaveHelper(entity_type string, entity_id primitive.ObjectID, saved_by string, community_id int) (interface{}, error) {
+	save := entities.NewSave(entity_type, entity_id, saved_by, community_id)
 	save_id, err := helper.saveRepository.Create(&save)
 
 	return save_id, err

@@ -7,22 +7,23 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func createActivity(helper interfaces.ActivityHelper, action string, entity_id primitive.ObjectID, entity_type string,
-	api_key string, action_by string, action_on string, cta_data map[string]interface{}) error {
+	community_id int, action_by string, action_on string, cta_data map[string]interface{}) error {
 	switch action {
 	case constants.LikeAction, constants.TagAction:
 		// activity filter data
 		activity_filter_data := gin.H{
-			"entity_id":   entity_id,
-			"entity_type": entity_type,
-			"action":      action,
-			"api_key":     api_key,
-			"action_by":   action_by,
-			"action_on":   action_on,
+			"entity_id":    entity_id,
+			"entity_type":  entity_type,
+			"action":       action,
+			"community_id": community_id,
+			"action_by":    action_by,
+			"action_on":    action_on,
 		}
 
 		// fetch activity using helper method
@@ -33,7 +34,7 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 
 		// checking of existing activity
 		if len(activity_results) == 0 {
-			_, err := helper.CreateActivityHelper(action_by, []string{action_on}, api_key, entity_type, entity_id,
+			_, err := helper.CreateActivityHelper(action_by, []string{action_on}, community_id, entity_type, entity_id,
 				action, cta_data)
 			if err != nil {
 				return err
@@ -43,10 +44,10 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 	case constants.AlsoCommentAction:
 		// activity filter data
 		activity_filter_data := gin.H{
-			"entity_id":   entity_id,
-			"entity_type": entity_type,
-			"action":      action,
-			"api_key":     api_key,
+			"entity_id":    entity_id,
+			"entity_type":  entity_type,
+			"action":       action,
+			"community_id": community_id,
 		}
 
 		// fetch activity using helper method
@@ -57,7 +58,7 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 
 		// checking of existing activity
 		if len(activity_results) == 0 {
-			_, err := helper.CreateActivityHelper(action_by, []string{}, api_key, entity_type, entity_id,
+			_, err := helper.CreateActivityHelper(action_by, []string{}, community_id, entity_type, entity_id,
 				constants.AlsoCommentAction, cta_data)
 			if err != nil {
 				return err
@@ -82,8 +83,9 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 			}
 		}
 
-	case constants.CommentAction, constants.DeleteAction:
-		_, err := helper.CreateActivityHelper(action_by, []string{action_on}, api_key, entity_type, entity_id,
+	case constants.CommentAction, constants.DeleteAction, constants.CreatePostPermitAddedAction, constants.CreatePostPermitRemovedAction,
+		constants.CreateCommentPermissionAddedAction, constants.CreateCommentPermitRemovedAction:
+		_, err := helper.CreateActivityHelper(action_by, []string{action_on}, community_id, entity_type, entity_id,
 			action, cta_data)
 		if err != nil {
 			return err
@@ -94,6 +96,16 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 }
 
 func (handlers *activityHandlers) ExternalCreateActivity(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	user_id := c.Param("user_id")
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// validation of request body
 	var externalCreateActivityRequest requests.CreateActivityRequest
 	if err := c.ShouldBindJSON(&externalCreateActivityRequest); err != nil {
@@ -117,18 +129,14 @@ func (handlers *activityHandlers) ExternalCreateActivity(c *gin.Context) {
 		return
 	}
 
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
-	user_id := c.Param("user_id")
-
 	if user_id == "" {
 		utils.GeneralAPIValidationError(c, "Send valid user_id")
 		return
 	}
 
 	// create activity using the helper method
-	_, err := handlers.activityHelper.CreateActivityHelper(headers[utils.HeadersMemberId], []string{user_id}, headers[utils.HeadersApiKey],
-		constants.UserEntityType, primitive.NilObjectID, externalCreateActivityRequest.Action, gin.H{})
+	err := createActivity(handlers.activityHelper, externalCreateActivityRequest.Action, primitive.NilObjectID,
+		constants.UserEntityType, community_id, headers[utils.HeadersMemberId], user_id, gin.H{})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

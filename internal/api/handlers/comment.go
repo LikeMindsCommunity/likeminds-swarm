@@ -9,6 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -173,8 +174,14 @@ func (handlers *commentHandlers) FetchComment(c *gin.Context) {
 		is_cm = true
 	}
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// fetch post data
-	_, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	_, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -225,6 +232,12 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// validation of request body
 	var createCommentRequest requests.CreateCommentRequest
 	if err := c.ShouldBindJSON(&createCommentRequest); err != nil {
@@ -233,7 +246,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -249,7 +262,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 
 	// create also_comment activity
 	err = createActivity(handlers.activityHelper, constants.AlsoCommentAction, post_data.ID, constants.PostEntityType,
-		post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     post_id,
 		})
@@ -273,7 +286,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 
 		// create tag activity
 		err = createActivity(handlers.activityHelper, constants.TagAction, comment_id.(primitive.ObjectID), constants.CommentEntityType,
-			post_data.ApiKey, headers[utils.HeadersMemberId], member, gin.H{
+			post_data.CommunityId, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  comment_id.(primitive.ObjectID).Hex(),
@@ -287,7 +300,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 	if !is_creator_tagged {
 		// create comment activity
 		err = createActivity(handlers.activityHelper, constants.CommentAction, post_data.ID, constants.PostEntityType,
-			post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
+			post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  comment_id.(primitive.ObjectID).Hex(),
@@ -310,6 +323,12 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// validation of request body
 	var createCommentRequest requests.CreateCommentRequest
 	if err := c.ShouldBindJSON(&createCommentRequest); err != nil {
@@ -318,7 +337,7 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -374,7 +393,7 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 
 		// create tag activity
 		err = createActivity(handlers.activityHelper, constants.TagAction, new_comment_id.(primitive.ObjectID), constants.CommentEntityType,
-			post_data.ApiKey, headers[utils.HeadersMemberId], member, gin.H{
+			post_data.CommunityId, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
@@ -388,7 +407,7 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 	if !is_creator_tagged {
 		// create comment activity
 		err = createActivity(handlers.activityHelper, constants.CommentAction, comment_data.ID, constants.CommentEntityType,
-			post_data.ApiKey, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
+			post_data.CommunityId, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
@@ -411,6 +430,12 @@ func (handlers *commentHandlers) DeleteComment(c *gin.Context) {
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// validation of request body
 	var deleteCommentRequest requests.DeleteCommentRequest
 	if err := c.ShouldBindJSON(&deleteCommentRequest); err != nil {
@@ -419,7 +444,7 @@ func (handlers *commentHandlers) DeleteComment(c *gin.Context) {
 	}
 
 	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -456,7 +481,7 @@ func (handlers *commentHandlers) DeleteComment(c *gin.Context) {
 
 	// create delete activity
 	err = createActivity(handlers.activityHelper, constants.DeleteAction, comment_data.ID, constants.CommentEntityType,
-		post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

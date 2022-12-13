@@ -14,7 +14,7 @@ type SaveRepository interface {
 }
 
 type SaveHelper interface {
-	CreateSaveHelper(entity_type string, entity_id primitive.ObjectID, saved_by string) (interface{}, error)
+	CreateSaveHelper(entity_type string, entity_id primitive.ObjectID, saved_by string, community_id int) (interface{}, error)
 	FindSaveHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Save, error)
 	UpdateSaveByIdHelper(activity_id primitive.ObjectID, update map[string]interface{}) error
 	CountSaveHelper(filter map[string]interface{}) (int64, error)

@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (helper *postHelper) CreatePostHelper(text string, api_key string, user_id string, attachments []requests.Attachment) (interface{}, error) {
+func (helper *postHelper) CreatePostHelper(text string, community_id int, user_id string, attachments []requests.Attachment) (interface{}, error) {
 	var post_attachments []entities.Widget
 	default_string := ""
 
@@ -33,7 +33,7 @@ func (helper *postHelper) CreatePostHelper(text string, api_key string, user_id 
 
 	}
 
-	post := entities.NewPost(text, api_key, user_id, post_attachments)
+	post := entities.NewPost(text, community_id, user_id, post_attachments)
 	post_id, err := helper.postRepository.Create(&post)
 
 	return post_id, err

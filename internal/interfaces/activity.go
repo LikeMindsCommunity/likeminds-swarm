@@ -12,7 +12,7 @@ type ActivityRepository interface {
 }
 
 type ActivityHelper interface {
-	CreateActivityHelper(action_by string, action_on []string, api_key string, entity_type string, entity_id primitive.ObjectID,
+	CreateActivityHelper(action_by string, action_on []string, community_id int, entity_type string, entity_id primitive.ObjectID,
 		action string, cta_data map[string]interface{}) (interface{}, error)
 	FindActivityHelper(filter map[string]interface{}) ([]entities.Activity, error)
 	UpdateActivityByIdHelper(activity_id primitive.ObjectID, update map[string]interface{}) error

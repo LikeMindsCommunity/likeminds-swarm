@@ -9,6 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -32,7 +33,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 
 	response.ID = post.ID
 	response.Text = post.Text
-	response.ApiKey = post.ApiKey
+	response.Communityid = post.CommunityId
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
 	response.Attachments = post.Attachments
@@ -79,12 +80,12 @@ func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper inte
 	return response
 }
 
-func fetchPost(helper interfaces.PostHelper, post_id string, api_key string) (*entities.Post, error) {
+func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (*entities.Post, error) {
 	// post filter data
 	post_filter_data := gin.H{
-		"_id":        post_id,
-		"is_deleted": false,
-		"api_key":    api_key,
+		"_id":          post_id,
+		"is_deleted":   false,
+		"community_id": community_id,
 	}
 
 	// fetch post using helper method
@@ -104,6 +105,12 @@ func fetchPost(helper interfaces.PostHelper, post_id string, api_key string) (*e
 func (handlers *postHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
 
 	// validation of request body
 	var createPostRequest requests.CreatePostRequest
@@ -150,7 +157,7 @@ func (handlers *postHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// create post using the helper method
-	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, headers[utils.HeadersApiKey],
+	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, community_id,
 		headers[utils.HeadersMemberId], createPostRequest.Attachments)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -166,7 +173,7 @@ func (handlers *postHandlers) CreatePost(c *gin.Context) {
 	for _, member := range tagged_members {
 		// create tag activity
 		err = createActivity(handlers.activityHelper, constants.TagAction, post_id.(primitive.ObjectID), constants.PostEntityType,
-			headers[utils.HeadersApiKey], headers[utils.HeadersMemberId], member, gin.H{
+			community_id, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.PostEntityType,
 				"post_id":     post_id,
 			})
@@ -193,7 +200,13 @@ func (handlers *postHandlers) FetchPost(c *gin.Context) {
 		is_cm = true
 	}
 
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -235,6 +248,12 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// validation of request body
 	var deletePostRequest requests.DeletePostRequest
 	if err := c.ShouldBindJSON(&deletePostRequest); err != nil {
@@ -243,7 +262,7 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -273,7 +292,7 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 
 	// create delete activity
 	err = createActivity(handlers.activityHelper, constants.DeleteAction, post_data.ID, constants.PostEntityType,
-		post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -286,12 +305,17 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 }
 
 func (handlers *postHandlers) PinPost(c *gin.Context) {
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
+	// fetch url params
 	post_id := c.Param("post_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -318,8 +342,7 @@ func (handlers *postHandlers) PinPost(c *gin.Context) {
 }
 
 func (handlers *postHandlers) FetchUserCreatedPosts(c *gin.Context) {
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
+	// fetch url params
 	user_id := c.Param("user_id")
 	param_is_cm := c.Query("is_cm")
 	is_cm := false
@@ -328,11 +351,17 @@ func (handlers *postHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		is_cm = true
 	}
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// post filter data
 	post_filter_data := gin.H{
-		"user_id":    user_id,
-		"is_deleted": false,
-		"api_key":    headers[utils.HeadersApiKey],
+		"user_id":      user_id,
+		"is_deleted":   false,
+		"community_id": community_id,
 	}
 
 	// fetch posts count using helper method

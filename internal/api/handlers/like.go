@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
@@ -100,8 +101,14 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -143,7 +150,7 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 
 	// create like activity
 	err = createActivity(handlers.activityHelper, constants.LikeAction, post_data.ID, constants.PostEntityType,
-		post_data.ApiKey, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     post_id,
 		})
@@ -159,12 +166,17 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 }
 
 func (handlers *likeHandlers) FetchPostLikes(c *gin.Context) {
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
+	// fetch url params
 	post_id := c.Param("post_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// fetch post data
-	_, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	_, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -201,8 +213,14 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -251,7 +269,7 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 
 	// create like activity
 	err = createActivity(handlers.activityHelper, constants.LikeAction, comment_data.ID, constants.CommentEntityType,
-		post_data.ApiKey, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
+		post_data.CommunityId, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  comment_id,
@@ -268,13 +286,18 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 }
 
 func (handlers *likeHandlers) FetchCommentLikes(c *gin.Context) {
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
+	// fetch url params
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
 
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
 	// fetch post data
-	_, err := fetchPost(handlers.postHelper, post_id, headers[utils.HeadersApiKey])
+	_, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
