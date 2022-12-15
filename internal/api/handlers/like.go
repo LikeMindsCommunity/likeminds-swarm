@@ -96,7 +96,7 @@ func fetchSpecificMemberLikesOnEntity(helper interfaces.LikeHelper, entity_id st
 	return like_results, nil
 }
 
-func (handlers *likeHandlers) LikePost(c *gin.Context) {
+func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -149,7 +149,7 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 	}
 
 	// create like activity
-	err = createActivity(handlers.activityHelper, constants.LikeAction, post_data.ID, constants.PostEntityType,
+	_, err = createActivity(*handlers, constants.LikeAction, post_data.ID, constants.PostEntityType,
 		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     post_id,
@@ -165,7 +165,7 @@ func (handlers *likeHandlers) LikePost(c *gin.Context) {
 	})
 }
 
-func (handlers *likeHandlers) FetchPostLikes(c *gin.Context) {
+func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	// fetch url params
 	post_id := c.Param("post_id")
 
@@ -207,7 +207,7 @@ func (handlers *likeHandlers) FetchPostLikes(c *gin.Context) {
 	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count)))
 }
 
-func (handlers *likeHandlers) LikeComment(c *gin.Context) {
+func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -268,7 +268,7 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 	}
 
 	// create like activity
-	err = createActivity(handlers.activityHelper, constants.LikeAction, comment_data.ID, constants.CommentEntityType,
+	_, err = createActivity(*handlers, constants.LikeAction, comment_data.ID, constants.CommentEntityType,
 		post_data.CommunityId, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
@@ -285,7 +285,7 @@ func (handlers *likeHandlers) LikeComment(c *gin.Context) {
 	})
 }
 
-func (handlers *likeHandlers) FetchCommentLikes(c *gin.Context) {
+func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	// fetch url params
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
@@ -333,21 +333,4 @@ func (handlers *likeHandlers) FetchCommentLikes(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count)))
-}
-
-type likeHandlers struct {
-	likeHelper     interfaces.LikeHelper
-	commentHelper  interfaces.CommentHelper
-	postHelper     interfaces.PostHelper
-	activityHelper interfaces.ActivityHelper
-}
-
-func NewLikeHandlers(postHelper interfaces.PostHelper, likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	activityHelper interfaces.ActivityHelper) *likeHandlers {
-	return &likeHandlers{
-		likeHelper:     likeHelper,
-		commentHelper:  commentHelper,
-		postHelper:     postHelper,
-		activityHelper: activityHelper,
-	}
 }

@@ -33,3 +33,7 @@ const DefaultCommunityId = -1
 
 const SdkAuthenticateEndPoint = "/api/sdk/authenticate"
 const SendNotificationEndPoint = "/api/external_service_apis/send_notifications"
+const FetchMembersMetaEndPoint = "/api/community/fetch_members_meta"
+
+const ParamMemberIds = "member_ids"
+const ParamCommunityId = "community_id"

@@ -50,13 +50,15 @@ func (helper *activityHelper) CreateActivityHelper(action_by string, action_on [
 	return activity_id, err
 }
 
-func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}) ([]entities.Activity, error) {
+func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Activity, error) {
+	fOpts := mergeFilterOptions(filterOptions)
+
 	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
 	if err != nil {
 		return nil, err
 	}
 
-	results, err := helper.activityRepository.Find(filter)
+	results, err := helper.activityRepository.Find(filter, &fOpts)
 
 	return results, err
 }

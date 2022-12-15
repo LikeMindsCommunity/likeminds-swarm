@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/api/routes"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/repositories"
@@ -42,9 +43,12 @@ func main() {
 	saveHelper := helpers.NewSaveHelper(saveRepository)
 	activityHelper := helpers.NewActivityHelper(activityRepository)
 
+	// New feed Handler
+	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper)
+
 	// Routes
-	routes.PostRouter(routerGroup, postHelper, likeHelper, commentHelper, saveHelper, activityHelper)
-	routes.UserRouter(routerGroup, activityHelper, likeHelper, commentHelper, postHelper, saveHelper)
+	routes.PostRouter(routerGroup, feedHandlers)
+	routes.UserRouter(routerGroup, feedHandlers)
 
 	log.Printf("application version: %s", AppVersion)
 	log.Fatal(router.Run(":8080"))

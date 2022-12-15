@@ -16,9 +16,9 @@ func (repository *activityRepository) Create(like *entities.Activity) (interface
 	return result.InsertedID, err
 }
 
-func (repository *activityRepository) Find(filter map[string]interface{}) ([]entities.Activity, error) {
+func (repository *activityRepository) Find(filter map[string]interface{}, filterOptions *options.FindOptions) ([]entities.Activity, error) {
 	coll := repository.db.Collection("activity")
-	cursor, err := coll.Find(context.TODO(), filter, options.Find())
+	cursor, err := coll.Find(context.TODO(), filter, filterOptions)
 	if err != nil {
 		return nil, err
 	}

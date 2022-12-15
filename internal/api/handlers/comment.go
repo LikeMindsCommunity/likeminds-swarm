@@ -31,8 +31,8 @@ func fetchPostCommentsCount(helper interfaces.CommentHelper, post_id string) (in
 	return likes_count, nil
 }
 
-func fetchCommentRepliesCount(helper interfaces.CommentHelper, comment_id string, post_id string) (int64, error) {
-	comment_data, err := fetchComment(helper, comment_id, post_id)
+func fetchCommentRepliesCount(helper interfaces.CommentHelper, comment_id string) (int64, error) {
+	comment_data, err := fetchCommentByIdInternal(helper, comment_id)
 	if err != nil {
 		return 0, err
 	}
@@ -42,7 +42,6 @@ func fetchCommentRepliesCount(helper interfaces.CommentHelper, comment_id string
 			"$in": comment_data.Replies,
 		},
 		"is_deleted": false,
-		"post_id":    post_id,
 	}
 
 	// fetch replies count using helper method
@@ -61,6 +60,27 @@ func fetchParentComment(helper interfaces.CommentHelper, comment_id primitive.Ob
 		"replies":    comment_id,
 		"is_deleted": false,
 		"post_id":    post_id,
+	}
+
+	// fetch comment using helper method
+	comment_results, err := helper.FindCommentHelper(comment_filter_data, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of comment
+	if len(comment_results) == 0 {
+		return nil, fmt.Errorf("invalid comment_id sent")
+	}
+
+	return &comment_results[0], nil
+}
+
+func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string) (*entities.Comment, error) {
+	// comment filter data
+	comment_filter_data := gin.H{
+		"_id":        comment_id,
+		"is_deleted": false,
 	}
 
 	// fetch comment using helper method
@@ -113,7 +133,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.CommentEntityType, is_cm, user_id == comment.UserId, false))
 
 	if comment.Level == constants.CommentBaseLevel {
-		replies_count, _ := fetchCommentRepliesCount(commentHelper, comment.ID.Hex(), comment.PostId.Hex())
+		replies_count, _ := fetchCommentRepliesCount(commentHelper, comment.ID.Hex())
 		response.CommentsCount = int(replies_count)
 	}
 
@@ -162,7 +182,7 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	return response
 }
 
-func (handlers *commentHandlers) FetchComment(c *gin.Context) {
+func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -227,7 +247,7 @@ func (handlers *commentHandlers) FetchComment(c *gin.Context) {
 	})
 }
 
-func (handlers *commentHandlers) CommentPost(c *gin.Context) {
+func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -261,7 +281,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// create also_comment activity
-	err = createActivity(handlers.activityHelper, constants.AlsoCommentAction, post_data.ID, constants.PostEntityType,
+	_, err = createActivity(*handlers, constants.AlsoCommentAction, post_data.ID, constants.PostEntityType,
 		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     post_id,
@@ -285,7 +305,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 		}
 
 		// create tag activity
-		err = createActivity(handlers.activityHelper, constants.TagAction, comment_id.(primitive.ObjectID), constants.CommentEntityType,
+		_, err = createActivity(*handlers, constants.TagAction, comment_id.(primitive.ObjectID), constants.CommentEntityType,
 			post_data.CommunityId, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
@@ -299,7 +319,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 
 	if !is_creator_tagged {
 		// create comment activity
-		err = createActivity(handlers.activityHelper, constants.CommentAction, post_data.ID, constants.PostEntityType,
+		_, err = createActivity(*handlers, constants.CommentAction, post_data.ID, constants.PostEntityType,
 			post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
@@ -317,7 +337,7 @@ func (handlers *commentHandlers) CommentPost(c *gin.Context) {
 	})
 }
 
-func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
+func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -392,7 +412,7 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 		}
 
 		// create tag activity
-		err = createActivity(handlers.activityHelper, constants.TagAction, new_comment_id.(primitive.ObjectID), constants.CommentEntityType,
+		_, err = createActivity(*handlers, constants.TagAction, new_comment_id.(primitive.ObjectID), constants.CommentEntityType,
 			post_data.CommunityId, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
@@ -406,7 +426,7 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 
 	if !is_creator_tagged {
 		// create comment activity
-		err = createActivity(handlers.activityHelper, constants.CommentAction, comment_data.ID, constants.CommentEntityType,
+		_, err = createActivity(*handlers, constants.CommentAction, comment_data.ID, constants.CommentEntityType,
 			post_data.CommunityId, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
@@ -424,7 +444,7 @@ func (handlers *commentHandlers) ReplyComment(c *gin.Context) {
 	})
 }
 
-func (handlers *commentHandlers) DeleteComment(c *gin.Context) {
+func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -480,7 +500,7 @@ func (handlers *commentHandlers) DeleteComment(c *gin.Context) {
 	}
 
 	// create delete activity
-	err = createActivity(handlers.activityHelper, constants.DeleteAction, comment_data.ID, constants.CommentEntityType,
+	_, err = createActivity(*handlers, constants.DeleteAction, comment_data.ID, constants.CommentEntityType,
 		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -491,21 +511,4 @@ func (handlers *commentHandlers) DeleteComment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
-}
-
-type commentHandlers struct {
-	likeHelper     interfaces.LikeHelper
-	commentHelper  interfaces.CommentHelper
-	postHelper     interfaces.PostHelper
-	activityHelper interfaces.ActivityHelper
-}
-
-func NewCommentHandlers(commentHelper interfaces.CommentHelper, likeHelper interfaces.LikeHelper,
-	postHelper interfaces.PostHelper, activityHelper interfaces.ActivityHelper) *commentHandlers {
-	return &commentHandlers{
-		likeHelper:     likeHelper,
-		commentHelper:  commentHelper,
-		postHelper:     postHelper,
-		activityHelper: activityHelper,
-	}
 }

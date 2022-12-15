@@ -102,7 +102,7 @@ func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (
 	return &post_results[0], nil
 }
 
-func (handlers *postHandlers) CreatePost(c *gin.Context) {
+func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
 
@@ -172,7 +172,7 @@ func (handlers *postHandlers) CreatePost(c *gin.Context) {
 
 	for _, member := range tagged_members {
 		// create tag activity
-		err = createActivity(handlers.activityHelper, constants.TagAction, post_id.(primitive.ObjectID), constants.PostEntityType,
+		_, err = createActivity(*handlers, constants.TagAction, post_id.(primitive.ObjectID), constants.PostEntityType,
 			community_id, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.PostEntityType,
 				"post_id":     post_id,
@@ -189,7 +189,7 @@ func (handlers *postHandlers) CreatePost(c *gin.Context) {
 	})
 }
 
-func (handlers *postHandlers) FetchPost(c *gin.Context) {
+func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -243,7 +243,7 @@ func (handlers *postHandlers) FetchPost(c *gin.Context) {
 	})
 }
 
-func (handlers *postHandlers) DeletePost(c *gin.Context) {
+func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -291,7 +291,7 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// create delete activity
-	err = createActivity(handlers.activityHelper, constants.DeleteAction, post_data.ID, constants.PostEntityType,
+	_, err = createActivity(*handlers, constants.DeleteAction, post_data.ID, constants.PostEntityType,
 		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -304,7 +304,7 @@ func (handlers *postHandlers) DeletePost(c *gin.Context) {
 	})
 }
 
-func (handlers *postHandlers) PinPost(c *gin.Context) {
+func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	// fetch url params
 	post_id := c.Param("post_id")
 
@@ -341,7 +341,7 @@ func (handlers *postHandlers) PinPost(c *gin.Context) {
 	})
 }
 
-func (handlers *postHandlers) FetchUserCreatedPosts(c *gin.Context) {
+func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	// fetch url params
 	user_id := c.Param("user_id")
 	param_is_cm := c.Query("is_cm")
@@ -390,23 +390,4 @@ func (handlers *postHandlers) FetchUserCreatedPosts(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response, posts_count))
-}
-
-type postHandlers struct {
-	postHelper     interfaces.PostHelper
-	likeHelper     interfaces.LikeHelper
-	commentHelper  interfaces.CommentHelper
-	activityHelper interfaces.ActivityHelper
-	saveHelper     interfaces.SaveHelper
-}
-
-func NewPostHandlers(postHelper interfaces.PostHelper, likeHelper interfaces.LikeHelper,
-	commentHelper interfaces.CommentHelper, activityHelper interfaces.ActivityHelper, saveHelper interfaces.SaveHelper) *postHandlers {
-	return &postHandlers{
-		postHelper:     postHelper,
-		likeHelper:     likeHelper,
-		commentHelper:  commentHelper,
-		activityHelper: activityHelper,
-		saveHelper:     saveHelper,
-	}
 }

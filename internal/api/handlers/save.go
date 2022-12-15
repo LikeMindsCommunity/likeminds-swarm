@@ -54,7 +54,7 @@ func fetchUserSavedStatusByPostId(helper interfaces.SaveHelper, post_id string, 
 	return true
 }
 
-func (handlers *saveHandlers) SavePost(c *gin.Context) {
+func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
@@ -111,7 +111,7 @@ func (handlers *saveHandlers) SavePost(c *gin.Context) {
 	})
 }
 
-func (handlers *saveHandlers) FetchUserSavedPosts(c *gin.Context) {
+func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	user_id := c.Param("user_id")
@@ -182,21 +182,4 @@ func (handlers *saveHandlers) FetchUserSavedPosts(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, saved_post_response, save_count))
-}
-
-type saveHandlers struct {
-	saveHelper    interfaces.SaveHelper
-	likeHelper    interfaces.LikeHelper
-	commentHelper interfaces.CommentHelper
-	postHelper    interfaces.PostHelper
-}
-
-func NewSaveHandlers(saveHelper interfaces.SaveHelper, likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	postHelper interfaces.PostHelper) *saveHandlers {
-	return &saveHandlers{
-		saveHelper:    saveHelper,
-		likeHelper:    likeHelper,
-		commentHelper: commentHelper,
-		postHelper:    postHelper,
-	}
 }

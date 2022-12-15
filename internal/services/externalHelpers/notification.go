@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SendNotification(member_ids []string, title string, sub_title string, route string, community_id int) {
+func SendNotification(member_ids []string, title string, sub_title string, route string, community_id int, category string, subCategory string) {
 	postBody := gin.H{
 		"community_id": community_id,
 		"member_ids":   member_ids,
@@ -15,6 +15,10 @@ func SendNotification(member_ids []string, title string, sub_title string, route
 			"title":     title,
 			"sub_title": sub_title,
 			"route":     route,
+		},
+		"category": gin.H{
+			"category":    category,
+			"subcategory": subCategory,
 		},
 	}
 

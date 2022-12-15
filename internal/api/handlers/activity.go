@@ -1,19 +1,43 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func createActivity(helper interfaces.ActivityHelper, action string, entity_id primitive.ObjectID, entity_type string,
-	community_id int, action_by string, action_on string, cta_data map[string]interface{}) error {
+func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entities.Activity, error) {
+	// activity filter data
+	activity_filter_data := gin.H{
+		"_id": activity_id,
+	}
+
+	// fetch activity using helper method
+	activity_results, err := helper.FindActivityHelper(activity_filter_data, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of activity
+	if len(activity_results) == 0 {
+		return nil, fmt.Errorf("invalid activity_id sent")
+	}
+
+	return &activity_results[0], nil
+}
+
+func createActivity(handler FeedHandlers, action string, entity_id primitive.ObjectID, entity_type string,
+	community_id int, action_by string, action_on string, cta_data map[string]interface{}) (interface{}, error) {
+	var newActivityId interface{}
+
 	switch action {
 	case constants.LikeAction, constants.TagAction:
 		// activity filter data
@@ -27,18 +51,22 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 		}
 
 		// fetch activity using helper method
-		activity_results, err := helper.FindActivityHelper(activity_filter_data)
+		activity_results, err := handler.activityHelper.FindActivityHelper(activity_filter_data, gin.H{})
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// checking of existing activity
 		if len(activity_results) == 0 {
-			_, err := helper.CreateActivityHelper(action_by, []string{action_on}, community_id, entity_type, entity_id,
-				action, cta_data)
+			activityId, err := handler.activityHelper.CreateActivityHelper(action_by, []string{action_on}, community_id,
+				entity_type, entity_id, action, cta_data)
 			if err != nil {
-				return err
+				return nil, err
 			}
+
+			newActivityId = activityId
+		} else {
+			newActivityId = activity_results[0].ID
 		}
 
 	case constants.AlsoCommentAction:
@@ -51,18 +79,20 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 		}
 
 		// fetch activity using helper method
-		activity_results, err := helper.FindActivityHelper(activity_filter_data)
+		activity_results, err := handler.activityHelper.FindActivityHelper(activity_filter_data, gin.H{})
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// checking of existing activity
 		if len(activity_results) == 0 {
-			_, err := helper.CreateActivityHelper(action_by, []string{}, community_id, entity_type, entity_id,
-				constants.AlsoCommentAction, cta_data)
+			activityId, err := handler.activityHelper.CreateActivityHelper(action_by, []string{}, community_id, entity_type,
+				entity_id, constants.AlsoCommentAction, cta_data)
 			if err != nil {
-				return err
+				return nil, err
 			}
+
+			newActivityId = activityId
 		} else {
 			activity_data := activity_results[0]
 
@@ -77,25 +107,32 @@ func createActivity(helper interfaces.ActivityHelper, action string, entity_id p
 			}
 
 			// update activity using the helper method
-			err = helper.UpdateActivityByIdHelper(activity_data.ID, activity_update_data)
+			err = handler.activityHelper.UpdateActivityByIdHelper(activity_data.ID, activity_update_data)
 			if err != nil {
-				return err
+				return nil, err
 			}
+
+			newActivityId = activity_data.ID
 		}
 
 	case constants.CommentAction, constants.DeleteAction, constants.CreatePostPermitAddedAction, constants.CreatePostPermitRemovedAction,
 		constants.CreateCommentPermissionAddedAction, constants.CreateCommentPermitRemovedAction:
-		_, err := helper.CreateActivityHelper(action_by, []string{action_on}, community_id, entity_type, entity_id,
-			action, cta_data)
+		activityId, err := handler.activityHelper.CreateActivityHelper(action_by, []string{action_on}, community_id,
+			entity_type, entity_id, action, cta_data)
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		newActivityId = activityId
 	}
 
-	return nil
+	// send notification
+	SendNotification(newActivityId.(primitive.ObjectID), handler)
+
+	return newActivityId, nil
 }
 
-func (handlers *activityHandlers) ExternalCreateActivity(c *gin.Context) {
+func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	user_id := c.Param("user_id")
@@ -135,7 +172,7 @@ func (handlers *activityHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	// create activity using the helper method
-	err := createActivity(handlers.activityHelper, externalCreateActivityRequest.Action, primitive.NilObjectID,
+	_, err := createActivity(*handlers, externalCreateActivityRequest.Action, primitive.NilObjectID,
 		constants.UserEntityType, community_id, headers[utils.HeadersMemberId], user_id, gin.H{})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -146,14 +183,4 @@ func (handlers *activityHandlers) ExternalCreateActivity(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
-}
-
-type activityHandlers struct {
-	activityHelper interfaces.ActivityHelper
-}
-
-func NewActivityHandlers(activityHelper interfaces.ActivityHelper) *activityHandlers {
-	return &activityHandlers{
-		activityHelper: activityHelper,
-	}
 }

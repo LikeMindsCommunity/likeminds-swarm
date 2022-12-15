@@ -3,28 +3,22 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 )
 
-func PostRouter(routerGroup *gin.RouterGroup, postHelper interfaces.PostHelper, likeHelper interfaces.LikeHelper,
-	commentHelper interfaces.CommentHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper) {
-	postHandlers := handlers.NewPostHandlers(postHelper, likeHelper, commentHelper, activityHelper, saveHelper)
-	commentHandlers := handlers.NewCommentHandlers(commentHelper, likeHelper, postHelper, activityHelper)
-	likeHandlers := handlers.NewLikeHandlers(postHelper, likeHelper, commentHelper, activityHelper)
-	saveHandlers := handlers.NewSaveHandlers(saveHelper, likeHelper, commentHelper, postHelper)
-
+func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup := routerGroup.Group("post")
-	postGroup.POST("/", postHandlers.CreatePost)
-	postGroup.GET("/:post_id", postHandlers.FetchPost)
-	postGroup.DELETE("/:post_id", postHandlers.DeletePost)
-	postGroup.PUT("/:post_id/pin", postHandlers.PinPost)
-	postGroup.GET("/:post_id/like", likeHandlers.FetchPostLikes)
-	postGroup.PUT("/:post_id/like", likeHandlers.LikePost)
-	postGroup.PUT("/:post_id/save", saveHandlers.SavePost)
-	postGroup.GET("/:post_id/comment/:comment_id", commentHandlers.FetchComment)
-	postGroup.POST("/:post_id/comment", commentHandlers.CommentPost)
-	postGroup.POST("/:post_id/comment/:comment_id/comment", commentHandlers.ReplyComment)
-	postGroup.DELETE("/:post_id/comment/:comment_id", commentHandlers.DeleteComment)
-	postGroup.GET("/:post_id/comment/:comment_id/like", likeHandlers.FetchCommentLikes)
-	postGroup.PUT("/:post_id/comment/:comment_id/like", likeHandlers.LikeComment)
+
+	postGroup.POST("/", handler.CreatePost)
+	postGroup.GET("/:post_id", handler.FetchPost)
+	postGroup.DELETE("/:post_id", handler.DeletePost)
+	postGroup.PUT("/:post_id/pin", handler.PinPost)
+	postGroup.GET("/:post_id/like", handler.FetchPostLikes)
+	postGroup.PUT("/:post_id/like", handler.LikePost)
+	postGroup.PUT("/:post_id/save", handler.SavePost)
+	postGroup.GET("/:post_id/comment/:comment_id", handler.FetchComment)
+	postGroup.POST("/:post_id/comment", handler.CommentPost)
+	postGroup.POST("/:post_id/comment/:comment_id/comment", handler.ReplyComment)
+	postGroup.DELETE("/:post_id/comment/:comment_id", handler.DeleteComment)
+	postGroup.GET("/:post_id/comment/:comment_id/like", handler.FetchCommentLikes)
+	postGroup.PUT("/:post_id/comment/:comment_id/like", handler.LikeComment)
 }

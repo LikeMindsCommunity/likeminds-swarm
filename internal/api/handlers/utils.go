@@ -7,7 +7,27 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 )
+
+type FeedHandlers struct {
+	likeHelper     interfaces.LikeHelper
+	commentHelper  interfaces.CommentHelper
+	postHelper     interfaces.PostHelper
+	activityHelper interfaces.ActivityHelper
+	saveHelper     interfaces.SaveHelper
+}
+
+func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
+	postHelper interfaces.PostHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper) *FeedHandlers {
+	return &FeedHandlers{
+		likeHelper:     likeHelper,
+		commentHelper:  commentHelper,
+		postHelper:     postHelper,
+		saveHelper:     saveHelper,
+		activityHelper: activityHelper,
+	}
+}
 
 func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	// fetch and validate query params
@@ -120,4 +140,29 @@ func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned
 	}
 
 	return output_menu_items
+}
+
+func checkIfFibonacciNumber(num int) bool {
+	var n3, n1, n2 int = 0, 0, 1
+
+	if num == n1 || num == n2 {
+		return true
+	}
+
+	n3 = n1 + n2
+
+	for {
+		if n3 > num {
+			break
+		}
+
+		if n3 == num {
+			return true
+		}
+		n1 = n2
+		n2 = n3
+		n3 = n1 + n2
+	}
+
+	return false
 }
