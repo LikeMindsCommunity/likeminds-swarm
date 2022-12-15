@@ -170,7 +170,7 @@ func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers) {
 			receivers = activity.ActionOn
 			title = ""
 			route = activity.CTA
-			subCategory = "Followed post"
+			subCategory = "Followed Post"
 
 			if len(activity.ActionOn) == 1 {
 				subTitle = fmt.Sprintf("%s also commented on the %s's post.", commentOwner, postOwner)
