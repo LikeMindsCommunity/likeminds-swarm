@@ -14,16 +14,32 @@ const (
 	ReportPostMenuItem = "Report"
 )
 
-func GetIsOwnerIsCmPostMenuItems() []string {
-	return []string{DeletePostMenuItem, PinPostMenuItem}
+func GetIsOwnerIsCmPostMenuItems(is_pinned bool) []string {
+	menuItems := []string{DeletePostMenuItem}
+
+	if is_pinned {
+		menuItems = append(menuItems, UnpinPostMenuItem)
+	} else {
+		menuItems = append(menuItems, PinPostMenuItem)
+	}
+	return menuItems
 }
 
 func GetIsOwnerNotIsCmPostMenuItems() []string {
 	return []string{DeletePostMenuItem}
 }
 
-func GetNotIsOwnerIsCmPostMenuItems() []string {
-	return []string{PinPostMenuItem, DeletePostMenuItem}
+func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool) []string {
+	menuItems := []string{}
+
+	if is_pinned {
+		menuItems = append(menuItems, UnpinPostMenuItem)
+	} else {
+		menuItems = append(menuItems, PinPostMenuItem)
+	}
+
+	menuItems = append(menuItems, DeletePostMenuItem)
+	return menuItems
 }
 
 func GetNotIsOwnerNotIsCmPostMenuItems() []string {

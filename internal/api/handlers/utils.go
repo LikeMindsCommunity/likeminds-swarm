@@ -51,8 +51,12 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 		return 0, 0, err
 	}
 
-	if page <= 0 || page_size <= 0 {
-		return 1, 10, nil
+	if page <= 0 {
+		page = 1
+	}
+
+	if page_size <= 0 {
+		page_size = 10
 	}
 
 	return page, page_size, nil
@@ -110,7 +114,7 @@ func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned
 	switch entity_type {
 	case constants.PostEntityType:
 		if is_owner && is_cm {
-			output_menu_items = constants.GetIsOwnerIsCmPostMenuItems()
+			output_menu_items = constants.GetIsOwnerIsCmPostMenuItems(is_pinned)
 		}
 
 		if is_owner && !is_cm {
@@ -118,7 +122,7 @@ func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned
 		}
 
 		if !is_owner && is_cm {
-			output_menu_items = constants.GetNotIsOwnerIsCmPostMenuItems()
+			output_menu_items = constants.GetNotIsOwnerIsCmPostMenuItems(is_pinned)
 		}
 
 		if !is_owner && !is_cm {
