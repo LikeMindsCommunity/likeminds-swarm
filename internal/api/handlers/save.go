@@ -115,7 +115,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	user_id := c.Param("user_id")
-	param_is_cm := c.Query("is_cm")
+	param_is_cm := c.Query("user_is_cm")
 	is_cm := false
 
 	if param_is_cm == "true" {

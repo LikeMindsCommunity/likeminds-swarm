@@ -187,7 +187,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
-	param_is_cm := c.Query("is_cm")
+	param_is_cm := c.Query("user_is_cm")
 	is_cm := false
 
 	if param_is_cm == "true" {

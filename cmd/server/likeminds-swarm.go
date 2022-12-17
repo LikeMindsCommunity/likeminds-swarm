@@ -49,6 +49,7 @@ func main() {
 	// Routes
 	routes.PostRouter(routerGroup, feedHandlers)
 	routes.UserRouter(routerGroup, feedHandlers)
+	routes.FeedRouter(routerGroup, feedHandlers)
 
 	log.Printf("application version: %s", AppVersion)
 	log.Fatal(router.Run(":8080"))

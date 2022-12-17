@@ -6,9 +6,9 @@ import (
 )
 
 func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
-	postGroup := routerGroup.Group("user")
+	userGroup := routerGroup.Group("user")
 
-	postGroup.GET("/:user_id/save", handler.FetchUserSavedPosts)
-	postGroup.GET("/:user_id/post", handler.FetchUserCreatedPosts)
-	postGroup.POST("/:user_id/activity", handler.ExternalCreateActivity)
+	userGroup.GET("/:user_id/save", handler.FetchUserSavedPosts)
+	userGroup.GET("/:user_id/post", handler.FetchUserCreatedPosts)
+	userGroup.POST("/:user_id/activity", handler.ExternalCreateActivity)
 }

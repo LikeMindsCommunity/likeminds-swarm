@@ -59,6 +59,6 @@ type FetchPostResponse struct {
 
 type FetchUserMultiplePostResponse struct {
 	Success    bool           `json:"success"`
-	TotalCount int            `json:"total_count"`
+	TotalCount int            `json:"total_count,omitempty"`
 	Posts      []PostResponse `json:"posts"`
 }

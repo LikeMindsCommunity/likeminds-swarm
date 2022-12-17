@@ -20,7 +20,10 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []re
 
 	response.Success = true
 	response.Posts = posts
-	response.TotalCount = int(posts_count)
+
+	if posts_count > 0 {
+		response.TotalCount = int(posts_count)
+	}
 
 	return response
 }
@@ -344,7 +347,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	// fetch url params
 	user_id := c.Param("user_id")
-	param_is_cm := c.Query("is_cm")
+	param_is_cm := c.Query("user_is_cm")
 	is_cm := false
 
 	if param_is_cm == "true" {
