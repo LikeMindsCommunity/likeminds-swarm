@@ -7,6 +7,7 @@ const (
 	AlsoCommentAction                  string = "also_comment"
 	TagAction                          string = "tag"
 	DeleteAction                       string = "delete"
+	SaveAction                         string = "save"
 	CreatePostPermitAddedAction        string = "create_post_permit_added"
 	CreatePostPermitRemovedAction      string = "create_post_permit_removed"
 	CreateCommentPermissionAddedAction string = "create_comment_permit_added"

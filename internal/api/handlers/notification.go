@@ -27,6 +27,9 @@ func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers) {
 	communityId = activity.CommunityId
 
 	switch activity.Action {
+	case constants.SaveAction:
+		return
+
 	case constants.LikeAction:
 		// Fetch likes count
 		likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)

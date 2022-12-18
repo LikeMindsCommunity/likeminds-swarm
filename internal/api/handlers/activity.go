@@ -14,6 +14,67 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+func parseUserActivity(handler FeedHandlers, activities []entities.Activity, user_id string, community_id int, own_activity bool) ([]requests.UserActivityResponse, error) {
+	userName := "You"
+	actionName := ""
+	entityName := "post"
+	response := []requests.UserActivityResponse{}
+
+	if !own_activity {
+		// Fetch member details
+		success, member_data := externalHelpers.FetchMemberMeta([]string{user_id}, user_id, community_id)
+		if !success || len(member_data.Members) == 0 {
+			return nil, fmt.Errorf("invalid user_id sent")
+		}
+
+		member := member_data.Members[0]
+
+		// updating user name
+		userName = member.Name
+	}
+
+	for _, activity := range activities {
+		switch activity.Action {
+		case constants.LikeAction:
+			actionName = "liked"
+
+		case constants.CommentAction:
+			actionName = "commented"
+
+		case constants.SaveAction:
+			actionName = "saved"
+
+		default:
+			continue
+		}
+
+		switch activity.EntityType {
+		case constants.CommentEntityType:
+			entityName = "comment"
+
+			if actionName == "commented" {
+				actionName = "replied"
+			}
+		}
+
+		response = append(response, requests.UserActivityResponse{
+			ID:              activity.ID,
+			ActionBy:        activity.ActionBy,
+			ActionOn:        activity.ActionOn,
+			CommunityId:     activity.CommunityId,
+			EntityType:      activity.EntityType,
+			EntityId:        activity.EntityId,
+			Action:          activity.Action,
+			CTA:             activity.CTA,
+			ActivityMessage: fmt.Sprintf("%s %s this %s", userName, actionName, entityName),
+			CreatedAt:       int(activity.CreatedAt.UnixMilli()),
+			UpdatedAt:       int(activity.UpdatedAt.UnixMilli()),
+		})
+	}
+
+	return response, nil
+}
+
 func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entities.Activity, error) {
 	// activity filter data
 	activity_filter_data := gin.H{
@@ -116,7 +177,7 @@ func createActivity(handler FeedHandlers, action string, entity_id primitive.Obj
 		}
 
 	case constants.CommentAction, constants.DeleteAction, constants.CreatePostPermitAddedAction, constants.CreatePostPermitRemovedAction,
-		constants.CreateCommentPermissionAddedAction, constants.CreateCommentPermitRemovedAction:
+		constants.CreateCommentPermissionAddedAction, constants.CreateCommentPermitRemovedAction, constants.SaveAction:
 		activityId, err := handler.activityHelper.CreateActivityHelper(action_by, []string{action_on}, community_id,
 			entity_type, entity_id, action, cta_data)
 		if err != nil {
@@ -183,4 +244,46 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
+}
+
+func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
+	// fetch url params and headers
+	headers := utils.GetHeaders(c)
+	user_id := c.Param("user_id")
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// activity filter data
+	activity_filter_data := gin.H{
+		"action_by":    user_id,
+		"community_id": community_id,
+	}
+
+	// filter options
+	activity_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch activity using helper method
+	activity_results, err := handlers.activityHelper.FindActivityHelper(activity_filter_data, activity_filter_options)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// parse user activity response
+	activity_response, err := parseUserActivity(*handlers, activity_results, user_id, community_id, user_id == headers[utils.HeadersMemberId])
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, gin.H{"activity": activity_response})
 }

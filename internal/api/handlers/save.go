@@ -105,6 +105,17 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 		}
 	}
 
+	// create save activity
+	_, err = createActivity(*handlers, constants.SaveAction, post_data.ID, constants.PostEntityType,
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     post_id,
+		})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
