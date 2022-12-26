@@ -19,7 +19,7 @@ var (
 )
 
 func main() {
-	var AppVersion string = "0.0.0"
+	var AppVersion string = "0.1.0"
 	environment.LoadGoDotEnv()
 
 	initGin()
