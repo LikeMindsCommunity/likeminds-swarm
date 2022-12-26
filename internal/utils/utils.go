@@ -10,5 +10,6 @@ func GetHeaders(c *gin.Context) map[string]string {
 	headers[HeadersVersionCode] = c.GetHeader(HeadersVersionCode)
 	headers[HeadersDeviceId] = c.GetHeader(HeadersDeviceId)
 	headers[HeadersApiKey] = c.GetHeader(HeadersApiKey)
+
 	return headers
 }

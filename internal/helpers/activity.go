@@ -53,7 +53,7 @@ func (helper *activityHelper) CreateActivityHelper(action_by string, action_on [
 func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Activity, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
 	if err != nil {
 		return nil, err
 	}

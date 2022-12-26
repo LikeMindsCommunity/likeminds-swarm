@@ -19,7 +19,7 @@ func (helper *likeHelper) CreateLikeHelper(entity_type string, entity_id primiti
 func (helper *likeHelper) FindLikeHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Like, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (helper *likeHelper) UpdateLikeByIdHelper(like_id primitive.ObjectID, updat
 }
 
 func (helper *likeHelper) CountLikeHelper(filter map[string]interface{}) (int64, error) {
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
 	if err != nil {
 		return 0, err
 	}
@@ -57,7 +57,7 @@ func (helper *likeHelper) CountLikeHelper(filter map[string]interface{}) (int64,
 func (helper *likeHelper) AggregateLikeHelper(query []interface{}) (interface{}, error) {
 	for _, value := range query {
 		if matchGroup, ok := value.(gin.H)["$match"]; ok {
-			err := convertMultipleHexIdsToObjectIds(matchGroup.(gin.H), []string{"_id", "entity_id"})
+			err := convertHexIdsToObjectIds(matchGroup.(gin.H), []string{"_id", "entity_id"})
 			if err != nil {
 				return nil, err
 			}

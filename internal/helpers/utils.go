@@ -21,7 +21,7 @@ func convertHexIdToObjectId(filter map[string]interface{}, key string) error {
 	return nil
 }
 
-func convertMultipleHexIdsToObjectIds(filter map[string]interface{}, keys []string) error {
+func convertHexIdsToObjectIds(filter map[string]interface{}, keys []string) error {
 	for _, key := range keys {
 		err := convertHexIdToObjectId(filter, key)
 		if err != nil {

@@ -19,7 +19,7 @@ func (helper *commentHelper) CreateCommentHelper(text string, postId primitive.O
 func (helper *commentHelper) FindCommentHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Comment, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "post_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "post_id"})
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (helper *commentHelper) UpdateCommentByIdHelper(comment_id primitive.Object
 }
 
 func (helper *commentHelper) CountCommentHelper(filter map[string]interface{}) (int64, error) {
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "post_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "post_id"})
 	if err != nil {
 		return 0, err
 	}

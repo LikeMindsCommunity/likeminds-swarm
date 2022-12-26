@@ -19,7 +19,7 @@ func (helper *saveHelper) CreateSaveHelper(entity_type string, entity_id primiti
 func (helper *saveHelper) FindSaveHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Save, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (helper *saveHelper) UpdateSaveByIdHelper(activity_id primitive.ObjectID, u
 }
 
 func (helper *saveHelper) CountSaveHelper(filter map[string]interface{}) (int64, error) {
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
 	if err != nil {
 		return 0, err
 	}

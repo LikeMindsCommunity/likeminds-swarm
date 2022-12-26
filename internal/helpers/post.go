@@ -42,7 +42,7 @@ func (helper *postHelper) CreatePostHelper(text string, community_id int, user_i
 func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id"})
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (helper *postHelper) UpdatePostByIdHelper(post_id primitive.ObjectID, updat
 }
 
 func (helper *postHelper) CountPostHelper(filter map[string]interface{}) (int64, error) {
-	err := convertMultipleHexIdsToObjectIds(filter, []string{"_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id"})
 	if err != nil {
 		return 0, err
 	}
