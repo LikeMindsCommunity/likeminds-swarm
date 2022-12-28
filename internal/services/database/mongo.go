@@ -2,6 +2,9 @@ package database
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,9 +14,27 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+func getCustomTLSConfig(caFile string) (*tls.Config, error) {
+	tlsConfig := new(tls.Config)
+	certs, err := os.ReadFile(caFile)
+
+	if err != nil {
+		return tlsConfig, err
+	}
+
+	tlsConfig.RootCAs = x509.NewCertPool()
+	ok := tlsConfig.RootCAs.AppendCertsFromPEM(certs)
+
+	if !ok {
+		return tlsConfig, errors.New("failed parsing pem file")
+	}
+
+	return tlsConfig, nil
+}
+
 func InitiateDB() *mongo.Database {
-	uri := os.Getenv("MONGODB_URI")
-	if uri == "" {
+	connectionURI := os.Getenv("MONGODB_URI")
+	if connectionURI == "" {
 		log.Fatal("You must set your 'MONGODB_URI' environment variable.")
 	}
 
@@ -22,8 +43,18 @@ func InitiateDB() *mongo.Database {
 		log.Fatal("You must set your 'DB_NAME' environment variable.")
 	}
 
+	caFilePath := os.Getenv("CA_FILE_PATH")
+	if caFilePath == "" {
+		log.Fatal("You must set your 'CA_FILE_PATH' environment variable.")
+	}
+
+	tlsConfig, err := getCustomTLSConfig(caFilePath)
+	if err != nil {
+		log.Fatalf("Failed getting TLS configuration: %v", err)
+	}
+
 	// Create a new client and connect to the server
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(connectionURI).SetTLSConfig(tlsConfig))
 	if err != nil {
 		panic(err)
 	}
