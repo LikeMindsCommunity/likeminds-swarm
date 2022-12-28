@@ -36,7 +36,7 @@ func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) s
 	var cta string = ""
 
 	switch action {
-	case constants.LikeAction, constants.AlsoCommentAction, constants.CommentAction, constants.TagAction:
+	case constants.LikeAction, constants.AlsoCommentAction, constants.CommentAction, constants.TagAction, constants.SaveAction:
 		cta = parseCTAData(cta_data)
 
 	case constants.CreatePostPermitAddedAction:
