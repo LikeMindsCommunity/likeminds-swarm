@@ -12,24 +12,32 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+func parseCTAData(cta_data map[string]interface{}) string {
+	var cta string = ""
+
+	if entity_type, ok := cta_data["entity_type"]; ok {
+		if post_id, ok := cta_data["post_id"]; ok {
+			switch entity_type {
+			case constants.PostEntityType:
+				cta = fmt.Sprintf(utils.PostDetailRoute, post_id)
+
+			case constants.CommentEntityType:
+				if comment_id, ok := cta_data["comment_id"]; ok {
+					cta = fmt.Sprintf(utils.CommentDetailRoute, post_id, comment_id)
+				}
+			}
+		}
+	}
+
+	return cta
+}
+
 func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) string {
 	var cta string = ""
 
 	switch action {
 	case constants.LikeAction, constants.AlsoCommentAction, constants.CommentAction, constants.TagAction:
-		if entity_type, ok := cta_data["entity_type"]; ok {
-			if post_id, ok := cta_data["post_id"]; ok {
-				switch entity_type {
-				case constants.PostEntityType:
-					cta = fmt.Sprintf(utils.PostDetailRoute, post_id)
-
-				case constants.CommentEntityType:
-					if comment_id, ok := cta_data["comment_id"]; ok {
-						cta = fmt.Sprintf(utils.CommentDetailRoute, post_id, comment_id)
-					}
-				}
-			}
-		}
+		cta = parseCTAData(cta_data)
 
 	case constants.CreatePostPermitAddedAction:
 		cta = utils.CreatePostRoute

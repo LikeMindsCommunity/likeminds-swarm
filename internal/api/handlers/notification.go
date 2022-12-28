@@ -57,7 +57,31 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
-func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	// Fetch post data
+	post_data, err := fetchPost(handlers.postHelper, activity.EntityId.Hex(), activity.CommunityId)
+	if err != nil {
+		return
+	}
+
+	receivers := activity.ActionOn
+	route := activity.CTA
+	category := constants.FeedCategory
+	subCategory := constants.ModerationPostDeleteSubCategory
+	title := constants.PostDeletedTitle
+	subTitle := fmt.Sprintf(constants.ModerationPostDeleteSubTitle, post_data.DeleteReason)
+
+	// send notification
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+}
+
+func sendCommentDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	// Fetch comment data
+	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
+	if err != nil {
+		return
+	}
+
 	receivers := activity.ActionOn
 	route := activity.CTA
 	category := constants.FeedCategory
@@ -65,43 +89,54 @@ func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHand
 	title := ""
 	subTitle := ""
 
-	switch activity.EntityType {
-	case constants.PostEntityType:
-		// Fetch post data
-		post_data, err := fetchPost(handlers.postHelper, activity.EntityId.Hex(), activity.CommunityId)
-		if err != nil {
-			return
-		}
+	if comment_data.Level == 0 {
+		subCategory = constants.ModerationCommentDeleteSubCategory
+		title = constants.CommentDeletedTitle
+		subTitle = fmt.Sprintf(constants.ModerationCommentDeleteSubTitle, comment_data.DeleteReason)
+	}
 
-		subCategory = constants.ModerationPostDeleteSubCategory
-		title = constants.PostDeletedTitle
-		subTitle = fmt.Sprintf(constants.ModerationPostDeleteSubTitle, post_data.DeleteReason)
-
-	case constants.CommentEntityType:
-		// Fetch comment data
-		comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
-		if err != nil {
-			return
-		}
-
-		if comment_data.Level == 0 {
-			subCategory = constants.ModerationCommentDeleteSubCategory
-			title = constants.CommentDeletedTitle
-			subTitle = fmt.Sprintf(constants.ModerationCommentDeleteSubTitle, comment_data.DeleteReason)
-		}
-
-		if comment_data.Level > 0 {
-			subCategory = constants.ModerationReplyDeleteSubCategory
-			title = constants.ReplyDeletedTitle
-			subTitle = fmt.Sprintf(constants.ModerationReplyDeleteSubTitle, comment_data.DeleteReason)
-		}
+	if comment_data.Level > 0 {
+		subCategory = constants.ModerationReplyDeleteSubCategory
+		title = constants.ReplyDeletedTitle
+		subTitle = fmt.Sprintf(constants.ModerationReplyDeleteSubTitle, comment_data.DeleteReason)
 	}
 
 	// send notification
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
-func sendTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	switch activity.EntityType {
+	case constants.PostEntityType:
+		sendPostDeleteActionNotification(activity, handlers)
+
+	case constants.CommentEntityType:
+		sendCommentDeleteActionNotification(activity, handlers)
+	}
+}
+
+func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	// Fetch member details
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	if !success || len(member_data.Members) == 0 {
+		return
+	}
+
+	member := member_data.Members[0]
+
+	// notification params
+	receivers := activity.ActionOn
+	title := ""
+	route := activity.CTA
+	category := constants.FeedCategory
+	subCategory := constants.PostTagSubCategory
+	subTitle := fmt.Sprintf(constants.PostTagSubTitle, member.Name)
+
+	// send notification
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+}
+
+func sendCommentTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
 	if !success || len(member_data.Members) == 0 {
@@ -118,31 +153,34 @@ func sendTagActionNotification(activity *entities.Activity, handlers FeedHandler
 	subCategory := ""
 	subTitle := ""
 
-	switch activity.EntityType {
-	case constants.PostEntityType:
-		subCategory = constants.PostTagSubCategory
-		subTitle = fmt.Sprintf(constants.PostTagSubTitle, member.Name)
+	// Fetch comment data
+	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
+	if err != nil {
+		return
+	}
 
-	case constants.CommentEntityType:
-		// Fetch comment data
-		comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
-		if err != nil {
-			return
-		}
+	if comment_data.Level == 0 {
+		subCategory = constants.CommentTagSubCategory
+		subTitle = fmt.Sprintf(constants.CommentTagSubTitle, member.Name)
+	}
 
-		if comment_data.Level == 0 {
-			subCategory = constants.CommentTagSubCategory
-			subTitle = fmt.Sprintf(constants.CommentTagSubTitle, member.Name)
-		}
-
-		if comment_data.Level > 0 {
-			subCategory = constants.ReplyTagSubCategory
-			subTitle = fmt.Sprintf(constants.ReplyTagSubTitle, member.Name)
-		}
+	if comment_data.Level > 0 {
+		subCategory = constants.ReplyTagSubCategory
+		subTitle = fmt.Sprintf(constants.ReplyTagSubTitle, member.Name)
 	}
 
 	// send notification
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+}
+
+func sendTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	switch activity.EntityType {
+	case constants.PostEntityType:
+		sendPostTagActionNotification(activity, handlers)
+
+	case constants.CommentEntityType:
+		sendCommentTagActionNotification(activity, handlers)
+	}
 }
 
 func sendAlsoCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
@@ -196,7 +234,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 	}
 }
 
-func sendCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendPostCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
 	if !success || len(member_data.Members) == 0 {
@@ -213,57 +251,84 @@ func sendCommentActionNotification(activity *entities.Activity, handlers FeedHan
 	subCategory := ""
 	subTitle := ""
 
-	switch activity.EntityType {
-	case constants.PostEntityType:
-		// Fetch comments count
-		commentCount, err := fetchPostCommentsCount(handlers.commentHelper, activity.EntityId.Hex())
-		if err != nil {
-			return
-		}
+	// Fetch comments count
+	commentCount, err := fetchPostCommentsCount(handlers.commentHelper, activity.EntityId.Hex())
+	if err != nil {
+		return
+	}
 
-		// If comments count is not in fibonacci series
-		if !checkIfFibonacciNumber(int(commentCount)) {
-			return
-		}
+	// If comments count is not in fibonacci series
+	if !checkIfFibonacciNumber(int(commentCount)) {
+		return
+	}
 
-		subCategory = constants.PostCommentSubCategory
+	subCategory = constants.PostCommentSubCategory
 
-		if commentCount == 1 {
-			subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name)
-		} else if commentCount == 2 {
-			subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name)
-		} else if commentCount > 2 {
-			subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1)
-		}
-
-	case constants.CommentEntityType:
-		// Fetch comments count
-		commentCount, err := fetchCommentRepliesCount(handlers.commentHelper, activity.EntityId.Hex())
-		if err != nil {
-			return
-		}
-
-		// If comments count is not in fibonacci series
-		if !checkIfFibonacciNumber(int(commentCount)) {
-			return
-		}
-
-		subCategory = constants.CommentReplySubCategory
-
-		if commentCount == 1 {
-			subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelOne, member.Name)
-		} else if commentCount == 2 {
-			subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelTwo, member.Name)
-		} else if commentCount > 2 {
-			subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelThree, member.Name, commentCount-1)
-		}
+	if commentCount == 1 {
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name)
+	} else if commentCount == 2 {
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name)
+	} else if commentCount > 2 {
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1)
 	}
 
 	// send notification
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
-func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendCommentReplyActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	// Fetch member details
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	if !success || len(member_data.Members) == 0 {
+		return
+	}
+
+	member := member_data.Members[0]
+
+	// notification params
+	receivers := activity.ActionOn
+	title := ""
+	route := activity.CTA
+	category := constants.FeedCategory
+	subCategory := ""
+	subTitle := ""
+
+	// Fetch comments count
+	commentCount, err := fetchCommentRepliesCount(handlers.commentHelper, activity.EntityId.Hex())
+	if err != nil {
+		return
+	}
+
+	// If comments count is not in fibonacci series
+	if !checkIfFibonacciNumber(int(commentCount)) {
+		return
+	}
+
+	subCategory = constants.CommentReplySubCategory
+
+	if commentCount == 1 {
+		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelOne, member.Name)
+	} else if commentCount == 2 {
+		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelTwo, member.Name)
+	} else if commentCount > 2 {
+		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelThree, member.Name, commentCount-1)
+	}
+
+	// send notification
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+}
+
+func sendCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	switch activity.EntityType {
+	case constants.PostEntityType:
+		sendPostCommentActionNotification(activity, handlers)
+
+	case constants.CommentEntityType:
+		sendCommentReplyActionNotification(activity, handlers)
+	}
+}
+
+func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch likes count
 	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
 	if err != nil {
@@ -288,35 +353,70 @@ func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandle
 	title := ""
 	route := activity.CTA
 	category := constants.FeedCategory
-	subCategory := ""
 	subTitle := ""
 
-	switch activity.EntityType {
-	case constants.PostEntityType:
-		subCategory = constants.PostLikedSubCategory
+	subCategory := constants.PostLikedSubCategory
 
-		if likesCount == 1 {
-			subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name)
-		} else if likesCount == 2 {
-			subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name)
-		} else if likesCount > 2 {
-			subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1)
-		}
-
-	case constants.CommentEntityType:
-		subCategory = constants.CommentLikedSubCategory
-
-		if likesCount == 1 {
-			subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelOne, member.Name)
-		} else if likesCount == 2 {
-			subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelTwo, member.Name)
-		} else if likesCount > 2 {
-			subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelThree, member.Name, likesCount-1)
-		}
+	if likesCount == 1 {
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name)
+	} else if likesCount == 2 {
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name)
+	} else if likesCount > 2 {
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1)
 	}
 
 	// send notification
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+}
+
+func sendCommentLikeActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	// Fetch likes count
+	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
+	if err != nil {
+		return
+	}
+
+	// If likes count is not in fibonacci series
+	if !checkIfFibonacciNumber(int(likesCount)) {
+		return
+	}
+
+	// Fetch members details
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	if !success || len(member_data.Members) == 0 {
+		return
+	}
+
+	member := member_data.Members[0]
+
+	// notification params
+	receivers := activity.ActionOn
+	title := ""
+	route := activity.CTA
+	category := constants.FeedCategory
+	subTitle := ""
+	subCategory := constants.CommentLikedSubCategory
+
+	if likesCount == 1 {
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelOne, member.Name)
+	} else if likesCount == 2 {
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelTwo, member.Name)
+	} else if likesCount > 2 {
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelThree, member.Name, likesCount-1)
+	}
+
+	// send notification
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+}
+
+func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+	switch activity.EntityType {
+	case constants.PostEntityType:
+		sendPostLikeActionNoitification(activity, handlers)
+
+	case constants.CommentEntityType:
+		sendCommentLikeActionNotification(activity, handlers)
+	}
 }
 
 func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers) {
