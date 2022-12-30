@@ -1,5 +1,4 @@
 #!/bin/bash
-source /home/ec2-user/.profile
 source /etc/environment
 
 APPLICATION_AWS_S3_BUCKET=$PROJECT_AWS_S3_BUCKET
