@@ -1,0 +1,16 @@
+package requests
+
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
+type LikeResponse struct {
+	ID        primitive.ObjectID `json:"_id"`
+	UserId    string             `json:"user_id"`
+	CreatedAt int                `json:"created_at"`
+	UpdatedAt int                `json:"updated_at"`
+}
+
+type FetchLikesResponse struct {
+	Success    bool           `json:"success"`
+	TotalCount int            `json:"total_count"`
+	Likes      []LikeResponse `json:"likes"`
+}

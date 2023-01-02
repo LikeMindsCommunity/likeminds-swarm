@@ -1,0 +1,56 @@
+package constants
+
+const FeedCategory = "Feed"
+
+const (
+	CommentPermissionRemovedSubCategory = "Comment permission removed"
+	CommentPermissionAddedSubCategory   = "Comment permission added"
+	PostPermissionRemovedSubCategory    = "Post permission removed"
+	PostPermissionAddedSubCategory      = "Post permission added"
+	ModerationPostDeleteSubCategory     = "Moderation delete post"
+	ModerationCommentDeleteSubCategory  = "Moderation delete comment"
+	ModerationReplyDeleteSubCategory    = "Moderation delete reply"
+	PostTagSubCategory                  = "Post Tag"
+	CommentTagSubCategory               = "Comment Tag"
+	ReplyTagSubCategory                 = "Reply Tag"
+	AlsoCommentSubCategory              = "Followed Post"
+	PostCommentSubCategory              = "Post Comment"
+	CommentReplySubCategory             = "Comment Reply"
+	PostLikedSubCategory                = "Post Liked"
+	CommentLikedSubCategory             = "Comment Liked"
+)
+
+const (
+	PermissionUpdatedTitle = "Permission updated"
+	PostDeletedTitle       = "Post deleted"
+	CommentDeletedTitle    = "Comment deleted"
+	ReplyDeletedTitle      = "Reply deleted"
+)
+
+const (
+	CommentPermissionRemovedSubTitle = "Your permission to add comments and replies to the posts has been removed."
+	CommentPermissionAddedSubTitle   = "You now have the permission to add come comments on the posts. Start engaging now."
+	PostPermissionRemovedSubTitle    = "Your permission to create posts in the community has been removed."
+	PostPermissionAddedSubTitle      = "You now have the permission to create posts in the community. Start posting now."
+	ModerationPostDeleteSubTitle     = "Your post has been deleted as it violates community guidelines. Reason: %s"
+	ModerationCommentDeleteSubTitle  = "Your comment has been deleted as it violates community guidelines. Reason: %s"
+	ModerationReplyDeleteSubTitle    = "Your Reply has been deleted as it violates community guidelines. Reason: %s"
+	PostTagSubTitle                  = "%s tagged you in a post."
+	CommentTagSubTitle               = "%s tagged you in a comment."
+	ReplyTagSubTitle                 = "%s tagged you in a reply."
+	AlsoCommentSubTitleLevelOne      = "%s also commented on the %s's post."
+	AlsoCommentSubTitleLevelTwo      = "%s and 1 other also commented on the %s's post."
+	AlsoCommentSubTitleLevelThree    = "%s and %d others also commented on the %s's post."
+	PostCommentSubTitleLevelOne      = "%s commented on your post."
+	PostCommentSubTitleLevelTwo      = "%s and 1 other commented on your post."
+	PostCommentSubTitleLevelThree    = "%s and %d others commented on your post."
+	CommentReplySubTitleLevelOne     = "%s replied to your comment."
+	CommentReplySubTitleLevelTwo     = "%s and 1 other replied to your comment."
+	CommentReplySubTitleLevelThree   = "%s and %d others replied to your comment."
+	PostLikedSubTitleLevelOne        = "%s liked your post."
+	PostLikedSubTitleLevelTwo        = "%s and 1 other liked your post."
+	PostLikedSubTitleLevelThree      = "%s and %d others liked your post."
+	CommentLikedSubTitleLevelOne     = "%s liked your comment."
+	CommentLikedSubTitleLevelTwo     = "%s and 1 other liked your comment."
+	CommentLikedSubTitleLevelThree   = "%s and %d others liked your comment."
+)
