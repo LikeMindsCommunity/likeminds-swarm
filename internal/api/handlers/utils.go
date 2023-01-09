@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 
@@ -57,6 +58,10 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 
 	if page_size <= 0 {
 		page_size = 10
+	}
+
+	if page_size >= 100 {
+		return page, 0, fmt.Errorf("max page_size limit exceeded")
 	}
 
 	return page, page_size, nil
