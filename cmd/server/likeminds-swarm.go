@@ -47,6 +47,7 @@ func main() {
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper)
 
 	// Routes
+	routes.BaseRouter(routerGroup, feedHandlers)
 	routes.PostRouter(routerGroup, feedHandlers)
 	routes.UserRouter(routerGroup, feedHandlers)
 	routes.FeedRouter(routerGroup, feedHandlers)
