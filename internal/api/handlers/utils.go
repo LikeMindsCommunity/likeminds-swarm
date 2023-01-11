@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 
@@ -59,6 +60,10 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 		page_size = 10
 	}
 
+	if page_size >= 100 {
+		return page, 0, fmt.Errorf("max page_size limit exceeded")
+	}
+
 	return page, page_size, nil
 }
 
@@ -83,7 +88,7 @@ func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
 
 func getTaggedUsers(text string) ([]string, error) {
 	tagged_members := []string{}
-	pattern, err := regexp.Compile("route://[member member_profile]+/(?P<user_id>[0-9]+)")
+	pattern, err := regexp.Compile("route://[member member_profile]+/([a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12})")
 	if err != nil {
 		return nil, err
 	}

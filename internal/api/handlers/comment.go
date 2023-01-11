@@ -182,6 +182,64 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	return response
 }
 
+func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	comment_id := c.Param("comment_id")
+	param_is_cm := c.Query("user_is_cm")
+	is_cm := false
+
+	if param_is_cm == "true" {
+		is_cm = true
+	}
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// fetch comment data
+	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, comment_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	comment_filter_data := gin.H{
+		"_id": gin.H{
+			"$in": comment_data.Replies,
+		},
+		"is_deleted": false,
+		"post_id":    comment_data.PostId.Hex(),
+	}
+
+	// filter options
+	comment_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch comment using helper method
+	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, comment_filter_options)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, headers[utils.HeadersMemberId], is_cm)
+	comment_response := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *comment_data, headers[utils.HeadersMemberId], is_cm)
+	fetch_comment_response := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_data,
+		comment_response, replies_response, headers[utils.HeadersMemberId], is_cm)
+
+	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"comment": fetch_comment_response,
+	})
+}
+
 func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -206,6 +264,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
+
 	// fetch comment data
 	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
 	if err != nil {
