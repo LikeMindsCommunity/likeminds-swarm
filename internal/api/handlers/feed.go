@@ -120,7 +120,7 @@ func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) 
 			"is_deleted": false,
 			"chatroom_id": gin.H{
 				"$exists": true,
-				"$nin":    []int{0},
+				"$in":     chatrooms,
 			},
 		},
 	})
