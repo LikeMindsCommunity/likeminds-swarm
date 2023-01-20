@@ -1,9 +1,9 @@
 package requests
 
 type FetchExploreFeedRequest struct {
-	OrderType           int   `form:"order_type"`
-	ChatroomIDs         []int `form:"chatroom_ids"`
-	ExcludedChatroomIDs []int `form:"excluded_chatroom_ids"`
+	OrderType           int    `form:"order_type"`
+	ChatroomIDs         string `form:"chatroom_ids"`
+	ExcludedChatroomIDs string `form:"excluded_chatroom_ids"`
 }
 
 type FetchExploreFeedResponse struct {

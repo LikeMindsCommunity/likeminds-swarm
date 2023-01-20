@@ -287,7 +287,7 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	// headers := utils.GetHeaders(c)
 	var exploreFeedRequest requests.FetchExploreFeedRequest
 
-	err := c.ShouldBindQuery(&exploreFeedRequest)
+	err := c.BindQuery(&exploreFeedRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -325,18 +325,18 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	chatroom_ids := []int{}
 
 	// Order by newest chatroom on top
-	if (exploreFeedRequest.OrderType == constants.GroupOrderTypeNewest || exploreFeedRequest.OrderType == constants.GroupOrderTypeMostMessages) && len(exploreFeedRequest.ChatroomIDs) > 0 {
-		chatroom_ids = exploreFeedRequest.ChatroomIDs
+	if (exploreFeedRequest.OrderType == constants.GroupOrderTypeNewest || exploreFeedRequest.OrderType == constants.GroupOrderTypeMostParticipants) && len(exploreFeedRequest.ChatroomIDs) > 0 {
+		chatroom_ids = parseIntArrayParam(exploreFeedRequest.ChatroomIDs)
 	} else
 
 	// Order by Recently active chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeRecentlyActive {
-		chatroom_ids = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, community_id, exploreFeedRequest.ExcludedChatroomIDs, page, page_size)
+		chatroom_ids = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, community_id, parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
 	} else
 
 	// Order by Most messaged chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeMostMessages {
-		chatroom_ids = getChatroomsBasedOnMostMessages(c, handlers.postHelper, community_id, exploreFeedRequest.ExcludedChatroomIDs, page, page_size)
+		chatroom_ids = getChatroomsBasedOnMostMessages(c, handlers.postHelper, community_id, parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
 	}
 
 	postData := getPostCountInChatrooms(handlers.postHelper, chatroom_ids)
