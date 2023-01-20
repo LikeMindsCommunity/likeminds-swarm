@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -46,6 +47,21 @@ func (repository *postRepository) Count(filter map[string]interface{}) (int64, e
 	}
 
 	return count, nil
+}
+
+func (repository *postRepository) Aggregate(query []map[string]interface{}) ([]gin.H, error) {
+	coll := repository.db.Collection("post")
+	cursor, err := coll.Aggregate(context.TODO(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = []gin.H{}
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 type postRepository struct {
