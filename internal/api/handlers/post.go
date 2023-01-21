@@ -161,7 +161,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// create post using the helper method
 	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, community_id,
-		headers[utils.HeadersMemberId], createPostRequest.Attachments)
+		headers[utils.HeadersMemberId], createPostRequest.Attachments, createPostRequest.ChatroomID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

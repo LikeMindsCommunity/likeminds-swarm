@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -174,4 +175,26 @@ func checkIfFibonacciNumber(num int) bool {
 	}
 
 	return false
+}
+
+func parseIntArrayParam(param string) []int {
+	response := []int{}
+
+	if len(param) == 0 {
+		return response
+	}
+
+	intermediate_string := strings.Split(param, "[")[1]
+	intermediate_string = strings.Split(intermediate_string, "]")[0]
+
+	intermediate_strings := strings.Split(intermediate_string, ", ")
+
+	for _, value := range intermediate_strings {
+		convertedValue, err := strconv.Atoi(value)
+		if err == nil {
+			response = append(response, convertedValue)
+		}
+	}
+
+	return response
 }

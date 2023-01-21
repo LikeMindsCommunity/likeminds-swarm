@@ -15,6 +15,7 @@ type Attachment struct {
 type CreatePostRequest struct {
 	Text        string       `json:"text" binding:"required"`
 	Attachments []Attachment `json:"attachments"`
+	ChatroomID  int          `json:"feedroom_id"`
 }
 
 type DeletePostRequest struct {

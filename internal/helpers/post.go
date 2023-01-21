@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (helper *postHelper) CreatePostHelper(text string, community_id int, user_id string, attachments []requests.Attachment) (interface{}, error) {
+func (helper *postHelper) CreatePostHelper(text string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
 	var post_attachments []entities.Widget
 	default_string := ""
 
@@ -33,7 +33,7 @@ func (helper *postHelper) CreatePostHelper(text string, community_id int, user_i
 
 	}
 
-	post := entities.NewPost(text, community_id, user_id, post_attachments)
+	post := entities.NewPost(text, community_id, user_id, post_attachments, chatroom_id)
 	post_id, err := helper.postRepository.Create(&post)
 
 	return post_id, err
@@ -75,6 +75,21 @@ func (helper *postHelper) CountPostHelper(filter map[string]interface{}) (int64,
 	count, err := helper.postRepository.Count(filter)
 
 	return count, err
+}
+
+func (helper *postHelper) AggregatePostHelper(query []map[string]interface{}) ([]gin.H, error) {
+	for _, value := range query {
+		if matchGroup, ok := value["$match"]; ok {
+			err := convertHexIdsToObjectIds(matchGroup.(gin.H), []string{"_id", "entity_id"})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	results, err := helper.postRepository.Aggregate(query)
+
+	return results, err
 }
 
 type postHelper struct {
