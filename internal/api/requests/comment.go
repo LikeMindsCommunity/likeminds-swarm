@@ -18,6 +18,7 @@ type CommentResponse struct {
 	Text          string             `json:"text"`
 	Level         int                `json:"level"`
 	UserId        string             `json:"user_id"`
+	IsLiked       bool               `json:"is_liked"`
 	LikesCount    int                `json:"likes_count"`
 	CommentsCount int                `json:"comments_count"`
 	IsDeleted     bool               `json:"is_deleted,omitempty"`

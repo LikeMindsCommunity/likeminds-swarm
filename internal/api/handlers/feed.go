@@ -39,6 +39,16 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		"is_pinned":    true,
 		"is_deleted":   false,
 		"community_id": community_id,
+		"$or": []gin.H{
+			{
+				"chatroom_id": gin.H{
+					"$exists": false,
+				},
+			},
+			{
+				"chatroom_id": 0,
+			},
+		},
 	}
 
 	// unpinned posts filter data
@@ -46,6 +56,16 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		"is_pinned":    false,
 		"is_deleted":   false,
 		"community_id": community_id,
+		"$or": []gin.H{
+			{
+				"chatroom_id": gin.H{
+					"$exists": false,
+				},
+			},
+			{
+				"chatroom_id": 0,
+			},
+		},
 	}
 
 	// filter options

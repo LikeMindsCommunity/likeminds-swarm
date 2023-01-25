@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -12,24 +11,16 @@ import (
 )
 
 func (helper *postHelper) CreatePostHelper(text string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
-	var post_attachments []entities.Widget
-	default_string := ""
+	var post_attachments []entities.Attachment
 
 	for _, element := range attachments {
 
-		switch element.FileType {
-		case constants.ImageWidget:
-			image_widget := entities.NewWidget(element.FileType, element.FileUrl, default_string, default_string)
-			post_attachments = append(post_attachments, image_widget)
-
-		case constants.VideoWidget:
-			video_widget := entities.NewWidget(element.FileType, element.FileUrl, default_string, default_string)
-			post_attachments = append(post_attachments, video_widget)
-
-		case constants.DocumentWidget:
-			document_widget := entities.NewWidget(element.FileType, element.FileUrl, element.FileFormat, element.FileSize)
-			post_attachments = append(post_attachments, document_widget)
-		}
+		meta_data := element.AttachmentMeta
+		og_tags := meta_data.OgTags
+		meta_og_tags := entities.NewOgTags(og_tags.Title, og_tags.Image, og_tags.Description, og_tags.Url)
+		attachment_meta := entities.NewAttachmentMeta(meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
+		attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
+		post_attachments = append(post_attachments, attachment)
 
 	}
 

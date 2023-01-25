@@ -5,11 +5,25 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type OGTags struct {
+	Title       string `json:"title"`
+	Image       string `json:"image"`
+	Description string `json:"description"`
+	Url         string `json:"url"`
+}
+
+type AttachmentMeta struct {
+	Url       string `json:"url"`
+	Format    string `json:"format"`
+	Size      int    `json:"size"`
+	Duration  int    `json:"duration"`
+	PageCount int    `json:"page_count"`
+	OgTags    OGTags `json:"og_tags"`
+}
+
 type Attachment struct {
-	FileType   int    `json:"file_type" binding:"required"`
-	FileUrl    string `json:"file_url"`
-	FileFormat string `json:"file_format"`
-	FileSize   string `json:"file_size"`
+	AttachmentType int            `json:"attachment_type" binding:"required"`
+	AttachmentMeta AttachmentMeta `json:"attachment_meta"`
 }
 
 type CreatePostRequest struct {
@@ -23,29 +37,24 @@ type DeletePostRequest struct {
 	DeleteReason string `json:"delete_reason"`
 }
 
-type AttachmentResponse struct {
-	FileType   int    `json:"file_type"`
-	FileUrl    string `json:"file_url,omitempty"`
-	FileFormat string `json:"file_format,omitempty"`
-	FileSize   string `json:"file_size,omitempty"`
-}
-
 type PostResponse struct {
-	ID            primitive.ObjectID `json:"_id"`
-	Text          string             `json:"text"`
-	Communityid   int                `json:"community_id"`
-	IsPinned      bool               `json:"is_pinned"`
-	UserId        string             `json:"user_id"`
-	Attachments   []entities.Widget  `json:"attachments"`
-	LikesCount    int                `json:"likes_count"`
-	CommentsCount int                `json:"comments_count"`
-	IsDeleted     bool               `json:"is_deleted,omitempty"`
-	DeletedBy     string             `json:"deleted_by,omitempty"`
-	DeleteReason  string             `json:"delete_reason,omitempty"`
-	IsSaved       bool               `json:"is_saved"`
-	MenuItems     []MenuResponse     `json:"menu_items"`
-	CreatedAt     int                `json:"created_at"`
-	UpdatedAt     int                `json:"updated_at"`
+	ID            primitive.ObjectID    `json:"_id"`
+	Text          string                `json:"text"`
+	CommunityId   int                   `json:"community_id"`
+	ChatroomId    int                   `json:"feedroom_id,omitempty"`
+	IsPinned      bool                  `json:"is_pinned"`
+	UserId        string                `json:"user_id"`
+	Attachments   []entities.Attachment `json:"attachments"`
+	LikesCount    int                   `json:"likes_count"`
+	CommentsCount int                   `json:"comments_count"`
+	IsDeleted     bool                  `json:"is_deleted,omitempty"`
+	DeletedBy     string                `json:"deleted_by,omitempty"`
+	DeleteReason  string                `json:"delete_reason,omitempty"`
+	IsLiked       bool                  `json:"is_liked"`
+	IsSaved       bool                  `json:"is_saved"`
+	MenuItems     []MenuResponse        `json:"menu_items"`
+	CreatedAt     int                   `json:"created_at"`
+	UpdatedAt     int                   `json:"updated_at"`
 }
 
 type MenuResponse struct {

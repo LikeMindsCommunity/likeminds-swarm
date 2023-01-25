@@ -5,6 +5,7 @@ const (
 	ImageWidget int = iota + 1
 	VideoWidget
 	DocumentWidget
+	LinkWidget
 )
 
 const (
