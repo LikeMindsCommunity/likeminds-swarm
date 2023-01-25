@@ -36,13 +36,16 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 
 	response.ID = post.ID
 	response.Text = post.Text
-	response.Communityid = post.CommunityId
+	response.Heading = post.Heading
+	response.CommunityId = post.CommunityId
+	response.ChatroomId = post.ChatroomId
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
 	response.Attachments = post.Attachments
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
 	response.IsDeleted = post.IsDeleted
+	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(), constants.PostEntityType, user_id)
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
 	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.PostEntityType, is_cm, user_id == post.UserId, post.IsPinned))
 
@@ -124,43 +127,53 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// validation of attachment objects
 	for _, element := range createPostRequest.Attachments {
-		switch element.FileType {
+		switch element.AttachmentType {
 		case constants.ImageWidget:
-			if element.FileUrl == "" {
-				utils.GeneralAPIValidationError(c, "send file_url in attachment")
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
 				return
 			}
 
 		case constants.VideoWidget:
-			if element.FileUrl == "" {
-				utils.GeneralAPIValidationError(c, "send file_url in attachment")
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
 				return
+			}
+
+			if element.AttachmentMeta.Duration == 0 {
+				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
 			}
 
 		case constants.DocumentWidget:
-			if element.FileUrl == "" {
-				utils.GeneralAPIValidationError(c, "send file_url in attachment")
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
 				return
 			}
 
-			if element.FileFormat == "" {
-				utils.GeneralAPIValidationError(c, "send file_format in attachment")
+			if element.AttachmentMeta.Format == "" {
+				utils.GeneralAPIValidationError(c, "send format in attachment_meta for document")
 				return
 			}
 
-			if element.FileSize == "" {
-				utils.GeneralAPIValidationError(c, "send file_size in attachment")
+			if element.AttachmentMeta.Size == 0 {
+				utils.GeneralAPIValidationError(c, "send size in attachment_meta for document")
+				return
+			}
+
+		case constants.LinkWidget:
+			if element.AttachmentMeta.OgTags.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
 				return
 			}
 
 		default:
-			utils.GeneralAPIValidationError(c, "send valid file_type in attachment")
+			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
 			return
 		}
 	}
 
 	// create post using the helper method
-	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, community_id,
+	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading, community_id,
 		headers[utils.HeadersMemberId], createPostRequest.Attachments, createPostRequest.ChatroomID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())

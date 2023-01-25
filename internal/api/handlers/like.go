@@ -96,6 +96,23 @@ func fetchSpecificMemberLikesOnEntity(helper interfaces.LikeHelper, entity_id st
 	return like_results, nil
 }
 
+func fetchUserLikedStatusByEntity(helper interfaces.LikeHelper, entity_id string, entity_type string, liked_by string) bool {
+	like_results, err := fetchSpecificMemberLikesOnEntity(helper, entity_id, entity_type, liked_by)
+	if err != nil {
+		return false
+	}
+
+	if len(like_results) == 0 {
+		return false
+	}
+
+	if like_results[0].IsDeleted {
+		return false
+	}
+
+	return true
+}
+
 func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
