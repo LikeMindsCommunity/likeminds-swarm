@@ -36,6 +36,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 
 	response.ID = post.ID
 	response.Text = post.Text
+	response.Heading = post.Heading
 	response.CommunityId = post.CommunityId
 	response.ChatroomId = post.ChatroomId
 	response.IsPinned = post.IsPinned
@@ -172,7 +173,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// create post using the helper method
-	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, community_id,
+	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading, community_id,
 		headers[utils.HeadersMemberId], createPostRequest.Attachments, createPostRequest.ChatroomID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())

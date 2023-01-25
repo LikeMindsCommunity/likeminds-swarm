@@ -9,6 +9,7 @@ import (
 type Post struct {
 	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	Text         string             `json:"text" bson:"text"`
+	Heading      string             `json:"heading" bson:"heading"`
 	CommunityId  int                `json:"community_id" bson:"community_id"`
 	ChatroomId   int                `json:"chatroom_id" bson:"chatroom_id"`
 	IsPinned     bool               `json:"is_pinned" bson:"is_pinned"`
@@ -21,10 +22,11 @@ type Post struct {
 	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
-func NewPost(text string, community_id int, user_id string, attachments []Attachment, chatroom_id int) Post {
+func NewPost(text string, heading string, community_id int, user_id string, attachments []Attachment, chatroom_id int) Post {
 	created_at := time.Now()
 	return Post{
 		Text:        text,
+		Heading:     heading,
 		CommunityId: community_id,
 		ChatroomId:  chatroom_id,
 		IsPinned:    false,

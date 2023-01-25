@@ -28,6 +28,7 @@ type Attachment struct {
 
 type CreatePostRequest struct {
 	Text        string       `json:"text" binding:"required"`
+	Heading     string       `json:"heading"`
 	Attachments []Attachment `json:"attachments"`
 	ChatroomID  int          `json:"feedroom_id"`
 }
@@ -40,6 +41,7 @@ type DeletePostRequest struct {
 type PostResponse struct {
 	ID            primitive.ObjectID    `json:"_id"`
 	Text          string                `json:"text"`
+	Heading       string                `json:"heading"`
 	CommunityId   int                   `json:"community_id"`
 	ChatroomId    int                   `json:"feedroom_id,omitempty"`
 	IsPinned      bool                  `json:"is_pinned"`

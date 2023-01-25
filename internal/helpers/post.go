@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (helper *postHelper) CreatePostHelper(text string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
+func (helper *postHelper) CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
 	var post_attachments []entities.Attachment
 
 	for _, element := range attachments {
@@ -24,7 +24,7 @@ func (helper *postHelper) CreatePostHelper(text string, community_id int, user_i
 
 	}
 
-	post := entities.NewPost(text, community_id, user_id, post_attachments, chatroom_id)
+	post := entities.NewPost(text, heading, community_id, user_id, post_attachments, chatroom_id)
 	post_id, err := helper.postRepository.Create(&post)
 
 	return post_id, err
