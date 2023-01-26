@@ -1,0 +1,18 @@
+version: 0.0
+os: linux
+#files:
+#  - source: /scripts/build_auth.sh
+#    destination: /home/ec2-user/LikeMinds-Swarm/scripts
+#permissions:
+#  - object: /
+#    pattern: "**"
+#    owner: ec2-user
+#    group: ec2-user
+hooks:
+  ApplicationStart:
+    - location: scripts/build_swarm.sh
+      timeout: 300
+      runas: ec2-user
+    - location: scripts/start_swarm.sh
+      timeout: 300
+      runas: ec2-user
