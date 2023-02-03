@@ -5,6 +5,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 )
 
+// Exposed Method to expose User Routes
 func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	userGroup := routerGroup.Group("user")
 

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Exposed Method to get Community ID from API Key
 func GetCommunityId(c *gin.Context) int {
 	//Send Request
 	respBytes, statusCode, err := GetRequestResponse(CaravanService, SdkAuthenticateEndPoint, GETRequest, CreateHeaders(c, ""), nil, nil)

@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to fetch comments count of a Post
 func fetchPostCommentsCount(helper interfaces.CommentHelper, post_id string) (int64, error) {
 	// comment filter data
 	comment_filter_data := gin.H{
@@ -31,6 +32,7 @@ func fetchPostCommentsCount(helper interfaces.CommentHelper, post_id string) (in
 	return likes_count, nil
 }
 
+// Internal Method to fetch replies count of a Comment
 func fetchCommentRepliesCount(helper interfaces.CommentHelper, comment_id string) (int64, error) {
 	comment_data, err := fetchCommentByIdInternal(helper, comment_id)
 	if err != nil {
@@ -53,6 +55,7 @@ func fetchCommentRepliesCount(helper interfaces.CommentHelper, comment_id string
 	return likes_count, nil
 }
 
+// Internal Method to fetch parent comment of a Comment
 func fetchParentComment(helper interfaces.CommentHelper, comment_id primitive.ObjectID,
 	post_id primitive.ObjectID) (*entities.Comment, error) {
 	// comment filter data
@@ -76,6 +79,7 @@ func fetchParentComment(helper interfaces.CommentHelper, comment_id primitive.Ob
 	return &comment_results[0], nil
 }
 
+// Internal Method to fetch a comment using comment_id
 func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string) (*entities.Comment, error) {
 	// comment filter data
 	comment_filter_data := gin.H{
@@ -97,6 +101,7 @@ func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string
 	return &comment_results[0], nil
 }
 
+// Internal Method to fetch a comment using comment_id and post_id
 func fetchComment(helper interfaces.CommentHelper, comment_id string, post_id string) (*entities.Comment, error) {
 	// comment filter data
 	comment_filter_data := gin.H{
@@ -119,6 +124,7 @@ func fetchComment(helper interfaces.CommentHelper, comment_id string, post_id st
 	return &comment_results[0], nil
 }
 
+// Internal Method to parse comment for response
 func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	comment entities.Comment, user_id string, is_cm bool) requests.CommentResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
@@ -149,6 +155,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	return response
 }
 
+// Internal Method to parse multiple comments for response
 func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	comments []entities.Comment, user_id string, is_cm bool) []requests.CommentResponse {
 	var response []requests.CommentResponse
@@ -159,6 +166,7 @@ func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelpe
 	return response
 }
 
+// Internal Method to parse comment response for FetchComment API
 func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	raw_comment *entities.Comment, parsed_comment requests.CommentResponse,
 	replies []requests.CommentResponse, user_id string, is_cm bool) requests.FetchCommentResponse {
@@ -183,6 +191,7 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	return response
 }
 
+// Exposed Method to fetch comment by comment_id
 func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -241,6 +250,7 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	})
 }
 
+// Exposed method to fetch comment by comment_id and post_id
 func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -307,6 +317,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	})
 }
 
+// Exposed Method to comment on a Post
 func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -397,6 +408,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	})
 }
 
+// Exposed Method to Reply on a Comment
 func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -504,6 +516,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	})
 }
 
+// Exposed Method to Delete a Comment
 func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)

@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Exposed Repository Method to Create Comment
 func (repository *commentRepository) Create(comment *entities.Comment) (interface{}, error) {
 	coll := repository.db.Collection("comment")
 	result, err := coll.InsertOne(context.TODO(), comment)
@@ -19,6 +20,7 @@ func (repository *commentRepository) Create(comment *entities.Comment) (interfac
 	return result.InsertedID, err
 }
 
+// Exposed Repository Method to Find Comment
 func (repository *commentRepository) Find(filter map[string]interface{}, filterOptions *options.FindOptions) ([]entities.Comment, error) {
 	coll := repository.db.Collection("comment")
 	cursor, err := coll.Find(context.TODO(), filter, filterOptions)
@@ -34,6 +36,7 @@ func (repository *commentRepository) Find(filter map[string]interface{}, filterO
 	return results, nil
 }
 
+// Exposed Repository Method to Update Comment
 func (repository *commentRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
 	coll := repository.db.Collection("comment")
 	_, err := coll.UpdateOne(context.TODO(), filter, update)
@@ -41,6 +44,7 @@ func (repository *commentRepository) Update(filter map[string]interface{}, updat
 	return err
 }
 
+// Exposed Repository Method to Find Comment Count
 func (repository *commentRepository) Count(filter map[string]interface{}) (int64, error) {
 	coll := repository.db.Collection("comment")
 	count, err := coll.CountDocuments(context.TODO(), filter)
@@ -51,10 +55,12 @@ func (repository *commentRepository) Count(filter map[string]interface{}) (int64
 	return count, nil
 }
 
+// Structure for Comment Repository
 type commentRepository struct {
 	db *mongo.Database
 }
 
+// Exposed Method to Create New Comment Repository
 func NewCommentRepository(db *mongo.Database) interfaces.CommentRepository {
 	return &commentRepository{
 		db: db,

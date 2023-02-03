@@ -10,14 +10,17 @@ const (
 	ReportCommentMenuItem = "Report"
 )
 
+// Exposed Method to get Comment Menu for owner
 func GetIsOwnerCommentMenuItems() []string {
 	return []string{DeleteCommentMenuItem}
 }
 
+// Exposed Method to get Comment Menu for CM who is not owner
 func GetNotIsOwnerIsCmCommentMenuItems() []string {
 	return []string{DeleteCommentMenuItem}
 }
 
+// Exposed Method to get Comment Menu for members
 func GetNotIsOwnerNotIsCmCommentMenuItems() []string {
 	return []string{ReportCommentMenuItem}
 }

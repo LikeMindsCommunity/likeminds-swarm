@@ -5,6 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// OG Tags Structure
 type OGTags struct {
 	Title       string `json:"title"`
 	Image       string `json:"image"`
@@ -12,7 +13,9 @@ type OGTags struct {
 	Url         string `json:"url"`
 }
 
+// Attachment Meta Structure
 type AttachmentMeta struct {
+	Name      string `json:"name"`
 	Url       string `json:"url"`
 	Format    string `json:"format"`
 	Size      int    `json:"size"`
@@ -21,11 +24,13 @@ type AttachmentMeta struct {
 	OgTags    OGTags `json:"og_tags"`
 }
 
+// Attachment Structure
 type Attachment struct {
 	AttachmentType int            `json:"attachment_type" binding:"required"`
 	AttachmentMeta AttachmentMeta `json:"attachment_meta"`
 }
 
+// Request Structure for Create Post
 type CreatePostRequest struct {
 	Text        string       `json:"text" binding:"required"`
 	Heading     string       `json:"heading"`
@@ -33,11 +38,13 @@ type CreatePostRequest struct {
 	ChatroomID  int          `json:"feedroom_id"`
 }
 
+// Request Structure for Delete Post
 type DeletePostRequest struct {
 	UserIsCm     bool   `json:"user_is_cm"`
 	DeleteReason string `json:"delete_reason"`
 }
 
+// Resonse Structure for Post
 type PostResponse struct {
 	ID            primitive.ObjectID    `json:"_id"`
 	Text          string                `json:"text"`
@@ -59,16 +66,19 @@ type PostResponse struct {
 	UpdatedAt     int                   `json:"updated_at"`
 }
 
+// Response Structure for Menu Item of an Entity
 type MenuResponse struct {
 	Title string `json:"title"`
 	Route string `json:"route,omitempty"`
 }
 
+// Response Structure for Fetch Post
 type FetchPostResponse struct {
 	PostResponse
 	Replies []CommentResponse `json:"replies"`
 }
 
+// Response Structure for Fetch Multiple Post
 type FetchUserMultiplePostResponse struct {
 	Success    bool           `json:"success"`
 	TotalCount int            `json:"total_count,omitempty"`

@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Exposed Helper Method to Create Like
 func (repository *likeRepository) Create(like *entities.Like) (interface{}, error) {
 	coll := repository.db.Collection("like")
 	result, err := coll.InsertOne(context.TODO(), like)
@@ -17,6 +18,7 @@ func (repository *likeRepository) Create(like *entities.Like) (interface{}, erro
 	return result.InsertedID, err
 }
 
+// Exposed Helper Method to Find Like
 func (repository *likeRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Like, error) {
 	coll := repository.db.Collection("like")
 	cursor, err := coll.Find(context.TODO(), filter, filterOpts)
@@ -32,6 +34,7 @@ func (repository *likeRepository) Find(filter map[string]interface{}, filterOpts
 	return results, nil
 }
 
+// Exposed Helper Method to Update Like
 func (repository *likeRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
 	coll := repository.db.Collection("like")
 	_, err := coll.UpdateOne(context.TODO(), filter, update)
@@ -39,6 +42,7 @@ func (repository *likeRepository) Update(filter map[string]interface{}, update m
 	return err
 }
 
+// Exposed Helper Method to Fetch Likes Count
 func (repository *likeRepository) Count(filter map[string]interface{}) (int64, error) {
 	coll := repository.db.Collection("like")
 	count, err := coll.CountDocuments(context.TODO(), filter)
@@ -49,6 +53,7 @@ func (repository *likeRepository) Count(filter map[string]interface{}) (int64, e
 	return count, nil
 }
 
+// Exposed Helper Method to perform Aggregration on Likes
 func (repository *likeRepository) Aggregate(query []interface{}) (interface{}, error) {
 	coll := repository.db.Collection("like")
 	cursor, err := coll.Aggregate(context.TODO(), query)
@@ -64,10 +69,12 @@ func (repository *likeRepository) Aggregate(query []interface{}) (interface{}, e
 	return results, nil
 }
 
+// Structure for Like Repository
 type likeRepository struct {
 	db *mongo.Database
 }
 
+// Exposed Method to Create New Like Repository
 func NewLikeRepository(db *mongo.Database) interfaces.LikeRepository {
 	return &likeRepository{
 		db: db,

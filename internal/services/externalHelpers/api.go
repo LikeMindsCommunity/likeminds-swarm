@@ -40,6 +40,7 @@ type PostRequestOptions struct {
 	CustomHeaders map[string]interface{}
 }
 
+// Exposed Method to Get Caravan Service URL
 func GetCaravanServiceBaseUrl() string {
 	CaravanServiceBaseURL := os.Getenv("CARAVAN_SERVICE_URL")
 
@@ -50,6 +51,7 @@ func GetCaravanServiceBaseUrl() string {
 	return CaravanServiceBaseURL
 }
 
+// Exposed Method to Create New API Client
 func NewAPIClient() *APIClient {
 	return &APIClient{
 		CaravanServiceBaseURL: GetCaravanServiceBaseUrl(),
@@ -59,12 +61,14 @@ func NewAPIClient() *APIClient {
 	}
 }
 
+// Exposed Method to Add Headers to a Request
 func AddHeaders(req *http.Request, headers map[string]interface{}) {
 	for k, v := range headers {
 		req.Header.Add(k, v.(string))
 	}
 }
 
+// Exposed Method to Add Params to a Request
 func AddParams(req *http.Request, params map[string]string) {
 	q := req.URL.Query()
 	for k, v := range params {
@@ -73,6 +77,7 @@ func AddParams(req *http.Request, params map[string]string) {
 	req.URL.RawQuery = q.Encode()
 }
 
+// Exposed Method to Update Post Body to a Request
 func UpdateBody(pro *PostRequestOptions, body_type BodyType) (*http.Request, error) {
 
 	var req *http.Request
@@ -113,6 +118,7 @@ func UpdateBody(pro *PostRequestOptions, body_type BodyType) (*http.Request, err
 	return req, nil
 }
 
+// Internal Method to convert raw body to url form encoded body
 func convertToFormURLEncoded(body *[]byte) url.Values {
 	// datamap | converts incoming request body into a map
 	var datamap map[(string)]interface{}
@@ -129,6 +135,7 @@ func convertToFormURLEncoded(body *[]byte) url.Values {
 	return payload
 }
 
+// Internal Method to send an http Request
 func (c *APIClient) sendRequest(req *http.Request) ([]byte, int, error) {
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -157,6 +164,7 @@ func (c *APIClient) sendRequest(req *http.Request) ([]byte, int, error) {
 	return respBytes, resp.StatusCode, nil
 }
 
+// Exposed Method to send GET request
 func (c *APIClient) GetRequest(gro *GetRequestOptions) ([]byte, int, error) {
 	req, err := http.NewRequest(http.MethodGet, gro.Url, nil)
 	if err != nil {
@@ -181,6 +189,7 @@ func (c *APIClient) GetRequest(gro *GetRequestOptions) ([]byte, int, error) {
 	return respBytes, statusCode, nil
 }
 
+// Exposed Method to send Post request
 func (c *APIClient) PostRequest(pro *PostRequestOptions, body_type BodyType) ([]byte, int, error) {
 
 	req, err := UpdateBody(pro, body_type)
@@ -206,6 +215,7 @@ func (c *APIClient) PostRequest(pro *PostRequestOptions, body_type BodyType) ([]
 	return respBytes, statusCode, nil
 }
 
+// Exposed Method to send Put request
 func (c *APIClient) PutRequest(pro *PostRequestOptions) ([]byte, int, error) {
 	jsonData, err := json.Marshal(pro.Body)
 	if err != nil {
@@ -235,6 +245,7 @@ func (c *APIClient) PutRequest(pro *PostRequestOptions) ([]byte, int, error) {
 	return respBytes, statusCode, nil
 }
 
+// Exposed Method to send Delete request
 func (c *APIClient) DeleteRequest(pro *PostRequestOptions) ([]byte, int, error) {
 	jsonData, err := json.Marshal(pro.Body)
 	if err != nil {

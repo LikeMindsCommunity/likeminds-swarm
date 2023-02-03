@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Structure for Comment
 type Comment struct {
 	ID           primitive.ObjectID   `json:"_id" bson:"_id,omitempty"`
 	Text         string               `json:"text" bson:"text"`
@@ -20,6 +21,7 @@ type Comment struct {
 	UpdatedAt    time.Time            `json:"updated_at" bson:"updated_at"`
 }
 
+// Exposed Method to Create a New Comment
 func NewComment(text string, postId primitive.ObjectID, level int, userId string) Comment {
 	created_at := time.Now()
 	return Comment{

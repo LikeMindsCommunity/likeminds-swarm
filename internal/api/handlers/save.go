@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to fetch list of posts saved by a User
 func fetchPostIdsFromSave(saved_posts []entities.Save) []primitive.ObjectID {
 	post_id_list := []primitive.ObjectID{}
 	for _, save := range saved_posts {
@@ -23,6 +24,7 @@ func fetchPostIdsFromSave(saved_posts []entities.Save) []primitive.ObjectID {
 	return post_id_list
 }
 
+// Internal Method to fetch a Saved post of a User by post_id
 func fetchUserSavedPostByPostId(helper interfaces.SaveHelper, post_id string, saved_by string) ([]entities.Save, error) {
 	// save filter data
 	save_filter_data := gin.H{
@@ -41,6 +43,7 @@ func fetchUserSavedPostByPostId(helper interfaces.SaveHelper, post_id string, sa
 	return save_results, nil
 }
 
+// Internal Method to fetch the save status of a Post for a User
 func fetchUserSavedStatusByPostId(helper interfaces.SaveHelper, post_id string, saved_by string) bool {
 	save_results, err := fetchUserSavedPostByPostId(helper, post_id, saved_by)
 	if err != nil {
@@ -54,6 +57,7 @@ func fetchUserSavedStatusByPostId(helper interfaces.SaveHelper, post_id string, 
 	return true
 }
 
+// Exposed Method to Save a Post for a User
 func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -122,6 +126,7 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	})
 }
 
+// Exposed Method to fetch Posts saved by a User
 func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
