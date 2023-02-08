@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Interface for Post Repository
 type PostRepository interface {
 	Create(post *entities.Post) (interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Post, error)
@@ -16,6 +17,7 @@ type PostRepository interface {
 	Aggregate(query []map[string]interface{}) ([]gin.H, error)
 }
 
+// Interface for Post Helper
 type PostHelper interface {
 	CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error)
 	FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error)

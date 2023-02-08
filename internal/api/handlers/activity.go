@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity, user_id string, community_id int, own_activity bool) ([]requests.UserActivityResponse, error) {
 	userName := "You"
 	actionName := ""
@@ -75,6 +76,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity, use
 	return response, nil
 }
 
+// Internal Method to fetch activity using activity_id
 func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entities.Activity, error) {
 	// activity filter data
 	activity_filter_data := gin.H{
@@ -95,6 +97,7 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 	return &activity_results[0], nil
 }
 
+// Internal Method to create new activity instance
 func createActivity(handler FeedHandlers, action string, entity_id primitive.ObjectID, entity_type string,
 	community_id int, action_by string, action_on string, cta_data map[string]interface{}) (interface{}, error) {
 	var newActivityId interface{}
@@ -193,6 +196,7 @@ func createActivity(handler FeedHandlers, action string, entity_id primitive.Obj
 	return newActivityId, nil
 }
 
+// Exposed Method to create new Activity
 func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -246,6 +250,7 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	})
 }
 
+// Exposed Method to Fetch User Activity
 func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)

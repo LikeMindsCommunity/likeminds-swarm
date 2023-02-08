@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Interface for Save Repository
 type SaveRepository interface {
 	Create(like *entities.Save) (interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Save, error)
@@ -13,6 +14,7 @@ type SaveRepository interface {
 	Count(filter map[string]interface{}) (int64, error)
 }
 
+// Interface for Save Helper
 type SaveHelper interface {
 	CreateSaveHelper(entity_type string, entity_id primitive.ObjectID, saved_by string, community_id int) (interface{}, error)
 	FindSaveHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Save, error)

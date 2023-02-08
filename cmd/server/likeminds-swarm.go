@@ -18,6 +18,7 @@ var (
 	router *gin.Engine
 )
 
+// Internal Method to initiate the server
 func main() {
 	var AppVersion string = "0.1.0"
 	environment.LoadGoDotEnv()
@@ -56,11 +57,13 @@ func main() {
 	log.Fatal(router.Run(":8080"))
 }
 
+// Internal Method to initiate Gin module in the server
 func initGin() {
 	gin.SetMode(gin.ReleaseMode)
 	router = gin.Default()
 }
 
+// Internal Method to enable Cors in the server
 func enableCors() cors.Config {
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true

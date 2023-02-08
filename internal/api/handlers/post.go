@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to parse response for fetch multiple posts api
 func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse,
 	posts_count int64) requests.FetchUserMultiplePostResponse {
 	response := requests.FetchUserMultiplePostResponse{}
@@ -28,6 +29,7 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []re
 	return response
 }
 
+// Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, post entities.Post, user_id string, is_cm bool) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
@@ -60,6 +62,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	return response
 }
 
+// Internal Method to parse multiple post for response
 func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, posts []entities.Post, user_id string, is_cm bool) []requests.PostResponse {
 	response := []requests.PostResponse{}
@@ -71,6 +74,7 @@ func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	return response
 }
 
+// Internal Method to parse response for fetch post api
 func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	parsed_post requests.PostResponse, replies []requests.CommentResponse) requests.FetchPostResponse {
 	var response requests.FetchPostResponse
@@ -86,6 +90,7 @@ func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper inte
 	return response
 }
 
+// Internal Method to fetch post using post_id and comment_id
 func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (*entities.Post, error) {
 	// post filter data
 	post_filter_data := gin.H{
@@ -108,6 +113,7 @@ func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (
 	return &post_results[0], nil
 }
 
+// Exposed Method to create a Post
 func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
@@ -205,6 +211,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	})
 }
 
+// Exposed Method to fetch a Post using post_id
 func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -259,6 +266,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	})
 }
 
+// Exposed Method to delete a Post
 func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -320,6 +328,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	})
 }
 
+// Exposed Method to pin a Post
 func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	// fetch url params
 	post_id := c.Param("post_id")
@@ -357,6 +366,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	})
 }
 
+// Exposed Method to fetch all the Posts created by a User
 func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	// fetch url params
 	user_id := c.Param("user_id")

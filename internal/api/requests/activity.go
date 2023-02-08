@@ -2,10 +2,12 @@ package requests
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
+// Request Structure for Create Activity
 type CreateActivityRequest struct {
 	Action string `json:"action" binding:"required"`
 }
 
+// Response Structure for User Activity
 type UserActivityResponse struct {
 	ID              primitive.ObjectID `json:"_id"`
 	ActionBy        string             `json:"action_by"`

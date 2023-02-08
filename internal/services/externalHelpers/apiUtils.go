@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
+// Structure for Response for all API calls
 type Response struct {
 	Success      bool        `json:"success"`
 	ErrorMessage string      `json:"error_message,omitempty"`
@@ -21,6 +22,7 @@ type APIClientResponse struct {
 	Response     map[string]interface{} `json:"-"`
 }
 
+// Exposed Method to send General API Error
 func GeneralAPIError(c *gin.Context, errorMessage string) {
 	c.JSON(http.StatusInternalServerError, Response{
 		Success:      false,
@@ -56,6 +58,7 @@ func CreateHeaders(c *gin.Context, userUniqueID string) map[string]interface{} {
 	return headers
 }
 
+// Exposed Method to fetch an http Request response
 func GetRequestResponse(serviceType ServiceType, url string, requestType RequestType, headers map[string]interface{}, params map[string]string, body interface{}) ([]byte, int, error) {
 	//Create internal API client
 	client := NewAPIClient()
@@ -132,6 +135,7 @@ func GetRequestResponse(serviceType ServiceType, url string, requestType Request
 	return respBytes, statusCode, nil
 }
 
+// Exposed Method to Validate response of a http Request
 func ValidateClientResponse(c *gin.Context, respBytes []byte, statusCode int) *APIClientResponse {
 	//Parse response
 	var apiCR APIClientResponse
@@ -177,6 +181,7 @@ func ParseResponse(c *gin.Context, respBytes []byte, statusCode int) {
 	}
 }
 
+// Expoxed Method to Send a HTTP Request
 func SendRequest(c *gin.Context, serviceType ServiceType, url string, requestType RequestType, headers map[string]interface{}, params map[string]string, body interface{}) {
 	respBytes, statusCode, err := GetRequestResponse(serviceType, url, requestType, headers, params, body)
 	if respBytes == nil {

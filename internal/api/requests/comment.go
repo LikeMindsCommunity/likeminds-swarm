@@ -4,15 +4,18 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Request Structure for Create Comment
 type CreateCommentRequest struct {
 	Text string `json:"text" binding:"required"`
 }
 
+// Request Structure for Delete Comment
 type DeleteCommentRequest struct {
 	UserIsCm     bool   `json:"user_is_cm"`
 	DeleteReason string `json:"delete_reason"`
 }
 
+// Response Structure for Comment
 type CommentResponse struct {
 	ID            primitive.ObjectID `json:"_id"`
 	Text          string             `json:"text"`
@@ -29,6 +32,7 @@ type CommentResponse struct {
 	UpdatedAt     int                `json:"updated_at"`
 }
 
+// Response Structure for Fetch Comment
 type FetchCommentResponse struct {
 	CommentResponse
 	Post          interface{}       `json:"post_data,omitempty"`

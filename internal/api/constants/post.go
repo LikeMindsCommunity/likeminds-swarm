@@ -15,6 +15,7 @@ const (
 	ReportPostMenuItem = "Report"
 )
 
+// Exposed Method to get Post Menu for Owner who are CMs also
 func GetIsOwnerIsCmPostMenuItems(is_pinned bool) []string {
 	menuItems := []string{DeletePostMenuItem}
 
@@ -26,10 +27,12 @@ func GetIsOwnerIsCmPostMenuItems(is_pinned bool) []string {
 	return menuItems
 }
 
+// Exposed Method to get Post Menu for Owner who is not a CM
 func GetIsOwnerNotIsCmPostMenuItems() []string {
 	return []string{DeletePostMenuItem}
 }
 
+// Exposed Method to get Post Menu for CMs who are not owners
 func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool) []string {
 	menuItems := []string{}
 
@@ -43,6 +46,7 @@ func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool) []string {
 	return menuItems
 }
 
+// Exposed Method to get Post Menu for members
 func GetNotIsOwnerNotIsCmPostMenuItems() []string {
 	return []string{ReportPostMenuItem}
 }

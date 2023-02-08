@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Exposed Helper Method to Create Post
 func (helper *postHelper) CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
 	var post_attachments []entities.Attachment
 
@@ -18,7 +19,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 		meta_data := element.AttachmentMeta
 		og_tags := meta_data.OgTags
 		meta_og_tags := entities.NewOgTags(og_tags.Title, og_tags.Image, og_tags.Description, og_tags.Url)
-		attachment_meta := entities.NewAttachmentMeta(meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
+		attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
 		attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
 		post_attachments = append(post_attachments, attachment)
 
@@ -30,6 +31,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 	return post_id, err
 }
 
+// Exposed Helper Method to Find Post
 func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
@@ -43,6 +45,7 @@ func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOp
 	return results, err
 }
 
+// Exposed Helper Method to Update Post
 func (helper *postHelper) UpdatePostByIdHelper(post_id primitive.ObjectID, update map[string]interface{}) error {
 	set_data := gin.H{}
 
@@ -57,6 +60,7 @@ func (helper *postHelper) UpdatePostByIdHelper(post_id primitive.ObjectID, updat
 	return err
 }
 
+// Exposed Helper Method to Fetch Post Count
 func (helper *postHelper) CountPostHelper(filter map[string]interface{}) (int64, error) {
 	err := convertHexIdsToObjectIds(filter, []string{"_id"})
 	if err != nil {
@@ -68,6 +72,7 @@ func (helper *postHelper) CountPostHelper(filter map[string]interface{}) (int64,
 	return count, err
 }
 
+// Exposed Helper Method to perform Aggregration on Posts
 func (helper *postHelper) AggregatePostHelper(query []map[string]interface{}) ([]gin.H, error) {
 	for _, value := range query {
 		if matchGroup, ok := value["$match"]; ok {
@@ -83,10 +88,12 @@ func (helper *postHelper) AggregatePostHelper(query []map[string]interface{}) ([
 	return results, err
 }
 
+// Structure for Post Helper
 type postHelper struct {
 	postRepository interfaces.PostRepository
 }
 
+// Exposed Method to Create New Post Helper
 func NewPostHelper(postRepository interfaces.PostRepository) interfaces.PostHelper {
 	return &postHelper{
 		postRepository: postRepository,

@@ -14,17 +14,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+// Internal Method to get TLS Configuration for Database Connection
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 	tlsConfig := new(tls.Config)
 	certs, err := os.ReadFile(caFile)
-
 	if err != nil {
 		return tlsConfig, err
 	}
 
 	tlsConfig.RootCAs = x509.NewCertPool()
 	ok := tlsConfig.RootCAs.AppendCertsFromPEM(certs)
-
 	if !ok {
 		return tlsConfig, errors.New("failed parsing pem file")
 	}
@@ -32,6 +31,7 @@ func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
+// Exposed Method to Initiate DB Connection
 func InitiateDB() *mongo.Database {
 	connectionURI := os.Getenv("MONGODB_URI")
 	if connectionURI == "" {

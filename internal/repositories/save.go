@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Exposed Helper Method to Create Save
 func (repository *saveRepository) Create(like *entities.Save) (interface{}, error) {
 	coll := repository.db.Collection("save")
 	result, err := coll.InsertOne(context.TODO(), like)
@@ -16,6 +17,7 @@ func (repository *saveRepository) Create(like *entities.Save) (interface{}, erro
 	return result.InsertedID, err
 }
 
+// Exposed Helper Method to Find Saves
 func (repository *saveRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Save, error) {
 	coll := repository.db.Collection("save")
 	cursor, err := coll.Find(context.TODO(), filter, filterOpts)
@@ -31,6 +33,7 @@ func (repository *saveRepository) Find(filter map[string]interface{}, filterOpts
 	return results, nil
 }
 
+// Exposed Helper Method to Update Saves
 func (repository *saveRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
 	coll := repository.db.Collection("save")
 	_, err := coll.UpdateOne(context.TODO(), filter, update)
@@ -38,6 +41,7 @@ func (repository *saveRepository) Update(filter map[string]interface{}, update m
 	return err
 }
 
+// Exposed Helper Method to Fetch Saves Count
 func (repository *saveRepository) Count(filter map[string]interface{}) (int64, error) {
 	coll := repository.db.Collection("save")
 	count, err := coll.CountDocuments(context.TODO(), filter)
@@ -48,10 +52,12 @@ func (repository *saveRepository) Count(filter map[string]interface{}) (int64, e
 	return count, nil
 }
 
+// Structure for Save Repository
 type saveRepository struct {
 	db *mongo.Database
 }
 
+// Exposed Method to Create New Save Repository
 func NewSaveRepository(db *mongo.Database) interfaces.SaveRepository {
 	return &saveRepository{
 		db: db,

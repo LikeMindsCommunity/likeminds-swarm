@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Interface for Like Repository
 type LikeRepository interface {
 	Create(like *entities.Like) (interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Like, error)
@@ -14,6 +15,7 @@ type LikeRepository interface {
 	Aggregate(query []interface{}) (interface{}, error)
 }
 
+// Interface for Like Helper
 type LikeHelper interface {
 	CreateLikeHelper(entity_type string, entity_id primitive.ObjectID, liked_by string) (interface{}, error)
 	FindLikeHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Like, error)

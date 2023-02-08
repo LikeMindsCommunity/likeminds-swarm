@@ -5,6 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Internal Method to Convert Hex Id to Object Id
 func convertHexIdToObjectId(filter map[string]interface{}, key string) error {
 	var err error
 
@@ -21,6 +22,7 @@ func convertHexIdToObjectId(filter map[string]interface{}, key string) error {
 	return nil
 }
 
+// Internal Method to convert Multiple Hex Ids to Object Ids
 func convertHexIdsToObjectIds(filter map[string]interface{}, keys []string) error {
 	for _, key := range keys {
 		err := convertHexIdToObjectId(filter, key)
@@ -32,6 +34,7 @@ func convertHexIdsToObjectIds(filter map[string]interface{}, keys []string) erro
 	return nil
 }
 
+// Internal Method to create filters according to available values
 func mergeFilterOptions(filterOptions map[string]interface{}) options.FindOptions {
 	fOpts := options.FindOptions{}
 

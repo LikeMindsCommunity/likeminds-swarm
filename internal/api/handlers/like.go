@@ -12,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
+// Internal Method to parse likes as response
 func parseLikeResponse(like entities.Like) requests.LikeResponse {
 	var response requests.LikeResponse
 
@@ -23,6 +24,7 @@ func parseLikeResponse(like entities.Like) requests.LikeResponse {
 	return response
 }
 
+// Internal Method to parse multiple likes for response
 func parseMultipleLikeResponse(likes []entities.Like) []requests.LikeResponse {
 	response := []requests.LikeResponse{}
 
@@ -33,6 +35,7 @@ func parseMultipleLikeResponse(likes []entities.Like) []requests.LikeResponse {
 	return response
 }
 
+// Internal Method to parse like response for Fetch Likes API
 func parseFetchLikeResponse(likes []entities.Like, total_count int) requests.FetchLikesResponse {
 	var response requests.FetchLikesResponse
 
@@ -43,6 +46,7 @@ func parseFetchLikeResponse(likes []entities.Like, total_count int) requests.Fet
 	return response
 }
 
+// Internal Method to fetch likes count for a specific Entity
 func fetchEntityLikesCount(helper interfaces.LikeHelper, entity_id string, entity_type string) (int64, error) {
 	// like filter data
 	like_filter_data := gin.H{
@@ -60,6 +64,7 @@ func fetchEntityLikesCount(helper interfaces.LikeHelper, entity_id string, entit
 	return likes_count, nil
 }
 
+// Internal Method to fetch the likes for a specific Entity
 func fetchEntityLikes(helper interfaces.LikeHelper, entity_id string, entity_type string,
 	filterOpts map[string]interface{}) ([]entities.Like, error) {
 	// like filter data
@@ -78,6 +83,7 @@ func fetchEntityLikes(helper interfaces.LikeHelper, entity_id string, entity_typ
 	return like_results, nil
 }
 
+// Internal Method to fetch a specific user like on an Entity
 func fetchSpecificMemberLikesOnEntity(helper interfaces.LikeHelper, entity_id string, entity_type string,
 	member_id string) ([]entities.Like, error) {
 	// like filter data
@@ -96,6 +102,7 @@ func fetchSpecificMemberLikesOnEntity(helper interfaces.LikeHelper, entity_id st
 	return like_results, nil
 }
 
+// Internal Method to fetch the like status of a user on an Entity
 func fetchUserLikedStatusByEntity(helper interfaces.LikeHelper, entity_id string, entity_type string, liked_by string) bool {
 	like_results, err := fetchSpecificMemberLikesOnEntity(helper, entity_id, entity_type, liked_by)
 	if err != nil {
@@ -113,6 +120,7 @@ func fetchUserLikedStatusByEntity(helper interfaces.LikeHelper, entity_id string
 	return true
 }
 
+// Exposed Method to like a Post
 func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -182,6 +190,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	})
 }
 
+// Exposed Method to fetch the likes on a Post
 func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	// fetch url params
 	post_id := c.Param("post_id")
@@ -224,6 +233,7 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count)))
 }
 
+// Exposed Method to like a Comment
 func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -302,6 +312,7 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	})
 }
 
+// Exposed Method to fetch likes on a Comment
 func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	// fetch url params
 	post_id := c.Param("post_id")

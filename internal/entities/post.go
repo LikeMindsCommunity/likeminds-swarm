@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Structure for Post
 type Post struct {
 	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	Text         string             `json:"text" bson:"text"`
@@ -22,6 +23,7 @@ type Post struct {
 	UpdatedAt    time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
+// Exposed Method to Create a New Post
 func NewPost(text string, heading string, community_id int, user_id string, attachments []Attachment, chatroom_id int) Post {
 	created_at := time.Now()
 	return Post{
