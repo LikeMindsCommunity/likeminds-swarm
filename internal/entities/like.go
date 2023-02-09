@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Structure for Like
 type Like struct {
 	ID         primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	EntityType string             `json:"entity_type" bson:"entity_type"`
@@ -16,6 +17,7 @@ type Like struct {
 	UpdatedAt  time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
+// Exposed Method to Create a New Like
 func NewLike(entity_type string, entity_id primitive.ObjectID, liked_by string) Like {
 	created_at := time.Now()
 	return Like{

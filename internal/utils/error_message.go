@@ -6,14 +6,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Exposed Method to send General Validation Error in API Response
 func GeneralAPIValidationError(c *gin.Context, errorMessage string) {
 	GeneralAPIError(c, errorMessage, http.StatusBadRequest)
 }
 
+// Exposed Method to send General Internal Error in API Response
 func GeneralAPIInternalError(c *gin.Context, errorMessage string) {
 	GeneralAPIError(c, errorMessage, http.StatusInternalServerError)
 }
 
+// Exposed Method to send General Error in API Response
 func GeneralAPIError(c *gin.Context, errorMessage string, statusCode int) {
 	c.JSON(statusCode, gin.H{
 		"success":       false,

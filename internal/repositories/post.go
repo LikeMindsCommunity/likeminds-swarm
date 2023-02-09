@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Exposed Helper Method to Create Post
 func (repository *postRepository) Create(post *entities.Post) (interface{}, error) {
 	coll := repository.db.Collection("post")
 	result, err := coll.InsertOne(context.TODO(), post)
@@ -17,6 +18,7 @@ func (repository *postRepository) Create(post *entities.Post) (interface{}, erro
 	return result.InsertedID, err
 }
 
+// Exposed Helper Method to Find Post
 func (repository *postRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Post, error) {
 	coll := repository.db.Collection("post")
 	cursor, err := coll.Find(context.TODO(), filter, filterOpts)
@@ -32,6 +34,7 @@ func (repository *postRepository) Find(filter map[string]interface{}, filterOpts
 	return results, nil
 }
 
+// Exposed Helper Method to Update Post
 func (repository *postRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
 	coll := repository.db.Collection("post")
 	_, err := coll.UpdateOne(context.TODO(), filter, update)
@@ -39,6 +42,7 @@ func (repository *postRepository) Update(filter map[string]interface{}, update m
 	return err
 }
 
+// Exposed Helper Method to Fetch Post Count
 func (repository *postRepository) Count(filter map[string]interface{}) (int64, error) {
 	coll := repository.db.Collection("post")
 	count, err := coll.CountDocuments(context.TODO(), filter)
@@ -49,6 +53,7 @@ func (repository *postRepository) Count(filter map[string]interface{}) (int64, e
 	return count, nil
 }
 
+// Exposed Helper Method to perform Aggregration on Post
 func (repository *postRepository) Aggregate(query []map[string]interface{}) ([]gin.H, error) {
 	coll := repository.db.Collection("post")
 	cursor, err := coll.Aggregate(context.TODO(), query)
@@ -64,10 +69,12 @@ func (repository *postRepository) Aggregate(query []map[string]interface{}) ([]g
 	return results, nil
 }
 
+// Structure for Post Repository
 type postRepository struct {
 	db *mongo.Database
 }
 
+// Exposed Method to Create New Post Repository
 func NewPostRepository(db *mongo.Database) interfaces.PostRepository {
 	return &postRepository{
 		db: db,

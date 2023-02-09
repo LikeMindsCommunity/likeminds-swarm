@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Exposed Method to send Notification using Caravan Service API
 func SendNotification(member_ids []string, title string, sub_title string, route string, community_id int, category string, subCategory string) {
 	postBody := gin.H{
 		"community_id": community_id,

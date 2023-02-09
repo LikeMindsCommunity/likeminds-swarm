@@ -19,3 +19,6 @@ likeminds-swarm
 
 #Environment file
 .env
+
+#Config directory
+config/*

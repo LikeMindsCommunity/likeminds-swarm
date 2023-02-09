@@ -1,5 +1,6 @@
 package entities
 
+// Structure for OG Tags
 type OGTags struct {
 	Title       string `json:"title,omitempty" bson:"title,omitempty"`
 	Image       string `json:"image,omitempty" bson:"image,omitempty"`
@@ -7,7 +8,9 @@ type OGTags struct {
 	Url         string `json:"url,omitempty" bson:"url,omitempty"`
 }
 
+// Structure for Attachment Meta
 type AttachmentMeta struct {
+	Name      string  `json:"name,omitempty" bson:"name,omitempty"`
 	Url       string  `json:"url,omitempty" bson:"url,omitempty"`
 	Format    string  `json:"format,omitempty" bson:"format,omitempty"`
 	Size      int     `json:"size,omitempty" bson:"size,omitempty"`
@@ -16,11 +19,13 @@ type AttachmentMeta struct {
 	OgTags    *OGTags `json:"og_tags,omitempty" bson:"og_tags,omitempty"`
 }
 
+// Structure for Attachment
 type Attachment struct {
 	AttachmentType int             `json:"attachment_type" bson:"attachment_type"`
 	AttachmentMeta *AttachmentMeta `json:"attachment_meta,omitempty" bson:"attachment_meta,omitempty"`
 }
 
+// Exposed Method to Create New Attachment
 func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachment {
 	return Attachment{
 		AttachmentType: attachment_type,
@@ -28,8 +33,10 @@ func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachme
 	}
 }
 
-func NewAttachmentMeta(url string, format string, size int, duration int, pageCount int, ogTags OGTags) AttachmentMeta {
+// Exposed Method to Create New Attachment Meta
+func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, ogTags OGTags) AttachmentMeta {
 	return AttachmentMeta{
+		Name:      name,
 		Url:       url,
 		Format:    format,
 		Size:      size,
@@ -39,6 +46,7 @@ func NewAttachmentMeta(url string, format string, size int, duration int, pageCo
 	}
 }
 
+// Exposed Method to Create New Og Tags
 func NewOgTags(title string, image string, description string, url string) OGTags {
 	return OGTags{
 		Title:       title,

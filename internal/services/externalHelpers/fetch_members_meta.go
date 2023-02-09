@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Structure for Member Meta Object
 type MemberMeta struct {
 	Id           int    `json:"id"`
 	Name         string `json:"name"`
@@ -15,6 +16,7 @@ type MemberMeta struct {
 	IsGuest      bool   `json:"is_guest"`
 }
 
+// Structure for Member Meta Response
 type MemberMetaResponse struct {
 	Success bool         `json:"success"`
 	Members []MemberMeta `json:"members"`

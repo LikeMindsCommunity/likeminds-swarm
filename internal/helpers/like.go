@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Exposed Helper Method to Create a Like
 func (helper *likeHelper) CreateLikeHelper(entity_type string, entity_id primitive.ObjectID, liked_by string) (interface{}, error) {
 	like := entities.NewLike(entity_type, entity_id, liked_by)
 	like_id, err := helper.likeRepository.Create(&like)
@@ -16,6 +17,7 @@ func (helper *likeHelper) CreateLikeHelper(entity_type string, entity_id primiti
 	return like_id, err
 }
 
+// Exposed Helper Method to Find Likes
 func (helper *likeHelper) FindLikeHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Like, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
@@ -29,6 +31,7 @@ func (helper *likeHelper) FindLikeHelper(filter map[string]interface{}, filterOp
 	return results, err
 }
 
+// Exposed Helper Method to Update Likes
 func (helper *likeHelper) UpdateLikeByIdHelper(like_id primitive.ObjectID, update map[string]interface{}) error {
 	set_data := gin.H{}
 
@@ -43,6 +46,7 @@ func (helper *likeHelper) UpdateLikeByIdHelper(like_id primitive.ObjectID, updat
 	return err
 }
 
+// Exposed Helper Method to Fetch Likes Count
 func (helper *likeHelper) CountLikeHelper(filter map[string]interface{}) (int64, error) {
 	err := convertHexIdsToObjectIds(filter, []string{"_id", "entity_id"})
 	if err != nil {
@@ -54,6 +58,7 @@ func (helper *likeHelper) CountLikeHelper(filter map[string]interface{}) (int64,
 	return count, err
 }
 
+// Exposed Helper Method to perform Aggregation on Likes
 func (helper *likeHelper) AggregateLikeHelper(query []interface{}) (interface{}, error) {
 	for _, value := range query {
 		if matchGroup, ok := value.(gin.H)["$match"]; ok {
@@ -69,10 +74,12 @@ func (helper *likeHelper) AggregateLikeHelper(query []interface{}) (interface{},
 	return results, err
 }
 
+// Structure for Like Helper
 type likeHelper struct {
 	likeRepository interfaces.LikeRepository
 }
 
+// Exposed Method to create New Like Helper
 func NewLikeHelper(likeRepository interfaces.LikeRepository) interfaces.LikeHelper {
 	return &likeHelper{
 		likeRepository: likeRepository,

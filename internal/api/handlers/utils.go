@@ -12,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 )
 
+// Feed Handlers structure for all Helper classes
 type FeedHandlers struct {
 	likeHelper     interfaces.LikeHelper
 	commentHelper  interfaces.CommentHelper
@@ -20,6 +21,7 @@ type FeedHandlers struct {
 	saveHelper     interfaces.SaveHelper
 }
 
+// Exposed Method to get an instance for Feed Handlers
 func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	postHelper interfaces.PostHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper) *FeedHandlers {
 	return &FeedHandlers{
@@ -31,6 +33,7 @@ func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.
 	}
 }
 
+// Internal Method to get pagination params in an API
 func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	// fetch and validate query params
 	ParamPage := c.DefaultQuery("page", "0")
@@ -68,6 +71,7 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	return page, page_size, nil
 }
 
+// Internal Method to generate filter from page params from an API
 func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
 	// fetch pagination query params
 	page, page_size, err := fetchPaginationParams(c)
@@ -87,6 +91,7 @@ func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
 	return filter_options, nil
 }
 
+// Internal Method to get tagged user Ids from a Text
 func getTaggedUsers(text string) ([]string, error) {
 	tagged_members := []string{}
 	pattern, err := regexp.Compile("route://[member member_profile]+/([a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12})")
@@ -103,6 +108,7 @@ func getTaggedUsers(text string) ([]string, error) {
 	return tagged_members, nil
 }
 
+// Internal Method to parse menu items for a user on an Entity
 func parseMenuItems(menu_items []string) []requests.MenuResponse {
 	output_menu_items := []requests.MenuResponse{}
 
@@ -115,6 +121,7 @@ func parseMenuItems(menu_items []string) []requests.MenuResponse {
 	return output_menu_items
 }
 
+// Internal Method to fetch menu items for a user on an Entity
 func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool) []string {
 	var output_menu_items []string
 	switch entity_type {
@@ -152,6 +159,7 @@ func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned
 	return output_menu_items
 }
 
+// Internal Method to check if a number lies in Fibonacci Series
 func checkIfFibonacciNumber(num int) bool {
 	var n3, n1, n2 int = 0, 0, 1
 
@@ -177,6 +185,7 @@ func checkIfFibonacciNumber(num int) bool {
 	return false
 }
 
+// Internal Method to parse an Integer Array from query params
 func parseIntArrayParam(param string) []int {
 	response := []int{}
 
@@ -187,9 +196,10 @@ func parseIntArrayParam(param string) []int {
 	intermediate_string := strings.Split(param, "[")[1]
 	intermediate_string = strings.Split(intermediate_string, "]")[0]
 
-	intermediate_strings := strings.Split(intermediate_string, ", ")
+	intermediate_strings := strings.Split(intermediate_string, ",")
 
 	for _, value := range intermediate_strings {
+		value = strings.TrimSpace(value)
 		convertedValue, err := strconv.Atoi(value)
 		if err == nil {
 			response = append(response, convertedValue)

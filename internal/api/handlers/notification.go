@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to send notification on Removal of Create Comment Permission for a user
 func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -21,6 +22,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on Addition of Create Comment Permission for a user
 func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -33,6 +35,7 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on Removal of Create Post Permission for a user
 func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -45,6 +48,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on Addition of Create Post Permission for a user
 func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -57,6 +61,7 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on Deletion of a Post
 func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch post data
 	post_data, err := fetchPost(handlers.postHelper, activity.EntityId.Hex(), activity.CommunityId)
@@ -75,6 +80,7 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on Deletion of a Comment
 func sendCommentDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch comment data
 	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
@@ -105,6 +111,7 @@ func sendCommentDeleteActionNotification(activity *entities.Activity, handlers F
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal General Method to send notification on deletion of an Entity
 func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
@@ -115,6 +122,7 @@ func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHand
 	}
 }
 
+// Internal Method to send notification on tagging of a user on a Post
 func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
@@ -136,6 +144,7 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on tagging of a user on a Comment
 func sendCommentTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
@@ -173,6 +182,7 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal General Method to send notification on tagging of a user on an Entity
 func sendTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
@@ -183,6 +193,7 @@ func sendTagActionNotification(activity *entities.Activity, handlers FeedHandler
 	}
 }
 
+// Internal Method to send notification of also comment action on a Post
 func sendAlsoCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
@@ -234,6 +245,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 	}
 }
 
+// Internal Method to send notification on comment action on a Post
 func sendPostCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
@@ -276,6 +288,7 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on reply action on a Comment
 func sendCommentReplyActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
@@ -318,6 +331,7 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal General Method to send notification on comment action on an Entity
 func sendCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
@@ -328,6 +342,7 @@ func sendCommentActionNotification(activity *entities.Activity, handlers FeedHan
 	}
 }
 
+// Internal Method to send notification on like action on a Post
 func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch likes count
 	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
@@ -369,6 +384,7 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal Method to send notification on like action on a Comment
 func sendCommentLikeActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	// Fetch likes count
 	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
@@ -409,6 +425,7 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
 }
 
+// Internal General Method to send notification on like action on an Entity
 func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
@@ -419,6 +436,7 @@ func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandle
 	}
 }
 
+// Exposed Method to send notification for every action
 func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers) {
 
 	activity, err := fetchActivity(handlers.activityHelper, activityId.Hex())

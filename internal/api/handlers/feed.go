@@ -12,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
+// Exposed Method to fetch the Universal Feed for a User
 func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
@@ -110,6 +111,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, response, -1))
 }
 
+// Internal Method to parse Explore feed for response
 func parseExploreFeedResponse(chatroom_ids []int, post_counts map[int]int) requests.FetchExploreFeedResponse {
 	var exploreResponse requests.FetchExploreFeedResponse
 
@@ -120,6 +122,7 @@ func parseExploreFeedResponse(chatroom_ids []int, post_counts map[int]int) reque
 	return exploreResponse
 }
 
+// Internal Method to parse ChatroomIds to int list
 func parseChatroomIds(chatrooms []gin.H) []int {
 	chatroom_ids := []int{}
 	for _, chatroom := range chatrooms {
@@ -131,6 +134,7 @@ func parseChatroomIds(chatrooms []gin.H) []int {
 	return chatroom_ids
 }
 
+// Internal Method to get posts count in a Chatroom
 func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) map[int]int {
 	post_count_response := map[int]int{}
 	post_filter_data := []map[string]interface{}{}
@@ -181,6 +185,7 @@ func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) 
 	return post_count_response
 }
 
+// Internal Method to fetch Chatrooms ordered by recency of activity
 func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.PostHelper, communityId int, excludedChatroomIds []int, page int, page_size int) []int {
 	post_filter_data := []map[string]interface{}{}
 
@@ -242,6 +247,7 @@ func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.Pos
 	return chatroom_ids
 }
 
+// Internal Method to fetch Chatrooms ordered by count of messages
 func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostHelper, communityId int, excludedChatroomIds []int, page int, page_size int) []int {
 	post_filter_data := []map[string]interface{}{}
 
@@ -303,6 +309,7 @@ func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostH
 	return chatroom_ids
 }
 
+// Exposed Method to fetch the Explore Feed
 func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	// fetch url params and headers
 	// headers := utils.GetHeaders(c)
@@ -366,6 +373,7 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	c.JSON(http.StatusOK, parseExploreFeedResponse(chatroom_ids, postData))
 }
 
+// Exposed Method to fetch the Group Feed
 func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)

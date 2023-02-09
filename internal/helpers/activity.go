@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to parse CTA Data
 func parseCTAData(cta_data map[string]interface{}) string {
 	var cta string = ""
 
@@ -32,6 +33,7 @@ func parseCTAData(cta_data map[string]interface{}) string {
 	return cta
 }
 
+// Internal Method to parse CTA for corresponding action
 func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) string {
 	var cta string = ""
 
@@ -49,6 +51,7 @@ func fetchActivityCtaForAction(action string, cta_data map[string]interface{}) s
 	return cta
 }
 
+// Exposed Helper Method to Create Activity
 func (helper *activityHelper) CreateActivityHelper(action_by string, action_on []string, community_id int, entity_type string,
 	entity_id primitive.ObjectID, action string, cta_data map[string]interface{}) (interface{}, error) {
 	cta := fetchActivityCtaForAction(action, cta_data)
@@ -58,6 +61,7 @@ func (helper *activityHelper) CreateActivityHelper(action_by string, action_on [
 	return activity_id, err
 }
 
+// Exposed Helper Method to Find Activity
 func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Activity, error) {
 	fOpts := mergeFilterOptions(filterOptions)
 
@@ -71,6 +75,7 @@ func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}, 
 	return results, err
 }
 
+// Exposed Helper Method to Update Activity by activity_id
 func (helper *activityHelper) UpdateActivityByIdHelper(activity_id primitive.ObjectID, update map[string]interface{}) error {
 	var set_data gin.H
 
@@ -85,10 +90,12 @@ func (helper *activityHelper) UpdateActivityByIdHelper(activity_id primitive.Obj
 	return err
 }
 
+// Structure for Activity Helper
 type activityHelper struct {
 	activityRepository interfaces.ActivityRepository
 }
 
+// Exposed Method to Create New Activity Helper
 func NewActivityHelper(activityRepository interfaces.ActivityRepository) interfaces.ActivityHelper {
 	return &activityHelper{
 		activityRepository: activityRepository,

@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Structure for Activity
 type Activity struct {
 	ID          primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	ActionBy    string             `json:"action_by" bson:"action_by"`
@@ -19,6 +20,7 @@ type Activity struct {
 	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
+// Exposed Method to create New User Activity
 func NewActivity(action_by string, action_on []string, community_id int, entity_type string, entity_id primitive.ObjectID,
 	action string, cta string) Activity {
 	created_at := time.Now()

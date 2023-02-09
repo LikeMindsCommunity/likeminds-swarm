@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Interface for Comment Repository
 type CommentRepository interface {
 	Create(like *entities.Comment) (interface{}, error)
 	Find(filter map[string]interface{}, filterOptions *options.FindOptions) ([]entities.Comment, error)
@@ -13,6 +14,7 @@ type CommentRepository interface {
 	Count(filter map[string]interface{}) (int64, error)
 }
 
+// Interface for Comment Helper
 type CommentHelper interface {
 	CreateCommentHelper(text string, postId primitive.ObjectID, level int, userId string) (interface{}, error)
 	FindCommentHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Comment, error)
