@@ -148,6 +148,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 			if element.AttachmentMeta.Duration == 0 {
 				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
+				return
 			}
 
 		case constants.DocumentWidget:
