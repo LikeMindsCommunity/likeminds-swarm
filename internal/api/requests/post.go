@@ -32,7 +32,7 @@ type Attachment struct {
 
 // Request Structure for Create Post
 type CreatePostRequest struct {
-	Text        string       `json:"text" binding:"required"`
+	Text        string       `json:"text"`
 	Heading     string       `json:"heading"`
 	Attachments []Attachment `json:"attachments"`
 	ChatroomID  int          `json:"feedroom_id"`

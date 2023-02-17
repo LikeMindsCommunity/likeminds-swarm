@@ -131,6 +131,11 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	if createPostRequest.Text == "" && len(createPostRequest.Attachments) == 0 {
+		utils.GeneralAPIValidationError(c, "can't create post without content")
+		return
+	}
+
 	// validation of attachment objects
 	for _, element := range createPostRequest.Attachments {
 		switch element.AttachmentType {
