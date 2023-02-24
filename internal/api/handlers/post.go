@@ -203,7 +203,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		_, err = createActivity(*handlers, constants.TagAction, post_id.(primitive.ObjectID), constants.PostEntityType,
 			community_id, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.PostEntityType,
-				"post_id":     post_id,
+				"post_id":     post_id.(primitive.ObjectID).Hex(),
 			})
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
