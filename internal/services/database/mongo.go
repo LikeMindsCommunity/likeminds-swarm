@@ -43,20 +43,32 @@ func InitiateDB() *mongo.Database {
 		log.Fatal("You must set your 'DB_NAME' environment variable.")
 	}
 
-	caFilePath := os.Getenv("CA_FILE_PATH")
-	if caFilePath == "" {
-		log.Fatal("You must set your 'CA_FILE_PATH' environment variable.")
-	}
+	var client *mongo.Client
+	var err error
 
-	tlsConfig, err := getCustomTLSConfig(caFilePath)
-	if err != nil {
-		log.Fatalf("Failed getting TLS configuration: %v", err)
-	}
+	cloud_provider := os.Getenv("CLOUD_PROVIDER")
+	if cloud_provider == "" || cloud_provider == "AWS" {
+		caFilePath := os.Getenv("CA_FILE_PATH")
+		if caFilePath == "" {
+			log.Fatal("You must set your 'CA_FILE_PATH' environment variable.")
+		}
 
-	// Create a new client and connect to the server
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(connectionURI).SetTLSConfig(tlsConfig))
-	if err != nil {
-		panic(err)
+		tlsConfig, err := getCustomTLSConfig(caFilePath)
+		if err != nil {
+			log.Fatalf("Failed getting TLS configuration: %v", err)
+		}
+
+		// Create a new client and connect to the server
+		client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(connectionURI).SetTLSConfig(tlsConfig))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		// Create a new client and connect to the server
+		client, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(connectionURI))
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Ping the primary

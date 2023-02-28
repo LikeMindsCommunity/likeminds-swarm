@@ -131,6 +131,11 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	if createPostRequest.Text == "" && len(createPostRequest.Attachments) == 0 {
+		utils.GeneralAPIValidationError(c, "can't create post without content")
+		return
+	}
+
 	// validation of attachment objects
 	for _, element := range createPostRequest.Attachments {
 		switch element.AttachmentType {
@@ -148,6 +153,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 			if element.AttachmentMeta.Duration == 0 {
 				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
+				return
 			}
 
 		case constants.DocumentWidget:
@@ -197,7 +203,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		_, err = createActivity(*handlers, constants.TagAction, post_id.(primitive.ObjectID), constants.PostEntityType,
 			community_id, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.PostEntityType,
-				"post_id":     post_id,
+				"post_id":     post_id.(primitive.ObjectID).Hex(),
 			})
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())

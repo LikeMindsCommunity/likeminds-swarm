@@ -100,7 +100,7 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 // Internal Method to create new activity instance
 func createActivity(handler FeedHandlers, action string, entity_id primitive.ObjectID, entity_type string,
 	community_id int, action_by string, action_on string, cta_data map[string]interface{}) (interface{}, error) {
-	var newActivityId interface{}
+	var newActivityId primitive.ObjectID
 
 	switch action {
 	case constants.LikeAction, constants.TagAction:
@@ -128,9 +128,7 @@ func createActivity(handler FeedHandlers, action string, entity_id primitive.Obj
 				return nil, err
 			}
 
-			newActivityId = activityId
-		} else {
-			newActivityId = activity_results[0].ID
+			newActivityId = activityId.(primitive.ObjectID)
 		}
 
 	case constants.AlsoCommentAction:
@@ -156,7 +154,7 @@ func createActivity(handler FeedHandlers, action string, entity_id primitive.Obj
 				return nil, err
 			}
 
-			newActivityId = activityId
+			newActivityId = activityId.(primitive.ObjectID)
 		} else {
 			activity_data := activity_results[0]
 
@@ -187,11 +185,11 @@ func createActivity(handler FeedHandlers, action string, entity_id primitive.Obj
 			return nil, err
 		}
 
-		newActivityId = activityId
+		newActivityId = activityId.(primitive.ObjectID)
 	}
 
 	// send notification
-	SendNotification(newActivityId.(primitive.ObjectID), handler)
+	SendNotification(newActivityId, handler)
 
 	return newActivityId, nil
 }
