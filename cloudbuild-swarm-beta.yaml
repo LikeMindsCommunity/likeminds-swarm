@@ -54,3 +54,4 @@ steps:
   env:
   - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
   - 'CLOUDSDK_CONTAINER_CLUSTER=likeminds-nonprod-autopilot-cluster'
+  - 'CLOUDSDK_GET_CREDENTIALS_OPTS=--internal-ip'
