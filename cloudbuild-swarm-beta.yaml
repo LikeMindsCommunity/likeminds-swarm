@@ -28,18 +28,6 @@ steps:
   - |
      sed 's/swarm-beta:.*/swarm-beta:${SHORT_SHA}/g' deployment-swarm-beta.yaml
 
-# connect to kubernetes cluster
-- name: gcr.io/cloud-builders/gcloud
-  id: Connect to kubernetes cluster
-  args:
-  - beta
-  - container
-  - clusters
-  - get-credentials
-  - likeminds-nonprod-autopilot-cluster
-  - --project=likeminds-nonprod-prj-24e1
-  - --region=asia-south1
-  - --internal-ip
 
 # - name: gcr.io/cloud-builders/gcloud
 #   id: Connect to vm
@@ -66,10 +54,11 @@ steps:
   - '-c'
   - |
     kubectl apply -f deployment-swarm-beta.yaml -n app-deploy
-    # kubectl rollout status deployment/my-deployment
+  # kubectl rollout status deployment/my-deployment
   env:
   - 'CLOUDSDK_COMPUTE_ZONE=asia-south1'
   - 'CLOUDSDK_CONTAINER_CLUSTER=likeminds-nonprod-autopilot-cluster'
+  - 'CLOUDSDK_GET_CREDENTIALS_OPTS=--internal-ip'
 
 
 # # apply the manifest
