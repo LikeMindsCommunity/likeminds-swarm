@@ -46,7 +46,7 @@ steps:
   args:
   - '-c'
   - |
-    gcloud auth activate-service-account --key-file=service-account.json
+#gcloud auth activate-service-account --key-file=service-account.json
     gcloud container clusters get-credentials likeminds-nonprod-autopilot-cluster  --zone=asia-south1 --project=likeminds-nonprod-prj-24e1 --internal-ip
 - name: 'gcr.io/cloud-builders/kubectl'
   entrypoint: 'bash'
