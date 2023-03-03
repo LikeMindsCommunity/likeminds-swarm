@@ -47,7 +47,9 @@ steps:
   - beta
   - compute
   - ssh
-  - likeminds-nonprod-deployment-instance
+  - ayushi_shekhar@likeminds-nonprod-deployment-instance
+  - --zone=asia-south1
+  - --project=likeminds-nonprod-prj-24e1
   - --command="kubectl apply -f /home/ayushi_shekhar/LikeMinds-Swarm/deployment-swarm-beta.yaml -n app-deploy"
 
 
