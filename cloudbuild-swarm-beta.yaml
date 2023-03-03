@@ -49,6 +49,7 @@ steps:
   - ssh
   - ayushi_shekhar@likeminds-nonprod-deployment-instance
   - --zone=asia-south1-c
+  - --tunnel-through-iap
   - --project=likeminds-nonprod-prj-24e1
   - --command="kubectl apply -f /home/ayushi_shekhar/LikeMinds-Swarm/deployment-swarm-beta.yaml -n app-deploy"
 
