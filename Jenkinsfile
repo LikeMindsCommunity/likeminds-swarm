@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+    environment {
+        PROJECT_ID = 'likeminds-nonprod-prj-24e1'
+        CLUSTER_NAME = 'likeminds-nonprod-autopilot-cluster'
+        LOCATION = 'asia-south1'
+        CREDENTIALS_ID = 'likeminds-nonprod-prj-24e1'
+    }
+    stages {
+        stage("Checkout code") {
+            steps {
+                checkout scm
+            }
+        }
+      
+        stage("Building Application Docker Image"){
+            steps{
+                script{
+                    sh 'gcloud auth configure-docker asia.gcr.io'
+                   
+                    sh 'docker build -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm:${BUILD_NUMBER} . '
+                    }
+                }
+            }
+         stage("Pushing Application Docker Image to Google Artifact Registry"){
+            steps{
+                script{
+                    sh 'gcloud auth configure-docker asia.gcr.io'
+                    sh 'docker push asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm:${BUILD_NUMBER}'
+                      }
+                 }
+            }
+              
+        stage('Deploy to GKE') {
+            steps{
+                
+                sh "sed 's/swarm-beta:.*/swarm-beta:${BUILD_NUMBER}/g' deployment-swarm-beta.yaml"
+                sh "gcloud container clusters get-credentials ${env.CLUSTER_NAME} --region ${env.LOCATION} --project ${env.PROJECT_ID} --internal-ip" 
+                sh 'kubectl apply -f /home/ayushi_shekhar/LikeMinds-Swarm/deployment-swarm-beta.yaml'
+
+                
+            }
+        }
+    }  
+        post { 
+        always { 
+            cleanWs()
+        }
+    }
+}
