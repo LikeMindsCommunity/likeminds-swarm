@@ -43,7 +43,7 @@ steps:
 
 
 # apply the manifest
-- name: 'gcr.io/cloud-builders/gke-deploy'
+- name: 'gcr.io/cloud-builders/kubectl'
   id: Deploy
   args:
   - 'apply'
