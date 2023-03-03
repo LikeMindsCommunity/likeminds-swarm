@@ -41,18 +41,35 @@ steps:
   - --region=asia-south1
   - --internal-ip
 
-- name: gcr.io/cloud-builders/gcloud
-  id: Connect to vm
-  args:
-  - beta
-  - compute
-  - ssh
-  - ayushi_shekhar@likeminds-nonprod-deployment-instance
-  - --zone=asia-south1-c
-  - --tunnel-through-iap
-  - --project=likeminds-nonprod-prj-24e1
-  - --command="kubectl apply -f /home/ayushi_shekhar/LikeMinds-Swarm/deployment-swarm-beta.yaml -n app-deploy"
+# - name: gcr.io/cloud-builders/gcloud
+#   id: Connect to vm
+#   args:
+#   - beta
+#   - compute
+#   - ssh
+#   - ayushi_shekhar@likeminds-nonprod-deployment-instance
+#   - --zone=asia-south1
+#   - --project=likeminds-nonprod-prj-24e1
+#   - --tunnel-through-iap
+#   - --command="kubectl apply -f /home/ayushi_shekhar/LikeMinds-Swarm/deployment-swarm-beta.yaml -n app-deploy"
 
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    gcloud auth activate-service-account --key-file=service-account.json
+    gcloud container clusters get-credentials likeminds-nonprod-autopilot-cluster  --zone=asia-south1 --project=likeminds-nonprod-prj-24e1 --internal-ip
+- name: 'gcr.io/cloud-builders/kubectl'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    kubectl apply -f deployment-swarm-beta.yaml -n app-deploy
+    # kubectl rollout status deployment/my-deployment
+  env:
+  - 'CLOUDSDK_COMPUTE_ZONE=asia-south1'
+  - 'CLOUDSDK_CONTAINER_CLUSTER=likeminds-nonprod-autopilot-cluster'
 
 
 # # apply the manifest
