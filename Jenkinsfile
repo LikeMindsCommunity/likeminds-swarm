@@ -14,11 +14,15 @@ pipeline {
         }
       
         stage("Building Application Docker Image"){
+            when {
+                changeset "LikeMinds-Swarm/Dockerfile.swarm-beta"
+            }
             steps{
+
                 script{
                     sh 'gcloud auth configure-docker asia.gcr.io'
                    
-                    sh 'docker build -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm:${BUILD_NUMBER} . '
+                    sh 'docker build -f Dockerfile.swarm-beta -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm:${BUILD_NUMBER} . '
                     }
                 }
             }
