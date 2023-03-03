@@ -41,17 +41,27 @@ steps:
   - --region=asia-south1
   - --internal-ip
 
-
-# apply the manifest
-- name: 'gcr.io/cloud-builders/kubectl'
-  id: Deploy
+- name: gcr.io/cloud-builders/gcloud
+  id: Connect to vm
   args:
-  - 'apply'
-  - '-f'
-  - 'deployment-swarm-beta.yaml'
-  - '-n'
-  - 'app-deploy'
-  env:
-  - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
-  - 'CLOUDSDK_CONTAINER_CLUSTER=likeminds-nonprod-autopilot-cluster'
-  - 'CLOUDSDK_GET_CREDENTIALS_OPTS=--internal-ip'
+  - beta
+  - compute
+  - ssh
+  - likeminds-nonprod-deployment-instance
+  - --command="kubectl apply -f /home/ayushi_shekhar/LikeMinds-Swarm/deployment-swarm-beta.yaml -n app-deploy"
+
+
+
+# # apply the manifest
+# - name: 'gcr.io/cloud-builders/kubectl'
+#   id: Deploy
+#   args:
+#   - 'apply'
+#   - '-f'
+#   - 'deployment-swarm-beta.yaml'
+#   - '-n'
+#   - 'app-deploy'
+#   env:
+#   - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
+#   - 'CLOUDSDK_CONTAINER_CLUSTER=likeminds-nonprod-autopilot-cluster'
+#   - 'CLOUDSDK_GET_CREDENTIALS_OPTS=--internal-ip'
