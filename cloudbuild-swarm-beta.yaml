@@ -36,11 +36,11 @@ steps:
   - container
   - clusters
   - get-credentials
+  - likeminds-nonprod-autopilot-cluster
   - --project=likeminds-nonprod-prj-24e1
+  - --region=asia-south1
   - --internal-ip
-  env:
-  - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
-  - 'CLOUDSDK_CONTAINER_CLUSTER=likeminds-nonprod-autopilot-cluster'
+
 
 # apply the manifest
 - name: 'gcr.io/cloud-builders/kubectl'
