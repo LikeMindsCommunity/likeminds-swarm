@@ -7,7 +7,7 @@ steps:
   - '-f'
   - 'Dockerfile.swarm-beta'
   - '-t'
-  - 'asia-south1-docker.pkg.dev/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:$SHORT_SHA'
+  - 'asia-south1-docker.pkg.dev/likeminds-nonprod-prj-24e1/likeminds-non-prod/swarm-beta:$SHORT_SHA'
   - '.'
 
 # This step pushes the image to Artifact Registry
@@ -17,7 +17,7 @@ steps:
   id: Push
   args:
   - 'push'
-  - 'asia-south1-docker.pkg.dev/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:$SHORT_SHA'
+  - 'asia-south1-docker.pkg.dev/likeminds-nonprod-prj-24e1/likeminds-non-prod/swarm-beta:$SHORT_SHA'
 
 # generate the manifest
 - name: 'gcr.io/cloud-builders/gcloud'
@@ -26,7 +26,7 @@ steps:
   args:
   - '-c'
   - |
-     sed 's/swarm-beta:.*/swarm-beta:${SHORT_SHA}/g' deployment-swarm-beta.yaml
+     sed 's/swarm-beta:.*/swarm-beta:${SHORT_SHA}/g' deployment.yaml
 
 # apply the manifest
 - name: 'gcr.io/cloud-builders/kubectl'
@@ -34,10 +34,9 @@ steps:
   args:
   - 'apply'
   - '-f'
-  - 'deployment-swarm-beta.yaml'
+  - 'deployment.yaml'
   - '-n'
   - 'app-deploy'
   env:
   - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
   - 'CLOUDSDK_CONTAINER_CLUSTER=likeminds-nonprod-autopilot-cluster'
-  
