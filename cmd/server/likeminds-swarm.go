@@ -11,6 +11,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/repositories"
 	"github.com/nateshr/likeminds-swarm/internal/services/database"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
+	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/web"
 )
 
@@ -25,6 +26,8 @@ func main() {
 
 	initGin()
 	db := database.InitiateDB()
+	es := searchElastic.InitiateES()
+
 	router.Use(cors.New(enableCors()))
 
 	router.GET("", web.Home)
@@ -44,8 +47,11 @@ func main() {
 	saveHelper := helpers.NewSaveHelper(saveRepository)
 	activityHelper := helpers.NewActivityHelper(activityRepository)
 
+	// Dependency injection of elasticSearch Helper
+	esHelper := searchElastic.NewESHelper(es)
+
 	// New feed Handler
-	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper)
+	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper, esHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)
@@ -53,7 +59,7 @@ func main() {
 	routes.UserRouter(routerGroup, feedHandlers)
 	routes.FeedRouter(routerGroup, feedHandlers)
 
-	log.Printf("application version: %s", AppVersion)
+	log.Printf("Main: application version: %s", AppVersion)
 	log.Fatal(router.Run(":8080"))
 }
 

@@ -35,12 +35,12 @@ func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 func InitiateDB() *mongo.Database {
 	connectionURI := os.Getenv("MONGODB_URI")
 	if connectionURI == "" {
-		log.Fatal("You must set your 'MONGODB_URI' environment variable.")
+		log.Fatal("Database(Mongo): You must set your 'MONGODB_URI' environment variable.")
 	}
 
 	db_name := os.Getenv("DB_NAME")
 	if db_name == "" {
-		log.Fatal("You must set your 'DB_NAME' environment variable.")
+		log.Fatal("Database(Mongo): You must set your 'DB_NAME' environment variable.")
 	}
 
 	var client *mongo.Client
@@ -50,12 +50,12 @@ func InitiateDB() *mongo.Database {
 	if cloud_provider == "" || cloud_provider == "AWS" {
 		caFilePath := os.Getenv("CA_FILE_PATH")
 		if caFilePath == "" {
-			log.Fatal("You must set your 'CA_FILE_PATH' environment variable.")
+			log.Fatal("Database(Mongo): You must set your 'CA_FILE_PATH' environment variable.")
 		}
 
 		tlsConfig, err := getCustomTLSConfig(caFilePath)
 		if err != nil {
-			log.Fatalf("Failed getting TLS configuration: %v", err)
+			log.Fatalf("Database(Mongo): Failed getting TLS configuration: %v", err)
 		}
 
 		// Create a new client and connect to the server
@@ -75,7 +75,7 @@ func InitiateDB() *mongo.Database {
 	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		panic(err)
 	}
-	fmt.Println("Successfully connected and pinged.")
+	fmt.Println("Database(Mongo): Successfully connected and pinged.")
 
 	return client.Database(db_name)
 }

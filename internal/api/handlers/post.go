@@ -192,6 +192,20 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// fetch post data using new post_id
+	post_data, err := fetchPost(handlers.postHelper, post_id.(primitive.ObjectID).Hex(), community_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// insert post data in elastic search
+	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// parse tagged members
 	tagged_members, err := getTaggedUsers(createPostRequest.Text)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -320,6 +334,12 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		return
 	}
 
+	// delete post data in elastic search
+	err = handlers.esHelper.DeleteDocument(c, post_data.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	// create delete activity
 	_, err = createActivity(*handlers, constants.DeleteAction, post_data.ID, constants.PostEntityType,
 		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
@@ -364,6 +384,19 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	// fetch updated post data using post_id
+	post_data, err = fetchPost(handlers.postHelper, post_id, community_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// update post data in elastic search
+	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
 	}
 
 	// return final response
