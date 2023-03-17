@@ -320,7 +320,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch comment response data
 	fetch_comment_response, err := fetchCommentData(handlers, comment_id, post_id, comment_filter_options, headers[utils.HeadersMemberId], is_cm)
 	if err == nil {
-		response["post"] = fetch_comment_response
+		response["comment"] = fetch_comment_response
 	}
 
 	// return final response
