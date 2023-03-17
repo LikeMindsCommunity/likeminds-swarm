@@ -250,6 +250,35 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	})
 }
 
+func fetchCommentData(handlers *FeedHandlers, comment_id string, post_id string, filter_options map[string]interface{}, member_id string, is_cm bool) (interface{}, error) {
+	// fetch comment data
+	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
+	if err != nil {
+		return nil, err
+	}
+
+	comment_filter_data := gin.H{
+		"_id": gin.H{
+			"$in": comment_data.Replies,
+		},
+		"is_deleted": false,
+		"post_id":    post_id,
+	}
+
+	// fetch comment using helper method
+	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, filter_options)
+	if err != nil {
+		return nil, err
+	}
+
+	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, member_id, is_cm)
+	comment_response := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *comment_data, member_id, is_cm)
+	fetch_comment_response := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_data,
+		comment_response, replies_response, member_id, is_cm)
+
+	return fetch_comment_response, nil
+}
+
 // Exposed method to fetch comment by comment_id and post_id
 func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch headers and url params
@@ -276,21 +305,6 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 		return
 	}
 
-	// fetch comment data
-	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	comment_filter_data := gin.H{
-		"_id": gin.H{
-			"$in": comment_data.Replies,
-		},
-		"is_deleted": false,
-		"post_id":    post_id,
-	}
-
 	// filter options
 	comment_filter_options, err := generatePageFilterOptions(c)
 	if err != nil {
@@ -298,23 +312,19 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 		return
 	}
 
-	// fetch comment using helper method
-	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, comment_filter_options)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+	// reponse data
+	response := gin.H{
+		"success": true,
 	}
 
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, headers[utils.HeadersMemberId], is_cm)
-	comment_response := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *comment_data, headers[utils.HeadersMemberId], is_cm)
-	fetch_comment_response := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_data,
-		comment_response, replies_response, headers[utils.HeadersMemberId], is_cm)
+	// fetch comment response data
+	fetch_comment_response, err := fetchCommentData(handlers, comment_id, post_id, comment_filter_options, headers[utils.HeadersMemberId], is_cm)
+	if err == nil {
+		response["post"] = fetch_comment_response
+	}
 
 	// return final response
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"comment": fetch_comment_response,
-	})
+	c.JSON(http.StatusOK, response)
 }
 
 // Exposed Method to comment on a Post
@@ -402,10 +412,26 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 	}
 
-	// return final response
-	c.JSON(http.StatusOK, gin.H{
+	// filter options
+	comment_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// reponse data
+	response := gin.H{
 		"success": true,
-	})
+	}
+
+	// fetch comment response data
+	fetch_comment_response, err := fetchCommentData(handlers, comment_id.(primitive.ObjectID).Hex(), post_id, comment_filter_options, headers[utils.HeadersMemberId], false)
+	if err == nil {
+		response["comment"] = fetch_comment_response
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
 }
 
 // Exposed Method to Reply on a Comment
@@ -510,10 +536,26 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		}
 	}
 
-	// return final response
-	c.JSON(http.StatusOK, gin.H{
+	// filter options
+	comment_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// reponse data
+	response := gin.H{
 		"success": true,
-	})
+	}
+
+	// fetch comment response data
+	fetch_comment_response, err := fetchCommentData(handlers, new_comment_id.(primitive.ObjectID).Hex(), post_id, comment_filter_options, headers[utils.HeadersMemberId], false)
+	if err == nil {
+		response["comment"] = fetch_comment_response
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
 }
 
 // Exposed Method to Delete a Comment
