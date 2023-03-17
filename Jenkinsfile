@@ -18,11 +18,9 @@ pipeline {
                 changeset "LikeMinds-Swarm/Dockerfile.swarm-beta"
             }
             steps{
-
                 script{
                     sh 'gcloud auth configure-docker asia.gcr.io'
-                   
-                    sh 'docker build -f Dockerfile.swarm-beta -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm:${BUILD_NUMBER} . '
+                    sh 'docker build -f Dockerfile.swarm-beta -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:${BUILD_NUMBER} . '
                     }
                 }
             }
@@ -30,7 +28,7 @@ pipeline {
             steps{
                 script{
                     sh 'gcloud auth configure-docker asia.gcr.io'
-                    sh 'docker push asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm:${BUILD_NUMBER}'
+                    sh 'docker push asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:${BUILD_NUMBER}'
                       }
                  }
             }
@@ -40,8 +38,7 @@ pipeline {
                 
                 sh "sed 's/swarm-beta:.*/swarm-beta:${BUILD_NUMBER}/g' deployment-swarm-beta.yaml"
                 sh "gcloud container clusters get-credentials ${env.CLUSTER_NAME} --region ${env.LOCATION} --project ${env.PROJECT_ID} --internal-ip" 
-                sh 'kubectl apply -f /home/ayushi_shekhar/LikeMinds-Swarm/deployment-swarm-beta.yaml'
-
+                sh 'kubectl apply -f /home/app-deploy/LikeMinds-Swarm/deployment-swarm-beta.yaml'
                 
             }
         }
