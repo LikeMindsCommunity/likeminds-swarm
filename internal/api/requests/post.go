@@ -44,6 +44,11 @@ type DeletePostRequest struct {
 	DeleteReason string `json:"delete_reason"`
 }
 
+// Request Structure for Delete User Data
+type DeleteUserDataRequest struct {
+	UserIsCm bool `json:"user_is_cm"`
+}
+
 // Resonse Structure for Post
 type PostResponse struct {
 	ID            primitive.ObjectID    `json:"_id"`
