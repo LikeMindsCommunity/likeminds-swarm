@@ -113,6 +113,32 @@ func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (
 	return &post_results[0], nil
 }
 
+// Internal Method to fetch post data
+func fetchPostData(handlers *FeedHandlers, post_id string, community_id int, filter_options map[string]interface{}, member_id string, is_cm bool) (interface{}, error) {
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	if err != nil {
+		return nil, err
+	}
+
+	comment_filter_data := gin.H{
+		"level":      constants.CommentBaseLevel,
+		"is_deleted": false,
+		"post_id":    post_id,
+	}
+
+	// fetch comment using helper method
+	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, filter_options)
+	if err != nil {
+		return nil, err
+	}
+
+	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, *post_data, member_id, is_cm)
+	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, member_id, is_cm)
+	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper, post_response, replies_response)
+
+	return fetch_post_response, nil
+}
+
 // Exposed Method to create a Post
 func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
@@ -225,10 +251,26 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		}
 	}
 
-	// return final response
-	c.JSON(http.StatusOK, gin.H{
+	// filter options
+	filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// reponse data
+	response := gin.H{
 		"success": true,
-	})
+	}
+
+	// fetch post response data
+	fetch_post_data, err := fetchPostData(handlers, post_id.(primitive.ObjectID).Hex(), community_id, filter_options, headers[utils.HeadersMemberId], false)
+	if err == nil {
+		response["post"] = fetch_post_data
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
 }
 
 // Exposed Method to fetch a Post using post_id
@@ -249,18 +291,6 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 		return
 	}
 
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	comment_filter_data := gin.H{
-		"level":      constants.CommentBaseLevel,
-		"is_deleted": false,
-		"post_id":    post_id,
-	}
-
 	// filter options
 	comment_filter_options, err := generatePageFilterOptions(c)
 	if err != nil {
@@ -268,22 +298,19 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 		return
 	}
 
-	// fetch comment using helper method
-	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, comment_filter_options)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+	// reponse data
+	response := gin.H{
+		"success": true,
 	}
 
-	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		*post_data, headers[utils.HeadersMemberId], is_cm)
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, headers[utils.HeadersMemberId], is_cm)
-	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper, post_response, replies_response)
+	// fetch post response data
+	fetch_post_data, err := fetchPostData(handlers, post_id, community_id, comment_filter_options, headers[utils.HeadersMemberId], is_cm)
+	if err == nil {
+		response["post"] = fetch_post_data
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"post":    fetch_post_response,
-	})
+	// return final response
+	c.JSON(http.StatusOK, response)
 }
 
 // Exposed Method to delete a Post
