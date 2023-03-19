@@ -22,4 +22,5 @@ func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup.DELETE("/:post_id/comment/:comment_id", handler.DeleteComment)
 	postGroup.GET("/:post_id/comment/:comment_id/like", handler.FetchCommentLikes)
 	postGroup.PUT("/:post_id/comment/:comment_id/like", handler.LikeComment)
+	postGroup.GET("/search", handler.SearchPost)
 }

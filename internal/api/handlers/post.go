@@ -456,3 +456,41 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response, posts_count))
 }
+
+// Exposed Method to search Posts
+func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
+	// fetch query params
+	var searchPostRequest requests.SearchPostRequest
+
+	err := c.BindQuery(&searchPostRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch pagination query params
+	page, page_size, err := fetchPaginationParams(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// parsing of chatroom ids
+	excluded_chatroom_ids := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
+
+	// dsl query to search posts
+	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, excluded_chatroom_ids)
+	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
+
+	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
+}
