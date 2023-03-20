@@ -34,7 +34,9 @@ pipeline {
             steps{
                 
                 sh "sed 's/swarm-beta:.*/swarm-beta:${BUILD_NUMBER}/g' deployment-swarm-beta.yaml"
-                sh "gcloud container clusters get-credentials ${env.CLUSTER_NAME} --region ${env.LOCATION} --project ${env.PROJECT_ID} --internal-ip" 
+                sh "gcloud container clusters get-credentials ${env.CLUSTER_NAME} --region ${env.LOCATION} --project ${env.PROJECT_ID} --internal-ip"
+                sh "pwd"
+                sh "ls" 
                 sh 'kubectl apply -f LikeMinds-Swarm/deployment-swarm-beta.yaml'
                 
             }
