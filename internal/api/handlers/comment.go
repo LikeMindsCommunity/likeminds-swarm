@@ -354,7 +354,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// create comment using the helper method
-	comment_id, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, post_data.ID,
+	comment_id, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, post_data.ID, community_id,
 		constants.CommentBaseLevel, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -475,7 +475,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// create comment using the helper method
-	new_comment_id, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, post_data.ID,
+	new_comment_id, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, post_data.ID, community_id,
 		comment_data.Level+1, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
