@@ -14,7 +14,6 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
-	user_id := c.Param("user_id")
 
 	// validation of api_key
 	community_id := externalHelpers.GetCommunityId(c)
@@ -29,8 +28,14 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 		return
 	}
 
-	// validation of user permission
-	if !deleteUserDataRequest.UserIsCm && headers[utils.HeadersMemberId] != user_id {
+	// Check if user is not cm if user_ids are more than 1
+	if !deleteUserDataRequest.UserIsCm && len(deleteUserDataRequest.UserIds) > 1 {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// Check if user is not cm and user_id is same as member_id
+	if !deleteUserDataRequest.UserIsCm && len(deleteUserDataRequest.UserIds) > 0 && deleteUserDataRequest.UserIds[0] != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
@@ -44,36 +49,41 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 		},
 	}
 
-	// fetch user posts
-	user_posts, err := handlers.postHelper.FindPostHelper(gin.H{"user_id": user_id, "is_deleted": false, "community_id": community_id}, gin.H{})
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
+	// Iterate over all user ids and delete all posts and comments
+	for _, user_id := range deleteUserDataRequest.UserIds {
 
-	// update all user posts to deleted
-	for _, post := range user_posts {
-		err = handlers.postHelper.UpdatePostByIdHelper(post.ID, update_data)
+		// fetch user posts
+		user_posts, err := handlers.postHelper.FindPostHelper(gin.H{"user_id": user_id, "is_deleted": false, "community_id": community_id}, gin.H{})
 		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
+			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
-	}
 
-	// fetch user comments
-	user_comments, err := handlers.commentHelper.FindCommentHelper(gin.H{"user_id": user_id, "is_deleted": false, "community_id": community_id}, gin.H{})
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
+		// soft delete all user posts
+		for _, post := range user_posts {
+			err = handlers.postHelper.UpdatePostByIdHelper(post.ID, update_data)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+		}
 
-	// update all user comments to deleted
-	for _, comment := range user_comments {
-		err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, update_data)
+		// fetch user comments
+		user_comments, err := handlers.commentHelper.FindCommentHelper(gin.H{"user_id": user_id, "is_deleted": false, "community_id": community_id}, gin.H{})
 		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
+			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
+
+		// soft delete all user comments
+		for _, comment := range user_comments {
+			err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, update_data)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+		}
+
 	}
 
 	// return final response

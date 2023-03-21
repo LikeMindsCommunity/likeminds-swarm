@@ -13,5 +13,5 @@ func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	userGroup.GET("/:user_id/post", handler.FetchUserCreatedPosts)
 	userGroup.GET("/:user_id/activity", handler.FetchUserActivity)
 	userGroup.POST("/:user_id/activity", handler.ExternalCreateActivity)
-	userGroup.DELETE("/:user_id", handler.DeleteUserData)
+	userGroup.DELETE("/", handler.DeleteUserData)
 }
