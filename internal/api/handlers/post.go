@@ -487,7 +487,6 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 }
 
 func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, user_id string, is_cm bool) []requests.PostResponse {
-	fmt.Println(data)
 	postDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
 	var postList []entities.Post
 
@@ -536,9 +535,10 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 
 	// parsing of chatroom ids
 	excluded_chatroom_ids := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
+	parsed_excluded_chatroom_ids, _ := json.Marshal(excluded_chatroom_ids)
 
 	// dsl query to search posts
-	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, excluded_chatroom_ids)
+	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, fmt.Sprintf("%v", string(parsed_excluded_chatroom_ids)))
 	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)
@@ -581,11 +581,8 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 		return
 	}
 
-	// parsing of chatroom ids
-	excluded_chatroom_ids := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
-
 	// dsl query to search posts
-	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, excluded_chatroom_ids)
+	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, user_id)
 	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)

@@ -27,7 +27,7 @@ var IndexMapping = map[string]string{
 			"analysis": {
 				"analyzer": {
 					"autocomplete": {
-						"type": "custom", 
+						"type": "custom",
 						"tokenizer": "standard",
 						"char_filter": [
 							"html_strip"
