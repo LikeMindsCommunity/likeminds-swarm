@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"reflect"
 	"strings"
 	"time"
 
@@ -36,13 +35,13 @@ func constructQuery(query string) *strings.Reader {
 	return read
 }
 
+// Exposed method to execute a query in ElasticSearch
 func (esHelper *esHelper) ExecuteQuery(query string, index string) map[string]interface{} {
 	// Create a context object for the API calls
 	ctx := context.Background()
 
 	// Pass the query string to the function and have it return a Reader object
 	read := constructQuery(query)
-	fmt.Println("Search(Elastic): read:", read)
 
 	// Instantiate a map interface object for storing returned documents
 	var mapResp map[string]interface{}
@@ -53,7 +52,6 @@ func (esHelper *esHelper) ExecuteQuery(query string, index string) map[string]in
 	if err := json.NewEncoder(&buf).Encode(&read); err != nil {
 		log.Fatalf("Search(Elastic): json.NewEncoder() ERROR: %v", err)
 	} else {
-		fmt.Println("Search(Elastic): json.NewEncoder encoded query:", read)
 		client := esHelper.esClient
 
 		// Pass the JSON query to the Golang client's Search() method
@@ -71,8 +69,6 @@ func (esHelper *esHelper) ExecuteQuery(query string, index string) map[string]in
 
 			// If no errors are returned, parse esapi.Response object
 		} else {
-			fmt.Println("Search(Elastic): res TYPE:", reflect.TypeOf(res))
-
 			// Close the result body when the function call is complete
 			defer res.Body.Close()
 
@@ -83,16 +79,6 @@ func (esHelper *esHelper) ExecuteQuery(query string, index string) map[string]in
 
 	return mapResp
 }
-
-// func (esHelper *esHelper) IndexDocuments(documents []string, index string) {
-// 	// Create a context object for the API calls
-// 	ctx := context.Background()
-
-// 	// Iterate the array of string documents
-// 	for _, bod := range documents {
-// 		esHelper.IndexDocument(ctx, bod, index)
-// 	}
-// }
 
 // Exposed method to create a new index in ElasticSearch
 func (esHelper *esHelper) CreateIndex(index string) error {
@@ -108,7 +94,12 @@ func (esHelper *esHelper) CreateIndex(index string) error {
 		return fmt.Errorf("Search(Elastic): error in index existence response: %s", res.String())
 	}
 
-	res, err = esHelper.esClient.Indices.Create(index)
+	if mapping, ok := IndexMapping[index]; ok {
+		res, err = esHelper.esClient.Indices.Create(index, esHelper.esClient.Indices.Create.WithBody(strings.NewReader(mapping)))
+	} else {
+		res, err = esHelper.esClient.Indices.Create(index)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Search(Elastic): cannot create index: %w", err)
 	}
@@ -119,6 +110,17 @@ func (esHelper *esHelper) CreateIndex(index string) error {
 	return nil
 }
 
+// Exposed method to delete an existing index in ElasticSearch
+func (esHelper *esHelper) DeleteIndex(index string) error {
+	_, err := esHelper.esClient.Indices.Delete([]string{index})
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): cannot delete index: %w", err)
+	}
+
+	return nil
+}
+
+// Exposed method to insert a new document in ElasticSearch
 func (esHelper *esHelper) InsertDocument(ctx context.Context, document interface{}, documentId string, index string) error {
 
 	err := esHelper.CreateIndex(index)
@@ -153,6 +155,7 @@ func (esHelper *esHelper) InsertDocument(ctx context.Context, document interface
 	return nil
 }
 
+// Exposed method to update an existing document in ElasticSearch
 func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface{}, documentId string, index string) error {
 
 	err := esHelper.CreateIndex(index)
@@ -187,6 +190,7 @@ func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface
 	return nil
 }
 
+// Exposed method to delete an existing document in ElasticSearch
 func (esHelper *esHelper) DeleteDocument(ctx context.Context, documentId string, index string) error {
 
 	err := esHelper.CreateIndex(index)

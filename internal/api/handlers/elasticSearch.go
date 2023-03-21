@@ -30,14 +30,6 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 	{
 		"from": %d,
 		"size": %d,
-		"sort": {
-			"_score": {
-				"order": "desc"
-			},
-			"updated_at": {
-				"order": "desc"
-			}
-		},
 		"query": {
 			"bool": {
 				"must": [
@@ -46,9 +38,8 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 							"should": [
 								{
 									"match": {
-										%s: {
-											"query": %s,
-											"analyzer": "standard"
+										"%s": {
+											"query": "%s"
 										}
 									}
 								}
@@ -57,12 +48,43 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 					}
 				],
 				"must_not": [
+				{
+					"term": {"chatroom_id": %v}
+				}
+			]
+			}
+		}
+	}
+	`, from, page_size, search_type, search, chatroom_ids)
+}
+
+// Exposed method to create post search query
+func GetSelfPostFilterQuery(page int, page_size int, search_type string, search string, chatroom_ids []int) string {
+	// from := page_size * (page - 1)
+
+	return fmt.Sprintf(`
+	{
+		"from": 0,
+		"size": 20,
+		"query": {
+			"bool": {
+				"must": [
 					{
-						"term": {chatroom_id: %v}
+						"bool": {
+							"should": [
+								{
+									"match": {
+										"%s": {
+											"query": "%s"
+										}
+									}
+								}
+							]
+						}
 					}
 				]
 			}
 		}
 	}
-	`, from, page_size, search_type, search, chatroom_ids)
+	`, search_type, search)
 }

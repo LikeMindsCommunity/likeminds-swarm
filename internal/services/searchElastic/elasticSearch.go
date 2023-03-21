@@ -32,23 +32,29 @@ func getESClusterInfo(client *elasticsearch.Client) {
 }
 
 func InitiateES() *elasticsearch.Client {
-	// Instantiate an Elasticsearch configuration
-	cfg := elasticsearch.Config{
-		Addresses: []string{
-			"http://localhost:9200",
-		},
+	var esInstance *elasticsearch.Client = nil
+
+	if esInstance == nil {
+		// Instantiate an Elasticsearch configuration
+		cfg := elasticsearch.Config{
+			Addresses: []string{
+				"http://localhost:9200",
+			},
+		}
+
+		// Instantiate a new Elasticsearch client object instance
+		client, err := elasticsearch.NewClient(cfg)
+
+		// Check for connection errors to the Elasticsearch cluster
+		if err != nil {
+			log.Fatalf("Search(Elastic): Elasticsearch connection error: %v", err)
+		}
+
+		// Get cluster info
+		getESClusterInfo(client)
+
+		esInstance = client
 	}
 
-	// Instantiate a new Elasticsearch client object instance
-	client, err := elasticsearch.NewClient(cfg)
-
-	// Check for connection errors to the Elasticsearch cluster
-	if err != nil {
-		log.Fatalf("Search(Elastic): Elasticsearch connection error: %v", err)
-	}
-
-	// Get cluster info
-	getESClusterInfo(client)
-
-	return client
+	return esInstance
 }

@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -228,7 +230,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// insert post data in elastic search
 	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Print(err.Error())
 	}
 
 	// parse tagged members
@@ -484,9 +486,33 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response, posts_count))
 }
 
+func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, user_id string, is_cm bool) []requests.PostResponse {
+	fmt.Println(data)
+	postDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
+	var postList []entities.Post
+
+	for _, data := range postDetails {
+		postData := data.(map[string]interface{})["_source"].(map[string]interface{})
+		postData["_id"] = postData["id"]
+
+		// convert the data to post entity
+		var post entities.Post
+		b, _ := json.Marshal(postData)
+		json.Unmarshal(b, &post)
+
+		postList = append(postList, post)
+	}
+
+	post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+		postList, user_id, is_cm)
+
+	return post_response
+}
+
 // Exposed Method to search Posts
 func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
-	// fetch query params
+	// fetch query params and headers
+	headers := utils.GetHeaders(c)
 	var searchPostRequest requests.SearchPostRequest
 
 	err := c.BindQuery(&searchPostRequest)
@@ -515,9 +541,58 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, excluded_chatroom_ids)
 	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
 
+	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)
+
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    response,
+		"data":    finalResponse,
+	})
+}
+
+// Exposed Method to search user created Posts
+func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
+	// fetch query params and headers
+	user_id := c.Param("user_id")
+	headers := utils.GetHeaders(c)
+	var searchPostRequest requests.SearchPostRequest
+
+	err := c.BindQuery(&searchPostRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch pagination query params
+	page, page_size, err := fetchPaginationParams(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	if user_id != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
+		return
+	}
+
+	// parsing of chatroom ids
+	excluded_chatroom_ids := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
+
+	// dsl query to search posts
+	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, excluded_chatroom_ids)
+	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
+
+	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)
+
+	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    finalResponse,
 	})
 }
