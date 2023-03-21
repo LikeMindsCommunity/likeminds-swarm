@@ -546,7 +546,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    finalResponse,
+		"posts":   finalResponse,
 	})
 }
 
@@ -590,6 +590,6 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    finalResponse,
+		"posts":   finalResponse,
 	})
 }
