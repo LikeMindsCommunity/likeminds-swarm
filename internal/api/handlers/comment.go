@@ -133,6 +133,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.ID = comment.ID
 	response.Text = comment.Text
 	response.Level = comment.Level
+	response.CommunityId = comment.CommunityId
 	response.UserId = comment.UserId
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, comment.ID.Hex(), constants.CommentEntityType, user_id)
 	response.LikesCount = int(likes_count)
