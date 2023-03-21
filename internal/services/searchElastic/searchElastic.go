@@ -3,6 +3,7 @@ package searchElastic
 import (
 	"encoding/json"
 	"log"
+	"os"
 
 	// Import the Elasticsearch library packages
 	"github.com/elastic/go-elasticsearch/v7"
@@ -38,7 +39,7 @@ func InitiateES() *elasticsearch.Client {
 		// Instantiate an Elasticsearch configuration
 		cfg := elasticsearch.Config{
 			Addresses: []string{
-				"http://localhost:9200",
+				os.Getenv("ELASTIC_SEARCH_HOST"),
 			},
 		}
 
