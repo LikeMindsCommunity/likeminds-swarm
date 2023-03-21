@@ -45,7 +45,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 	}
 
 	// fetch user posts
-	user_posts, err := handlers.postHelper.FindPostHelper(gin.H{"user_id": user_id, "is_deleted": false}, gin.H{})
+	user_posts, err := handlers.postHelper.FindPostHelper(gin.H{"user_id": user_id, "is_deleted": false, "community_id": community_id}, gin.H{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -61,7 +61,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 	}
 
 	// fetch user comments
-	user_comments, err := handlers.commentHelper.FindCommentHelper(gin.H{"user_id": user_id, "is_deleted": false}, gin.H{})
+	user_comments, err := handlers.commentHelper.FindCommentHelper(gin.H{"user_id": user_id, "is_deleted": false, "community_id": community_id}, gin.H{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
