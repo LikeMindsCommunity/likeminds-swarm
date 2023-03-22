@@ -22,7 +22,7 @@ func indexPostData(handlers *handlers.FeedHandlers) {
 func addCommunityIdToComments(handlers *handlers.FeedHandlers) {
 	err := handlers.InsertCommunityIDToAllComments()
 	if err != nil {
-		log.Fatalf("Scripts: Error running addCommunityIdToComments: %s", err.Error())
+		log.Println("Scripts: Error running addCommunityIdToComments: ", err.Error())
 		return
 	}
 	log.Println("Scripts: addCommunityIdToAllComments completed successfully")

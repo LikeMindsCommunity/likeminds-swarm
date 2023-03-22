@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -59,7 +58,8 @@ func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 		// fetch post using helper method
 		post_data, err := handlers.postHelper.FindPostHelper(gin.H{"_id": post_id}, gin.H{})
 		if err != nil || len(post_data) == 0 {
-			return fmt.Errorf("post not found")
+			log.Println("Post not found for comment id: ", comment.ID.Hex())
+			continue
 		}
 
 		// comment update data
@@ -72,7 +72,8 @@ func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 		// update comment data
 		err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, comment_update_data)
 		if err != nil {
-			return err
+			log.Println("Error while updating comment with id: ", comment.ID.Hex())
+			continue
 		}
 	}
 

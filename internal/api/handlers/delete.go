@@ -35,7 +35,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 	}
 
 	// Check if user is not cm and user_id is same as member_id
-	if !deleteUserDataRequest.UserIsCm && len(deleteUserDataRequest.UserIds) > 0 && deleteUserDataRequest.UserIds[0] != headers[utils.HeadersMemberId] {
+	if !deleteUserDataRequest.UserIsCm && deleteUserDataRequest.UserIds[0] != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
