@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 )
 
 // Feed Handlers structure for all Helper classes
@@ -19,17 +20,19 @@ type FeedHandlers struct {
 	postHelper     interfaces.PostHelper
 	activityHelper interfaces.ActivityHelper
 	saveHelper     interfaces.SaveHelper
+	esHelper       searchElastic.EsHelper
 }
 
 // Exposed Method to get an instance for Feed Handlers
-func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	postHelper interfaces.PostHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper) *FeedHandlers {
+func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, postHelper interfaces.PostHelper,
+	saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, esHelper searchElastic.EsHelper) *FeedHandlers {
 	return &FeedHandlers{
 		likeHelper:     likeHelper,
 		commentHelper:  commentHelper,
 		postHelper:     postHelper,
 		saveHelper:     saveHelper,
 		activityHelper: activityHelper,
+		esHelper:       esHelper,
 	}
 }
 
