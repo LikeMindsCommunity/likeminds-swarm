@@ -11,7 +11,7 @@ type Comment struct {
 	ID           primitive.ObjectID   `json:"_id" bson:"_id,omitempty"`
 	Text         string               `json:"text" bson:"text"`
 	PostId       primitive.ObjectID   `json:"post_id" bson:"post_id"`
-	CommunityId  int                  `json:"community_id" bson:"community_id"`
+	CommunityId  int                  `json:"community_id" bson:"community_id,omitempty"`
 	Level        int                  `json:"level" bson:"level"`
 	Replies      []primitive.ObjectID `json:"replies" bson:"replies"`
 	UserId       string               `json:"user_id" bson:"user_id"`
