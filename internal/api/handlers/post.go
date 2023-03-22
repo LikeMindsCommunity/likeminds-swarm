@@ -538,7 +538,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	parsed_excluded_chatroom_ids, _ := json.Marshal(excluded_chatroom_ids)
 
 	// dsl query to search posts
-	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, fmt.Sprintf("%v", string(parsed_excluded_chatroom_ids)))
+	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, fmt.Sprintf("%v", string(parsed_excluded_chatroom_ids)), community_id)
 	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)
@@ -582,7 +582,7 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	// dsl query to search posts
-	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, user_id)
+	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, user_id, community_id)
 	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)
