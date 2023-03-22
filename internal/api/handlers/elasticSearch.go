@@ -64,7 +64,8 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 					{
 						"match": {
 							"%s": {
-								"query": "%s"
+								"query": "%s",
+								"analyzer": "standard"
 							}
 						}
 					}
@@ -101,7 +102,8 @@ func GetSelfPostFilterQuery(page int, page_size int, search_type string, search 
 		searchQuery = fmt.Sprintf(`{
 			"match": {
 				"%s": {
-					"query": "%s"
+					"query": "%s",
+					"analyzer": "standard"
 				}
 			}
 		},`, search_type, search)
