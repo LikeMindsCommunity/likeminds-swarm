@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -63,8 +64,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 		for _, post := range user_posts {
 			err = handlers.postHelper.UpdatePostByIdHelper(post.ID, update_data)
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
+				log.Printf("Error while deleting post with _id %s : %s", post.ID.Hex(), err.Error())
 			}
 		}
 
@@ -79,8 +79,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 		for _, comment := range user_comments {
 			err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, update_data)
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
+				log.Printf("Error while deleting comment with _id %s : %s", comment.ID.Hex(), err.Error())
 			}
 		}
 
