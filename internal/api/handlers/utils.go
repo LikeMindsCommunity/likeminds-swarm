@@ -67,7 +67,7 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 		page_size = 10
 	}
 
-	if page_size >= 100 {
+	if page_size > 100 {
 		return page, 0, fmt.Errorf("max page_size limit exceeded")
 	}
 

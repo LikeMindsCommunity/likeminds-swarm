@@ -23,8 +23,9 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 }
 
 // Exposed method to create post search query
-func GetPostFilterQuery(page int, page_size int, search_type string, search string, chatroom_ids string) string {
+func GetPostFilterQuery(page int, page_size int, search_type string, search string, chatroom_ids string, community_id int) string {
 	from := page_size * (page - 1)
+
 	chatroomQuery := ""
 	if chatroom_ids != "" {
 		chatroomQuery = fmt.Sprintf(`{
@@ -36,6 +37,23 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 				}
 			}
 		}`, chatroom_ids)
+	}
+
+	communityQuery := ""
+	if community_id != 0 {
+		communityQuery = fmt.Sprintf(`{
+			"bool": {
+				"must": [
+					{
+						"match": {
+							"community_id": {
+								"query": %d
+							}
+						}
+					}
+				]
+			}
+		},`, community_id)
 	}
 
 	searchQuery := ""
@@ -67,15 +85,16 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 				"must": [
 					%s
 					%s
+					%s
 				]
 			}
 		}
 	}
-	`, from, page_size, searchQuery, chatroomQuery)
+	`, from, page_size, communityQuery, searchQuery, chatroomQuery)
 }
 
 // Exposed method to create post search query
-func GetSelfPostFilterQuery(page int, page_size int, search_type string, search string, member_id string) string {
+func GetSelfPostFilterQuery(page int, page_size int, search_type string, search string, member_id string, community_id int) string {
 	from := page_size * (page - 1)
 	searchQuery := ""
 	if search != "" && search_type != "" {
@@ -86,6 +105,23 @@ func GetSelfPostFilterQuery(page int, page_size int, search_type string, search 
 				}
 			}
 		},`, search_type, search)
+	}
+
+	communityQuery := ""
+	if community_id != 0 {
+		communityQuery = fmt.Sprintf(`{
+			"bool": {
+				"must": [
+					{
+						"match": {
+							"community_id": {
+								"query": %d
+							}
+						}
+					}
+				]
+			}
+		},`, community_id)
 	}
 
 	userQuery := ""
@@ -111,9 +147,10 @@ func GetSelfPostFilterQuery(page int, page_size int, search_type string, search 
 				"must": [
 					%s
 					%s
+					%s
 				]
 			}
 		}
 	}
-	`, from, page_size, searchQuery, userQuery)
+	`, from, page_size, communityQuery, searchQuery, userQuery)
 }
