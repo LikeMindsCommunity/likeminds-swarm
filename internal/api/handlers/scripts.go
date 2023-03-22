@@ -42,3 +42,40 @@ func (handlers *FeedHandlers) IndexAllPostData() error {
 
 	return nil
 }
+
+// function to insert community_id to all comments of a post
+func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
+
+	// fetch all comments
+	comment_results, err := handlers.commentHelper.FindCommentHelper(gin.H{}, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	for _, comment := range comment_results {
+		post_id := comment.PostId
+
+		// fetch post using helper method
+		post_data, err := handlers.postHelper.FindPostHelper(gin.H{"_id": post_id}, gin.H{})
+		if err != nil || len(post_data) == 0 {
+			log.Println("Post not found for comment id: ", comment.ID.Hex())
+			continue
+		}
+
+		// comment update data
+		comment_update_data := gin.H{
+			"$set": gin.H{
+				"community_id": post_data[0].CommunityId,
+			},
+		}
+
+		// update comment data
+		err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, comment_update_data)
+		if err != nil {
+			log.Println("Error while updating comment with id: ", comment.ID.Hex())
+			continue
+		}
+	}
+
+	return nil
+}

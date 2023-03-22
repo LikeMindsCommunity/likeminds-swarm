@@ -10,8 +10,8 @@ import (
 )
 
 // Exposed Helper Method to Create a Comment
-func (helper *commentHelper) CreateCommentHelper(text string, postId primitive.ObjectID, level int, userId string) (interface{}, error) {
-	comment := entities.NewComment(text, postId, level, userId)
+func (helper *commentHelper) CreateCommentHelper(text string, postId primitive.ObjectID, community_id int, level int, userId string) (interface{}, error) {
+	comment := entities.NewComment(text, postId, community_id, level, userId)
 	comment_id, err := helper.commentRepository.Create(&comment)
 
 	return comment_id, err
