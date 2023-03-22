@@ -64,7 +64,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 		for _, post := range user_posts {
 			err = handlers.postHelper.UpdatePostByIdHelper(post.ID, update_data)
 			if err != nil {
-				log.Printf("Error while deleting post with _id %s : %s", post.ID.Hex(), err.Error())
+				log.Printf("DeleteUserData() - Error while deleting post with _id %s : %s", post.ID.Hex(), err.Error())
 			}
 		}
 
@@ -79,7 +79,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 		for _, comment := range user_comments {
 			err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, update_data)
 			if err != nil {
-				log.Printf("Error while deleting comment with _id %s : %s", comment.ID.Hex(), err.Error())
+				log.Printf("DeleteUserData() - Error while deleting comment with _id %s : %s", comment.ID.Hex(), err.Error())
 			}
 		}
 
