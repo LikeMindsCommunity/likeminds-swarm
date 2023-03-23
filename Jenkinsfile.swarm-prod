@@ -35,7 +35,8 @@ pipeline {
                 
                 sh "sed 's/swarm-prod:.*/swarm-prod:${BUILD_NUMBER}/g' deployment-swarm-prod.yaml"
                 sh "gcloud container clusters get-credentials ${env.CLUSTER_NAME} --region ${env.LOCATION} --project ${env.PROJECT_ID} --internal-ip"
-                sh "pwd"               
+                sh 'kubectl apply -f /var/lib/jenkins/workspace/likeminds-swarm-prod/deployment-swarm-prod.yaml'
+                
             }
         }
     }  
