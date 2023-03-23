@@ -1,0 +1,20 @@
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  name: "swarm-prod"
+  namespace: "app-deploy"
+  labels:
+    app: "swarm-prod"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: "swarm-prod"
+  template:
+    metadata:
+      labels:
+        app: "swarm-prod"
+    spec:
+      containers:
+      - name: "likeminds-swarm-prod-1"
+        image: "asia.gcr.io/likeminds-prod-prj-5464/likeminds-swarm/swarm-prod:a22ed32"
