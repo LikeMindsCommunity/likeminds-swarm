@@ -13,3 +13,9 @@ type FetchExploreFeedResponse struct {
 	ChatroomIDs []int       `json:"chatroom_ids"`
 	PostCounts  map[int]int `json:"post_counts"`
 }
+
+// Request Structure for Delete User Data
+type DeleteUserDataRequest struct {
+	UserIsCm bool     `json:"user_is_cm"`
+	UserIds  []string `json:"user_ids"`
+}

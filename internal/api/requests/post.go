@@ -84,3 +84,11 @@ type FetchUserMultiplePostResponse struct {
 	TotalCount int            `json:"total_count,omitempty"`
 	Posts      []PostResponse `json:"posts"`
 }
+
+// Request Structure for Search Post
+type SearchPostRequest struct {
+	Search              string `form:"search"`
+	SearchType          string `form:"search_type"`
+	ExcludedChatroomIDs string `form:"excluded_chatroom_ids"`
+	UserIsCm            bool   `form:"user_is_cm"`
+}

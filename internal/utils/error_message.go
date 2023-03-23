@@ -6,6 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Error Messages
+const (
+	NotAuthorizedError = "You are not authorized to perform this operation."
+)
+
 // Exposed Method to send General Validation Error in API Response
 func GeneralAPIValidationError(c *gin.Context, errorMessage string) {
 	GeneralAPIError(c, errorMessage, http.StatusBadRequest)
