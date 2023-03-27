@@ -320,9 +320,12 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetch_comment_response, err := fetchCommentData(handlers, comment_id, post_id, comment_filter_options, headers[utils.HeadersMemberId], is_cm)
-	if err == nil {
-		response["comment"] = fetch_comment_response
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
 	}
+
+	response["comment"] = fetch_comment_response
 
 	// return final response
 	c.JSON(http.StatusOK, response)

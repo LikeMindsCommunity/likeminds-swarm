@@ -25,7 +25,8 @@ func fetchPostIdsFromSave(saved_posts []entities.Save) []primitive.ObjectID {
 }
 
 // Internal Method to fetch a Saved post of a User by post_id
-func fetchUserSavedPostByPostId(helper interfaces.SaveHelper, post_id string, saved_by string) ([]entities.Save, error) {
+func fetchUserSavedPostByPostId(helper interfaces.SaveHelper, post_id string,
+	saved_by string) ([]entities.Save, error) {
 	// save filter data
 	save_filter_data := gin.H{
 		"entity_id":   post_id,
@@ -77,7 +78,8 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	}
 
 	// fetch save using helper method
-	save_results, err := fetchUserSavedPostByPostId(handlers.saveHelper, post_id, headers[utils.HeadersMemberId])
+	save_results, err := fetchUserSavedPostByPostId(handlers.saveHelper, post_id,
+		headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -193,9 +195,11 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 		return
 	}
 
-	saved_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		post_results, user_id, is_cm)
+	saved_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, post_results, user_id, is_cm, headers[utils.HeadersVersionCode],
+		headers[utils.HeadersPlatformCode])
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, saved_post_response, save_count))
+	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, saved_post_response,
+		save_count))
 }

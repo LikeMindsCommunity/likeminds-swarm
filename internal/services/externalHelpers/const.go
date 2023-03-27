@@ -23,12 +23,6 @@ const (
 
 type PlatformType string
 
-const (
-	PlatformAndroid string = "an"
-	PlatformWeb     string = "web"
-	PlatformIoS     string = "ios"
-)
-
 const DefaultCommunityId = -1
 
 const SdkAuthenticateEndPoint = "/api/sdk/authenticate"

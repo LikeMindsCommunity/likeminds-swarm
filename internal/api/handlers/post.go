@@ -16,6 +16,27 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to parse Post Attachments
+func parsePostAttachments(attachments []entities.Attachment, versionCode string,
+	platformCode string) []entities.Attachment {
+	parsedAttachments := []entities.Attachment{}
+	showMediaExceptImage := utils.CheckVersion(utils.FeedMediaVersions, versionCode, platformCode)
+	newAttachmentMeta := entities.AttachmentMeta{
+		Url: constants.AttachmentNotFoundImageUrl,
+	}
+
+	for _, attachment := range attachments {
+		if attachment.AttachmentType != constants.ImageWidget && !showMediaExceptImage {
+			attachment.AttachmentType = constants.ImageWidget
+			attachment.AttachmentMeta = &newAttachmentMeta
+		}
+
+		parsedAttachments = append(parsedAttachments, attachment)
+	}
+
+	return parsedAttachments
+}
+
 // Internal Method to parse response for fetch multiple posts api
 func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse,
 	posts_count int64) requests.FetchUserMultiplePostResponse {
@@ -33,7 +54,8 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []re
 
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, post entities.Post, user_id string, is_cm bool) requests.PostResponse {
+	saveHelper interfaces.SaveHelper, post entities.Post, user_id string, is_cm bool,
+	versionCode string, platformCode string) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 	var response requests.PostResponse
@@ -45,13 +67,15 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.ChatroomId = post.ChatroomId
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
-	response.Attachments = post.Attachments
+	response.Attachments = parsePostAttachments(post.Attachments, versionCode, platformCode)
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
 	response.IsDeleted = post.IsDeleted
-	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(), constants.PostEntityType, user_id)
+	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(),
+		constants.PostEntityType, user_id)
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
-	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.PostEntityType, is_cm, user_id == post.UserId, post.IsPinned))
+	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.PostEntityType, is_cm,
+		user_id == post.UserId, post.IsPinned))
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
@@ -66,11 +90,13 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 
 // Internal Method to parse multiple post for response
 func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, posts []entities.Post, user_id string, is_cm bool) []requests.PostResponse {
+	saveHelper interfaces.SaveHelper, posts []entities.Post, user_id string, is_cm bool,
+	versionCode string, platformCode string) []requests.PostResponse {
 	response := []requests.PostResponse{}
 
 	for _, post := range posts {
-		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, post, user_id, is_cm))
+		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, post,
+			user_id, is_cm, versionCode, platformCode))
 	}
 
 	return response
@@ -116,7 +142,9 @@ func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (
 }
 
 // Internal Method to fetch post data
-func fetchPostData(handlers *FeedHandlers, post_id string, community_id int, filter_options map[string]interface{}, member_id string, is_cm bool) (interface{}, error) {
+func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
+	filter_options map[string]interface{}, member_id string, is_cm bool, versionCode string,
+	platformCode string) (interface{}, error) {
 	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		return nil, err
@@ -134,9 +162,12 @@ func fetchPostData(handlers *FeedHandlers, post_id string, community_id int, fil
 		return nil, err
 	}
 
-	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, *post_data, member_id, is_cm)
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, member_id, is_cm)
-	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper, post_response, replies_response)
+	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, *post_data, member_id, is_cm, versionCode, platformCode)
+	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
+		comment_results, member_id, is_cm)
+	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
+		post_response, replies_response)
 
 	return fetch_post_response, nil
 }
@@ -213,8 +244,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// create post using the helper method
-	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading, community_id,
-		headers[utils.HeadersMemberId], createPostRequest.Attachments, createPostRequest.ChatroomID)
+	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text,
+		createPostRequest.Heading, community_id, headers[utils.HeadersMemberId],
+		createPostRequest.Attachments, createPostRequest.ChatroomID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -228,7 +260,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(),
+		constants.PostIndexName)
 	if err != nil {
 		log.Print(err.Error())
 	}
@@ -242,8 +275,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	for _, member := range tagged_members {
 		// create tag activity
-		_, err = createActivity(*handlers, constants.TagAction, post_id.(primitive.ObjectID), constants.PostEntityType,
-			community_id, headers[utils.HeadersMemberId], member, gin.H{
+		_, err = createActivity(*handlers, constants.TagAction, post_id.(primitive.ObjectID),
+			constants.PostEntityType, community_id, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.PostEntityType,
 				"post_id":     post_id.(primitive.ObjectID).Hex(),
 			})
@@ -266,7 +299,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetch_post_data, err := fetchPostData(handlers, post_id.(primitive.ObjectID).Hex(), community_id, filter_options, headers[utils.HeadersMemberId], false)
+	fetch_post_data, err := fetchPostData(handlers, post_id.(primitive.ObjectID).Hex(), community_id,
+		filter_options, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode],
+		headers[utils.HeadersPlatformCode])
 	if err == nil {
 		response["post"] = fetch_post_data
 	}
@@ -306,10 +341,14 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetch_post_data, err := fetchPostData(handlers, post_id, community_id, comment_filter_options, headers[utils.HeadersMemberId], is_cm)
-	if err == nil {
-		response["post"] = fetch_post_data
+	fetch_post_data, err := fetchPostData(handlers, post_id, community_id, comment_filter_options,
+		headers[utils.HeadersMemberId], is_cm, headers[utils.HeadersVersionCode],
+		headers[utils.HeadersPlatformCode])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
 	}
+	response["post"] = fetch_post_data
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -423,7 +462,8 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	}
 
 	// update post data in elastic search
-	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(),
+		constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -436,7 +476,8 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 
 // Exposed Method to fetch all the Posts created by a User
 func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
-	// fetch url params
+	// fetch url params and headers
+	headers := utils.GetHeaders(c)
 	user_id := c.Param("user_id")
 	param_is_cm := c.Query("user_is_cm")
 	is_cm := false
@@ -479,14 +520,17 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		return
 	}
 
-	created_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		post_results, user_id, is_cm)
+	created_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, post_results, user_id, is_cm, headers[utils.HeadersVersionCode],
+		headers[utils.HeadersPlatformCode])
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response, posts_count))
+	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response,
+		posts_count))
 }
 
-func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, user_id string, is_cm bool) []requests.PostResponse {
+func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, user_id string,
+	is_cm bool, versionCode string, platformCode string) []requests.PostResponse {
 	postDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
 	var postList []entities.Post
 
@@ -502,8 +546,8 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 		postList = append(postList, post)
 	}
 
-	post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		postList, user_id, is_cm)
+	post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, postList, user_id, is_cm, versionCode, platformCode)
 
 	return post_response
 }
@@ -538,10 +582,12 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	parsed_excluded_chatroom_ids, _ := json.Marshal(excluded_chatroom_ids)
 
 	// dsl query to search posts
-	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, fmt.Sprintf("%v", string(parsed_excluded_chatroom_ids)), community_id)
+	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType,
+		searchPostRequest.Search, fmt.Sprintf("%v", string(parsed_excluded_chatroom_ids)), community_id)
 	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
 
-	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)
+	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
+		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -582,10 +628,12 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	// dsl query to search posts
-	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType, searchPostRequest.Search, user_id, community_id)
+	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType,
+		searchPostRequest.Search, user_id, community_id)
 	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
 
-	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId], searchPostRequest.UserIsCm)
+	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
+		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
