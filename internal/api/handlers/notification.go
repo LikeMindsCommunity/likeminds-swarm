@@ -436,11 +436,42 @@ func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandle
 	}
 }
 
+// Internal Method to validate notification receivers
+func validateReceivers(activity *entities.Activity) *entities.Activity {
+	receivers := []string{}
+
+	for _, receiver := range activity.ActionOn {
+		if receiver != activity.ActionBy {
+			receivers = append(receivers, receiver)
+		}
+	}
+
+	newActivity := &entities.Activity{
+		ID:          activity.ID,
+		ActionBy:    activity.ActionBy,
+		ActionOn:    receivers,
+		CommunityId: activity.CommunityId,
+		EntityType:  activity.EntityType,
+		Action:      activity.Action,
+		CTA:         activity.CTA,
+		CreatedAt:   activity.CreatedAt,
+		UpdatedAt:   activity.UpdatedAt,
+	}
+
+	return newActivity
+}
+
 // Exposed Method to send notification for every action
 func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers) {
 
 	activity, err := fetchActivity(handlers.activityHelper, activityId.Hex())
 	if err != nil {
+		return
+	}
+
+	// Don't send notification when action done by the entity creator
+	activity = validateReceivers(activity)
+	if len(activity.ActionOn) == 0 {
 		return
 	}
 
