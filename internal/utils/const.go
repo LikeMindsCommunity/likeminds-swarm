@@ -16,22 +16,3 @@ const (
 	PostDetailRoute    string = "route://post_detail?post_id=%s"
 	CommentDetailRoute string = "route://post_detail?post_id=%s&comment_id=%s"
 )
-
-const (
-	PlatformAndroid     string = "an"
-	PlatformWeb         string = "web"
-	PlatformIoS         string = "ios"
-	PlatformFlutter     string = "fl"
-	PlatformReactNative string = "rn"
-)
-
-var UnreleasedMaxVersion int = 9999
-var UnreleasedMinVersion int = -1
-
-var FeedMediaVersions = map[string]int{
-	PlatformAndroid:     UnreleasedMinVersion,
-	PlatformWeb:         UnreleasedMinVersion,
-	PlatformIoS:         UnreleasedMinVersion,
-	PlatformFlutter:     4,
-	PlatformReactNative: UnreleasedMinVersion,
-}
