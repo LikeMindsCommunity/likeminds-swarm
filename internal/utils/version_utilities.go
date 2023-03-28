@@ -31,6 +31,14 @@ func CheckVersion(featureVersionCode map[string]int, versionCode string, platfor
 		returns False for all other cases
 	*/
 
+	if versionCode == "" {
+		versionCode = "0"
+	}
+
+	if platformCode == "" {
+		platformCode = PlatformWeb
+	}
+
 	var isVersionCheck bool = false
 
 	featureVersionCodeForPlatform, ok := featureVersionCode[platformCode]

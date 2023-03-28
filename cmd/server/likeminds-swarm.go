@@ -12,7 +12,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/database"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"github.com/nateshr/likeminds-swarm/internal/web"
 )
 
@@ -32,7 +31,7 @@ func main() {
 	router.Use(cors.New(enableCors()))
 
 	router.GET("", web.Home)
-	router.Use(validateHeaders())
+
 	routerGroup := router.Group("/")
 
 	// Dependency injection of repositories
@@ -86,23 +85,4 @@ func enableCors() cors.Config {
 		"x-api-key",
 	)
 	return config
-}
-
-// Headers Validator Middleware
-func validateHeaders() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		headers := utils.GetHeaders(c)
-
-		if headers[utils.HeadersPlatformCode] == "" {
-			utils.MiddlewareGeneralValidationError(c, "Send x-platform-code in headers")
-			return
-		}
-
-		if headers[utils.HeadersVersionCode] == "" {
-			utils.MiddlewareGeneralValidationError(c, "Send x-version-code in headers")
-			return
-		}
-
-		c.Next()
-	}
 }
