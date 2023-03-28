@@ -452,6 +452,7 @@ func validateReceivers(activity *entities.Activity) *entities.Activity {
 		ActionOn:    receivers,
 		CommunityId: activity.CommunityId,
 		EntityType:  activity.EntityType,
+		EntityId:    activity.EntityId,
 		Action:      activity.Action,
 		CTA:         activity.CTA,
 		CreatedAt:   activity.CreatedAt,
