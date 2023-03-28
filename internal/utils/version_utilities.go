@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log"
 	"strconv"
 )
 
@@ -30,6 +31,16 @@ func CheckVersion(featureVersionCode map[string]int, versionCode string, platfor
 		  versionCode >= featureVersionCode for the given platform
 		returns False for all other cases
 	*/
+
+	if versionCode == "" {
+		versionCode = "0"
+		log.Printf("CheckVersion() - setting default version code as header is missing in request")
+	}
+
+	if platformCode == "" {
+		platformCode = PlatformWeb
+		log.Printf("CheckVersion() - setting default platform code as header is missing in request")
+	}
 
 	var isVersionCheck bool = false
 
