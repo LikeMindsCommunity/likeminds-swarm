@@ -52,3 +52,15 @@ func mergeFilterOptions(filterOptions map[string]interface{}) options.FindOption
 
 	return fOpts
 }
+
+// Helper Method to convert Multiple Ids to Object Ids without throwing error
+func ConvertIdsToObjectIds(list_ids []string) []primitive.ObjectID {
+
+	hex_ids := make([]primitive.ObjectID, len(list_ids))
+
+	for i, id := range list_ids {
+		hex_ids[i], _ = primitive.ObjectIDFromHex(id)
+	}
+
+	return hex_ids
+}
