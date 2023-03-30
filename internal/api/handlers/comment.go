@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -99,6 +102,56 @@ func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string
 	}
 
 	return &comment_results[0], nil
+}
+
+// Internal Method to fetch comments using comment_ids
+func FetchBulkComments(handlers *FeedHandlers, comment_ids []string, community_id int, user_id string, is_cm bool) (map[string]requests.FetchCommentsResponse, error) {
+
+	// convert comment_ids to object ids
+	comment_object_ids := helpers.ConvertIdsToObjectIds(comment_ids)
+
+	// comment filter data
+	comment_filter_data := gin.H{
+		"_id": gin.H{
+			"$in": comment_object_ids,
+		},
+		"community_id": community_id,
+	}
+
+	// fetch comment using helper method
+	comments, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse comments and make Key value pair, comment_id -> comment
+	parsed_comments_response := map[string]requests.FetchCommentsResponse{}
+	for _, comment := range comments {
+
+		// Wrap parsed comment to CommentsResponse to add post_id & parent_comment
+		comment_response := requests.FetchCommentsResponse{
+			CommentResponse: parseCommentResponse(handlers.likeHelper, handlers.commentHelper, comment, user_id, is_cm),
+			Post_id:         comment.PostId,
+		}
+
+		// if comment is a reply then fetch parent comment
+		if comment_response.Level > constants.CommentBaseLevel {
+
+			parent_comment, err := fetchParentComment(handlers.commentHelper, comment_response.ID, comment_response.Post_id)
+			if err == nil {
+				parsed_parent_comment := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *parent_comment, user_id, is_cm)
+
+				// add parent comment to comment_response
+				comment_response.ParentComment = &parsed_parent_comment
+
+			}
+		}
+
+		// Make key value pair
+		parsed_comments_response[comment.ID.Hex()] = comment_response
+	}
+
+	return parsed_comments_response, nil
 }
 
 // Internal Method to fetch a comment using comment_id and post_id
@@ -249,6 +302,53 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 		"success": true,
 		"comment": fetch_comment_response,
 	})
+}
+
+// Exposed Method to fetch bulk comments by comment_ids
+func (handlers *FeedHandlers) FetchBulkComments(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// Get Query Params
+	param_comment_ids := c.Query("comment_ids")
+	param_is_cm, _ := strconv.ParseBool(c.Query("user_is_cm"))
+
+	// Check if user is CM or not
+	if !param_is_cm {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// Unmarshal comment_ids
+	var comment_ids []string
+	err := json.Unmarshal([]byte(param_comment_ids), &comment_ids)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Fetch comments using comment_ids
+	comments, err := FetchBulkComments(handlers, comment_ids, community_id, headers[utils.HeadersMemberId], true)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// response data
+	response := gin.H{
+		"success":  true,
+		"comments": comments,
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
 }
 
 func fetchCommentData(handlers *FeedHandlers, comment_id string, post_id string, filter_options map[string]interface{}, member_id string, is_cm bool) (interface{}, error) {

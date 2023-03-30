@@ -40,3 +40,10 @@ type FetchCommentResponse struct {
 	ParentComment *CommentResponse  `json:"parent_comment,omitempty"`
 	Replies       []CommentResponse `json:"replies"`
 }
+
+// Response Structure for Fetch bulk comments
+type FetchCommentsResponse struct {
+	CommentResponse
+	ParentComment *CommentResponse   `json:"parent_comment,omitempty"`
+	Post_id       primitive.ObjectID `json:"post_id"`
+}
