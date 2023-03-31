@@ -21,7 +21,7 @@ var (
 
 // Internal Method to initiate the server
 func main() {
-	var AppVersion string = "0.4.0"
+	var AppVersion string = "0.5.0"
 	environment.LoadGoDotEnv()
 
 	initGin()
@@ -31,6 +31,7 @@ func main() {
 	router.Use(cors.New(enableCors()))
 
 	router.GET("", web.Home)
+
 	routerGroup := router.Group("/")
 
 	// Dependency injection of repositories

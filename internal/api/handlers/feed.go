@@ -88,22 +88,25 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		}
 
 		// parse pinned posts
-		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			pinned_post_results, headers[utils.HeadersMemberId], is_cm)
+		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+			handlers.saveHelper, pinned_post_results, headers[utils.HeadersMemberId], is_cm,
+			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 		response = append(response, pinned_post_response...)
 	}
 
 	// fetch unpinned post using helper method
-	unpinned_post_results, err := handlers.postHelper.FindPostHelper(unpinned_post_filter_data, post_filter_options)
+	unpinned_post_results, err := handlers.postHelper.FindPostHelper(unpinned_post_filter_data,
+		post_filter_options)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// parse unpinned posts
-	unpinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		unpinned_post_results, headers[utils.HeadersMemberId], is_cm)
+	unpinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, unpinned_post_results, headers[utils.HeadersMemberId], is_cm,
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	response = append(response, unpinned_post_response...)
 
@@ -186,7 +189,8 @@ func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) 
 }
 
 // Internal Method to fetch Chatrooms ordered by recency of activity
-func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.PostHelper, communityId int, excludedChatroomIds []int, page int, page_size int) []int {
+func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.PostHelper,
+	communityId int, excludedChatroomIds []int, page int, page_size int) []int {
 	post_filter_data := []map[string]interface{}{}
 
 	// Add match logic
@@ -248,7 +252,8 @@ func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.Pos
 }
 
 // Internal Method to fetch Chatrooms ordered by count of messages
-func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostHelper, communityId int, excludedChatroomIds []int, page int, page_size int) []int {
+func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostHelper, communityId int,
+	excludedChatroomIds []int, page int, page_size int) []int {
 	post_filter_data := []map[string]interface{}{}
 
 	// Add match logic
@@ -335,7 +340,8 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	}
 
 	// list of valid order types
-	validOrderTypes := []int{constants.GroupOrderTypeNewest, constants.GroupOrderTypeRecentlyActive, constants.GroupOrderTypeMostMessages, constants.GroupOrderTypeMostParticipants}
+	validOrderTypes := []int{constants.GroupOrderTypeNewest, constants.GroupOrderTypeRecentlyActive,
+		constants.GroupOrderTypeMostMessages, constants.GroupOrderTypeMostParticipants}
 	isValidOrderType := false
 
 	// Validation of order types
@@ -353,18 +359,22 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	chatroom_ids := []int{}
 
 	// Order by newest chatroom on top
-	if (exploreFeedRequest.OrderType == constants.GroupOrderTypeNewest || exploreFeedRequest.OrderType == constants.GroupOrderTypeMostParticipants) && len(exploreFeedRequest.ChatroomIDs) > 0 {
+	if (exploreFeedRequest.OrderType == constants.GroupOrderTypeNewest ||
+		exploreFeedRequest.OrderType == constants.GroupOrderTypeMostParticipants) &&
+		len(exploreFeedRequest.ChatroomIDs) > 0 {
 		chatroom_ids = parseIntArrayParam(exploreFeedRequest.ChatroomIDs)
 	} else
 
 	// Order by Recently active chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeRecentlyActive {
-		chatroom_ids = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, community_id, parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
+		chatroom_ids = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, community_id,
+			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
 	} else
 
 	// Order by Most messaged chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeMostMessages {
-		chatroom_ids = getChatroomsBasedOnMostMessages(c, handlers.postHelper, community_id, parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
+		chatroom_ids = getChatroomsBasedOnMostMessages(c, handlers.postHelper, community_id,
+			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
 	}
 
 	postData := getPostCountInChatrooms(handlers.postHelper, chatroom_ids)
@@ -440,22 +450,25 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		}
 
 		// parse pinned posts
-		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			pinned_post_results, headers[utils.HeadersMemberId], is_cm)
+		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+			handlers.saveHelper, pinned_post_results, headers[utils.HeadersMemberId], is_cm,
+			headers[utils.HeadersVersionCode], utils.HeadersPlatformCode)
 
 		response = append(response, pinned_post_response...)
 	}
 
 	// fetch unpinned post using helper method
-	unpinned_post_results, err := handlers.postHelper.FindPostHelper(unpinned_post_filter_data, post_filter_options)
+	unpinned_post_results, err := handlers.postHelper.FindPostHelper(unpinned_post_filter_data,
+		post_filter_options)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// parse unpinned posts
-	unpinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-		unpinned_post_results, headers[utils.HeadersMemberId], is_cm)
+	unpinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, unpinned_post_results, headers[utils.HeadersMemberId], is_cm,
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	response = append(response, unpinned_post_response...)
 
