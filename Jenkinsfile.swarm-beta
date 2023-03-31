@@ -1,11 +1,11 @@
 pipeline {
     agent any
-    environment {
-        PROJECT_ID = 'likeminds-nonprod-prj-24e1'
-        CLUSTER_NAME = 'likeminds-nonprod-autopilot-cluster'
-        LOCATION = 'asia-south1'
-        CREDENTIALS_ID = 'likeminds-nonprod-prj-24e1'
-    }
+    // environment {
+    //     PROJECT_ID = 'likeminds-nonprod-prj-24e1'
+    //     CLUSTER_NAME = 'likeminds-nonprod-autopilot-cluster'
+    //     LOCATION = 'asia-south1'
+    //     CREDENTIALS_ID = 'likeminds-nonprod-prj-24e1'
+    // }
     stages {
         stage("Checkout code") {
             steps {
@@ -34,7 +34,7 @@ pipeline {
             steps{
               sh '''
                  sed 's/swarm-beta:.*/swarm-beta:'${BUILD_NUMBER}'"/g' deployment-swarm-beta.yaml
-                 gcloud container clusters get-credentials ${env.CLUSTER_NAME} --region ${env.LOCATION} --project ${env.PROJECT_ID} --internal-ip
+                 gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${LOCATION} --project ${PROJECT_ID} --internal-ip
                  kubectl apply -f /var/lib/jenkins/workspace/likeminds-swarm-beta/deployment-swarm-beta.yaml
                 
                 '''
