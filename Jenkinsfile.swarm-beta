@@ -34,7 +34,7 @@ pipeline {
             steps{
               sh '''
                  sed 's/swarm-beta:.*/swarm-beta:'${BUILD_NUMBER}'"/g' deployment-swarm-beta.yaml
-                 gcloud container clusters get-credentials ${env.CLUSTER_NAME} --region ${env.LOCATION} --project ${env.PROJECT_ID} --internal-ip
+                 gcloud container clusters get-credentials '${env.CLUSTER_NAME}' --region '${env.LOCATION}' --project '${env.PROJECT_ID}' --internal-ip
                  kubectl apply -f /var/lib/jenkins/workspace/likeminds-swarm-beta/deployment-swarm-beta.yaml
                 
                 '''
