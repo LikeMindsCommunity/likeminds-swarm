@@ -34,9 +34,9 @@ pipeline {
             steps{
               sh '''
                  sed 's/swarm-beta:.*/swarm-beta:'${BUILD_NUMBER}'"/g' deployment-swarm-beta.yaml
-                 scp /var/lib/jenkins/workspace/likeminds-swarm-beta/deployment-swarm-beta.yaml root@likeminds-nonprod-deployment-instance:/home/app-deploy/swarm-beta/deployment.yaml
+                 scp  /var/lib/jenkins/workspace/likeminds-swarm-beta/deployment-swarm-beta.yaml jenkins@likeminds-nonprod-deployment-instance:/home/app-deploy/swarm-beta/deployment-swarm-beta.yaml
                  gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${LOCATION} --project ${PROJECT_ID} --internal-ip
-                 gcloud compute ssh likeminds-nonprod-deployment-instance --zone=asia-south1-c --internal-ip --command="kubectl apply -f /home/app-deploy/swarm-beta/deployment.yaml"
+                 gcloud compute ssh likeminds-nonprod-deployment-instance --zone=asia-south1-c --internal-ip --command="kubectl apply -f /home/app-deploy/swarm-beta/deployment-swarm-beta.yaml"
                 
                 '''
             }
