@@ -105,7 +105,11 @@ func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string
 }
 
 // Internal Method to fetch comments using comment_ids
-func FetchBulkComments(handlers *FeedHandlers, comment_ids []string, community_id int, user_id string, is_cm bool) (map[string]requests.FetchCommentsResponse, error) {
+func FetchBulkComments(handlers *FeedHandlers,
+	comment_ids []string,
+	community_id int,
+	user_id string,
+	is_cm bool) (map[string]requests.FetchCommentsResponse, error) {
 
 	// convert comment_ids to object ids
 	comment_object_ids := helpers.ConvertIdsToObjectIds(comment_ids)

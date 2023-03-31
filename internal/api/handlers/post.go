@@ -175,8 +175,13 @@ func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
 }
 
 // Internal Method to fetch bulk post data using post_ids
-func fetchBulkPostsData(handlers *FeedHandlers, post_ids []string, community_id int,
-	user_id string, is_cm bool, versionCode string, platformCode string) (map[string]requests.PostResponse, error) {
+func fetchBulkPostsData(handlers *FeedHandlers,
+	post_ids []string,
+	community_id int,
+	user_id string,
+	is_cm bool,
+	versionCode string,
+	platformCode string) (map[string]requests.PostResponse, error) {
 
 	// convert post_ids to object ids
 	post_object_ids := helpers.ConvertIdsToObjectIds(post_ids)
