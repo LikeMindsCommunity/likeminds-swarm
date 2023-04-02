@@ -174,8 +174,8 @@ func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
 	return fetch_post_response, nil
 }
 
-// Internal Method to fetch bulk post data using post_ids
-func fetchBulkPostsData(handlers *FeedHandlers,
+// Internal Method to fetch multiple posts data using post_ids
+func fetchMultiplePostsData(handlers *FeedHandlers,
 	post_ids []string,
 	community_id int,
 	user_id string,
@@ -351,8 +351,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Exposed Method to fetch bulk posts from post_ids
-func (handlers *FeedHandlers) FetchBulkPosts(c *gin.Context) {
+// Exposed Method to fetch multiple posts from post_ids
+func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	// fetch headers
 	headers := utils.GetHeaders(c)
@@ -381,8 +381,8 @@ func (handlers *FeedHandlers) FetchBulkPosts(c *gin.Context) {
 		return
 	}
 
-	// fetch bulk post data using internal method
-	posts_response, err := fetchBulkPostsData(handlers, post_ids, community_id, headers[utils.HeadersMemberId],
+	// fetch multiple posts data using internal method
+	posts_response, err := fetchMultiplePostsData(handlers, post_ids, community_id, headers[utils.HeadersMemberId],
 		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
