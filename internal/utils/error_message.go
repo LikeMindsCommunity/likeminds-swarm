@@ -8,7 +8,10 @@ import (
 
 // Error Messages
 const (
-	NotAuthorizedError = "You are not authorized to perform this operation."
+	NotAuthorizedError    = "You are not authorized to perform this operation."
+	InvalidRequestError   = "Invalid request."
+	InvalidPostIDError    = "Invalid post_id sent."
+	InvalidCommentIDError = "Invalid comment_id sent."
 )
 
 // Exposed Method to send General Validation Error in API Response

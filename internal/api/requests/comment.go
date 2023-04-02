@@ -9,6 +9,12 @@ type CreateCommentRequest struct {
 	Text string `json:"text" binding:"required"`
 }
 
+// Request Structure for Edit Comment
+type EditCommentRequest struct {
+	Text     string `json:"text" binding:"required"`
+	UserIsCm bool   `json:"user_is_cm"`
+}
+
 // Request Structure for Delete Comment
 type DeleteCommentRequest struct {
 	UserIsCm     bool   `json:"user_is_cm"`
@@ -25,6 +31,7 @@ type CommentResponse struct {
 	IsLiked       bool               `json:"is_liked"`
 	LikesCount    int                `json:"likes_count"`
 	CommentsCount int                `json:"comments_count"`
+	IsEdited      bool               `json:"is_edited"`
 	IsDeleted     bool               `json:"is_deleted,omitempty"`
 	DeletedBy     string             `json:"deleted_by,omitempty"`
 	DeleteReason  string             `json:"delete_reason,omitempty"`
