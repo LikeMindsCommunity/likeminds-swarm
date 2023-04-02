@@ -22,6 +22,7 @@ type CommentResponse struct {
 	Level         int                `json:"level"`
 	UserId        string             `json:"user_id"`
 	CommunityId   int                `json:"community_id,omitempty"`
+	PostId        primitive.ObjectID `json:"post_id,omitempty"`
 	IsLiked       bool               `json:"is_liked"`
 	LikesCount    int                `json:"likes_count"`
 	CommentsCount int                `json:"comments_count"`
@@ -39,11 +40,4 @@ type FetchCommentResponse struct {
 	Post          interface{}       `json:"post_data,omitempty"`
 	ParentComment *CommentResponse  `json:"parent_comment,omitempty"`
 	Replies       []CommentResponse `json:"replies"`
-}
-
-// Response Structure for Fetch bulk comments
-type FetchCommentsResponse struct {
-	CommentResponse
-	ParentComment *CommentResponse   `json:"parent_comment,omitempty"`
-	Post_id       primitive.ObjectID `json:"post_id"`
 }
