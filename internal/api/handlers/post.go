@@ -37,6 +37,59 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	return parsedAttachments
 }
 
+// Internal method to validate attachments for post
+func validatePostAttachments(c *gin.Context, attachments []requests.Attachment) bool {
+
+	for _, element := range attachments {
+		switch element.AttachmentType {
+		case constants.ImageWidget:
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
+				return false
+			}
+
+		case constants.VideoWidget:
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
+				return false
+			}
+
+			if element.AttachmentMeta.Duration == 0 {
+				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
+				return false
+			}
+
+		case constants.DocumentWidget:
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
+				return false
+			}
+
+			if element.AttachmentMeta.Format == "" {
+				utils.GeneralAPIValidationError(c, "send format in attachment_meta for document")
+				return false
+			}
+
+			if element.AttachmentMeta.Size == 0 {
+				utils.GeneralAPIValidationError(c, "send size in attachment_meta for document")
+				return false
+			}
+
+		case constants.LinkWidget:
+			if element.AttachmentMeta.OgTags.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
+				return false
+			}
+
+		default:
+			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
+			return false
+		}
+	}
+
+	return true
+}
+
 // Internal Method to parse response for fetch multiple posts api
 func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse,
 	posts_count int64) requests.FetchUserMultiplePostResponse {
@@ -71,6 +124,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
 	response.IsDeleted = post.IsDeleted
+	response.IsEdited = post.IsEdited
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(),
 		constants.PostEntityType, user_id)
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
@@ -118,7 +172,7 @@ func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper inte
 	return response
 }
 
-// Internal Method to fetch post using post_id and comment_id
+// Internal Method to fetch post using post_id and community_id
 func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (*entities.Post, error) {
 	// post filter data
 	post_filter_data := gin.H{
@@ -352,6 +406,121 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, response)
+}
+
+// Exposed Method to edit a Post
+func (handlers *FeedHandlers) EditPost(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	post_id := c.Param("post_id")
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var editPostRequest requests.EditPostRequest
+	if err := c.ShouldBindJSON(&editPostRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch post data
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Check if user is cm or post creator
+	if !editPostRequest.UserIsCm && post_data.UserId != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// validation of attachment objects
+	success := validatePostAttachments(c, editPostRequest.Attachments)
+	if !success {
+		return
+	}
+
+	// update body
+	update_body := gin.H{
+		"is_edited": true,
+	}
+
+	// update request fields on original post data
+	if editPostRequest.Text != nil {
+		post_data.Text = *editPostRequest.Text
+		update_body["text"] = *editPostRequest.Text
+	}
+
+	if editPostRequest.Heading != nil {
+		post_data.Heading = *editPostRequest.Heading
+		update_body["heading"] = *editPostRequest.Heading
+	}
+
+	// Parse attachments and update post data
+	if len(editPostRequest.Attachments) > 0 {
+
+		var post_attachments []entities.Attachment
+
+		for _, element := range editPostRequest.Attachments {
+
+			meta_data := element.AttachmentMeta
+			og_tags := meta_data.OgTags
+			meta_og_tags := entities.NewOgTags(og_tags.Title, og_tags.Image, og_tags.Description, og_tags.Url)
+			attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
+			attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
+			post_attachments = append(post_attachments, attachment)
+
+		}
+		post_data.Attachments = post_attachments
+
+		update_body["attachments"] = post_attachments
+	}
+
+	// Check if post has content
+	if post_data.Text == "" && len(post_data.Attachments) == 0 {
+		utils.GeneralAPIValidationError(c, "Can't create post without content")
+		return
+	}
+
+	set_body := gin.H{
+		"$set": update_body,
+	}
+
+	// Update post with new data
+	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, set_body)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// filter options
+	comment_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch post response data
+	fetch_post_data, err := fetchPostData(handlers, post_id, community_id, comment_filter_options,
+		headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"post":    fetch_post_data,
+	})
+
 }
 
 // Exposed Method to delete a Post
