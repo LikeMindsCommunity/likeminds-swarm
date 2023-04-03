@@ -109,7 +109,7 @@ func fetchMultipleCommentsData(handlers *FeedHandlers,
 	comment_ids []string,
 	community_id int,
 	user_id string,
-	is_cm bool) (map[string]requests.FetchCommentResponse, error) {
+	is_cm bool) (map[string]requests.FetchCommentsResponse, error) {
 
 	// convert comment_ids to object ids
 	comment_object_ids := helpers.ConvertIdsToObjectIds(comment_ids)
@@ -129,11 +129,23 @@ func fetchMultipleCommentsData(handlers *FeedHandlers,
 	}
 
 	// Make key value pair map for response, comment_id -> comment
-	parsed_comments_response := map[string]requests.FetchCommentResponse{}
+	parsed_comments_response := map[string]requests.FetchCommentsResponse{}
 	for _, comment := range comments {
 
-		// Parse comment for response with replies nil
-		fetch_comment_response := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper, &comment, nil, user_id, is_cm)
+		// Parse comment for response
+		fetch_comment_response := requests.FetchCommentsResponse{
+			CommentResponse: parseCommentResponse(handlers.likeHelper, handlers.commentHelper, comment, user_id, is_cm),
+		}
+
+		// Fetch parent comment if exists
+		if fetch_comment_response.Level > constants.CommentBaseLevel {
+			parent_comment, err := fetchParentComment(handlers.commentHelper, comment.ID, comment.PostId)
+			if err == nil {
+				parent_comment_response := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *parent_comment, user_id, is_cm)
+				fetch_comment_response.ParentComment = &parent_comment_response
+			}
+		}
+
 		parsed_comments_response[comment.ID.Hex()] = fetch_comment_response
 
 	}

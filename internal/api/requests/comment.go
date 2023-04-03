@@ -41,3 +41,8 @@ type FetchCommentResponse struct {
 	ParentComment *CommentResponse  `json:"parent_comment,omitempty"`
 	Replies       []CommentResponse `json:"replies"`
 }
+
+type FetchCommentsResponse struct {
+	CommentResponse
+	ParentComment *CommentResponse `json:"parent_comment,omitempty"`
+}
