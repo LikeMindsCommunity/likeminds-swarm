@@ -515,6 +515,12 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
+	// update post data in elastic search
+	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
