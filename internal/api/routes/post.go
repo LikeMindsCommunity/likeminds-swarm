@@ -10,6 +10,7 @@ func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup := routerGroup.Group("post")
 
 	postGroup.POST("/", handler.CreatePost)
+	postGroup.GET("/", handler.FetchPosts)
 	postGroup.GET("/:post_id", handler.FetchPost)
 	postGroup.PUT("/:post_id", handler.EditPost)
 	postGroup.DELETE("/:post_id", handler.DeletePost)

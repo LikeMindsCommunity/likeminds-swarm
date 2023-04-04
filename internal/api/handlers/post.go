@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -227,6 +229,45 @@ func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
 	return fetch_post_response, nil
 }
 
+// Internal Method to fetch multiple posts data using post_ids
+func fetchMultiplePostsData(handlers *FeedHandlers,
+	post_ids []string,
+	community_id int,
+	user_id string,
+	is_cm bool,
+	versionCode string,
+	platformCode string) (map[string]requests.PostResponse, error) {
+
+	// convert post_ids to object ids
+	post_object_ids := helpers.ConvertIdsToObjectIds(post_ids)
+
+	// filter options to fetch posts from db
+	filter_options := gin.H{
+		"_id": gin.H{
+			"$in": post_object_ids,
+		},
+		"community_id": community_id,
+	}
+
+	// fetch posts using helper method
+	posts_lists, err := handlers.postHelper.FindPostHelper(filter_options, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Make key value pair of post_id -> PostResponse
+	post_response := map[string]requests.PostResponse{}
+
+	// parse post response data for each post
+	for _, post := range posts_lists {
+		post_response[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+			post, user_id, is_cm, versionCode, platformCode)
+	}
+
+	return post_response, nil
+
+}
+
 // Exposed Method to create a Post
 func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
@@ -320,6 +361,54 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		headers[utils.HeadersPlatformCode])
 	if err == nil {
 		response["post"] = fetch_post_data
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
+}
+
+// Exposed Method to fetch multiple posts from post_ids
+func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
+
+	// fetch headers
+	headers := utils.GetHeaders(c)
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// Get Query Params
+	param_post_ids := c.Query("post_ids")
+	param_is_cm, _ := strconv.ParseBool(c.Query("user_is_cm"))
+
+	// If user is not cm, return error
+	if !param_is_cm {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// Unmarshal post_ids
+	var post_ids []string
+	err := json.Unmarshal([]byte(param_post_ids), &post_ids)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch multiple posts data using internal method
+	posts_response, err := fetchMultiplePostsData(handlers, post_ids, community_id, headers[utils.HeadersMemberId],
+		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// reponse data
+	response := gin.H{
+		"posts":   posts_response,
+		"success": true,
 	}
 
 	// return final response
