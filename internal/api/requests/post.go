@@ -68,6 +68,7 @@ type PostResponse struct {
 
 // Response Structure for Menu Item of an Entity
 type MenuResponse struct {
+	Id    int    `json:"id"`
 	Title string `json:"title"`
 	Route string `json:"route,omitempty"`
 }
