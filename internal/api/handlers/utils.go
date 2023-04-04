@@ -111,51 +111,38 @@ func getTaggedUsers(text string) ([]string, error) {
 	return tagged_members, nil
 }
 
-// Internal Method to parse menu items for a user on an Entity
-func parseMenuItems(menu_items []string) []requests.MenuResponse {
-	output_menu_items := []requests.MenuResponse{}
-
-	for _, value := range menu_items {
-		menu_item := requests.MenuResponse{}
-		menu_item.Title = value
-		output_menu_items = append(output_menu_items, menu_item)
-	}
-
-	return output_menu_items
-}
-
 // Internal Method to fetch menu items for a user on an Entity
-func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool) []string {
-	var output_menu_items []string
+func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool) []requests.MenuResponse {
+	var output_menu_items []requests.MenuResponse
 	switch entity_type {
 	case constants.PostEntityType:
 		if is_owner && is_cm {
-			output_menu_items = constants.GetIsOwnerIsCmPostMenuItems(is_pinned)
+			output_menu_items = GetIsOwnerIsCmPostMenuItems(is_pinned)
 		}
 
 		if is_owner && !is_cm {
-			output_menu_items = constants.GetIsOwnerNotIsCmPostMenuItems()
+			output_menu_items = GetIsOwnerNotIsCmPostMenuItems()
 		}
 
 		if !is_owner && is_cm {
-			output_menu_items = constants.GetNotIsOwnerIsCmPostMenuItems(is_pinned)
+			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(is_pinned)
 		}
 
 		if !is_owner && !is_cm {
-			output_menu_items = constants.GetNotIsOwnerNotIsCmPostMenuItems()
+			output_menu_items = GetNotIsOwnerNotIsCmPostMenuItems()
 		}
 
 	case constants.CommentEntityType:
 		if is_owner {
-			output_menu_items = constants.GetIsOwnerCommentMenuItems()
+			output_menu_items = GetIsOwnerCommentMenuItems()
 		}
 
 		if !is_owner && is_cm {
-			output_menu_items = constants.GetNotIsOwnerIsCmCommentMenuItems()
+			output_menu_items = GetNotIsOwnerIsCmCommentMenuItems()
 		}
 
 		if !is_owner && !is_cm {
-			output_menu_items = constants.GetNotIsOwnerNotIsCmCommentMenuItems()
+			output_menu_items = GetNotIsOwnerNotIsCmCommentMenuItems()
 		}
 	}
 
