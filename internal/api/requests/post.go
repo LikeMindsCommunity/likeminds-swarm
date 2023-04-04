@@ -38,6 +38,14 @@ type CreatePostRequest struct {
 	ChatroomID  int          `json:"feedroom_id"`
 }
 
+// Request Structure for Edit Post
+type EditPostRequest struct {
+	Text        string       `json:"text"`
+	Heading     string       `json:"heading"`
+	Attachments []Attachment `json:"attachments"`
+	UserIsCm    bool         `json:"user_is_cm"`
+}
+
 // Request Structure for Delete Post
 type DeletePostRequest struct {
 	UserIsCm     bool   `json:"user_is_cm"`
@@ -57,6 +65,7 @@ type PostResponse struct {
 	LikesCount    int                   `json:"likes_count"`
 	CommentsCount int                   `json:"comments_count"`
 	IsDeleted     bool                  `json:"is_deleted,omitempty"`
+	IsEdited      bool                  `json:"is_edited"`
 	DeletedBy     string                `json:"deleted_by,omitempty"`
 	DeleteReason  string                `json:"delete_reason,omitempty"`
 	IsLiked       bool                  `json:"is_liked"`

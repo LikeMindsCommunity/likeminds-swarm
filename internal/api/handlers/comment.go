@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -181,6 +182,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, comment.ID.Hex(), constants.CommentEntityType, user_id)
 	response.LikesCount = int(likes_count)
 	response.IsDeleted = comment.IsDeleted
+	response.IsEdited = comment.IsEdited
 	response.MenuItems = getEntityMenuItems(constants.CommentEntityType, is_cm, user_id == comment.UserId, false)
 
 	if comment.Level == constants.CommentBaseLevel {
@@ -457,6 +459,14 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
+	// strip text and check if it is empty
+	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
+
+	if createCommentRequest.Text == "" {
+		utils.GeneralAPIValidationError(c, "Comment text cannot be empty")
+		return
+	}
+
 	// fetch post data
 	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
@@ -539,6 +549,94 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	fetch_comment_response, err := fetchCommentData(handlers, comment_id.(primitive.ObjectID).Hex(), post_id, comment_filter_options, headers[utils.HeadersMemberId], false)
 	if err == nil {
 		response["comment"] = fetch_comment_response
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
+}
+
+// Exposed Method to edit a comment
+func (handlers *FeedHandlers) EditComment(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	post_id := c.Param("post_id")
+	comment_id := c.Param("comment_id")
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var editCommentRequest requests.EditCommentRequest
+	if err := c.ShouldBindJSON(&editCommentRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// strip text and check if it is empty
+	editCommentRequest.Text = strings.Trim(editCommentRequest.Text, " ")
+
+	if editCommentRequest.Text == "" {
+		utils.GeneralAPIValidationError(c, "Comment text cannot be empty")
+		return
+	}
+
+	// Check if Post_id is valid
+	_, err := fetchPost(handlers.postHelper, post_id, community_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch comment data
+	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// If user is not cm and is not the comment creator
+	if !editCommentRequest.UserIsCm && comment_data.UserId != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// comment update data
+	comment_update_data := gin.H{
+		"$set": gin.H{
+			"text":      editCommentRequest.Text,
+			"is_edited": true,
+		},
+	}
+
+	// update comment data
+	err = handlers.commentHelper.UpdateCommentByIdHelper(comment_data.ID, comment_update_data)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// Generate page filter options
+	comment_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch comment response data
+	fetch_comment_response, err := fetchCommentData(handlers, comment_id, post_id, comment_filter_options, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// reponse data
+	response := gin.H{
+		"success": true,
+		"comment": fetch_comment_response,
 	}
 
 	// return final response

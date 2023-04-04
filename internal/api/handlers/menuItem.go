@@ -33,6 +33,15 @@ func getMenuItem(menuItemName string) requests.MenuResponse {
 	case constants.ReportCommentMenuItemName:
 		menuId = constants.ReportCommentMenuItemId
 		menuTitle = constants.ReportCommentMenuItemTitle
+
+	case constants.EditPostMenuItemName:
+		menuId = constants.EditPostMenuItemId
+		menuTitle = constants.EditPostMenuItemTitle
+
+	case constants.EditCommentMenuItemName:
+		menuId = constants.EditCommentMenuItemId
+		menuTitle = constants.EditCommentMenuItemTitle
+
 	}
 
 	return requests.MenuResponse{
@@ -43,19 +52,20 @@ func getMenuItem(menuItemName string) requests.MenuResponse {
 
 // Exposed Method to get Post Menu for Owner who are CMs also
 func GetIsOwnerIsCmPostMenuItems(is_pinned bool) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{getMenuItem(constants.DeletePostMenuItemName)}
+	menuItems := []requests.MenuResponse{getMenuItem(constants.DeletePostMenuItemName), getMenuItem(constants.EditPostMenuItemName)}
 
 	if is_pinned {
 		menuItems = append(menuItems, getMenuItem(constants.UnpinPostMenuItemName))
 	} else {
 		menuItems = append(menuItems, getMenuItem(constants.PinPostMenuItemName))
 	}
+
 	return menuItems
 }
 
 // Exposed Method to get Post Menu for Owner who is not a CM
 func GetIsOwnerNotIsCmPostMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.DeletePostMenuItemName)}
+	return []requests.MenuResponse{getMenuItem(constants.DeletePostMenuItemName), getMenuItem(constants.EditPostMenuItemName)}
 }
 
 // Exposed Method to get Post Menu for CMs who are not owners
@@ -68,7 +78,7 @@ func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool) []requests.MenuResponse {
 		menuItems = append(menuItems, getMenuItem(constants.PinPostMenuItemName))
 	}
 
-	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName))
+	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName), getMenuItem(constants.EditPostMenuItemName))
 	return menuItems
 }
 
@@ -79,12 +89,12 @@ func GetNotIsOwnerNotIsCmPostMenuItems() []requests.MenuResponse {
 
 // Exposed Method to get Comment Menu for owner
 func GetIsOwnerCommentMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.DeleteCommentMenuItemName)}
+	return []requests.MenuResponse{getMenuItem(constants.DeleteCommentMenuItemName), getMenuItem(constants.EditCommentMenuItemName)}
 }
 
 // Exposed Method to get Comment Menu for CM who is not owner
 func GetNotIsOwnerIsCmCommentMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.DeleteCommentMenuItemName)}
+	return []requests.MenuResponse{getMenuItem(constants.DeleteCommentMenuItemName), getMenuItem(constants.EditCommentMenuItemName)}
 }
 
 // Exposed Method to get Comment Menu for members
