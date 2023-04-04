@@ -138,7 +138,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, comment.ID.Hex(), constants.CommentEntityType, user_id)
 	response.LikesCount = int(likes_count)
 	response.IsDeleted = comment.IsDeleted
-	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.CommentEntityType, is_cm, user_id == comment.UserId, false))
+	response.MenuItems = getEntityMenuItems(constants.CommentEntityType, is_cm, user_id == comment.UserId, false)
 
 	if comment.Level == constants.CommentBaseLevel {
 		replies_count, _ := fetchCommentRepliesCount(commentHelper, comment.ID.Hex())

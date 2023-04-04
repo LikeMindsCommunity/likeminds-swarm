@@ -74,8 +74,8 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(),
 		constants.PostEntityType, user_id)
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
-	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.PostEntityType, is_cm,
-		user_id == post.UserId, post.IsPinned))
+	response.MenuItems = getEntityMenuItems(constants.PostEntityType, is_cm,
+		user_id == post.UserId, post.IsPinned)
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
