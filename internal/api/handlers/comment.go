@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -351,6 +352,14 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
+	// strip text and check if it is empty
+	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
+
+	if createCommentRequest.Text == "" {
+		utils.GeneralAPIValidationError(c, "Comment text cannot be empty")
+		return
+	}
+
 	// fetch post data
 	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
@@ -457,6 +466,14 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	var editCommentRequest requests.EditCommentRequest
 	if err := c.ShouldBindJSON(&editCommentRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// strip text and check if it is empty
+	editCommentRequest.Text = strings.Trim(editCommentRequest.Text, " ")
+
+	if editCommentRequest.Text == "" {
+		utils.GeneralAPIValidationError(c, "Comment text cannot be empty")
 		return
 	}
 

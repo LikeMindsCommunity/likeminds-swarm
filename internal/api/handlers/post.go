@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -244,57 +245,18 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// strip text to check if it is empty
+	createPostRequest.Text = strings.Trim(createPostRequest.Text, " ")
+
 	if createPostRequest.Text == "" && len(createPostRequest.Attachments) == 0 {
 		utils.GeneralAPIValidationError(c, "can't create post without content")
 		return
 	}
 
 	// validation of attachment objects
-	for _, element := range createPostRequest.Attachments {
-		switch element.AttachmentType {
-		case constants.ImageWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
-				return
-			}
-
-		case constants.VideoWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
-				return
-			}
-
-			if element.AttachmentMeta.Duration == 0 {
-				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
-				return
-			}
-
-		case constants.DocumentWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
-				return
-			}
-
-			if element.AttachmentMeta.Format == "" {
-				utils.GeneralAPIValidationError(c, "send format in attachment_meta for document")
-				return
-			}
-
-			if element.AttachmentMeta.Size == 0 {
-				utils.GeneralAPIValidationError(c, "send size in attachment_meta for document")
-				return
-			}
-
-		case constants.LinkWidget:
-			if element.AttachmentMeta.OgTags.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
-				return
-			}
-
-		default:
-			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
-			return
-		}
+	success := validatePostAttachments(c, createPostRequest.Attachments)
+	if !success {
+		return
 	}
 
 	// create post using the helper method
@@ -447,7 +409,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
-	// Check if post has content
+	// strip text and check if it is empty
+	editPostRequest.Text = strings.TrimSpace(editPostRequest.Text)
+
 	if editPostRequest.Text == "" && len(editPostRequest.Attachments) == 0 {
 		utils.GeneralAPIValidationError(c, "Can't Edit post without content")
 		return
