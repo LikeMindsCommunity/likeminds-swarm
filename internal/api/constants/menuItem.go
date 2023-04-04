@@ -5,6 +5,7 @@ const (
 	PinPostMenuItemName    = "PinPost"
 	UnpinPostMenuItemName  = "UnpinPost"
 	ReportPostMenuItemName = "ReportPost"
+	EditPostMenuItemName   = "EditPost"
 )
 
 const (
@@ -12,16 +13,19 @@ const (
 	PinPostMenuItemTitle    = "Pin this Post"
 	UnpinPostMenuItemTitle  = "Unpin this Post"
 	ReportPostMenuItemTitle = "Report"
+	EditPostMenuItemTitle   = "Edit Post"
 )
 
 const (
 	DeleteCommentMenuItemName = "DeleteComment"
 	ReportCommentMenuItemName = "ReportComment"
+	EditCommentMenuItemName   = "EditComment"
 )
 
 const (
 	DeleteCommentMenuItemTitle = "Delete"
 	ReportCommentMenuItemTitle = "Report"
+	EditCommentMenuItemTitle   = "Edit"
 )
 
 const (
@@ -29,6 +33,8 @@ const (
 	PinPostMenuItemId
 	UnpinPostMenuItemId
 	ReportPostMenuItemId
+	EditPostMenuItemId
 	DeleteCommentMenuItemId
 	ReportCommentMenuItemId
+	EditCommentMenuItemId
 )
