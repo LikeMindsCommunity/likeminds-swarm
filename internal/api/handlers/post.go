@@ -447,54 +447,14 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
-	// update body
-	update_body := gin.H{
-		"is_edited": true,
-	}
-
-	// update request fields on original post data
-	if editPostRequest.Text != nil {
-		post_data.Text = *editPostRequest.Text
-		update_body["text"] = *editPostRequest.Text
-	}
-
-	if editPostRequest.Heading != nil {
-		post_data.Heading = *editPostRequest.Heading
-		update_body["heading"] = *editPostRequest.Heading
-	}
-
-	// Parse attachments and update post data
-	if len(editPostRequest.Attachments) > 0 {
-
-		var post_attachments []entities.Attachment
-
-		for _, element := range editPostRequest.Attachments {
-
-			meta_data := element.AttachmentMeta
-			og_tags := meta_data.OgTags
-			meta_og_tags := entities.NewOgTags(og_tags.Title, og_tags.Image, og_tags.Description, og_tags.Url)
-			attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
-			attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
-			post_attachments = append(post_attachments, attachment)
-
-		}
-		post_data.Attachments = post_attachments
-
-		update_body["attachments"] = post_attachments
-	}
-
 	// Check if post has content
-	if post_data.Text == "" && len(post_data.Attachments) == 0 {
-		utils.GeneralAPIValidationError(c, "Can't create post without content")
+	if editPostRequest.Text == "" && len(editPostRequest.Attachments) == 0 {
+		utils.GeneralAPIValidationError(c, "Can't Edit post without content")
 		return
 	}
 
-	set_body := gin.H{
-		"$set": update_body,
-	}
-
-	// Update post with new data
-	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, set_body)
+	// update post data using helper method
+	err = handlers.postHelper.EditPostHelper(post_data.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

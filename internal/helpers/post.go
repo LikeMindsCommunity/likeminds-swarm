@@ -31,6 +31,37 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 	return post_id, err
 }
 
+// Exposed Helper Method to Edit Post
+func (helper *postHelper) EditPostHelper(post_id primitive.ObjectID, text string, heading string, attachments []requests.Attachment) error {
+	var post_attachments []entities.Attachment
+
+	// parse attachments
+	for _, element := range attachments {
+
+		meta_data := element.AttachmentMeta
+		og_tags := meta_data.OgTags
+		meta_og_tags := entities.NewOgTags(og_tags.Title, og_tags.Image, og_tags.Description, og_tags.Url)
+		attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
+		attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
+		post_attachments = append(post_attachments, attachment)
+	}
+
+	update_body := gin.H{
+		"$set": gin.H{
+			"text":        text,
+			"heading":     heading,
+			"attachments": post_attachments,
+			"is_edited":   true,
+			"updated_at":  time.Now(),
+		},
+	}
+
+	err := helper.postRepository.Update(gin.H{"_id": post_id}, update_body)
+
+	return err
+
+}
+
 // Exposed Helper Method to Find Post
 func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error) {
 	fOpts := mergeFilterOptions(filterOptions)

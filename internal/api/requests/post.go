@@ -40,9 +40,9 @@ type CreatePostRequest struct {
 
 // Request Structure for Edit Post
 type EditPostRequest struct {
-	Text        *string      `json:"text,omitempty"`
-	Heading     *string      `json:"heading,omitempty"`
-	Attachments []Attachment `json:"attachments,omitempty"`
+	Text        string       `json:"text"`
+	Heading     string       `json:"heading"`
+	Attachments []Attachment `json:"attachments"`
 	UserIsCm    bool         `json:"user_is_cm"`
 }
 

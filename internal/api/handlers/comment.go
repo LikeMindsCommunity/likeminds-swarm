@@ -440,7 +440,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 }
 
 // Exposed Method to edit a comment
-func (handlers *FeedHandlers) EditCommentPost(c *gin.Context) {
+func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -460,16 +460,10 @@ func (handlers *FeedHandlers) EditCommentPost(c *gin.Context) {
 		return
 	}
 
-	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	// Check if Post_id is valid
+	_, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// If post_id is invalid then return error
-	if post_data == nil {
-		utils.GeneralAPIValidationError(c, utils.InvalidPostIDError)
 		return
 	}
 
@@ -477,12 +471,6 @@ func (handlers *FeedHandlers) EditCommentPost(c *gin.Context) {
 	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// If comment_id is invalid then return error
-	if comment_data == nil {
-		utils.GeneralAPIValidationError(c, utils.InvalidCommentIDError)
 		return
 	}
 
