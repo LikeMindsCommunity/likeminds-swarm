@@ -24,6 +24,14 @@ var FeedMediaVersions = map[string]int{
 	PlatformReactNative: UnreleasedMinVersion,
 }
 
+var EditFeedEntityVersions = map[string]int{
+	PlatformAndroid:     UnreleasedMaxVersion,
+	PlatformWeb:         UnreleasedMaxVersion,
+	PlatformIoS:         UnreleasedMaxVersion,
+	PlatformFlutter:     UnreleasedMaxVersion,
+	PlatformReactNative: UnreleasedMaxVersion,
+}
+
 // Exposed Method to check version code accessibility for a feature
 func CheckVersion(featureVersionCode map[string]int, versionCode string, platformCode string) bool {
 	/*

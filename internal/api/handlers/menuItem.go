@@ -51,8 +51,14 @@ func getMenuItem(menuItemName string) requests.MenuResponse {
 }
 
 // Exposed Method to get Post Menu for Owner who are CMs also
-func GetIsOwnerIsCmPostMenuItems(is_pinned bool) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{getMenuItem(constants.DeletePostMenuItemName), getMenuItem(constants.EditPostMenuItemName)}
+func GetIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool) []requests.MenuResponse {
+	menuItems := []requests.MenuResponse{}
+
+	if isEditCheck {
+		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName))
+	}
+
+	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName))
 
 	if is_pinned {
 		menuItems = append(menuItems, getMenuItem(constants.UnpinPostMenuItemName))
@@ -64,13 +70,25 @@ func GetIsOwnerIsCmPostMenuItems(is_pinned bool) []requests.MenuResponse {
 }
 
 // Exposed Method to get Post Menu for Owner who is not a CM
-func GetIsOwnerNotIsCmPostMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.DeletePostMenuItemName), getMenuItem(constants.EditPostMenuItemName)}
+func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool) []requests.MenuResponse {
+	menuItems := []requests.MenuResponse{}
+
+	if isEditCheck {
+		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName))
+	}
+
+	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName))
+
+	return menuItems
 }
 
 // Exposed Method to get Post Menu for CMs who are not owners
-func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool) []requests.MenuResponse {
+func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool) []requests.MenuResponse {
 	menuItems := []requests.MenuResponse{}
+
+	if isEditCheck {
+		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName))
+	}
 
 	if is_pinned {
 		menuItems = append(menuItems, getMenuItem(constants.UnpinPostMenuItemName))
@@ -78,26 +96,50 @@ func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool) []requests.MenuResponse {
 		menuItems = append(menuItems, getMenuItem(constants.PinPostMenuItemName))
 	}
 
-	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName), getMenuItem(constants.EditPostMenuItemName))
+	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName))
+
 	return menuItems
 }
 
 // Exposed Method to get Post Menu for members
-func GetNotIsOwnerNotIsCmPostMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.ReportPostMenuItemName)}
+func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool) []requests.MenuResponse {
+	menuItems := []requests.MenuResponse{getMenuItem(constants.ReportPostMenuItemName)}
+
+	return menuItems
+
 }
 
 // Exposed Method to get Comment Menu for owner
-func GetIsOwnerCommentMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.DeleteCommentMenuItemName), getMenuItem(constants.EditCommentMenuItemName)}
+func GetIsOwnerCommentMenuItems(isEditCheck bool) []requests.MenuResponse {
+
+	menuItems := []requests.MenuResponse{}
+
+	if isEditCheck {
+		menuItems = append(menuItems, getMenuItem(constants.EditCommentMenuItemName))
+	}
+
+	menuItems = append(menuItems, getMenuItem(constants.DeleteCommentMenuItemName))
+
+	return menuItems
 }
 
 // Exposed Method to get Comment Menu for CM who is not owner
-func GetNotIsOwnerIsCmCommentMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.DeleteCommentMenuItemName), getMenuItem(constants.EditCommentMenuItemName)}
+func GetNotIsOwnerIsCmCommentMenuItems(isEditCheck bool) []requests.MenuResponse {
+
+	menuItems := []requests.MenuResponse{}
+
+	if isEditCheck {
+		menuItems = append(menuItems, getMenuItem(constants.EditCommentMenuItemName))
+	}
+
+	menuItems = append(menuItems, getMenuItem(constants.DeleteCommentMenuItemName))
+
+	return menuItems
 }
 
 // Exposed Method to get Comment Menu for members
-func GetNotIsOwnerNotIsCmCommentMenuItems() []requests.MenuResponse {
-	return []requests.MenuResponse{getMenuItem(constants.ReportCommentMenuItemName)}
+func GetNotIsOwnerNotIsCmCommentMenuItems(isEditCheck bool) []requests.MenuResponse {
+	menuItems := []requests.MenuResponse{getMenuItem(constants.ReportCommentMenuItemName)}
+
+	return menuItems
 }
