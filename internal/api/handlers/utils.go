@@ -11,6 +11,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 // Feed Handlers structure for all Helper classes
@@ -112,37 +113,41 @@ func getTaggedUsers(text string) ([]string, error) {
 }
 
 // Internal Method to fetch menu items for a user on an Entity
-func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool) []requests.MenuResponse {
+func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool,
+	versionCode string, platformCode string) []requests.MenuResponse {
 	var output_menu_items []requests.MenuResponse
+
+	isEditEnabled := utils.CheckVersion(utils.EditFeedEntityVersions, versionCode, platformCode)
+
 	switch entity_type {
 	case constants.PostEntityType:
 		if is_owner && is_cm {
-			output_menu_items = GetIsOwnerIsCmPostMenuItems(is_pinned)
+			output_menu_items = GetIsOwnerIsCmPostMenuItems(is_pinned, isEditEnabled)
 		}
 
 		if is_owner && !is_cm {
-			output_menu_items = GetIsOwnerNotIsCmPostMenuItems()
+			output_menu_items = GetIsOwnerNotIsCmPostMenuItems(isEditEnabled)
 		}
 
 		if !is_owner && is_cm {
-			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(is_pinned)
+			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(is_pinned, isEditEnabled)
 		}
 
 		if !is_owner && !is_cm {
-			output_menu_items = GetNotIsOwnerNotIsCmPostMenuItems()
+			output_menu_items = GetNotIsOwnerNotIsCmPostMenuItems(isEditEnabled)
 		}
 
 	case constants.CommentEntityType:
 		if is_owner {
-			output_menu_items = GetIsOwnerCommentMenuItems()
+			output_menu_items = GetIsOwnerCommentMenuItems(isEditEnabled)
 		}
 
 		if !is_owner && is_cm {
-			output_menu_items = GetNotIsOwnerIsCmCommentMenuItems()
+			output_menu_items = GetNotIsOwnerIsCmCommentMenuItems(isEditEnabled)
 		}
 
 		if !is_owner && !is_cm {
-			output_menu_items = GetNotIsOwnerNotIsCmCommentMenuItems()
+			output_menu_items = GetNotIsOwnerNotIsCmCommentMenuItems(isEditEnabled)
 		}
 	}
 

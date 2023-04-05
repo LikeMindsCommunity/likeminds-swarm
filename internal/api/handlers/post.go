@@ -132,7 +132,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 		constants.PostEntityType, user_id)
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
 	response.MenuItems = getEntityMenuItems(constants.PostEntityType, is_cm,
-		user_id == post.UserId, post.IsPinned)
+		user_id == post.UserId, post.IsPinned, versionCode, platformCode)
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
@@ -222,7 +222,7 @@ func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
 	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, *post_data, member_id, is_cm, versionCode, platformCode)
 	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		comment_results, member_id, is_cm)
+		comment_results, member_id, is_cm, versionCode, platformCode)
 	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
 		post_response, replies_response)
 
