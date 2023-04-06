@@ -16,7 +16,7 @@ spec:
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 1  
-    template:
+  template:
     metadata:
       labels:
         app: "swarm-prod"
@@ -28,9 +28,9 @@ spec:
           requests:
             memory: "1000Mi"
             cpu: "2000m"
-          limits:
-            memory: "3000Mi"
-            cpu: "2500m"
+        limits:
+          memory: "3000Mi"
+          cpu: "2500m"
 
 ---
 
