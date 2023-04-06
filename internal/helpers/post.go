@@ -10,10 +10,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Exposed Helper Method to Create Post
-func (helper *postHelper) CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
+// internal method to parse attachments
+func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
+
 	var post_attachments []entities.Attachment
 
+	// parse attachments
 	for _, element := range attachments {
 
 		meta_data := element.AttachmentMeta
@@ -22,13 +24,43 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 		attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
 		attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
 		post_attachments = append(post_attachments, attachment)
-
 	}
+
+	return post_attachments
+}
+
+// Exposed Helper Method to Create Post
+func (helper *postHelper) CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
+
+	// parse attachments
+	post_attachments := parseAttachments(attachments)
 
 	post := entities.NewPost(text, heading, community_id, user_id, post_attachments, chatroom_id)
 	post_id, err := helper.postRepository.Create(&post)
 
 	return post_id, err
+}
+
+// Exposed Helper Method to Edit Post
+func (helper *postHelper) EditPostHelper(post_id primitive.ObjectID, text string, heading string, attachments []requests.Attachment) error {
+
+	// parse attachments
+	post_attachments := parseAttachments(attachments)
+
+	update_body := gin.H{
+		"$set": gin.H{
+			"text":        text,
+			"heading":     heading,
+			"attachments": post_attachments,
+			"is_edited":   true,
+			"updated_at":  time.Now(),
+		},
+	}
+
+	err := helper.postRepository.Update(gin.H{"_id": post_id}, update_body)
+
+	return err
+
 }
 
 // Exposed Helper Method to Find Post

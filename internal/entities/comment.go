@@ -15,6 +15,7 @@ type Comment struct {
 	Level        int                  `json:"level" bson:"level"`
 	Replies      []primitive.ObjectID `json:"replies" bson:"replies"`
 	UserId       string               `json:"user_id" bson:"user_id"`
+	IsEdited     bool                 `json:"is_edited" bson:"is_edited"`
 	IsDeleted    bool                 `json:"is_deleted" bson:"is_deleted"`
 	DeletedBy    string               `json:"deleted_by" bson:"deleted_by,omitempty"`
 	DeleteReason string               `json:"delete_reason" bson:"delete_reason,omitempty"`
@@ -33,6 +34,7 @@ func NewComment(text string, postId primitive.ObjectID, community_id int, level 
 		UserId:      userId,
 		Replies:     []primitive.ObjectID{},
 		IsDeleted:   false,
+		IsEdited:    false,
 		CreatedAt:   created_at,
 		UpdatedAt:   created_at,
 	}

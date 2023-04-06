@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -35,6 +38,59 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	}
 
 	return parsedAttachments
+}
+
+// Internal method to validate attachments for post
+func validatePostAttachments(c *gin.Context, attachments []requests.Attachment) bool {
+
+	for _, element := range attachments {
+		switch element.AttachmentType {
+		case constants.ImageWidget:
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
+				return false
+			}
+
+		case constants.VideoWidget:
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
+				return false
+			}
+
+			if element.AttachmentMeta.Duration == 0 {
+				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
+				return false
+			}
+
+		case constants.DocumentWidget:
+			if element.AttachmentMeta.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
+				return false
+			}
+
+			if element.AttachmentMeta.Format == "" {
+				utils.GeneralAPIValidationError(c, "send format in attachment_meta for document")
+				return false
+			}
+
+			if element.AttachmentMeta.Size == 0 {
+				utils.GeneralAPIValidationError(c, "send size in attachment_meta for document")
+				return false
+			}
+
+		case constants.LinkWidget:
+			if element.AttachmentMeta.OgTags.Url == "" {
+				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
+				return false
+			}
+
+		default:
+			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
+			return false
+		}
+	}
+
+	return true
 }
 
 // Internal Method to parse response for fetch multiple posts api
@@ -71,11 +127,12 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
 	response.IsDeleted = post.IsDeleted
+	response.IsEdited = post.IsEdited
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(),
 		constants.PostEntityType, user_id)
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
-	response.MenuItems = parseMenuItems(getEntityMenuItems(constants.PostEntityType, is_cm,
-		user_id == post.UserId, post.IsPinned))
+	response.MenuItems = getEntityMenuItems(constants.PostEntityType, is_cm,
+		user_id == post.UserId, post.IsPinned, versionCode, platformCode)
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
@@ -118,7 +175,7 @@ func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper inte
 	return response
 }
 
-// Internal Method to fetch post using post_id and comment_id
+// Internal Method to fetch post using post_id and community_id
 func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (*entities.Post, error) {
 	// post filter data
 	post_filter_data := gin.H{
@@ -165,11 +222,50 @@ func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
 	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, *post_data, member_id, is_cm, versionCode, platformCode)
 	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		comment_results, member_id, is_cm)
+		comment_results, member_id, is_cm, versionCode, platformCode)
 	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
 		post_response, replies_response)
 
 	return fetch_post_response, nil
+}
+
+// Internal Method to fetch multiple posts data using post_ids
+func fetchMultiplePostsData(handlers *FeedHandlers,
+	post_ids []string,
+	community_id int,
+	user_id string,
+	is_cm bool,
+	versionCode string,
+	platformCode string) (map[string]requests.PostResponse, error) {
+
+	// convert post_ids to object ids
+	post_object_ids := helpers.ConvertIdsToObjectIds(post_ids)
+
+	// filter options to fetch posts from db
+	filter_options := gin.H{
+		"_id": gin.H{
+			"$in": post_object_ids,
+		},
+		"community_id": community_id,
+	}
+
+	// fetch posts using helper method
+	posts_lists, err := handlers.postHelper.FindPostHelper(filter_options, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Make key value pair of post_id -> PostResponse
+	post_response := map[string]requests.PostResponse{}
+
+	// parse post response data for each post
+	for _, post := range posts_lists {
+		post_response[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+			post, user_id, is_cm, versionCode, platformCode)
+	}
+
+	return post_response, nil
+
 }
 
 // Exposed Method to create a Post
@@ -190,57 +286,18 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// strip text to check if it is empty
+	createPostRequest.Text = strings.Trim(createPostRequest.Text, " ")
+
 	if createPostRequest.Text == "" && len(createPostRequest.Attachments) == 0 {
 		utils.GeneralAPIValidationError(c, "can't create post without content")
 		return
 	}
 
 	// validation of attachment objects
-	for _, element := range createPostRequest.Attachments {
-		switch element.AttachmentType {
-		case constants.ImageWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
-				return
-			}
-
-		case constants.VideoWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
-				return
-			}
-
-			if element.AttachmentMeta.Duration == 0 {
-				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
-				return
-			}
-
-		case constants.DocumentWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
-				return
-			}
-
-			if element.AttachmentMeta.Format == "" {
-				utils.GeneralAPIValidationError(c, "send format in attachment_meta for document")
-				return
-			}
-
-			if element.AttachmentMeta.Size == 0 {
-				utils.GeneralAPIValidationError(c, "send size in attachment_meta for document")
-				return
-			}
-
-		case constants.LinkWidget:
-			if element.AttachmentMeta.OgTags.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
-				return
-			}
-
-		default:
-			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
-			return
-		}
+	success := validatePostAttachments(c, createPostRequest.Attachments)
+	if !success {
+		return
 	}
 
 	// create post using the helper method
@@ -310,6 +367,54 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// Exposed Method to fetch multiple posts from post_ids
+func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
+
+	// fetch headers
+	headers := utils.GetHeaders(c)
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// Get Query Params
+	param_post_ids := c.Query("post_ids")
+	param_is_cm, _ := strconv.ParseBool(c.Query("user_is_cm"))
+
+	// If user is not cm, return error
+	if !param_is_cm {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// Unmarshal post_ids
+	var post_ids []string
+	err := json.Unmarshal([]byte(param_post_ids), &post_ids)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch multiple posts data using internal method
+	posts_response, err := fetchMultiplePostsData(handlers, post_ids, community_id, headers[utils.HeadersMemberId],
+		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// reponse data
+	response := gin.H{
+		"posts":   posts_response,
+		"success": true,
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
+}
+
 // Exposed Method to fetch a Post using post_id
 func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	// fetch headers and url params
@@ -352,6 +457,89 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, response)
+}
+
+// Exposed Method to edit a Post
+func (handlers *FeedHandlers) EditPost(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	post_id := c.Param("post_id")
+
+	// validation of api_key
+	community_id := externalHelpers.GetCommunityId(c)
+	if community_id == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var editPostRequest requests.EditPostRequest
+	if err := c.ShouldBindJSON(&editPostRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch post data
+	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Check if user is cm or post creator
+	if !editPostRequest.UserIsCm && post_data.UserId != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// validation of attachment objects
+	success := validatePostAttachments(c, editPostRequest.Attachments)
+	if !success {
+		return
+	}
+
+	// strip text and check if it is empty
+	editPostRequest.Text = strings.TrimSpace(editPostRequest.Text)
+
+	if editPostRequest.Text == "" && len(editPostRequest.Attachments) == 0 {
+		utils.GeneralAPIValidationError(c, "Can't Edit post without content")
+		return
+	}
+
+	// update post data using helper method
+	err = handlers.postHelper.EditPostHelper(post_data.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// filter options
+	comment_filter_options, err := generatePageFilterOptions(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch post response data
+	fetch_post_data, err := fetchPostData(handlers, post_id, community_id, comment_filter_options,
+		headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// update post data in elastic search
+	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"post":    fetch_post_data,
+	})
+
 }
 
 // Exposed Method to delete a Post
