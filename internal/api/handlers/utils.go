@@ -75,6 +75,20 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	return page, page_size, nil
 }
 
+func addSortingOptions(options map[string]interface{}, orderBy string, order int) map[string]interface{} {
+	if order >= 0 {
+		order = 1
+	} else {
+		order = -1
+	}
+
+	options["$sort"] = gin.H{
+		orderBy: order,
+	}
+
+	return options
+}
+
 // Internal Method to generate filter from page params from an API
 func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
 	// fetch pagination query params
