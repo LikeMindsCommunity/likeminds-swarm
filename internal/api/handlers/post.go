@@ -23,13 +23,13 @@ import (
 func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	platformCode string) []entities.Attachment {
 	parsedAttachments := []entities.Attachment{}
-	showMediaExceptImage := utils.CheckVersion(utils.FeedMediaVersions, versionCode, platformCode)
+	feedImageAndLinkMediaCheck := utils.CheckVersionInverted(utils.FeedImageAndLinkMediaVersions, versionCode, platformCode)
 	newAttachmentMeta := entities.AttachmentMeta{
 		Url: constants.AttachmentNotFoundImageUrl,
 	}
 
 	for _, attachment := range attachments {
-		if attachment.AttachmentType != constants.ImageWidget && !showMediaExceptImage {
+		if !(attachment.AttachmentType == constants.ImageWidget || attachment.AttachmentType == constants.LinkWidget) && feedImageAndLinkMediaCheck {
 			attachment.AttachmentType = constants.ImageWidget
 			attachment.AttachmentMeta = &newAttachmentMeta
 		}

@@ -75,6 +75,7 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	return page, page_size, nil
 }
 
+// Internal method to add sorting options to a map
 func addSortingOptions(options map[string]interface{}, orderBy string, order int) map[string]interface{} {
 	if order >= 0 {
 		order = 1
@@ -99,12 +100,11 @@ func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
 
 	// page filter options
 	filter_options := gin.H{
-		"$sort": gin.H{
-			"created_at": -1,
-		},
 		"$skip":  page_size * (page - 1),
 		"$limit": page_size,
 	}
+
+	filter_options = addSortingOptions(filter_options, "created_at", -1)
 
 	return filter_options, nil
 }
