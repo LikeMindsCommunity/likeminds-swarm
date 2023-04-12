@@ -460,7 +460,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		// parse pinned posts
 		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, pinned_post_results, headers[utils.HeadersMemberId], is_cm,
-			headers[utils.HeadersVersionCode], utils.HeadersPlatformCode)
+			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 		response = append(response, pinned_post_response...)
 	}
