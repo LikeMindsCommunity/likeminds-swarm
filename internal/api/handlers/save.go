@@ -116,7 +116,7 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     post_id,
-		})
+		}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

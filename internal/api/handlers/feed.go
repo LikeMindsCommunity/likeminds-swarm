@@ -80,8 +80,12 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	response := []requests.PostResponse{}
 
 	if page == 1 {
+		// pinned post filter options
+		pinned_post_filter_options := addSortingOptions(map[string]interface{}{}, "created_at", -1)
+
 		// fetch pinned post using helper method
-		pinned_post_results, err := handlers.postHelper.FindPostHelper(pinned_post_filter_data, gin.H{})
+		pinned_post_results, err := handlers.postHelper.FindPostHelper(pinned_post_filter_data,
+			pinned_post_filter_options)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -442,8 +446,12 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	response := []requests.PostResponse{}
 
 	if page == 1 {
+		// pinned post filter options
+		pinned_post_filter_options := addSortingOptions(map[string]interface{}{}, "created_at", -1)
+
 		// fetch pinned post using helper method
-		pinned_post_results, err := handlers.postHelper.FindPostHelper(pinned_post_filter_data, gin.H{})
+		pinned_post_results, err := handlers.postHelper.FindPostHelper(pinned_post_filter_data,
+			pinned_post_filter_options)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -452,7 +460,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		// parse pinned posts
 		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, pinned_post_results, headers[utils.HeadersMemberId], is_cm,
-			headers[utils.HeadersVersionCode], utils.HeadersPlatformCode)
+			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 		response = append(response, pinned_post_response...)
 	}

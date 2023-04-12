@@ -23,13 +23,24 @@ import (
 func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	platformCode string) []entities.Attachment {
 	parsedAttachments := []entities.Attachment{}
-	showMediaExceptImage := utils.CheckVersion(utils.FeedMediaVersions, versionCode, platformCode)
+	feedLinkMediaCheck := utils.CheckVersionInverted(utils.FeedLinkMediaVersion, versionCode, platformCode)
+	feedVideoAndDocumentMediaCheck := utils.CheckVersionInverted(utils.FeedVideoAndDocumentMediaVersions, versionCode, platformCode)
 	newAttachmentMeta := entities.AttachmentMeta{
 		Url: constants.AttachmentNotFoundImageUrl,
 	}
 
 	for _, attachment := range attachments {
-		if attachment.AttachmentType != constants.ImageWidget && !showMediaExceptImage {
+		showUpdateAppImage := false
+
+		if feedLinkMediaCheck && attachment.AttachmentType == constants.LinkWidget {
+			showUpdateAppImage = true
+		}
+
+		if feedVideoAndDocumentMediaCheck && (attachment.AttachmentType == constants.VideoWidget || attachment.AttachmentType == constants.DocumentWidget) {
+			showUpdateAppImage = true
+		}
+
+		if showUpdateAppImage {
 			attachment.AttachmentType = constants.ImageWidget
 			attachment.AttachmentMeta = &newAttachmentMeta
 		}
@@ -336,7 +347,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			constants.PostEntityType, community_id, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.PostEntityType,
 				"post_id":     post_id.(primitive.ObjectID).Hex(),
-			})
+			}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -598,7 +609,8 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 	// create delete activity
 	_, err = createActivity(*handlers, constants.DeleteAction, post_data.ID, constants.PostEntityType,
-		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{},
+		headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

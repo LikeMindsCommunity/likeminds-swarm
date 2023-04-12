@@ -21,7 +21,7 @@ var (
 
 // Internal Method to initiate the server
 func main() {
-	var AppVersion string = "0.6.0"
+	var AppVersion string = "0.7.0"
 	environment.LoadGoDotEnv()
 
 	initGin()
