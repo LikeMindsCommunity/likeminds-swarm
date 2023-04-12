@@ -5,10 +5,18 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 // Exposed Method to send Notification using Caravan Service API
-func SendNotification(member_ids []string, title string, sub_title string, route string, community_id int, category string, subCategory string) {
+func SendNotification(member_ids []string, title string, sub_title string, route string, community_id int, category string, subCategory string,
+	platform_code string, version_code string) {
+
+	if title == "" && sub_title != "" && utils.CheckVersion(utils.NotificationVersions, version_code, platform_code) {
+		title = sub_title
+		sub_title = ""
+	}
+
 	postBody := gin.H{
 		"community_id": community_id,
 		"member_ids":   member_ids,

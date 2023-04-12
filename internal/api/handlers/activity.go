@@ -99,7 +99,8 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 
 // Internal Method to create new activity instance
 func createActivity(handler FeedHandlers, action string, entity_id primitive.ObjectID, entity_type string,
-	community_id int, action_by string, action_on string, cta_data map[string]interface{}) (interface{}, error) {
+	community_id int, action_by string, action_on string, cta_data map[string]interface{}, platform_code string,
+	version_code string) (interface{}, error) {
 	var newActivityId primitive.ObjectID
 
 	switch action {
@@ -189,7 +190,7 @@ func createActivity(handler FeedHandlers, action string, entity_id primitive.Obj
 	}
 
 	// send notification
-	SendNotification(newActivityId, handler)
+	SendNotification(newActivityId, handler, platform_code, version_code)
 
 	return newActivityId, nil
 }
@@ -236,7 +237,8 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 
 	// create activity using the helper method
 	_, err := createActivity(*handlers, externalCreateActivityRequest.Action, primitive.NilObjectID,
-		constants.UserEntityType, community_id, headers[utils.HeadersMemberId], user_id, gin.H{})
+		constants.UserEntityType, community_id, headers[utils.HeadersMemberId], user_id, gin.H{},
+		headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
