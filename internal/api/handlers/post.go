@@ -23,13 +23,24 @@ import (
 func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	platformCode string) []entities.Attachment {
 	parsedAttachments := []entities.Attachment{}
-	feedImageAndLinkMediaCheck := utils.CheckVersionInverted(utils.FeedImageAndLinkMediaVersions, versionCode, platformCode)
+	feedLinkMediaCheck := utils.CheckVersionInverted(utils.FeedLinkMediaVersion, versionCode, platformCode)
+	feedVideoAndDocumentMediaCheck := utils.CheckVersionInverted(utils.FeedVideoAndDocumentMediaVersions, versionCode, platformCode)
 	newAttachmentMeta := entities.AttachmentMeta{
 		Url: constants.AttachmentNotFoundImageUrl,
 	}
 
 	for _, attachment := range attachments {
-		if !(attachment.AttachmentType == constants.ImageWidget || attachment.AttachmentType == constants.LinkWidget) && feedImageAndLinkMediaCheck {
+		showUpdateAppImage := false
+
+		if feedLinkMediaCheck && attachment.AttachmentType == constants.LinkWidget {
+			showUpdateAppImage = true
+		}
+
+		if feedVideoAndDocumentMediaCheck && (attachment.AttachmentType == constants.VideoWidget || attachment.AttachmentType == constants.DocumentWidget) {
+			showUpdateAppImage = true
+		}
+
+		if showUpdateAppImage {
 			attachment.AttachmentType = constants.ImageWidget
 			attachment.AttachmentMeta = &newAttachmentMeta
 		}

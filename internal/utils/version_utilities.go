@@ -12,17 +12,28 @@ const (
 	PlatformIoS         string = "ios"
 	PlatformFlutter     string = "fl"
 	PlatformReactNative string = "rn"
+	PlatformReactJS     string = "rt"
 )
 
 var UnreleasedMaxVersion int = 9999
 var UnreleasedMinVersion int = -1
 
-var FeedImageAndLinkMediaVersions = map[string]int{
+var FeedVideoAndDocumentMediaVersions = map[string]int{
 	PlatformAndroid:     UnreleasedMinVersion,
 	PlatformWeb:         UnreleasedMinVersion,
 	PlatformIoS:         UnreleasedMinVersion,
 	PlatformFlutter:     4,
 	PlatformReactNative: UnreleasedMinVersion,
+	PlatformReactJS:     UnreleasedMinVersion,
+}
+
+var FeedLinkMediaVersion = map[string]int{
+	PlatformAndroid:     UnreleasedMinVersion,
+	PlatformWeb:         UnreleasedMinVersion,
+	PlatformIoS:         UnreleasedMinVersion,
+	PlatformFlutter:     5,
+	PlatformReactNative: UnreleasedMinVersion,
+	PlatformReactJS:     UnreleasedMinVersion,
 }
 
 var EditFeedEntityVersions = map[string]int{
@@ -31,6 +42,7 @@ var EditFeedEntityVersions = map[string]int{
 	PlatformIoS:         UnreleasedMaxVersion,
 	PlatformFlutter:     UnreleasedMaxVersion,
 	PlatformReactNative: UnreleasedMaxVersion,
+	PlatformReactJS:     UnreleasedMaxVersion,
 }
 
 var NotificationVersions = map[string]int{
@@ -39,6 +51,7 @@ var NotificationVersions = map[string]int{
 	PlatformIoS:         UnreleasedMaxVersion,
 	PlatformFlutter:     UnreleasedMaxVersion,
 	PlatformReactNative: UnreleasedMaxVersion,
+	PlatformReactJS:     UnreleasedMaxVersion,
 }
 
 // Exposed Method to check version code accessibility for a feature
