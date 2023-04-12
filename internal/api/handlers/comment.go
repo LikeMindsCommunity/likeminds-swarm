@@ -495,7 +495,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     post_id,
-		})
+		}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -520,7 +520,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  comment_id.(primitive.ObjectID).Hex(),
-			})
+			}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -534,7 +534,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  comment_id.(primitive.ObjectID).Hex(),
-			})
+			}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -734,7 +734,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
-			})
+			}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -748,7 +748,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 				"entity_type": constants.CommentEntityType,
 				"post_id":     post_id,
 				"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
-			})
+			}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -836,7 +836,8 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 
 	// create delete activity
 	_, err = createActivity(*handlers, constants.DeleteAction, comment_data.ID, constants.CommentEntityType,
-		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{},
+		headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

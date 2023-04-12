@@ -336,7 +336,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			constants.PostEntityType, community_id, headers[utils.HeadersMemberId], member, gin.H{
 				"entity_type": constants.PostEntityType,
 				"post_id":     post_id.(primitive.ObjectID).Hex(),
-			})
+			}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -598,7 +598,8 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 	// create delete activity
 	_, err = createActivity(*handlers, constants.DeleteAction, post_data.ID, constants.PostEntityType,
-		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{})
+		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{},
+		headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

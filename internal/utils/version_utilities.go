@@ -33,6 +33,14 @@ var EditFeedEntityVersions = map[string]int{
 	PlatformReactNative: UnreleasedMaxVersion,
 }
 
+var NotificationVersions = map[string]int{
+	PlatformAndroid:     1,
+	PlatformWeb:         UnreleasedMaxVersion,
+	PlatformIoS:         UnreleasedMaxVersion,
+	PlatformFlutter:     UnreleasedMaxVersion,
+	PlatformReactNative: UnreleasedMaxVersion,
+}
+
 // Exposed Method to check version code accessibility for a feature
 func CheckVersion(featureVersionCode map[string]int, versionCode string, platformCode string) bool {
 	/*

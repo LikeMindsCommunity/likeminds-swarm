@@ -10,7 +10,8 @@ import (
 )
 
 // Internal Method to send notification on Removal of Create Comment Permission for a user
-func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity) {
+func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity,
+	platform_code string, version_code string) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionRemovedSubCategory
@@ -19,11 +20,13 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on Addition of Create Comment Permission for a user
-func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity) {
+func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity,
+	platform_code string, version_code string) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionAddedSubCategory
@@ -32,11 +35,13 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on Removal of Create Post Permission for a user
-func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity) {
+func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity,
+	platform_code string, version_code string) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionRemovedSubCategory
@@ -45,11 +50,13 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on Addition of Create Post Permission for a user
-func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity) {
+func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity,
+	platform_code string, version_code string) {
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionAddedSubCategory
@@ -58,11 +65,13 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on Deletion of a Post
-func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch post data
 	post_data, err := fetchPost(handlers.postHelper, activity.EntityId.Hex(), activity.CommunityId)
 	if err != nil {
@@ -77,11 +86,13 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 	subTitle := fmt.Sprintf(constants.ModerationPostDeleteSubTitle, post_data.DeleteReason)
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on Deletion of a Comment
-func sendCommentDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendCommentDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch comment data
 	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
 	if err != nil {
@@ -108,22 +119,25 @@ func sendCommentDeleteActionNotification(activity *entities.Activity, handlers F
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal General Method to send notification on deletion of an Entity
-func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
-		sendPostDeleteActionNotification(activity, handlers)
+		sendPostDeleteActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.CommentEntityType:
-		sendCommentDeleteActionNotification(activity, handlers)
+		sendCommentDeleteActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
 
 // Internal Method to send notification on tagging of a user on a Post
-func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
 	if !success || len(member_data.Members) == 0 {
@@ -141,11 +155,13 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 	subTitle := fmt.Sprintf(constants.PostTagSubTitle, member.Name)
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on tagging of a user on a Comment
-func sendCommentTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendCommentTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
 	if !success || len(member_data.Members) == 0 {
@@ -179,22 +195,25 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal General Method to send notification on tagging of a user on an Entity
-func sendTagActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
-		sendPostTagActionNotification(activity, handlers)
+		sendPostTagActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.CommentEntityType:
-		sendCommentTagActionNotification(activity, handlers)
+		sendCommentTagActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
 
 // Internal Method to send notification of also comment action on a Post
-func sendAlsoCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendAlsoCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
 		// Fetch post details
@@ -241,12 +260,14 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		}
 
 		// send notification
-		externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+		externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+			category, subCategory, platform_code, version_code)
 	}
 }
 
 // Internal Method to send notification on comment action on a Post
-func sendPostCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendPostCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
 	if !success || len(member_data.Members) == 0 {
@@ -285,11 +306,13 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on reply action on a Comment
-func sendCommentReplyActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendCommentReplyActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch member details
 	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
 	if !success || len(member_data.Members) == 0 {
@@ -328,22 +351,25 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal General Method to send notification on comment action on an Entity
-func sendCommentActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
-		sendPostCommentActionNotification(activity, handlers)
+		sendPostCommentActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.CommentEntityType:
-		sendCommentReplyActionNotification(activity, handlers)
+		sendCommentReplyActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
 
 // Internal Method to send notification on like action on a Post
-func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedHandlers) {
+func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch likes count
 	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
 	if err != nil {
@@ -381,11 +407,13 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on like action on a Comment
-func sendCommentLikeActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendCommentLikeActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	// Fetch likes count
 	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
 	if err != nil {
@@ -422,17 +450,19 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId, category, subCategory)
+	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		category, subCategory, platform_code, version_code)
 }
 
 // Internal General Method to send notification on like action on an Entity
-func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers) {
+func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers,
+	platform_code string, version_code string) {
 	switch activity.EntityType {
 	case constants.PostEntityType:
-		sendPostLikeActionNoitification(activity, handlers)
+		sendPostLikeActionNoitification(activity, handlers, platform_code, version_code)
 
 	case constants.CommentEntityType:
-		sendCommentLikeActionNotification(activity, handlers)
+		sendCommentLikeActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
 
@@ -463,7 +493,7 @@ func validateReceivers(activity *entities.Activity) *entities.Activity {
 }
 
 // Exposed Method to send notification for every action
-func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers) {
+func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers, platform_code string, version_code string) {
 
 	activity, err := fetchActivity(handlers.activityHelper, activityId.Hex())
 	if err != nil {
@@ -481,30 +511,30 @@ func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers) {
 		return
 
 	case constants.LikeAction:
-		sendLikeActionNotification(activity, handlers)
+		sendLikeActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.CommentAction:
-		sendCommentActionNotification(activity, handlers)
+		sendCommentActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.AlsoCommentAction:
-		sendAlsoCommentActionNotification(activity, handlers)
+		sendAlsoCommentActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.TagAction:
-		sendTagActionNotification(activity, handlers)
+		sendTagActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.DeleteAction:
-		sendDeleteActionNotification(activity, handlers)
+		sendDeleteActionNotification(activity, handlers, platform_code, version_code)
 
 	case constants.CreatePostPermitAddedAction:
-		sendCreatePostPermissionAddedActionNotification(activity)
+		sendCreatePostPermissionAddedActionNotification(activity, platform_code, version_code)
 
 	case constants.CreatePostPermitRemovedAction:
-		sendCreatePostPermissionRemovedActionNotification(activity)
+		sendCreatePostPermissionRemovedActionNotification(activity, platform_code, version_code)
 
 	case constants.CreateCommentPermissionAddedAction:
-		sendCreateCommentPermissionAddedActionNotification(activity)
+		sendCreateCommentPermissionAddedActionNotification(activity, platform_code, version_code)
 
 	case constants.CreateCommentPermitRemovedAction:
-		sendCreateCommentPermissionRemovedActionNotification(activity)
+		sendCreateCommentPermissionRemovedActionNotification(activity, platform_code, version_code)
 	}
 }
