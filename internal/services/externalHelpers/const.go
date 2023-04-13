@@ -31,3 +31,6 @@ const FetchMembersMetaEndPoint = "/api/community/fetch_members_meta"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
+
+const ContentTypeHeader = "application/json"
+const SwarmServiceMemberIdHeader = "swarm-service"

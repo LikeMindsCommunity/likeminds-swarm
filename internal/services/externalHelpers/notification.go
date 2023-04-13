@@ -34,8 +34,10 @@ func SendNotification(member_ids []string, title string, sub_title string, route
 	}
 
 	headers := gin.H{
-		"Content-Type": "application/json",
-		"x-member-id":  "swarm-service",
+		"Content-Type":    ContentTypeHeader,
+		"x-member-id":     SwarmServiceMemberIdHeader,
+		"x-platform-code": platform_code,
+		"x-version-code":  version_code,
 	}
 
 	//Send Request
