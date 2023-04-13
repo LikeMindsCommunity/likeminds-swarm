@@ -12,7 +12,9 @@ import (
 func SendNotification(member_ids []string, title string, sub_title string, route string, community_id int, category string, subCategory string,
 	platform_code string, version_code string) {
 
-	if title == "" && sub_title != "" && utils.CheckVersion(utils.NotificationVersions, version_code, platform_code) {
+	titleNotificationVersion := utils.CheckVersionInverted(utils.NotificationVersions, version_code, platform_code)
+
+	if !titleNotificationVersion && title == "" && sub_title != "" {
 		title = sub_title
 		sub_title = ""
 	}
@@ -32,8 +34,10 @@ func SendNotification(member_ids []string, title string, sub_title string, route
 	}
 
 	headers := gin.H{
-		"Content-Type": "application/json",
-		"x-member-id":  "swarm-service",
+		"Content-Type":    ContentTypeHeader,
+		"x-member-id":     SwarmServiceMemberIdHeader,
+		"x-platform-code": platform_code,
+		"x-version-code":  version_code,
 	}
 
 	//Send Request
