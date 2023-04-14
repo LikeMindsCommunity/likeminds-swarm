@@ -40,7 +40,7 @@ var EditFeedEntityVersions = map[string]int{
 	PlatformAndroid:     UnreleasedMaxVersion,
 	PlatformWeb:         UnreleasedMaxVersion,
 	PlatformIoS:         UnreleasedMaxVersion,
-	PlatformFlutter:     UnreleasedMaxVersion,
+	PlatformFlutter:     5,
 	PlatformReactNative: UnreleasedMaxVersion,
 	PlatformReactJS:     UnreleasedMaxVersion,
 }
