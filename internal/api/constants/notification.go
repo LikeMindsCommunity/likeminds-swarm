@@ -25,6 +25,10 @@ const (
 	PostDeletedTitle       = "Post deleted"
 	CommentDeletedTitle    = "Comment deleted"
 	ReplyDeletedTitle      = "Reply deleted"
+	LikeTitle              = "New Like!"
+	CommentTitle           = "New Comment!"
+	ReplyTitle             = "New Reply!"
+	TagTitle               = "You are tagged!"
 )
 
 const (
