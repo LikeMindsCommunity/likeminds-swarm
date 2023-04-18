@@ -40,18 +40,9 @@ var EditFeedEntityVersions = map[string]int{
 	PlatformAndroid:     UnreleasedMaxVersion,
 	PlatformWeb:         UnreleasedMaxVersion,
 	PlatformIoS:         UnreleasedMaxVersion,
-	PlatformFlutter:     UnreleasedMaxVersion,
+	PlatformFlutter:     5,
 	PlatformReactNative: UnreleasedMaxVersion,
 	PlatformReactJS:     UnreleasedMaxVersion,
-}
-
-var NotificationVersions = map[string]int{
-	PlatformAndroid:     UnreleasedMinVersion,
-	PlatformWeb:         UnreleasedMinVersion,
-	PlatformIoS:         UnreleasedMinVersion,
-	PlatformFlutter:     6,
-	PlatformReactNative: UnreleasedMinVersion,
-	PlatformReactJS:     UnreleasedMinVersion,
 }
 
 // Exposed Method to check version code accessibility for a feature

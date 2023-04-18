@@ -148,7 +148,7 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 
 	// notification params
 	receivers := activity.ActionOn
-	title := ""
+	title := constants.TagTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subCategory := constants.PostTagSubCategory
@@ -172,7 +172,7 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 
 	// notification params
 	receivers := activity.ActionOn
-	title := ""
+	title := constants.TagTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subCategory := ""
@@ -245,7 +245,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 
 		// notification params
 		receivers := activity.ActionOn
-		title := ""
+		title := constants.CommentTitle
 		route := activity.CTA
 		category := constants.FeedCategory
 		subCategory := constants.AlsoCommentSubCategory
@@ -278,10 +278,10 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 
 	// notification params
 	receivers := activity.ActionOn
-	title := ""
+	title := constants.CommentTitle
 	route := activity.CTA
 	category := constants.FeedCategory
-	subCategory := ""
+	subCategory := constants.PostCommentSubCategory
 	subTitle := ""
 
 	// Fetch comments count
@@ -294,8 +294,6 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	if !checkIfFibonacciNumber(int(commentCount)) {
 		return
 	}
-
-	subCategory = constants.PostCommentSubCategory
 
 	if commentCount == 1 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name)
@@ -323,10 +321,10 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 
 	// notification params
 	receivers := activity.ActionOn
-	title := ""
+	title := constants.ReplyTitle
 	route := activity.CTA
 	category := constants.FeedCategory
-	subCategory := ""
+	subCategory := constants.CommentReplySubCategory
 	subTitle := ""
 
 	// Fetch comments count
@@ -339,8 +337,6 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 	if !checkIfFibonacciNumber(int(commentCount)) {
 		return
 	}
-
-	subCategory = constants.CommentReplySubCategory
 
 	if commentCount == 1 {
 		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelOne, member.Name)
@@ -391,11 +387,10 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 
 	// notification params
 	receivers := activity.ActionOn
-	title := ""
+	title := constants.LikeTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
-
 	subCategory := constants.PostLikedSubCategory
 
 	if likesCount == 1 {
@@ -435,7 +430,7 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 
 	// notification params
 	receivers := activity.ActionOn
-	title := ""
+	title := constants.LikeTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
