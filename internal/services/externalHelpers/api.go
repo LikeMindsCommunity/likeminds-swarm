@@ -45,7 +45,7 @@ func GetCaravanServiceBaseUrl() string {
 	CaravanServiceBaseURL := os.Getenv("CARAVAN_SERVICE_URL")
 
 	if len(CaravanServiceBaseURL) == 0 {
-		CaravanServiceBaseURL = "https://beta.likeminds.community"
+		CaravanServiceBaseURL = "https://betacaravan.likeminds.community"
 	}
 
 	return CaravanServiceBaseURL
