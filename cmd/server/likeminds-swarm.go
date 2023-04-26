@@ -81,6 +81,7 @@ func enableCors() cors.Config {
 		"x-member-id",
 		"x-platform-code",
 		"x-version-code",
+		"x-sdk-source",
 		"x-device-id",
 		"x-api-key",
 	)
