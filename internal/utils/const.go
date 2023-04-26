@@ -5,6 +5,7 @@ const (
 	HeadersVersionCode   string = "x-version-code"
 	HeadersPlatformCode  string = "x-platform-code"
 	HeadersPlatformType  string = "x-platform-type"
+	HeadersSdkSource     string = "x-sdk-source"
 	HeadersDeviceId      string = "x-device-id"
 	HeadersApiKey        string = "x-api-key"
 	HeadersAcceptVersion string = "x-accept-version"
