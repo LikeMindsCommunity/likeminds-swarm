@@ -10,13 +10,14 @@ type OGTags struct {
 
 // Structure for Attachment Meta
 type AttachmentMeta struct {
-	Name      string  `json:"name,omitempty" bson:"name,omitempty"`
-	Url       string  `json:"url,omitempty" bson:"url,omitempty"`
-	Format    string  `json:"format,omitempty" bson:"format,omitempty"`
-	Size      int     `json:"size,omitempty" bson:"size,omitempty"`
-	Duration  int     `json:"duration,omitempty" bson:"duration,omitempty"`
-	PageCount int     `json:"page_count,omitempty" bson:"page_count,omitempty"`
-	OgTags    *OGTags `json:"og_tags,omitempty" bson:"og_tags,omitempty"`
+	Name         string  `json:"name,omitempty" bson:"name,omitempty"`
+	Url          string  `json:"url,omitempty" bson:"url,omitempty"`
+	Format       string  `json:"format,omitempty" bson:"format,omitempty"`
+	Size         int     `json:"size,omitempty" bson:"size,omitempty"`
+	Duration     int     `json:"duration,omitempty" bson:"duration,omitempty"`
+	PageCount    int     `json:"page_count,omitempty" bson:"page_count,omitempty"`
+	ThumbnailUrl string  `json:"thumbnail_url,omitempty" bson:"thumbnail_url,omitempty"`
+	OgTags       *OGTags `json:"og_tags,omitempty" bson:"og_tags,omitempty"`
 }
 
 // Structure for Attachment
@@ -34,15 +35,17 @@ func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachme
 }
 
 // Exposed Method to Create New Attachment Meta
-func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, ogTags OGTags) AttachmentMeta {
+func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, thumbnail_url string,
+	ogTags OGTags) AttachmentMeta {
 	return AttachmentMeta{
-		Name:      name,
-		Url:       url,
-		Format:    format,
-		Size:      size,
-		Duration:  duration,
-		PageCount: pageCount,
-		OgTags:    &ogTags,
+		Name:         name,
+		Url:          url,
+		Format:       format,
+		Size:         size,
+		Duration:     duration,
+		PageCount:    pageCount,
+		ThumbnailUrl: thumbnail_url,
+		OgTags:       &ogTags,
 	}
 }
 

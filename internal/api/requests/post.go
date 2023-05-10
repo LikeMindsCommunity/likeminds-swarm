@@ -15,13 +15,14 @@ type OGTags struct {
 
 // Attachment Meta Structure
 type AttachmentMeta struct {
-	Name      string `json:"name"`
-	Url       string `json:"url"`
-	Format    string `json:"format"`
-	Size      int    `json:"size"`
-	Duration  int    `json:"duration"`
-	PageCount int    `json:"page_count"`
-	OgTags    OGTags `json:"og_tags"`
+	Name         string `json:"name"`
+	Url          string `json:"url"`
+	Format       string `json:"format"`
+	Size         int    `json:"size"`
+	Duration     int    `json:"duration"`
+	PageCount    int    `json:"page_count"`
+	ThumbnailUrl string `json:"thumbnail_url"`
+	OgTags       OGTags `json:"og_tags"`
 }
 
 // Attachment Structure
