@@ -21,7 +21,8 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 		meta_data := element.AttachmentMeta
 		og_tags := meta_data.OgTags
 		meta_og_tags := entities.NewOgTags(og_tags.Title, og_tags.Image, og_tags.Description, og_tags.Url)
-		attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size, meta_data.Duration, meta_data.PageCount, meta_og_tags)
+		attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size,
+			meta_data.Duration, meta_data.PageCount, meta_data.ThumbnailUrl, meta_og_tags)
 		attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
 		post_attachments = append(post_attachments, attachment)
 	}
@@ -30,7 +31,8 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 }
 
 // Exposed Helper Method to Create Post
-func (helper *postHelper) CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error) {
+func (helper *postHelper) CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment,
+	chatroom_id int) (interface{}, error) {
 
 	// parse attachments
 	post_attachments := parseAttachments(attachments)
