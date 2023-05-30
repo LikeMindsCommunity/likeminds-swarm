@@ -335,7 +335,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// Get tagged members from request
-	tagged_members := createPostRequest.TaggedUsers
+	tagged_members := createPostRequest.UUIDs
 
 	for _, member := range tagged_members {
 		// create tag activity

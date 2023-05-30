@@ -37,7 +37,7 @@ type CreatePostRequest struct {
 	Heading     string       `json:"heading"`
 	Attachments []Attachment `json:"attachments"`
 	ChatroomID  int          `json:"feedroom_id"`
-	TaggedUsers []string     `json:"tagged_users"`
+	UUIDs       []string     `json:"uuids"`
 }
 
 // Request Structure for Edit Post
