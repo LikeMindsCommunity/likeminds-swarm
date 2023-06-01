@@ -334,12 +334,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		log.Print(err.Error())
 	}
 
-	// parse tagged members
-	tagged_members, err := getTaggedUsers(createPostRequest.Text)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
+	// Get tagged members from request
+	tagged_members := createPostRequest.UUIDs
 
 	for _, member := range tagged_members {
 		// create tag activity
