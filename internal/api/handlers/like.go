@@ -174,11 +174,10 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	}
 
 	// create like activity
-	_, err = createActivity(*handlers, constants.LikeAction, post_data.ID, constants.PostEntityType,
-		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{
-			"entity_type": constants.PostEntityType,
-			"post_id":     post_id,
-		}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.LikeOnPost, gin.H{
+		"entity_type": constants.PostEntityType,
+		"post_id":     post_id,
+	}, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -246,7 +245,7 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 		return
 	}
 
-	// fetch post using helper method
+	//fetch post using helper method
 	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -295,12 +294,11 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	}
 
 	// create like activity
-	_, err = createActivity(*handlers, constants.LikeAction, comment_data.ID, constants.CommentEntityType,
-		post_data.CommunityId, headers[utils.HeadersMemberId], comment_data.UserId, gin.H{
-			"entity_type": constants.CommentEntityType,
-			"post_id":     post_id,
-			"comment_id":  comment_id,
-		}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.LikeOnComment, gin.H{
+		"entity_type": constants.CommentEntityType,
+		"post_id":     post_id,
+		"comment_id":  comment_id,
+	}, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
