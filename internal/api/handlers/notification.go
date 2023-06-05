@@ -20,7 +20,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -35,7 +35,7 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -50,7 +50,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -65,7 +65,7 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 	route := activity.CTA
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -73,7 +73,7 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch post data
-	post_data, err := fetchPost(handlers.postHelper, activity.EntityId.Hex(), activity.CommunityId)
+	post_data, err := fetchPost(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID)
 	if err != nil {
 		return
 	}
@@ -86,7 +86,7 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 	subTitle := fmt.Sprintf(constants.ModerationPostDeleteSubTitle, post_data.DeleteReason)
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -94,7 +94,7 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 func sendCommentDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch comment data
-	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
+	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityID.Hex())
 	if err != nil {
 		return
 	}
@@ -119,7 +119,7 @@ func sendCommentDeleteActionNotification(activity *entities.Activity, handlers F
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -127,10 +127,10 @@ func sendCommentDeleteActionNotification(activity *entities.Activity, handlers F
 func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.PostEntityType:
+	case constants.Post:
 		sendPostDeleteActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.CommentEntityType:
+	case constants.Comment:
 		sendCommentDeleteActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
@@ -139,7 +139,7 @@ func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHand
 func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -155,7 +155,7 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 	subTitle := fmt.Sprintf(constants.PostTagSubTitle, member.Name)
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -163,7 +163,7 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 func sendCommentTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -179,7 +179,7 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 	subTitle := ""
 
 	// Fetch comment data
-	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityId.Hex())
+	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityID.Hex())
 	if err != nil {
 		return
 	}
@@ -195,7 +195,7 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -203,10 +203,10 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 func sendTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.PostEntityType:
+	case constants.Post:
 		sendPostTagActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.CommentEntityType:
+	case constants.Comment:
 		sendCommentTagActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
@@ -215,15 +215,15 @@ func sendTagActionNotification(activity *entities.Activity, handlers FeedHandler
 func sendAlsoCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.PostEntityType:
+	case constants.Post:
 		// Fetch post details
-		post_data, err := fetchPost(handlers.postHelper, activity.EntityId.Hex(), activity.CommunityId)
+		post_data, err := fetchPost(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID)
 		if err != nil {
 			return
 		}
 
 		// Fetch member details
-		success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy, post_data.UserId}, activity.ActionBy, activity.CommunityId)
+		success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn, post_data.UserId}, activity.ActionOn, activity.CommunityID)
 		if !success || len(member_data.Members) == 0 {
 			return
 		}
@@ -238,7 +238,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 				postOwner = member.Name
 			}
 
-			if member.UserUniqueId == activity.ActionBy {
+			if member.UserUniqueId == activity.ActionOn {
 				commentOwner = member.Name
 			}
 		}
@@ -260,7 +260,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		}
 
 		// send notification
-		externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+		externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 			category, subCategory, platform_code, version_code)
 	}
 }
@@ -269,7 +269,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 func sendPostCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -285,7 +285,7 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	subTitle := ""
 
 	// Fetch comments count
-	commentCount, err := fetchPostCommentsCount(handlers.commentHelper, activity.EntityId.Hex())
+	commentCount, err := fetchPostCommentsCount(handlers.commentHelper, activity.EntityID.Hex())
 	if err != nil {
 		return
 	}
@@ -304,7 +304,7 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -312,7 +312,7 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 func sendCommentReplyActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -328,7 +328,7 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 	subTitle := ""
 
 	// Fetch comments count
-	commentCount, err := fetchCommentRepliesCount(handlers.commentHelper, activity.EntityId.Hex())
+	commentCount, err := fetchCommentRepliesCount(handlers.commentHelper, activity.EntityID.Hex())
 	if err != nil {
 		return
 	}
@@ -347,7 +347,7 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -355,10 +355,10 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 func sendCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.PostEntityType:
+	case constants.Post:
 		sendPostCommentActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.CommentEntityType:
+	case constants.Comment:
 		sendCommentReplyActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
@@ -366,8 +366,19 @@ func sendCommentActionNotification(activity *entities.Activity, handlers FeedHan
 // Internal Method to send notification on like action on a Post
 func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	entityType := ""
+	switch activity.EntityType {
+	case constants.Post:
+		entityType = "post"
+	case constants.Comment:
+		entityType = "comment"
+	case constants.User:
+		entityType = "user"
+	}
+
 	// Fetch likes count
-	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
+	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
 	if err != nil {
 		return
 	}
@@ -378,7 +389,7 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	}
 
 	// Fetch members details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -402,15 +413,25 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
 // Internal Method to send notification on like action on a Comment
 func sendCommentLikeActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	entityType := ""
+	switch activity.EntityType {
+	case constants.Post:
+		entityType = "post"
+	case constants.Comment:
+		entityType = "comment"
+	case constants.User:
+		entityType = "user"
+	}
 	// Fetch likes count
-	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityId.Hex(), activity.EntityType)
+	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
 	if err != nil {
 		return
 	}
@@ -421,7 +442,7 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	// Fetch members details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy}, activity.ActionBy, activity.CommunityId)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -445,7 +466,7 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	// send notification
-	externalHelpers.SendNotification(receivers, title, subTitle, route, activity.CommunityId,
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
 		category, subCategory, platform_code, version_code)
 }
 
@@ -453,10 +474,10 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.PostEntityType:
+	case constants.Post:
 		sendPostLikeActionNoitification(activity, handlers, platform_code, version_code)
 
-	case constants.CommentEntityType:
+	case constants.Comment:
 		sendCommentLikeActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
@@ -465,19 +486,19 @@ func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandle
 func validateReceivers(activity *entities.Activity) *entities.Activity {
 	receivers := []string{}
 
-	for _, receiver := range activity.ActionOn {
-		if receiver != activity.ActionBy {
+	for _, receiver := range activity.ActionBy {
+		if receiver != activity.ActionOn {
 			receivers = append(receivers, receiver)
 		}
 	}
 
 	newActivity := &entities.Activity{
 		ID:          activity.ID,
-		ActionBy:    activity.ActionBy,
-		ActionOn:    receivers,
-		CommunityId: activity.CommunityId,
+		ActionBy:    receivers,
+		ActionOn:    activity.ActionOn,
+		CommunityID: activity.CommunityID,
 		EntityType:  activity.EntityType,
-		EntityId:    activity.EntityId,
+		EntityID:    activity.EntityID,
 		Action:      activity.Action,
 		CTA:         activity.CTA,
 		CreatedAt:   activity.CreatedAt,
@@ -502,34 +523,32 @@ func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers, plat
 	}
 
 	switch activity.Action {
-	case constants.SaveAction:
-		return
 
-	case constants.LikeAction:
+	case constants.LikeOnPost, constants.LikeOnComment:
 		sendLikeActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.CommentAction:
+	case constants.CommentOnPost, constants.CommentOnComment:
 		sendCommentActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.AlsoCommentAction:
+	case constants.AlsoCommentOnPost:
 		sendAlsoCommentActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.TagAction:
+	case constants.TaggedInPost, constants.TaggedInPostComment:
 		sendTagActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.DeleteAction:
+	case constants.CMDeletedPost, constants.CMDeletedComment:
 		sendDeleteActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.CreatePostPermitAddedAction:
+	case constants.CreatePostPermitAdded:
 		sendCreatePostPermissionAddedActionNotification(activity, platform_code, version_code)
 
-	case constants.CreatePostPermitRemovedAction:
+	case constants.CreatePostPermitRemoved:
 		sendCreatePostPermissionRemovedActionNotification(activity, platform_code, version_code)
 
-	case constants.CreateCommentPermissionAddedAction:
+	case constants.CreateCommentPermitAdded:
 		sendCreateCommentPermissionAddedActionNotification(activity, platform_code, version_code)
 
-	case constants.CreateCommentPermitRemovedAction:
+	case constants.CreateCommentPermitRemoved:
 		sendCreateCommentPermissionRemovedActionNotification(activity, platform_code, version_code)
 	}
 }
