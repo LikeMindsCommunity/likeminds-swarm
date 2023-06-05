@@ -9,6 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -135,6 +136,27 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 	}
 
 	return activityText, nil
+}
+
+// Internal Method to fetch activity using activity_id
+func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entities.Activity, error) {
+	// activity filter data
+	activity_filter_data := gin.H{
+		"_id": activity_id,
+	}
+
+	// fetch activity using helper method
+	activity_results, err := helper.FindActivityHelper(activity_filter_data, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of activity
+	if len(activity_results) == 0 {
+		return nil, fmt.Errorf("invalid activity_id sent")
+	}
+
+	return &activity_results[0], nil
 }
 
 // Exposed Helper Method to Create Activity
