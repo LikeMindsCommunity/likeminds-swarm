@@ -103,6 +103,32 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 	activityText := ""
 
 	switch activity.Action {
+	case constants.CreatePostPermitAdded:
+		activityText += "You now have the permission to create posts in the community. Start posting now."
+		return activityText, nil
+
+	case constants.CreatePostPermitRemoved:
+		activityText += "Your permission to create posts in the community has been removed."
+		return activityText, nil
+
+	case constants.CreateCommentPermitAdded:
+		activityText += "You now have the permission to add comments on the posts. Start engaging now."
+		return activityText, nil
+
+	case constants.CreateCommentPermitRemoved:
+		activityText += "Your permission to add comments and replies to the posts has been removed."
+		return activityText, nil
+
+	case constants.CMDeletedPost:
+		activityText += "Your post has been deleted as it violates community guidelines. Reason: "
+		activityText += activityEntityData.(entities.Post).DeleteReason
+		return activityText, nil
+
+	case constants.CMDeletedComment:
+		activityText += "Your Reply has been deleted as it violates community guidelines. Reason: "
+		activityText += activityEntityData.(entities.Comment).DeleteReason
+		return activityText, nil
+
 	case constants.LikeOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
@@ -147,6 +173,48 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += commentDataTextTrimmed + "\""
 
 		return activityText, nil
+
+	case constants.CommentOnComment:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+
+		activityText += activityByUserDataName
+
+		// add condition for and n others
+
+		activityText += " replied on your comment \""
+
+		commentDataText := activityEntityData.(entities.Comment).Text
+		commentDataTextTrimmed := truncate.Truncate(commentDataText, 60, "...", truncate.PositionEnd)
+		activityText += commentDataTextTrimmed + "\""
+
+		return activityText, nil
+
+	case constants.TaggedInPost:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+
+		activityText += activityByUserDataName
+		activityText += " tagged you in their post \""
+
+		postDataText := activityEntityData.(entities.Post).Text
+		postDataTextTrimmed := truncate.Truncate(postDataText, 60, "...", truncate.PositionEnd)
+		activityText += postDataTextTrimmed + "\""
+
+		return activityText, nil
+
+	case constants.TaggedInPostComment:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+
+		activityText += activityByUserDataName
+		activityText += " tagged you in their comment \""
+
+		commentDataText := activityEntityData.(entities.Comment).Text
+		commentDataTextTrimmed := truncate.Truncate(commentDataText, 60, "...", truncate.PositionEnd)
+		activityText += commentDataTextTrimmed + "\""
+
+		return activityText, nil
 	}
 
 	return activityText, nil
@@ -179,7 +247,11 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 	cta := fetchActivityCtaForAction(action, ctaData)
 
 	switch action {
-	case constants.CMDeletedPost,
+	case constants.CreatePostPermitAdded,
+		constants.CreatePostPermitRemoved,
+		constants.CreateCommentPermitAdded,
+		constants.CreateCommentPermitRemoved,
+		constants.CMDeletedPost,
 		constants.CMDeletedComment,
 		constants.LikeOnPost,
 		constants.CommentOnPost,
