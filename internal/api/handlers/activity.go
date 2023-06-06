@@ -3,8 +3,8 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
-	"github.com/aquilax/truncate"
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
@@ -16,20 +16,21 @@ import (
 )
 
 // Internal Method to parse User activity list
-func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]requests.UserActivityResponse, error) {
+func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]requests.UserActivityResponse, interface{}, error) {
 	response := []requests.UserActivityResponse{}
+	userDatas := gin.H{}
 
 	for _, activity := range activities {
-		activityUserData := getActivityUserData(activity)
+		activityUserData, activityUserUID := getActivityUserData(activity)
 
 		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID)
 		if err != nil {
-			return response, err
+			return response, userDatas, err
 		}
 
 		activityText, err := getActivityText(activityUserData, activityEntityData, activity)
 		if err != nil {
-			return response, err
+			return response, userDatas, err
 		}
 
 		activity = activity
@@ -45,25 +46,27 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]
 			IsRead:             activity.IsRead,
 			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
 			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
-			ActivityUserData:   activityUserData,
 			ActivityEntityData: activityEntityData,
 			ActivityText:       activityText,
 		})
+		userDatas[activityUserUID] = activityUserData[activityUserUID]
 	}
-	return response, nil
+
+	return response, userDatas, nil
 }
 
-func getActivityUserData(activity entities.Activity) map[string]interface{} {
+func getActivityUserData(activity entities.Activity) (map[string]interface{}, string) {
 	activityUserUID := activity.ActionBy[len(activity.ActionBy)-1]
 	activityUserData := map[string]interface{}{}
 	isSuccess := false
 
 	isSuccess, activityUserData[activityUserUID] = externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
+	activityUserData[activityUserUID] = activityUserData[activityUserUID].(*externalHelpers.MemberMetaResponse).Members[0]
 	if isSuccess {
-		return activityUserData
+		return activityUserData, activityUserUID
 	}
 
-	return nil
+	return nil, ""
 }
 
 func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID) (interface{}, error) {
@@ -131,88 +134,96 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.LikeOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
 		activityText += activityByUserDataName
 
-		// add condition for and n others
+		if len(activity.ActionBy) > 1 {
+			activityMembersTotalBarOne := len(activity.ActionBy) - 1
+			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
+		}
 
 		activityText += " liked your post \""
 
 		postDataText := activityEntityData.(entities.Post).Text
-		postDataTextTrimmed := truncate.Truncate(postDataText, 60, "...", truncate.PositionEnd)
-		activityText += postDataTextTrimmed + "\""
+		activityText += postDataText + "\""
 
 		return activityText, nil
 
 	case constants.CommentOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
 		activityText += activityByUserDataName
-		// add condition for and n others
+
+		if len(activity.ActionBy) > 1 {
+			activityMembersTotalBarOne := len(activity.ActionBy) - 1
+			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
+		}
+
 		activityText += " commented on your post \""
 		postDataText := activityEntityData.(entities.Post).Text
-		postDataTextTrimmed := truncate.Truncate(postDataText, 60, "...", truncate.PositionEnd)
-		activityText += postDataTextTrimmed + "\""
+		activityText += postDataText + "\""
 
 		return activityText, nil
 
 	case constants.LikeOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
 		activityText += activityByUserDataName
 
-		// add condition for and n others
+		if len(activity.ActionBy) > 1 {
+			activityMembersTotalBarOne := len(activity.ActionBy) - 1
+			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
+		}
 
 		activityText += " liked on your comment \""
 
 		commentDataText := activityEntityData.(entities.Comment).Text
-		commentDataTextTrimmed := truncate.Truncate(commentDataText, 60, "...", truncate.PositionEnd)
-		activityText += commentDataTextTrimmed + "\""
+		activityText += commentDataText + "\""
 
 		return activityText, nil
 
 	case constants.CommentOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
 		activityText += activityByUserDataName
 
-		// add condition for and n others
+		if len(activity.ActionBy) > 1 {
+			activityMembersTotalBarOne := len(activity.ActionBy) - 1
+			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
+		}
 
 		activityText += " replied on your comment \""
 
 		commentDataText := activityEntityData.(entities.Comment).Text
-		commentDataTextTrimmed := truncate.Truncate(commentDataText, 60, "...", truncate.PositionEnd)
-		activityText += commentDataTextTrimmed + "\""
+		activityText += commentDataText + "\""
 
 		return activityText, nil
 
 	case constants.TaggedInPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
 		activityText += activityByUserDataName
 		activityText += " tagged you in their post \""
 
 		postDataText := activityEntityData.(entities.Post).Text
-		postDataTextTrimmed := truncate.Truncate(postDataText, 60, "...", truncate.PositionEnd)
-		activityText += postDataTextTrimmed + "\""
+		activityText += postDataText + "\""
 
 		return activityText, nil
 
 	case constants.TaggedInPostComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
 		activityText += activityByUserDataName
 		activityText += " tagged you in their comment \""
 
 		commentDataText := activityEntityData.(entities.Comment).Text
-		commentDataTextTrimmed := truncate.Truncate(commentDataText, 60, "...", truncate.PositionEnd)
-		activityText += commentDataTextTrimmed + "\""
+		activityText += commentDataText + "\""
 
 		return activityText, nil
 	}
@@ -414,14 +425,18 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	}
 
 	// parse user activity response
-	activityResponse, err := parseUserActivity(*handlers, activityResults)
+	activityResponse, userDatas, err := parseUserActivity(*handlers, activityResults)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// 	// return final response
-	c.JSON(http.StatusOK, gin.H{"success": true, "activities": activityResponse})
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"activities": activityResponse,
+		"user_data":  userDatas,
+	})
 }
 
 // UserActivityMarkRead | Mark user activity as read

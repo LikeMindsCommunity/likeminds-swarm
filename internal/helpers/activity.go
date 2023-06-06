@@ -27,7 +27,9 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 	if len(existingActivity) > 0 {
 		updatedActionBy := append(existingActivity[0].ActionBy, actionBy...)
 		updateData := gin.H{
-			"action_by": updatedActionBy,
+			"$set": gin.H{
+				"action_by": updatedActionBy,
+			},
 		}
 		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData)
 

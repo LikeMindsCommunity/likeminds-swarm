@@ -5,7 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Request Structure for Create Activity
+// CreateActivityRequest | defines create activity type
 type CreateActivityRequest struct {
 	Action string `json:"action" binding:"required"`
 }
@@ -23,7 +23,6 @@ type UserActivityResponse struct {
 	IsRead             bool                     `json:"is_read"`
 	CreatedAt          int                      `json:"created_at"`
 	UpdatedAt          int                      `json:"updated_at"`
-	ActivityUserData   interface{}              `json:"activity_user_data"`
 	ActivityEntityData interface{}              `json:"activity_entity_data"`
 	ActivityText       string                   `json:"activity_text"`
 }
