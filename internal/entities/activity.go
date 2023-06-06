@@ -27,14 +27,15 @@ type Activity struct {
 func NewActivity(CommunityID int, ActionBy []string, ActionOn string, EntityType constants.EntityType, EntityID primitive.ObjectID, EntityOwnerID string, Action constants.ActivityAction, CTA string, IsRead bool) Activity {
 	TimeNow := time.Now()
 	return Activity{
-		CommunityID: CommunityID,
-		ActionBy:    ActionBy,
-		ActionOn:    ActionOn,
-		EntityType:  EntityType,
-		EntityID:    EntityID,
-		Action:      Action,
-		CTA:         CTA,
-		CreatedAt:   TimeNow,
-		UpdatedAt:   TimeNow,
+		CommunityID:   CommunityID,
+		ActionBy:      ActionBy,
+		ActionOn:      ActionOn,
+		EntityType:    EntityType,
+		EntityID:      EntityID,
+		EntityOwnerID: EntityOwnerID,
+		Action:        Action,
+		CTA:           CTA,
+		CreatedAt:     TimeNow,
+		UpdatedAt:     TimeNow,
 	}
 }

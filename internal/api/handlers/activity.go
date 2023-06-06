@@ -39,6 +39,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]
 			ActionOn:           activity.ActionOn,
 			EntityType:         activity.EntityType,
 			EntityID:           activity.EntityID,
+			EntityOwnerID:      activity.EntityOwnerID,
 			Action:             activity.Action,
 			CTA:                activity.CTA,
 			IsRead:             activity.IsRead,
@@ -55,14 +56,14 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]
 func getActivityUserData(activity entities.Activity) map[string]interface{} {
 	activityUserUID := activity.ActionBy[len(activity.ActionBy)-1]
 	activityUserData := map[string]interface{}{}
-	err := false
+	isSuccess := false
 
-	err, activityUserData[activityUserUID] = externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
-	if err {
+	isSuccess, activityUserData[activityUserUID] = externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
+	if isSuccess {
 		return activityUserData
 	}
 
-	return activityUserData
+	return nil
 }
 
 func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID) (interface{}, error) {
@@ -103,7 +104,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	switch activity.Action {
 	case constants.LikeOnPost:
-		activityByUserData := activityUserData[activity.ActionOn]
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
 
 		activityText += activityByUserDataName
@@ -118,8 +119,21 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		return activityText, nil
 
+	case constants.CommentOnPost:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
+
+		activityText += activityByUserDataName
+		// add condition for and n others
+		activityText += " commented on your post \""
+		postDataText := activityEntityData.(entities.Post).Text
+		postDataTextTrimmed := truncate.Truncate(postDataText, 60, "...", truncate.PositionEnd)
+		activityText += postDataTextTrimmed + "\""
+
+		return activityText, nil
+
 	case constants.LikeOnComment:
-		activityByUserData := activityUserData[activity.ActionOn]
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityByUserDataName := activityByUserData.(*externalHelpers.MemberMetaResponse).Members[0].Name
 
 		activityText += activityByUserDataName
