@@ -490,18 +490,6 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
-	// create also_comment activity
-	activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, headers[utils.HeadersMemberId], constants.AlsoCommentOnPost, gin.H{
-		"entity_type": constants.PostEntityType,
-		"post_id":     post_id,
-	}, false, false)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
-
 	tagged_members, err := getTaggedUsers(createCommentRequest.Text)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
