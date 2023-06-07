@@ -124,9 +124,8 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.LikeOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
-		activityText += activityByUserDataName
+		activityText += getUserRoute(activityByUserData)
 
 		if len(activity.ActionBy) > 1 {
 			activityMembersTotalBarOne := len(activity.ActionBy) - 1
@@ -142,9 +141,8 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.CommentOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
-		activityText += activityByUserDataName
+		activityText += getUserRoute(activityByUserData)
 
 		if len(activity.ActionBy) > 1 {
 			activityMembersTotalBarOne := len(activity.ActionBy) - 1
@@ -160,9 +158,8 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.LikeOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
-		activityText += activityByUserDataName
+		activityText += getUserRoute(activityByUserData)
 
 		if len(activity.ActionBy) > 1 {
 			activityMembersTotalBarOne := len(activity.ActionBy) - 1
@@ -178,9 +175,8 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.CommentOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
-		activityText += activityByUserDataName
+		activityText += getUserRoute(activityByUserData)
 
 		if len(activity.ActionBy) > 1 {
 			activityMembersTotalBarOne := len(activity.ActionBy) - 1
@@ -196,9 +192,9 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.TaggedInPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
-		activityText += activityByUserDataName
+		activityText += getUserRoute(activityByUserData)
+
 		activityText += " tagged you in their post \""
 
 		postDataText := activityEntityData.(requests.PostResponse).Text
@@ -208,9 +204,9 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.TaggedInPostComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-		activityByUserDataName := activityByUserData.(externalHelpers.MemberMeta).Name
 
-		activityText += activityByUserDataName
+		activityText += getUserRoute(activityByUserData)
+
 		activityText += " tagged you in their comment \""
 
 		commentDataText := activityEntityData.(requests.CommentResponse).Text
@@ -220,6 +216,13 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 	}
 
 	return activityText, nil
+}
+
+func getUserRoute(activityByUserData interface{}) string {
+	activityByUserDataEntity := activityByUserData.(externalHelpers.MemberMeta)
+	userRouteString := "<<%s|route://user_profile/%s>>"
+
+	return fmt.Sprintf(userRouteString, activityByUserDataEntity.Name, activityByUserDataEntity.UserUniqueId)
 }
 
 // Internal Method to fetch activity using activity_id
