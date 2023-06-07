@@ -91,7 +91,7 @@ func addSortingOptions(options map[string]interface{}, orderBy string, order int
 }
 
 // Internal Method to generate filter from page params from an API
-func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
+func generatePageFilterOptions(c *gin.Context, sortKeyParam string) (map[string]interface{}, error) {
 	// fetch pagination query params
 	page, page_size, err := fetchPaginationParams(c)
 	if err != nil {
@@ -104,7 +104,13 @@ func generatePageFilterOptions(c *gin.Context) (map[string]interface{}, error) {
 		"$limit": page_size,
 	}
 
-	filter_options = addSortingOptions(filter_options, "created_at", -1)
+	sortKey := "created_at"
+
+	if sortKeyParam != "" {
+		sortKey = sortKeyParam
+	}
+
+	filter_options = addSortingOptions(filter_options, sortKey, -1)
 
 	return filter_options, nil
 }

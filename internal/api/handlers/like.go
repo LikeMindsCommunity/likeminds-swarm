@@ -218,7 +218,7 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	}
 
 	// filter options
-	like_filter_options, err := generatePageFilterOptions(c)
+	like_filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -349,7 +349,7 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	}
 
 	// filter options
-	like_filter_options, err := generatePageFilterOptions(c)
+	like_filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

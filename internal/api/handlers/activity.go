@@ -413,8 +413,10 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 		"is_deleted":   false,
 	}
 
+	activitySortKey := "updated_at"
+
 	// filter options
-	activityFilterOptions, err := generatePageFilterOptions(c)
+	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
