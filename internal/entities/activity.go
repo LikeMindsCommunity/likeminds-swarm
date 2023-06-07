@@ -19,7 +19,7 @@ type Activity struct {
 	Action        constants.ActivityAction `json:"action" bson:"action"`
 	CTA           string                   `json:"cta" bson:"cta"`
 	IsRead        bool                     `json:"is_read" bson:"is_read"`
-	IsDeleted     bool                     `json:"is_deleted" bson:"is_deleted""`
+	IsDeleted     bool                     `json:"is_deleted" bson:"is_deleted"`
 	CreatedAt     time.Time                `json:"created_at" bson:"created_at"`
 	UpdatedAt     time.Time                `json:"updated_at" bson:"updated_at"`
 }

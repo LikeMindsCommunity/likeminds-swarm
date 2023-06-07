@@ -12,7 +12,7 @@ import (
 // Internal Method to send notification on Removal of Create Comment Permission for a user
 func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionOn
+	receivers := activity.ActionBy[len(activity.ActionBy)-1]
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
@@ -27,7 +27,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 // Internal Method to send notification on Addition of Create Comment Permission for a user
 func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionOn
+	receivers := activity.ActionBy[len(activity.ActionBy)-1]
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
@@ -42,7 +42,7 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 // Internal Method to send notification on Removal of Create Post Permission for a user
 func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionOn
+	receivers := activity.ActionBy[len(activity.ActionBy)-1]
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
@@ -57,7 +57,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 // Internal Method to send notification on Addition of Create Post Permission for a user
 func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionOn
+	receivers := activity.ActionBy[len(activity.ActionBy)-1]
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
@@ -137,14 +137,14 @@ func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHand
 
 // Internal Method to send notification on tagging of a user on a Post
 func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
-	platform_code string, version_code string) {
+	platformCode string, versionCode string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
-	if !success || len(member_data.Members) == 0 {
+	success, memberData := externalHelpers.FetchMemberMeta([]string{activity.ActionBy[len(activity.ActionBy)-1]}, activity.ActionOn, activity.CommunityID)
+	if !success || len(memberData.Members) == 0 {
 		return
 	}
 
-	member := member_data.Members[0]
+	member := memberData.Members[0]
 
 	// notification params
 	receivers := activity.ActionOn
@@ -156,14 +156,14 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
-		category, subCategory, platform_code, version_code)
+		category, subCategory, platformCode, versionCode)
 }
 
 // Internal Method to send notification on tagging of a user on a Comment
 func sendCommentTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy[len(activity.ActionBy)-1]}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -223,7 +223,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		}
 
 		// Fetch member details
-		success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn, post_data.UserId}, activity.ActionOn, activity.CommunityID)
+		success, member_data := externalHelpers.FetchMemberMeta(activity.ActionBy, activity.ActionOn, activity.CommunityID)
 		if !success || len(member_data.Members) == 0 {
 			return
 		}
@@ -269,7 +269,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 func sendPostCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy[len(activity.ActionBy)-1]}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -312,7 +312,7 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 func sendCommentReplyActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch member details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy[len(activity.ActionBy)-1]}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -389,7 +389,7 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	}
 
 	// Fetch members details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy[len(activity.ActionBy)-1]}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -442,7 +442,7 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	// Fetch members details
-	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionOn}, activity.ActionOn, activity.CommunityID)
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy[len(activity.ActionBy)-1]}, activity.ActionOn, activity.CommunityID)
 	if !success || len(member_data.Members) == 0 {
 		return
 	}
@@ -472,13 +472,13 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 
 // Internal General Method to send notification on like action on an Entity
 func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers,
-	platform_code string, version_code string) {
+	platformCode string, versionCode string) {
 	switch activity.EntityType {
 	case constants.Post:
-		sendPostLikeActionNoitification(activity, handlers, platform_code, version_code)
+		sendPostLikeActionNoitification(activity, handlers, platformCode, versionCode)
 
 	case constants.Comment:
-		sendCommentLikeActionNotification(activity, handlers, platform_code, version_code)
+		sendCommentLikeActionNotification(activity, handlers, platformCode, versionCode)
 	}
 }
 
@@ -508,10 +508,10 @@ func validateReceivers(activity *entities.Activity) *entities.Activity {
 	return newActivity
 }
 
-// Exposed Method to send notification for every action
-func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers, platform_code string, version_code string) {
+// SendNotification | method to send notification for activity
+func SendNotification(activityID primitive.ObjectID, handlers FeedHandlers, platformCode string, versionCode string) {
 
-	activity, err := fetchActivity(handlers.activityHelper, activityId.Hex())
+	activity, err := fetchActivity(handlers.activityHelper, activityID.Hex())
 	if err != nil {
 		return
 	}
@@ -525,30 +525,30 @@ func SendNotification(activityId primitive.ObjectID, handlers FeedHandlers, plat
 	switch activity.Action {
 
 	case constants.LikeOnPost, constants.LikeOnComment:
-		sendLikeActionNotification(activity, handlers, platform_code, version_code)
+		sendLikeActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CommentOnPost, constants.CommentOnComment:
-		sendCommentActionNotification(activity, handlers, platform_code, version_code)
+		sendCommentActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.AlsoCommentOnPost:
-		sendAlsoCommentActionNotification(activity, handlers, platform_code, version_code)
+		sendAlsoCommentActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.TaggedInPost, constants.TaggedInPostComment:
-		sendTagActionNotification(activity, handlers, platform_code, version_code)
+		sendTagActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CMDeletedPost, constants.CMDeletedComment:
-		sendDeleteActionNotification(activity, handlers, platform_code, version_code)
+		sendDeleteActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreatePostPermitAdded:
-		sendCreatePostPermissionAddedActionNotification(activity, platform_code, version_code)
+		sendCreatePostPermissionAddedActionNotification(activity, platformCode, versionCode)
 
 	case constants.CreatePostPermitRemoved:
-		sendCreatePostPermissionRemovedActionNotification(activity, platform_code, version_code)
+		sendCreatePostPermissionRemovedActionNotification(activity, platformCode, versionCode)
 
 	case constants.CreateCommentPermitAdded:
-		sendCreateCommentPermissionAddedActionNotification(activity, platform_code, version_code)
+		sendCreateCommentPermissionAddedActionNotification(activity, platformCode, versionCode)
 
 	case constants.CreateCommentPermitRemoved:
-		sendCreateCommentPermissionRemovedActionNotification(activity, platform_code, version_code)
+		sendCreateCommentPermissionRemovedActionNotification(activity, platformCode, versionCode)
 	}
 }

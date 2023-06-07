@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Internal Method to parse likes as response
@@ -174,7 +175,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	}
 
 	// create like activity
-	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.LikeOnPost, gin.H{
+	activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.LikeOnPost, gin.H{
 		"entity_type": constants.PostEntityType,
 		"post_id":     post_id,
 	}, false, false)
@@ -182,6 +183,8 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -294,7 +297,7 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	}
 
 	// create like activity
-	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.LikeOnComment, gin.H{
+	activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.LikeOnComment, gin.H{
 		"entity_type": constants.CommentEntityType,
 		"post_id":     post_id,
 		"comment_id":  comment_id,
@@ -303,6 +306,8 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{

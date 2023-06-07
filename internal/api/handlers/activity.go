@@ -371,11 +371,13 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	// create activity using the helper method
-	_, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id, constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false)
+	activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id, constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	// 	// return final response
 	c.JSON(http.StatusOK, gin.H{

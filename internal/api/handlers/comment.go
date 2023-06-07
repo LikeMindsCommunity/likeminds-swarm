@@ -491,7 +491,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// create also_comment activity
-	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, headers[utils.HeadersMemberId], constants.AlsoCommentOnPost, gin.H{
+	activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, headers[utils.HeadersMemberId], constants.AlsoCommentOnPost, gin.H{
 		"entity_type": constants.PostEntityType,
 		"post_id":     post_id,
 	}, false, false)
@@ -499,6 +499,8 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	tagged_members, err := getTaggedUsers(createCommentRequest.Text)
 	if err != nil {
@@ -514,7 +516,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 
 		// create tag activity
-		_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, comment_id.(primitive.ObjectID), post_data.UserId, constants.TaggedInPostComment, gin.H{
+		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, comment_id.(primitive.ObjectID), post_data.UserId, constants.TaggedInPostComment, gin.H{
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  comment_id.(primitive.ObjectID).Hex(),
@@ -523,10 +525,12 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	}
 
 	if !is_creator_tagged {
-		_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.CommentOnPost, gin.H{
+		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.CommentOnPost, gin.H{
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  comment_id.(primitive.ObjectID).Hex(),
@@ -535,6 +539,8 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	}
 
 	// filter options
@@ -725,7 +731,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		}
 
 		// create tag activity
-		_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, new_comment_id.(primitive.ObjectID), post_data.UserId, constants.TaggedInPostComment, gin.H{
+		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, new_comment_id.(primitive.ObjectID), post_data.UserId, constants.TaggedInPostComment, gin.H{
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
@@ -734,11 +740,13 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	}
 
 	if !is_creator_tagged {
 		// create comment activity
-		_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CommentOnComment, gin.H{
+		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CommentOnComment, gin.H{
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
@@ -747,6 +755,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	}
 
 	// filter options
@@ -837,11 +847,13 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 
 	// create delete activity if deleted if CM
 	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != comment_data.UserId {
-		_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CMDeletedComment, gin.H{}, false, false)
+		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CMDeletedComment, gin.H{}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	}
 
 	// return final response
