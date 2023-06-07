@@ -41,7 +41,7 @@ func (repository *activityRepository) Update(filter map[string]interface{}, upda
 	return err
 }
 
-// Exposed Repository Method to Fetch Activity Count
+// Count | returns count of activity with filter
 func (repository *activityRepository) Count(filter map[string]interface{}) (int64, error) {
 	coll := repository.db.Collection("activity")
 	count, err := coll.CountDocuments(context.TODO(), filter)

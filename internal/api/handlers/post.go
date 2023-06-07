@@ -342,7 +342,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		_, err = handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, member, constants.Post, post_id.(primitive.ObjectID), headers[utils.HeadersMemberId], constants.TaggedInPost, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     post_id.(primitive.ObjectID).Hex(),
-		}, false)
+		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -602,11 +602,20 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
-	// create delete activity
-	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.CMDeletedPost, gin.H{}, false)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+	// remove activity for the post
+	deleteActivityFilter := gin.H{
+		"entity_type": constants.Post,
+		"entity_id":   post_data.ID,
+	}
+	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
+
+	// if deleted by CM, create delete activity
+	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != post_data.UserId {
+		_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.CMDeletedPost, gin.H{}, false, false)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 	}
 
 	// return final response

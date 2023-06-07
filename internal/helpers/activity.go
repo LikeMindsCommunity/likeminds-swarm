@@ -11,7 +11,7 @@ import (
 )
 
 // CreateActivityHelper | create activity entry
-func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, cta string, isRead bool) (interface{}, error) {
+func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, cta string, isRead bool, isDeleted bool) (interface{}, error) {
 	activityFilter := gin.H{
 		"community_id": communityID,
 		"action_on":    actionOn,
@@ -36,7 +36,7 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 		return existingActivity[0].ID, nil
 	}
 
-	activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead)
+	activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
 	activityID, err := helper.activityRepository.Create(&activity)
 
 	return activityID, err
@@ -81,6 +81,22 @@ func (helper *activityHelper) CountActivityHelper(filter map[string]interface{})
 	count, err := helper.activityRepository.Count(filter)
 
 	return count, err
+}
+
+// DeleteActivityHelper | delete activity from repository with filter
+func (helper *activityHelper) DeleteActivityHelper(filter map[string]interface{}) error {
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "activity_id"})
+	if err != nil {
+		return err
+	}
+
+	delete := gin.H{
+		"is_deleted": true,
+	}
+
+	err = helper.activityRepository.Update(filter, delete)
+
+	return err
 }
 
 // Structure for Activity Helper

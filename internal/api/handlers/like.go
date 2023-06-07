@@ -177,7 +177,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.LikeOnPost, gin.H{
 		"entity_type": constants.PostEntityType,
 		"post_id":     post_id,
-	}, false)
+	}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -298,7 +298,7 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 		"entity_type": constants.CommentEntityType,
 		"post_id":     post_id,
 		"comment_id":  comment_id,
-	}, false)
+	}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

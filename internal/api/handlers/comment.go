@@ -494,7 +494,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, headers[utils.HeadersMemberId], constants.AlsoCommentOnPost, gin.H{
 		"entity_type": constants.PostEntityType,
 		"post_id":     post_id,
-	}, false)
+	}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -518,7 +518,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  comment_id.(primitive.ObjectID).Hex(),
-		}, false)
+		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -530,7 +530,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  comment_id.(primitive.ObjectID).Hex(),
-		}, false)
+		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -729,7 +729,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
-		}, false)
+		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -742,7 +742,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			"entity_type": constants.CommentEntityType,
 			"post_id":     post_id,
 			"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
-		}, false)
+		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -828,11 +828,20 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	// create delete activity
-	_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CMDeletedComment, gin.H{}, false)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+	// remove activity for the comment
+	deleteActivityFilter := gin.H{
+		"entity_type": constants.Comment,
+		"entity_id":   comment_data.ID,
+	}
+	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
+
+	// create delete activity if deleted if CM
+	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != comment_data.UserId {
+		_, err = handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CMDeletedComment, gin.H{}, false, false)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 	}
 
 	// return final response

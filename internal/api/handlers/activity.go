@@ -23,7 +23,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
 
-		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID)
+		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID)
 		if err != nil {
 			return response, userDatas, err
 		}
@@ -69,34 +69,24 @@ func getActivityUserData(activity entities.Activity) (map[string]interface{}, st
 	return nil, ""
 }
 
-func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID) (interface{}, error) {
+func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int) (interface{}, error) {
 
 	switch entityType {
 	case constants.Post:
-
-		postFilter := gin.H{
-			"_id": entityID,
-		}
-
-		postData, err := handler.postHelper.FindPostHelper(postFilter, gin.H{})
+		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "")
 		if err != nil {
 			return nil, err
 		}
 
-		return postData[0], nil
+		return postData[entityID.Hex()], nil
 
 	case constants.Comment:
-
-		commentFilter := gin.H{
-			"_id": entityID,
-		}
-
-		commentData, err := handler.commentHelper.FindCommentHelper(commentFilter, gin.H{})
+		commentData, err := fetchMultipleCommentsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "")
 		if err != nil {
 			return nil, err
 		}
 
-		return commentData[0], nil
+		return commentData[entityID.Hex()].CommentResponse, nil
 	}
 
 	return nil, nil
@@ -124,12 +114,12 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.CMDeletedPost:
 		activityText += "Your post has been deleted as it violates community guidelines. Reason: "
-		activityText += activityEntityData.(entities.Post).DeleteReason
+		activityText += activityEntityData.(requests.PostResponse).DeleteReason
 		return activityText, nil
 
 	case constants.CMDeletedComment:
 		activityText += "Your Reply has been deleted as it violates community guidelines. Reason: "
-		activityText += activityEntityData.(entities.Comment).DeleteReason
+		activityText += activityEntityData.(requests.CommentResponse).DeleteReason
 		return activityText, nil
 
 	case constants.LikeOnPost:
@@ -145,7 +135,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " liked your post \""
 
-		postDataText := activityEntityData.(entities.Post).Text
+		postDataText := activityEntityData.(requests.PostResponse).Text
 		activityText += postDataText + "\""
 
 		return activityText, nil
@@ -162,7 +152,8 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		}
 
 		activityText += " commented on your post \""
-		postDataText := activityEntityData.(entities.Post).Text
+
+		postDataText := activityEntityData.(requests.PostResponse).Text
 		activityText += postDataText + "\""
 
 		return activityText, nil
@@ -180,7 +171,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " liked on your comment \""
 
-		commentDataText := activityEntityData.(entities.Comment).Text
+		commentDataText := activityEntityData.(requests.CommentResponse).Text
 		activityText += commentDataText + "\""
 
 		return activityText, nil
@@ -198,7 +189,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " replied on your comment \""
 
-		commentDataText := activityEntityData.(entities.Comment).Text
+		commentDataText := activityEntityData.(requests.CommentResponse).Text
 		activityText += commentDataText + "\""
 
 		return activityText, nil
@@ -210,7 +201,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += activityByUserDataName
 		activityText += " tagged you in their post \""
 
-		postDataText := activityEntityData.(entities.Post).Text
+		postDataText := activityEntityData.(requests.PostResponse).Text
 		activityText += postDataText + "\""
 
 		return activityText, nil
@@ -222,7 +213,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += activityByUserDataName
 		activityText += " tagged you in their comment \""
 
-		commentDataText := activityEntityData.(entities.Comment).Text
+		commentDataText := activityEntityData.(requests.CommentResponse).Text
 		activityText += commentDataText + "\""
 
 		return activityText, nil
@@ -252,9 +243,9 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 	return &activity_results[0], nil
 }
 
-// Exposed Helper Method to Create Activity
+// CreateActivity | method to create an activity record
 func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
-	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool) (interface{}, error) {
+	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool) (interface{}, error) {
 	cta := fetchActivityCtaForAction(action, ctaData)
 
 	switch action {
@@ -271,12 +262,18 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.TaggedInPost,
 		constants.TaggedInPostComment:
 
-		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead)
+		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
 		return activityID, err
 
 	}
 
 	return nil, nil
+}
+
+// DeleteActivity | delete activity records with filter
+func (handlers *FeedHandlers) DeleteActivity(filter map[string]interface{}) {
+	handlers.activityHelper.DeleteActivityHelper(filter)
+	return
 }
 
 // FetchActivityCtaForAction | get CTA corresponding to action
@@ -374,7 +371,7 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	// create activity using the helper method
-	_, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id, constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false)
+	_, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id, constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -408,6 +405,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	activityFilterData := gin.H{
 		"action_on":    userID,
 		"community_id": communityID,
+		"is_deleted":   false,
 	}
 
 	// filter options
