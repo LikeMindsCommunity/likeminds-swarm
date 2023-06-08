@@ -209,6 +209,24 @@ func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (
 	return &post_results[0], nil
 }
 
+// getPostByID | get post data by id
+func getPostByID(helper interfaces.PostHelper, postID string) (*entities.Post, error) {
+	filter := gin.H{
+		"_id": postID,
+	}
+
+	postResults, err := helper.FindPostHelper(filter, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(postResults) == 0 {
+		return nil, fmt.Errorf("invalid post_id")
+	}
+
+	return &postResults[0], nil
+}
+
 // Internal Method to fetch post data
 func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
 	filter_options map[string]interface{}, member_id string, is_cm bool, versionCode string,
@@ -334,28 +352,28 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		log.Print(err.Error())
 	}
 
-	// parse tagged members
-	tagged_members, err := getTaggedUsers(createPostRequest.Text)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
+	// Get tagged members from request
+	tagged_members := createPostRequest.UUIDs
 
 	for _, member := range tagged_members {
 		// create tag activity
-		_, err = createActivity(*handlers, constants.TagAction, post_id.(primitive.ObjectID),
-			constants.PostEntityType, community_id, headers[utils.HeadersMemberId], member, gin.H{
-				"entity_type": constants.PostEntityType,
-				"post_id":     post_id.(primitive.ObjectID).Hex(),
-			}, headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+		activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, member, constants.Post, post_id.(primitive.ObjectID), headers[utils.HeadersMemberId], constants.TaggedInPost, gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     post_id.(primitive.ObjectID).Hex(),
+		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	// filter options
-	filter_options, err := generatePageFilterOptions(c)
+	filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -445,7 +463,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c)
+	comment_filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -525,7 +543,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c)
+	comment_filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -607,13 +625,24 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
-	// create delete activity
-	_, err = createActivity(*handlers, constants.DeleteAction, post_data.ID, constants.PostEntityType,
-		post_data.CommunityId, headers[utils.HeadersMemberId], post_data.UserId, gin.H{},
-		headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+	// remove activity for the post
+	deleteActivityFilter := gin.H{
+		"entity_type": constants.Post,
+		"entity_id":   post_data.ID,
+	}
+	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
+
+	// if deleted by CM, create delete activity
+	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != post_data.UserId {
+		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.CMDeletedPost, gin.H{}, false, false)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
 	}
 
 	// return final response
@@ -707,7 +736,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	// filter options
-	post_filter_options, err := generatePageFilterOptions(c)
+	post_filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

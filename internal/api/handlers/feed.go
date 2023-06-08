@@ -71,7 +71,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// filter options
-	post_filter_options, err := generatePageFilterOptions(c)
+	post_filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -437,7 +437,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	// filter options
-	post_filter_options, err := generatePageFilterOptions(c)
+	post_filter_options, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

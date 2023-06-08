@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -15,65 +16,224 @@ import (
 )
 
 // Internal Method to parse User activity list
-func parseUserActivity(handler FeedHandlers, activities []entities.Activity, user_id string, community_id int, own_activity bool) ([]requests.UserActivityResponse, error) {
-	userName := "You"
-	actionName := ""
-	entityName := "post"
+func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]requests.UserActivityResponse, interface{}, error) {
 	response := []requests.UserActivityResponse{}
-
-	if !own_activity {
-		// Fetch member details
-		success, member_data := externalHelpers.FetchMemberMeta([]string{user_id}, user_id, community_id)
-		if !success || len(member_data.Members) == 0 {
-			return nil, fmt.Errorf("invalid user_id sent")
-		}
-
-		member := member_data.Members[0]
-
-		// updating user name
-		userName = member.Name
-	}
+	userDatas := make(map[string]interface{})
 
 	for _, activity := range activities {
-		switch activity.Action {
-		case constants.LikeAction:
-			actionName = "liked"
+		activityUserData, activityUserUID := getActivityUserData(activity)
 
-		case constants.CommentAction:
-			actionName = "commented"
-
-		case constants.SaveAction:
-			actionName = "saved"
-
-		default:
-			continue
+		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID)
+		if err != nil {
+			return response, userDatas, err
 		}
 
-		switch activity.EntityType {
-		case constants.CommentEntityType:
-			entityName = "comment"
-
-			if actionName == "commented" {
-				actionName = "replied"
-			}
+		activityText, err := getActivityText(activityUserData, activityEntityData, activity)
+		if err != nil {
+			return response, userDatas, err
 		}
 
+		activity = activity
 		response = append(response, requests.UserActivityResponse{
-			ID:              activity.ID,
-			ActionBy:        activity.ActionBy,
-			ActionOn:        activity.ActionOn,
-			CommunityId:     activity.CommunityId,
-			EntityType:      activity.EntityType,
-			EntityId:        activity.EntityId,
-			Action:          activity.Action,
-			CTA:             activity.CTA,
-			ActivityMessage: fmt.Sprintf("%s %s this %s", userName, actionName, entityName),
-			CreatedAt:       int(activity.CreatedAt.UnixMilli()),
-			UpdatedAt:       int(activity.UpdatedAt.UnixMilli()),
+			ID:                 activity.ID,
+			ActionBy:           activity.ActionBy,
+			ActionOn:           activity.ActionOn,
+			EntityType:         activity.EntityType,
+			EntityID:           activity.EntityID,
+			EntityOwnerID:      activity.EntityOwnerID,
+			Action:             activity.Action,
+			CTA:                activity.CTA,
+			IsRead:             activity.IsRead,
+			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
+			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
+			ActivityEntityData: activityEntityData,
+			ActivityText:       activityText,
 		})
+		userDatas[activityUserUID] = activityUserData[activityUserUID]
 	}
 
-	return response, nil
+	return response, userDatas, nil
+}
+
+func getActivityUserData(activity entities.Activity) (map[string]interface{}, string) {
+	activityUserUID := activity.ActionBy[len(activity.ActionBy)-1]
+	activityUserData := map[string]interface{}{}
+	isSuccess := false
+
+	isSuccess, activityUserData[activityUserUID] = externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
+	activityUserData[activityUserUID] = activityUserData[activityUserUID].(*externalHelpers.MemberMetaResponse).Members[0]
+	if isSuccess {
+		return activityUserData, activityUserUID
+	}
+
+	return nil, ""
+}
+
+func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int) (interface{}, error) {
+
+	switch entityType {
+	case constants.Post:
+		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "")
+		if err != nil {
+			return nil, err
+		}
+
+		return postData[entityID.Hex()], nil
+
+	case constants.Comment:
+		commentData, err := fetchMultipleCommentsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "")
+		if err != nil {
+			return nil, err
+		}
+
+		return commentData[entityID.Hex()].CommentResponse, nil
+	}
+
+	return nil, nil
+}
+
+func getActivityText(activityUserData map[string]interface{}, activityEntityData interface{}, activity entities.Activity) (string, error) {
+	activityText := ""
+
+	switch activity.Action {
+	case constants.CreatePostPermitAdded:
+		activityText += "You now have the permission to create posts in the community. Start posting now."
+		return activityText, nil
+
+	case constants.CreatePostPermitRemoved:
+		activityText += "Your permission to create posts in the community has been removed."
+		return activityText, nil
+
+	case constants.CreateCommentPermitAdded:
+		activityText += "You now have the permission to add comments on the posts. Start engaging now."
+		return activityText, nil
+
+	case constants.CreateCommentPermitRemoved:
+		activityText += "Your permission to add comments and replies to the posts has been removed."
+		return activityText, nil
+
+	case constants.CMDeletedPost:
+		activityText += "Your post has been deleted as it violates community guidelines. Reason: "
+		activityText += activityEntityData.(requests.PostResponse).DeleteReason + "."
+		return activityText, nil
+
+	case constants.CMDeletedComment:
+		activityText += "Your reply has been deleted as it violates community guidelines. Reason: "
+		activityText += activityEntityData.(requests.CommentResponse).DeleteReason + "."
+		return activityText, nil
+
+	case constants.LikeOnPost:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " liked your post"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
+
+	case constants.CommentOnPost:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " commented on your post"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
+
+	case constants.LikeOnComment:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " liked your comment"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
+
+	case constants.CommentOnComment:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " replied on your comment"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
+
+	case constants.TaggedInPost:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+
+		activityText += " tagged you in their post"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
+
+	case constants.TaggedInPostComment:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+
+		activityText += " tagged you in their comment"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
+	}
+
+	return activityText, nil
+}
+
+func getUserRoute(activityByUserData interface{}) string {
+	activityByUserDataEntity := activityByUserData.(externalHelpers.MemberMeta)
+	userRouteString := "<<%s|route://user_profile/%s>>"
+
+	return fmt.Sprintf(userRouteString, activityByUserDataEntity.Name, activityByUserDataEntity.UserUniqueId)
+}
+
+func getMultipleUserActivityText(activity entities.Activity) string {
+	if len(activity.ActionBy) <= 1 {
+		return ""
+	}
+
+	stringOneOther := " and 1 other"
+
+	activityMembersTotalBarOne := len(activity.ActionBy) - 1
+
+	if activityMembersTotalBarOne == 1 {
+		return stringOneOther
+	}
+
+	nOtherActivityTemplate := " and %s others"
+	nOtherActivityText := fmt.Sprintf(nOtherActivityTemplate, strconv.Itoa(activityMembersTotalBarOne))
+
+	return nOtherActivityText
+}
+
+func getEntityText(entityType constants.EntityType, activityEntityData interface{}) string {
+	entityTextData := ""
+
+	switch entityType {
+	case constants.Post:
+		entityTextData = activityEntityData.(requests.PostResponse).Text
+
+	case constants.Comment:
+		entityTextData = activityEntityData.(requests.CommentResponse).Text
+	}
+
+	if entityTextData == "" {
+		return entityTextData + "."
+	}
+
+	activityText := " \"" + entityTextData + "\""
+
+	return activityText
 }
 
 // Internal Method to fetch activity using activity_id
@@ -97,105 +257,91 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 	return &activity_results[0], nil
 }
 
-// Internal Method to create new activity instance
-func createActivity(handler FeedHandlers, action string, entity_id primitive.ObjectID, entity_type string,
-	community_id int, action_by string, action_on string, cta_data map[string]interface{}, platform_code string,
-	version_code string) (interface{}, error) {
-	var newActivityId primitive.ObjectID
+// CreateActivity | method to create an activity record
+func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
+	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool) (interface{}, error) {
 
-	switch action {
-	case constants.LikeAction, constants.TagAction:
-		// activity filter data
-		activity_filter_data := gin.H{
-			"entity_id":    entity_id,
-			"entity_type":  entity_type,
-			"action":       action,
-			"community_id": community_id,
-			"action_by":    action_by,
-			"action_on":    action_on,
-		}
-
-		// fetch activity using helper method
-		activity_results, err := handler.activityHelper.FindActivityHelper(activity_filter_data, gin.H{})
-		if err != nil {
-			return nil, err
-		}
-
-		// checking of existing activity
-		if len(activity_results) == 0 {
-			activityId, err := handler.activityHelper.CreateActivityHelper(action_by, []string{action_on}, community_id,
-				entity_type, entity_id, action, cta_data)
-			if err != nil {
-				return nil, err
-			}
-
-			newActivityId = activityId.(primitive.ObjectID)
-		}
-
-	case constants.AlsoCommentAction:
-		// activity filter data
-		activity_filter_data := gin.H{
-			"entity_id":    entity_id,
-			"entity_type":  entity_type,
-			"action":       action,
-			"community_id": community_id,
-		}
-
-		// fetch activity using helper method
-		activity_results, err := handler.activityHelper.FindActivityHelper(activity_filter_data, gin.H{})
-		if err != nil {
-			return nil, err
-		}
-
-		// checking of existing activity
-		if len(activity_results) == 0 {
-			activityId, err := handler.activityHelper.CreateActivityHelper(action_by, []string{}, community_id, entity_type,
-				entity_id, constants.AlsoCommentAction, cta_data)
-			if err != nil {
-				return nil, err
-			}
-
-			newActivityId = activityId.(primitive.ObjectID)
-		} else {
-			activity_data := activity_results[0]
-
-			// activity update data
-			activity_update_data := gin.H{
-				"$push": gin.H{
-					"action_on": activity_data.ActionBy,
-				},
-				"$set": gin.H{
-					"action_by": action_by,
-				},
-			}
-
-			// update activity using the helper method
-			err = handler.activityHelper.UpdateActivityByIdHelper(activity_data.ID, activity_update_data)
-			if err != nil {
-				return nil, err
-			}
-
-			newActivityId = activity_data.ID
-		}
-
-	case constants.CommentAction, constants.DeleteAction, constants.CreatePostPermitAddedAction, constants.CreatePostPermitRemovedAction,
-		constants.CreateCommentPermissionAddedAction, constants.CreateCommentPermitRemovedAction, constants.SaveAction:
-		activityId, err := handler.activityHelper.CreateActivityHelper(action_by, []string{action_on}, community_id,
-			entity_type, entity_id, action, cta_data)
-		if err != nil {
-			return nil, err
-		}
-
-		newActivityId = activityId.(primitive.ObjectID)
+	if len(actionBy) > 0 && actionBy[0] == actionOn {
+		return nil, nil
 	}
 
-	// send notification
-	SendNotification(newActivityId, handler, platform_code, version_code)
+	cta := fetchActivityCtaForAction(action, ctaData)
 
-	return newActivityId, nil
+	switch action {
+	case constants.CreatePostPermitAdded,
+		constants.CreatePostPermitRemoved,
+		constants.CreateCommentPermitAdded,
+		constants.CreateCommentPermitRemoved,
+		constants.CMDeletedPost,
+		constants.CMDeletedComment,
+		constants.LikeOnPost,
+		constants.CommentOnPost,
+		constants.LikeOnComment,
+		constants.CommentOnComment,
+		constants.TaggedInPost,
+		constants.TaggedInPostComment:
+
+		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
+		return activityID, err
+
+	}
+
+	return nil, nil
 }
 
-// Exposed Method to create new Activity
+// DeleteActivity | delete activity records with filter
+func (handlers *FeedHandlers) DeleteActivity(filter map[string]interface{}) {
+	handlers.activityHelper.DeleteActivityHelper(filter)
+	return
+}
+
+// FetchActivityCtaForAction | get CTA corresponding to action
+func fetchActivityCtaForAction(action constants.ActivityAction, ctaData map[string]interface{}) string {
+	var cta string = ""
+
+	switch action {
+	case
+		constants.LikeOnPost,
+		constants.CommentOnPost,
+		constants.LikeOnComment,
+		constants.CommentOnComment,
+		constants.TaggedInPost,
+		constants.TaggedInPostComment,
+		constants.AlsoCommentOnPost:
+		cta = parseCTAData(ctaData)
+
+	case constants.CreatePostPermitAdded:
+		cta = utils.CreatePostRoute
+
+	case constants.CreateCommentPermitAdded:
+		cta = utils.HomeFeedRoute
+	}
+
+	return cta
+}
+
+// Internal Method to parse CTA Data
+func parseCTAData(cta_data map[string]interface{}) string {
+	var cta string = ""
+
+	if entity_type, ok := cta_data["entity_type"]; ok {
+		if post_id, ok := cta_data["post_id"]; ok {
+			switch entity_type {
+			case constants.PostEntityType:
+				cta = fmt.Sprintf(utils.PostDetailRoute, post_id)
+
+			case constants.CommentEntityType:
+				if comment_id, ok := cta_data["comment_id"]; ok {
+					cta = fmt.Sprintf(utils.CommentDetailRoute, post_id, comment_id)
+				}
+			}
+		}
+	}
+
+	return cta
+}
+
+// // Exposed Method to create new Activity
 func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
@@ -215,14 +361,22 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	// validation of valid actions
-	var validActions = []string{constants.CreatePostPermitAddedAction, constants.CreatePostPermitRemovedAction,
-		constants.CreateCommentPermissionAddedAction, constants.CreateCommentPermitRemovedAction}
 	var isActionValid bool = false
+	var action constants.ActivityAction = constants.DefaultAction
 
-	for _, value := range validActions {
-		if value == externalCreateActivityRequest.Action {
-			isActionValid = true
-		}
+	switch externalCreateActivityRequest.Action {
+	case constants.CreatePostPermitAddedAction:
+		action = constants.CreatePostPermitAdded
+		isActionValid = true
+	case constants.CreatePostPermitRemovedAction:
+		action = constants.CreatePostPermitRemoved
+		isActionValid = true
+	case constants.CreateCommentPermissionAddedAction:
+		action = constants.CreateCommentPermitAdded
+		isActionValid = true
+	case constants.CreateCommentPermitRemovedAction:
+		action = constants.CreateCommentPermitRemoved
+		isActionValid = true
 	}
 
 	if !isActionValid {
@@ -236,59 +390,162 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	// create activity using the helper method
-	_, err := createActivity(*handlers, externalCreateActivityRequest.Action, primitive.NilObjectID,
-		constants.UserEntityType, community_id, headers[utils.HeadersMemberId], user_id, gin.H{},
-		headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+	activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id, constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// return final response
+	if activityID != nil {
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	}
+
+	// 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
 }
 
-// Exposed Method to Fetch User Activity
+// FetchUserActivity | method to Fetch User Activity
 func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
+
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
-	user_id := c.Param("user_id")
+	userID := c.Param("user_id")
+
+	if userID != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
+		return
+	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityID := externalHelpers.GetCommunityId(c)
+	if communityID == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// activity filter data
-	activity_filter_data := gin.H{
-		"action_by":    user_id,
-		"community_id": community_id,
+	activityFilterData := gin.H{
+		"action_on":    userID,
+		"community_id": communityID,
+		"is_deleted":   false,
 	}
 
+	activitySortKey := "updated_at"
+
 	// filter options
-	activity_filter_options, err := generatePageFilterOptions(c)
+	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch activity using helper method
-	activity_results, err := handlers.activityHelper.FindActivityHelper(activity_filter_data, activity_filter_options)
+	activityResults, err := handlers.activityHelper.FindActivityHelper(activityFilterData, activityFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// parse user activity response
-	activity_response, err := parseUserActivity(*handlers, activity_results, user_id, community_id, user_id == headers[utils.HeadersMemberId])
+	activityResponse, userDatas, err := parseUserActivity(*handlers, activityResults)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// 	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"activities": activityResponse,
+		"users":      userDatas,
+	})
+}
+
+// UserActivityMarkRead | Mark user activity as read
+func (handlers *FeedHandlers) UserActivityMarkRead(c *gin.Context) {
+
+	headers := utils.GetHeaders(c)
+	userID := c.Param("user_id")
+	activityID := c.Param("activity_id")
+
+	// validation of api_key
+	communityID := externalHelpers.GetCommunityId(c)
+	if communityID == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	if userID != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
+		return
+	}
+
+	activityFilterData := gin.H{
+		"_id":       activityID,
+		"action_on": userID,
+	}
+
+	// fetch activity to check activity owner - action_on
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	if activity == nil {
+		utils.GeneralAPIValidationError(c, "Activity not found or You are not authorized to perform this operation.")
+		return
+	}
+
+	// activity update data
+	activityUpdateData := gin.H{
+		"$set": gin.H{
+			"is_read": true,
+		},
+	}
+
+	// update comment data
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// return final response
-	c.JSON(http.StatusOK, gin.H{"activity": activity_response})
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// UserActivityFeedUnreadCount | Get user activity feed unread count
+func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	userID := c.Param("user_id")
+
+	// validation of api_key
+	communityID := externalHelpers.GetCommunityId(c)
+	if communityID == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	if userID != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
+		return
+	}
+
+	// activity filter data
+	activityFilterData := gin.H{
+		"community_id": communityID,
+		"action_on":    userID,
+		"is_read":      false,
+	}
+
+	// fetch activity using helper method
+	activityUnreadCount, err := handlers.activityHelper.CountActivityHelper(activityFilterData)
+	if err != nil {
+		return
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, gin.H{"success": true, "count": activityUnreadCount})
 }
