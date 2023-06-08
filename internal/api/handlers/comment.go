@@ -105,6 +105,24 @@ func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string
 	return &comment_results[0], nil
 }
 
+// fetchCommentByID | get comment by id
+func fetchCommentByID(helper interfaces.CommentHelper, comment_id string) (*entities.Comment, error) {
+	filter := gin.H{
+		"_id": comment_id,
+	}
+
+	commentResults, err := helper.FindCommentHelper(filter, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(commentResults) == 0 {
+		return nil, fmt.Errorf("invalid comment_id")
+	}
+
+	return &commentResults[0], nil
+}
+
 // Internal Method to fetch multiple comments data using comment_ids
 func fetchMultipleCommentsData(handlers *FeedHandlers,
 	comment_ids []string,
