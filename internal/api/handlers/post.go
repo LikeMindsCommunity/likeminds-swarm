@@ -366,7 +366,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	// filter options
@@ -637,7 +640,9 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
 	}
 
 	// return final response

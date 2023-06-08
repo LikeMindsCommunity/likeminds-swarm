@@ -532,7 +532,10 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	if !is_creator_tagged {
@@ -546,7 +549,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
 	}
 
 	// filter options
@@ -747,7 +752,10 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	if !is_creator_tagged {
@@ -762,7 +770,10 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	// filter options
@@ -859,7 +870,10 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	// return final response
