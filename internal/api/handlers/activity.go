@@ -18,7 +18,7 @@ import (
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]requests.UserActivityResponse, interface{}, error) {
 	response := []requests.UserActivityResponse{}
-	userDatas := gin.H{}
+	userDatas := make(map[string]interface{})
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
@@ -126,11 +126,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 
 		activityText += getUserRoute(activityByUserData)
-
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += getMultipleUserActivityText(activity)
 
 		activityText += " liked your post \""
 
@@ -143,11 +139,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 
 		activityText += getUserRoute(activityByUserData)
-
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += getMultipleUserActivityText(activity)
 
 		activityText += " commented on your post \""
 
@@ -160,11 +152,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 
 		activityText += getUserRoute(activityByUserData)
-
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += getMultipleUserActivityText(activity)
 
 		activityText += " liked on your comment \""
 
@@ -177,11 +165,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 
 		activityText += getUserRoute(activityByUserData)
-
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += getMultipleUserActivityText(activity)
 
 		activityText += " replied on your comment \""
 
@@ -223,6 +207,25 @@ func getUserRoute(activityByUserData interface{}) string {
 	userRouteString := "<<%s|route://user_profile/%s>>"
 
 	return fmt.Sprintf(userRouteString, activityByUserDataEntity.Name, activityByUserDataEntity.UserUniqueId)
+}
+
+func getMultipleUserActivityText(activity entities.Activity) string {
+	if len(activity.ActionBy) <= 1 {
+		return ""
+	}
+
+	stringOneOther := " and 1 other"
+
+	activityMembersTotalBarOne := len(activity.ActionBy) - 1
+
+	if activityMembersTotalBarOne == 1 {
+		return stringOneOther
+	}
+
+	nOtherActivityTemplate := " and %s others"
+	nOtherActivityText := fmt.Sprintf(nOtherActivityTemplate, strconv.Itoa(activityMembersTotalBarOne))
+
+	return nOtherActivityText
 }
 
 // Internal Method to fetch activity using activity_id

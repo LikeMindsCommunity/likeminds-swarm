@@ -518,7 +518,7 @@ func SendNotification(activityID primitive.ObjectID, handlers FeedHandlers, plat
 
 	// Don't send notification when action done by the entity creator
 	activity = validateReceivers(activity)
-	if len(activity.ActionOn) == 0 {
+	if len(activity.ActionBy) == 0 {
 		return
 	}
 
