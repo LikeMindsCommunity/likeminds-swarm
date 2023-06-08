@@ -541,11 +541,11 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 	}
 
 	// fetch activity using helper method
-	activity_unread_count, err := handlers.activityHelper.CountActivityHelper(activityFilterData)
+	activityUnreadCount, err := handlers.activityHelper.CountActivityHelper(activityFilterData)
 	if err != nil {
 		return
 	}
 
 	// return final response
-	c.JSON(http.StatusOK, gin.H{"success": true, "count": activity_unread_count})
+	c.JSON(http.StatusOK, gin.H{"success": true, "count": activityUnreadCount})
 }
