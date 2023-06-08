@@ -3,36 +3,42 @@ package entities
 import (
 	"time"
 
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Structure for Activity
+// Activity | Schema for activity
 type Activity struct {
-	ID          primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
-	ActionBy    string             `json:"action_by" bson:"action_by"`
-	ActionOn    []string           `json:"action_on" bson:"action_on"`
-	CommunityId int                `json:"community_id" bson:"community_id"`
-	EntityType  string             `json:"entity_type" bson:"entity_type"`
-	EntityId    primitive.ObjectID `json:"entity_id" bson:"entity_id"`
-	Action      string             `json:"action" bson:"action"`
-	CTA         string             `json:"cta" bson:"cta"`
-	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
+	ID            primitive.ObjectID       `json:"_id" bson:"_id,omitempty"`
+	CommunityID   int                      `json:"community_id" bson:"community_id"`
+	ActionBy      []string                 `json:"action_by" bson:"action_by"`
+	ActionOn      string                   `json:"action_on" bson:"action_on"`
+	EntityType    constants.EntityType     `json:"entity_type" bson:"entity_type"`
+	EntityID      primitive.ObjectID       `json:"entity_id" bson:"entity_id"`
+	EntityOwnerID string                   `json:"entity_owner_id" bson:"entity_owner_id"`
+	Action        constants.ActivityAction `json:"action" bson:"action"`
+	CTA           string                   `json:"cta" bson:"cta"`
+	IsRead        bool                     `json:"is_read" bson:"is_read"`
+	IsDeleted     bool                     `json:"is_deleted" bson:"is_deleted"`
+	CreatedAt     time.Time                `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time                `json:"updated_at" bson:"updated_at"`
 }
 
-// Exposed Method to create New User Activity
-func NewActivity(action_by string, action_on []string, community_id int, entity_type string, entity_id primitive.ObjectID,
-	action string, cta string) Activity {
-	created_at := time.Now()
+// NewActivity | Constructor method to create activity instance
+func NewActivity(CommunityID int, ActionBy []string, ActionOn string, EntityType constants.EntityType, EntityID primitive.ObjectID, EntityOwnerID string, Action constants.ActivityAction, CTA string, IsRead bool, IsDeleted bool) Activity {
+	TimeNow := time.Now()
 	return Activity{
-		ActionBy:    action_by,
-		ActionOn:    action_on,
-		CommunityId: community_id,
-		EntityType:  entity_type,
-		EntityId:    entity_id,
-		Action:      action,
-		CTA:         cta,
-		CreatedAt:   created_at,
-		UpdatedAt:   created_at,
+		CommunityID:   CommunityID,
+		ActionBy:      ActionBy,
+		ActionOn:      ActionOn,
+		EntityType:    EntityType,
+		EntityID:      EntityID,
+		EntityOwnerID: EntityOwnerID,
+		Action:        Action,
+		CTA:           CTA,
+		IsRead:        IsRead,
+		IsDeleted:     IsDeleted,
+		CreatedAt:     TimeNow,
+		UpdatedAt:     TimeNow,
 	}
 }

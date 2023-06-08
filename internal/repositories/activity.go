@@ -41,6 +41,17 @@ func (repository *activityRepository) Update(filter map[string]interface{}, upda
 	return err
 }
 
+// Count | returns count of activity with filter
+func (repository *activityRepository) Count(filter map[string]interface{}) (int64, error) {
+	coll := repository.db.Collection("activity")
+	count, err := coll.CountDocuments(context.TODO(), filter)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 // Structure for Activity Repository
 type activityRepository struct {
 	db *mongo.Database
