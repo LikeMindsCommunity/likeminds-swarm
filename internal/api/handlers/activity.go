@@ -118,83 +118,71 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.CMDeletedComment:
-		activityText += "Your Reply has been deleted as it violates community guidelines. Reason: "
+		activityText += "Your reply has been deleted as it violates community guidelines. Reason: "
 		activityText += activityEntityData.(requests.CommentResponse).DeleteReason
 		return activityText, nil
 
 	case constants.LikeOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " liked your post \""
+		activityText += " liked your post"
 
-		postDataText := activityEntityData.(requests.PostResponse).Text
-		activityText += postDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.CommentOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " commented on your post \""
+		activityText += " commented on your post"
 
-		postDataText := activityEntityData.(requests.PostResponse).Text
-		activityText += postDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.LikeOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " liked on your comment \""
+		activityText += " liked your comment"
 
-		commentDataText := activityEntityData.(requests.CommentResponse).Text
-		activityText += commentDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.CommentOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " replied on your comment \""
+		activityText += " replied on your comment"
 
-		commentDataText := activityEntityData.(requests.CommentResponse).Text
-		activityText += commentDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.TaggedInPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 
-		activityText += " tagged you in their post \""
+		activityText += " tagged you in their post"
 
-		postDataText := activityEntityData.(requests.PostResponse).Text
-		activityText += postDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.TaggedInPostComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 
-		activityText += " tagged you in their comment \""
+		activityText += " tagged you in their comment"
 
-		commentDataText := activityEntityData.(requests.CommentResponse).Text
-		activityText += commentDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 	}
@@ -226,6 +214,28 @@ func getMultipleUserActivityText(activity entities.Activity) string {
 	nOtherActivityText := fmt.Sprintf(nOtherActivityTemplate, strconv.Itoa(activityMembersTotalBarOne))
 
 	return nOtherActivityText
+}
+
+func getEntityText(entityType constants.EntityType, activityEntityData interface{}) string {
+	entityTextData := ""
+
+	switch entityType {
+	case constants.Post:
+		entityTextData = activityEntityData.(requests.PostResponse).Text
+
+	case constants.Comment:
+		entityTextData = activityEntityData.(requests.CommentResponse).Text
+	}
+
+	entityTextData = ""
+
+	if entityTextData == "" {
+		return entityTextData
+	}
+
+	activityText := " \"" + entityTextData + "\""
+
+	return activityText
 }
 
 // Internal Method to fetch activity using activity_id

@@ -73,7 +73,7 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch post data
-	post_data, err := fetchPost(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID)
+	post_data, err := getPostByID(handlers.postHelper, activity.EntityID.Hex())
 	if err != nil {
 		return
 	}
@@ -94,7 +94,7 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 func sendCommentDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	// Fetch comment data
-	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityID.Hex())
+	comment_data, err := fetchCommentByID(handlers.commentHelper, activity.EntityID.Hex())
 	if err != nil {
 		return
 	}
@@ -493,16 +493,19 @@ func validateReceivers(activity *entities.Activity) *entities.Activity {
 	}
 
 	newActivity := &entities.Activity{
-		ID:          activity.ID,
-		ActionBy:    receivers,
-		ActionOn:    activity.ActionOn,
-		CommunityID: activity.CommunityID,
-		EntityType:  activity.EntityType,
-		EntityID:    activity.EntityID,
-		Action:      activity.Action,
-		CTA:         activity.CTA,
-		CreatedAt:   activity.CreatedAt,
-		UpdatedAt:   activity.UpdatedAt,
+		ID:            activity.ID,
+		CommunityID:   activity.CommunityID,
+		ActionBy:      receivers,
+		ActionOn:      activity.ActionOn,
+		EntityType:    activity.EntityType,
+		EntityID:      activity.EntityID,
+		EntityOwnerID: activity.EntityOwnerID,
+		Action:        activity.Action,
+		CTA:           activity.CTA,
+		IsRead:        activity.IsRead,
+		IsDeleted:     activity.IsDeleted,
+		CreatedAt:     activity.CreatedAt,
+		UpdatedAt:     activity.UpdatedAt,
 	}
 
 	return newActivity
