@@ -227,8 +227,6 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 		entityTextData = activityEntityData.(requests.CommentResponse).Text
 	}
 
-	entityTextData = ""
-
 	if entityTextData == "" {
 		return entityTextData
 	}
