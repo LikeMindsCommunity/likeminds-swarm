@@ -210,6 +210,24 @@ func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (
 	return &post_results[0], nil
 }
 
+// getPostByID | get post data by id
+func getPostByID(helper interfaces.PostHelper, postID string) (*entities.Post, error) {
+	filter := gin.H{
+		"_id": postID,
+	}
+
+	postResults, err := helper.FindPostHelper(filter, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(postResults) == 0 {
+		return nil, fmt.Errorf("invalid post_id")
+	}
+
+	return &postResults[0], nil
+}
+
 // Internal Method to fetch post data
 func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
 	filter_options map[string]interface{}, member_id string, is_cm bool, versionCode string,
@@ -349,7 +367,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	// filter options
@@ -620,7 +641,9 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
 	}
 
 	// return final response

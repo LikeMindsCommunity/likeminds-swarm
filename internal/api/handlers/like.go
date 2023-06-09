@@ -184,7 +184,9 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		return
 	}
 
-	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	if activityID != nil {
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	}
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -307,7 +309,9 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 		return
 	}
 
-	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	if activityID != nil {
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	}
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{

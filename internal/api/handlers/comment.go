@@ -105,6 +105,24 @@ func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string
 	return &comment_results[0], nil
 }
 
+// fetchCommentByID | get comment by id
+func fetchCommentByID(helper interfaces.CommentHelper, comment_id string) (*entities.Comment, error) {
+	filter := gin.H{
+		"_id": comment_id,
+	}
+
+	commentResults, err := helper.FindCommentHelper(filter, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(commentResults) == 0 {
+		return nil, fmt.Errorf("invalid comment_id")
+	}
+
+	return &commentResults[0], nil
+}
+
 // Internal Method to fetch multiple comments data using comment_ids
 func fetchMultipleCommentsData(handlers *FeedHandlers,
 	comment_ids []string,
@@ -514,7 +532,10 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	if !is_creator_tagged {
@@ -528,7 +549,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
 	}
 
 	// filter options
@@ -729,7 +752,10 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	if !is_creator_tagged {
@@ -744,7 +770,10 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	// filter options
@@ -841,7 +870,10 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 			return
 		}
 
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+
 	}
 
 	// return final response

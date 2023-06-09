@@ -18,7 +18,7 @@ import (
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]requests.UserActivityResponse, interface{}, error) {
 	response := []requests.UserActivityResponse{}
-	userDatas := gin.H{}
+	userDatas := make(map[string]interface{})
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
@@ -114,103 +114,75 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 	case constants.CMDeletedPost:
 		activityText += "Your post has been deleted as it violates community guidelines. Reason: "
-		activityText += activityEntityData.(requests.PostResponse).DeleteReason
+		activityText += activityEntityData.(requests.PostResponse).DeleteReason + "."
 		return activityText, nil
 
 	case constants.CMDeletedComment:
-		activityText += "Your Reply has been deleted as it violates community guidelines. Reason: "
-		activityText += activityEntityData.(requests.CommentResponse).DeleteReason
+		activityText += "Your reply has been deleted as it violates community guidelines. Reason: "
+		activityText += activityEntityData.(requests.CommentResponse).DeleteReason + "."
 		return activityText, nil
 
 	case constants.LikeOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
 
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += " liked your post"
 
-		activityText += " liked your post \""
-
-		postDataText := activityEntityData.(requests.PostResponse).Text
-		activityText += postDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.CommentOnPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
 
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += " commented on your post"
 
-		activityText += " commented on your post \""
-
-		postDataText := activityEntityData.(requests.PostResponse).Text
-		activityText += postDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.LikeOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
 
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += " liked your comment"
 
-		activityText += " liked on your comment \""
-
-		commentDataText := activityEntityData.(requests.CommentResponse).Text
-		activityText += commentDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.CommentOnComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
 
-		if len(activity.ActionBy) > 1 {
-			activityMembersTotalBarOne := len(activity.ActionBy) - 1
-			activityText += " and " + strconv.Itoa(activityMembersTotalBarOne) + " Other(s)"
-		}
+		activityText += " replied on your comment"
 
-		activityText += " replied on your comment \""
-
-		commentDataText := activityEntityData.(requests.CommentResponse).Text
-		activityText += commentDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.TaggedInPost:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 
-		activityText += " tagged you in their post \""
+		activityText += " tagged you in their post"
 
-		postDataText := activityEntityData.(requests.PostResponse).Text
-		activityText += postDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 
 	case constants.TaggedInPostComment:
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
-
 		activityText += getUserRoute(activityByUserData)
 
-		activityText += " tagged you in their comment \""
+		activityText += " tagged you in their comment"
 
-		commentDataText := activityEntityData.(requests.CommentResponse).Text
-		activityText += commentDataText + "\""
+		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
 	}
@@ -223,6 +195,45 @@ func getUserRoute(activityByUserData interface{}) string {
 	userRouteString := "<<%s|route://user_profile/%s>>"
 
 	return fmt.Sprintf(userRouteString, activityByUserDataEntity.Name, activityByUserDataEntity.UserUniqueId)
+}
+
+func getMultipleUserActivityText(activity entities.Activity) string {
+	if len(activity.ActionBy) <= 1 {
+		return ""
+	}
+
+	stringOneOther := " and 1 other"
+
+	activityMembersTotalBarOne := len(activity.ActionBy) - 1
+
+	if activityMembersTotalBarOne == 1 {
+		return stringOneOther
+	}
+
+	nOtherActivityTemplate := " and %s others"
+	nOtherActivityText := fmt.Sprintf(nOtherActivityTemplate, strconv.Itoa(activityMembersTotalBarOne))
+
+	return nOtherActivityText
+}
+
+func getEntityText(entityType constants.EntityType, activityEntityData interface{}) string {
+	entityTextData := ""
+
+	switch entityType {
+	case constants.Post:
+		entityTextData = activityEntityData.(requests.PostResponse).Text
+
+	case constants.Comment:
+		entityTextData = activityEntityData.(requests.CommentResponse).Text
+	}
+
+	if entityTextData == "" {
+		return entityTextData + "."
+	}
+
+	activityText := " \"" + entityTextData + "\""
+
+	return activityText
 }
 
 // Internal Method to fetch activity using activity_id
@@ -249,6 +260,11 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 // CreateActivity | method to create an activity record
 func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
 	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool) (interface{}, error) {
+
+	if len(actionBy) > 0 && actionBy[0] == actionOn {
+		return nil, nil
+	}
+
 	cta := fetchActivityCtaForAction(action, ctaData)
 
 	switch action {
@@ -380,7 +396,9 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 		return
 	}
 
-	SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	if activityID != nil {
+		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	}
 
 	// 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -523,11 +541,11 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 	}
 
 	// fetch activity using helper method
-	activity_unread_count, err := handlers.activityHelper.CountActivityHelper(activityFilterData)
+	activityUnreadCount, err := handlers.activityHelper.CountActivityHelper(activityFilterData)
 	if err != nil {
 		return
 	}
 
 	// return final response
-	c.JSON(http.StatusOK, gin.H{"success": true, "count": activity_unread_count})
+	c.JSON(http.StatusOK, gin.H{"success": true, "count": activityUnreadCount})
 }
