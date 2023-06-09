@@ -27,6 +27,7 @@ type CommentResponse struct {
 	Text          string             `json:"text"`
 	Level         int                `json:"level"`
 	UserId        string             `json:"user_id"`
+	UUID          string             `json:"uuid"`
 	CommunityId   int                `json:"community_id,omitempty"`
 	PostId        primitive.ObjectID `json:"post_id,omitempty"`
 	IsLiked       bool               `json:"is_liked"`
