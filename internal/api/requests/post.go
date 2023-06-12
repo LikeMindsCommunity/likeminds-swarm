@@ -63,6 +63,7 @@ type PostResponse struct {
 	ChatroomId    int                   `json:"feedroom_id,omitempty"`
 	IsPinned      bool                  `json:"is_pinned"`
 	UserId        string                `json:"user_id"`
+	UUID          string                `json:"uuid,omitempty"`
 	Attachments   []entities.Attachment `json:"attachments"`
 	LikesCount    int                   `json:"likes_count"`
 	CommentsCount int                   `json:"comments_count"`
