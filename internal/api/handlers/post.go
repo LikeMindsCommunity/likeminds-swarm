@@ -134,6 +134,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.ChatroomId = post.ChatroomId
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
+	response.UUID = post.UserId
 	response.Attachments = parsePostAttachments(post.Attachments, versionCode, platformCode)
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)

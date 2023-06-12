@@ -31,7 +31,7 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 				"action_by": updatedActionBy,
 			},
 		}
-		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData)
+		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData, false)
 
 		return existingActivity[0].ID, nil
 	}
@@ -57,13 +57,19 @@ func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}, 
 }
 
 // Exposed Helper Method to Update Activity by activity_id
-func (helper *activityHelper) UpdateActivityByIDHelper(activityID primitive.ObjectID, update map[string]interface{}) error {
+func (helper *activityHelper) UpdateActivityByIDHelper(activityID primitive.ObjectID, update map[string]interface{}, shouldNotUpdateTimestamp bool) error {
 	var setData gin.H
 
 	if _, ok := update["$set"]; ok {
 		setData = update["$set"].(gin.H)
 	}
+
 	setData["updated_at"] = time.Now()
+
+	if shouldNotUpdateTimestamp {
+		delete(setData, "updated_at")
+	}
+
 	update["$set"] = setData
 
 	err := helper.activityRepository.Update(gin.H{"_id": activityID}, update)

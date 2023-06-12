@@ -505,7 +505,7 @@ func (handlers *FeedHandlers) UserActivityMarkRead(c *gin.Context) {
 	}
 
 	// update comment data
-	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData)
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
