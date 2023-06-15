@@ -39,7 +39,7 @@ var FeedLinkMediaVersion = map[string]int{
 var EditFeedEntityVersions = map[string]int{
 	PlatformAndroid:     2,
 	PlatformWeb:         UnreleasedMaxVersion,
-	PlatformIoS:         UnreleasedMaxVersion,
+	PlatformIoS:         2,
 	PlatformFlutter:     5,
 	PlatformReactNative: UnreleasedMaxVersion,
 	PlatformReactJS:     UnreleasedMaxVersion,
