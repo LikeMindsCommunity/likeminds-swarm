@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
+
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
@@ -50,7 +51,7 @@ func (esHelper *esHelper) ExecuteQuery(query string, index string) map[string]in
 
 	// Attempt to encode the JSON query and look for errors
 	if err := json.NewEncoder(&buf).Encode(&read); err != nil {
-		log.Fatalf("Search(Elastic): json.NewEncoder() ERROR: %v", err)
+		log.Error(fmt.Sprintf("Search(Elastic): json.NewEncoder() ERROR: %v", err))
 	} else {
 		client := esHelper.esClient
 
@@ -65,7 +66,7 @@ func (esHelper *esHelper) ExecuteQuery(query string, index string) map[string]in
 
 		// Check for any errors returned by API call to Elasticsearch
 		if err != nil {
-			log.Fatalf("Search(Elastic): Elasticsearch Search() API ERROR: %v", err)
+			log.Error(fmt.Sprintf("Search(Elastic): Elasticsearch Search() API ERROR: %v", err))
 
 			// If no errors are returned, parse esapi.Response object
 		} else {

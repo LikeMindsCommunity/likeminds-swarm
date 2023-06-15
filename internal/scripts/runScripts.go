@@ -1,7 +1,9 @@
 package scripts
 
 import (
-	"log"
+	"fmt"
+
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 )
@@ -14,7 +16,7 @@ func RunScripts(handlers *handlers.FeedHandlers) {
 func indexPostData(handlers *handlers.FeedHandlers) {
 	err := handlers.IndexAllPostData()
 	if err != nil {
-		log.Fatalf("Scripts: Error running indexPostData: %s", err.Error())
+		log.Error(fmt.Sprintf("Scripts: Error running indexPostData: %s", err.Error()))
 		return
 	}
 }
@@ -22,8 +24,8 @@ func indexPostData(handlers *handlers.FeedHandlers) {
 func addCommunityIdToComments(handlers *handlers.FeedHandlers) {
 	err := handlers.InsertCommunityIDToAllComments()
 	if err != nil {
-		log.Println("Scripts: Error running addCommunityIdToComments: ", err.Error())
+		log.Error(fmt.Sprintf("Scripts: Error running addCommunityIdToComments: %s", err.Error()))
 		return
 	}
-	log.Println("Scripts: addCommunityIdToAllComments completed successfully")
+	log.Info("Scripts: addCommunityIdToAllComments completed successfully")
 }
