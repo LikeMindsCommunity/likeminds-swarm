@@ -37,6 +37,10 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
 
+	if tempId != nil && *tempId == "" {
+		tempId = nil
+	}
+
 	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId)
 	postId, err := helper.postRepository.Create(&post)
 

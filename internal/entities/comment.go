@@ -9,7 +9,7 @@ import (
 // Structure for Comment
 type Comment struct {
 	ID           primitive.ObjectID   `json:"_id" bson:"_id,omitempty"`
-	TempID       string               `json:"temp_id" bson:"temp_id"`
+	TempID       *string              `json:"temp_id" bson:"temp_id"`
 	Text         string               `json:"text" bson:"text"`
 	PostId       primitive.ObjectID   `json:"post_id" bson:"post_id"`
 	CommunityId  int                  `json:"community_id" bson:"community_id"`
@@ -25,7 +25,7 @@ type Comment struct {
 }
 
 // Exposed Method to Create a New Comment
-func NewComment(text string, postId primitive.ObjectID, communityId int, level int, userId string, tempId string) Comment {
+func NewComment(text string, postId primitive.ObjectID, communityId int, level int, userId string, tempId *string) Comment {
 	createdAt := time.Now()
 	return Comment{
 		Text:        text,
