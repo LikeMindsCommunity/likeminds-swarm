@@ -3,10 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -351,7 +352,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
 	if err != nil {
-		log.Print(err.Error())
+		log.Error(err.Error())
 	}
 
 	// Get tagged members from request

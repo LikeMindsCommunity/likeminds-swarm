@@ -7,10 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 )
 
 type BodyType int
@@ -42,7 +43,7 @@ type PostRequestOptions struct {
 
 // Exposed Method to Get Caravan Service URL
 func GetCaravanServiceBaseUrl() string {
-	CaravanServiceBaseURL := os.Getenv("CARAVAN_SERVICE_URL")
+	CaravanServiceBaseURL := environment.GoDotEnvVariable("CARAVAN_SERVICE_URL")
 
 	if len(CaravanServiceBaseURL) == 0 {
 		CaravanServiceBaseURL = "https://betacaravan.likeminds.community"

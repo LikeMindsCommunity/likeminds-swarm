@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
-	"log"
+	"fmt"
+
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -36,7 +38,7 @@ func (handlers *FeedHandlers) IndexAllPostData() error {
 		// insert post data in elastic search
 		err = handlers.esHelper.InsertDocument(context.Background(), ParsePostIndexData(&post_data), post_data.ID.Hex(), constants.PostIndexName)
 		if err != nil {
-			log.Print(err.Error())
+			log.Error(err.Error())
 		}
 	}
 
@@ -58,7 +60,7 @@ func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 		// fetch post using helper method
 		post_data, err := handlers.postHelper.FindPostHelper(gin.H{"_id": post_id}, gin.H{})
 		if err != nil || len(post_data) == 0 {
-			log.Println("Post not found for comment id: ", comment.ID.Hex())
+			log.Error(fmt.Sprintf("Post not found for comment id: %s", comment.ID.Hex()))
 			continue
 		}
 
@@ -72,7 +74,7 @@ func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 		// update comment data
 		err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, comment_update_data)
 		if err != nil {
-			log.Println("Error while updating comment with id: ", comment.ID.Hex())
+			log.Error(fmt.Sprintf("Error while updating comment with id: %s", comment.ID.Hex()))
 			continue
 		}
 	}
