@@ -35,6 +35,7 @@ type Attachment struct {
 type CreatePostRequest struct {
 	Text        string       `json:"text"`
 	Heading     string       `json:"heading"`
+	TempID      *string      `json:"temp_id"`
 	Attachments []Attachment `json:"attachments"`
 	ChatroomID  int          `json:"feedroom_id"`
 	UUIDs       []string     `json:"uuids"`
@@ -57,6 +58,7 @@ type DeletePostRequest struct {
 // Resonse Structure for Post
 type PostResponse struct {
 	ID            primitive.ObjectID    `json:"_id"`
+	TempID        *string               `json:"temp_id"`
 	Text          string                `json:"text"`
 	Heading       string                `json:"heading"`
 	CommunityId   int                   `json:"community_id"`

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 )
 
@@ -39,7 +38,7 @@ var FeedLinkMediaVersion = map[string]int{
 var EditFeedEntityVersions = map[string]int{
 	PlatformAndroid:     2,
 	PlatformWeb:         UnreleasedMaxVersion,
-	PlatformIoS:         UnreleasedMaxVersion,
+	PlatformIoS:         2,
 	PlatformFlutter:     5,
 	PlatformReactNative: UnreleasedMaxVersion,
 	PlatformReactJS:     UnreleasedMaxVersion,
@@ -55,12 +54,10 @@ func CheckVersion(featureVersionCode map[string]int, versionCode string, platfor
 
 	if versionCode == "" {
 		versionCode = fmt.Sprintf("%d", UnreleasedMinVersion)
-		log.Printf("CheckVersion() - setting default version code as header is missing in request")
 	}
 
 	if platformCode == "" {
 		platformCode = PlatformWeb
-		log.Printf("CheckVersion() - setting default platform code as header is missing in request")
 	}
 
 	var isVersionCheck bool = false
@@ -88,12 +85,10 @@ func CheckVersionInverted(featureVersionCode map[string]int, versionCode string,
 
 	if versionCode == "" {
 		versionCode = fmt.Sprintf("%d", UnreleasedMaxVersion)
-		log.Printf("CheckVersion() - setting default version code as header is missing in request")
 	}
 
 	if platformCode == "" {
 		platformCode = PlatformWeb
-		log.Printf("CheckVersion() - setting default platform code as header is missing in request")
 	}
 
 	var isVersionCheck bool = false

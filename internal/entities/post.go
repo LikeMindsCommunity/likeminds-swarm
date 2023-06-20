@@ -9,6 +9,7 @@ import (
 // Structure for Post
 type Post struct {
 	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	TempId       *string            `json:"temp_id" bson:"temp_id"`
 	Text         string             `json:"text" bson:"text"`
 	Heading      string             `json:"heading" bson:"heading"`
 	CommunityId  int                `json:"community_id" bson:"community_id"`
@@ -25,19 +26,20 @@ type Post struct {
 }
 
 // Exposed Method to Create a New Post
-func NewPost(text string, heading string, community_id int, user_id string, attachments []Attachment, chatroom_id int) Post {
-	created_at := time.Now()
+func NewPost(text string, heading string, communityId int, userId string, attachments []Attachment, chatroomId int, tempId *string) Post {
+	createdAt := time.Now()
 	return Post{
 		Text:        text,
+		TempId:      tempId,
 		Heading:     heading,
-		CommunityId: community_id,
-		ChatroomId:  chatroom_id,
+		CommunityId: communityId,
+		ChatroomId:  chatroomId,
 		IsPinned:    false,
-		UserId:      user_id,
+		UserId:      userId,
 		Attachments: attachments,
 		IsDeleted:   false,
 		IsEdited:    false,
-		CreatedAt:   created_at,
-		UpdatedAt:   created_at,
+		CreatedAt:   createdAt,
+		UpdatedAt:   createdAt,
 	}
 }

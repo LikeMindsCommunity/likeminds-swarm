@@ -3,10 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -121,13 +122,14 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []re
 
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, post entities.Post, user_id string, is_cm bool,
+	saveHelper interfaces.SaveHelper, post entities.Post, userId string, isCm bool,
 	versionCode string, platformCode string) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 	var response requests.PostResponse
 
 	response.ID = post.ID
+	response.TempID = post.TempId
 	response.Text = post.Text
 	response.Heading = post.Heading
 	response.CommunityId = post.CommunityId
@@ -141,10 +143,10 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.IsDeleted = post.IsDeleted
 	response.IsEdited = post.IsEdited
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(),
-		constants.PostEntityType, user_id)
-	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), user_id)
-	response.MenuItems = getEntityMenuItems(constants.PostEntityType, is_cm,
-		user_id == post.UserId, post.IsPinned, versionCode, platformCode)
+		constants.PostEntityType, userId)
+	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), userId)
+	response.MenuItems = getEntityMenuItems(constants.PostEntityType, isCm,
+		userId == post.UserId, post.IsPinned, versionCode, platformCode)
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
@@ -159,13 +161,13 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 
 // Internal Method to parse multiple post for response
 func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, posts []entities.Post, user_id string, is_cm bool,
+	saveHelper interfaces.SaveHelper, posts []entities.Post, userId string, isCm bool,
 	versionCode string, platformCode string) []requests.PostResponse {
 	response := []requests.PostResponse{}
 
 	for _, post := range posts {
 		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, post,
-			user_id, is_cm, versionCode, platformCode))
+			userId, isCm, versionCode, platformCode))
 	}
 
 	return response
@@ -173,10 +175,10 @@ func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper i
 
 // Internal Method to parse response for fetch post api
 func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	parsed_post requests.PostResponse, replies []requests.CommentResponse) requests.FetchPostResponse {
+	parsedPost requests.PostResponse, replies []requests.CommentResponse) requests.FetchPostResponse {
 	var response requests.FetchPostResponse
 
-	response.PostResponse = parsed_post
+	response.PostResponse = parsedPost
 
 	if len(replies) > 0 {
 		response.Replies = replies
@@ -188,26 +190,26 @@ func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper inte
 }
 
 // Internal Method to fetch post using post_id and community_id
-func fetchPost(helper interfaces.PostHelper, post_id string, community_id int) (*entities.Post, error) {
+func fetchPost(helper interfaces.PostHelper, postId string, communityId int) (*entities.Post, error) {
 	// post filter data
-	post_filter_data := gin.H{
-		"_id":          post_id,
+	postFilterData := gin.H{
+		"_id":          postId,
 		"is_deleted":   false,
-		"community_id": community_id,
+		"community_id": communityId,
 	}
 
 	// fetch post using helper method
-	post_results, err := helper.FindPostHelper(post_filter_data, gin.H{})
+	postResults, err := helper.FindPostHelper(postFilterData, gin.H{})
 	if err != nil {
 		return nil, err
 	}
 
 	// validation of post_id
-	if len(post_results) == 0 {
+	if len(postResults) == 0 {
 		return nil, fmt.Errorf("invalid post_id sent")
 	}
 
-	return &post_results[0], nil
+	return &postResults[0], nil
 }
 
 // getPostByID | get post data by id
@@ -229,72 +231,72 @@ func getPostByID(helper interfaces.PostHelper, postID string) (*entities.Post, e
 }
 
 // Internal Method to fetch post data
-func fetchPostData(handlers *FeedHandlers, post_id string, community_id int,
-	filter_options map[string]interface{}, member_id string, is_cm bool, versionCode string,
+func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
+	filterOptions map[string]interface{}, memberId string, isCm bool, versionCode string,
 	platformCode string) (interface{}, error) {
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		return nil, err
 	}
 
-	comment_filter_data := gin.H{
+	commentFilterData := gin.H{
 		"level":      constants.CommentBaseLevel,
 		"is_deleted": false,
-		"post_id":    post_id,
+		"post_id":    postId,
 	}
 
 	// fetch comment using helper method
-	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, filter_options)
+	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	post_response := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, *post_data, member_id, is_cm, versionCode, platformCode)
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		comment_results, member_id, is_cm, versionCode, platformCode)
-	fetch_post_response := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
-		post_response, replies_response)
+	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, *postData, memberId, isCm, versionCode, platformCode)
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
+		commentResults, memberId, isCm, versionCode, platformCode)
+	fetchPostResponse := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
+		postResponse, repliesResponse)
 
-	return fetch_post_response, nil
+	return fetchPostResponse, nil
 }
 
 // Internal Method to fetch multiple posts data using post_ids
 func fetchMultiplePostsData(handlers *FeedHandlers,
-	post_ids []string,
-	community_id int,
-	user_id string,
-	is_cm bool,
+	postIds []string,
+	communityId int,
+	userId string,
+	isCm bool,
 	versionCode string,
 	platformCode string) (map[string]requests.PostResponse, error) {
 
 	// convert post_ids to object ids
-	post_object_ids := helpers.ConvertIdsToObjectIds(post_ids)
+	postObjectIds := helpers.ConvertIdsToObjectIds(postIds)
 
 	// filter options to fetch posts from db
-	filter_options := gin.H{
+	filterOptions := gin.H{
 		"_id": gin.H{
-			"$in": post_object_ids,
+			"$in": postObjectIds,
 		},
-		"community_id": community_id,
+		"community_id": communityId,
 	}
 
 	// fetch posts using helper method
-	posts_lists, err := handlers.postHelper.FindPostHelper(filter_options, gin.H{})
+	postsLists, err := handlers.postHelper.FindPostHelper(filterOptions, gin.H{})
 	if err != nil {
 		return nil, err
 	}
 
 	// Make key value pair of post_id -> PostResponse
-	post_response := map[string]requests.PostResponse{}
+	postResponse := map[string]requests.PostResponse{}
 
 	// parse post response data for each post
-	for _, post := range posts_lists {
-		post_response[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			post, user_id, is_cm, versionCode, platformCode)
+	for _, post := range postsLists {
+		postResponse[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+			post, userId, isCm, versionCode, platformCode)
 	}
 
-	return post_response, nil
+	return postResponse, nil
 
 }
 
@@ -304,8 +306,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -331,36 +333,36 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// create post using the helper method
-	post_id, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text,
-		createPostRequest.Heading, community_id, headers[utils.HeadersMemberId],
-		createPostRequest.Attachments, createPostRequest.ChatroomID)
+	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text,
+		createPostRequest.Heading, communityId, headers[utils.HeadersMemberId],
+		createPostRequest.Attachments, createPostRequest.ChatroomID, createPostRequest.TempID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// fetch post data using new post_id
-	post_data, err := fetchPost(handlers.postHelper, post_id.(primitive.ObjectID).Hex(), community_id)
+	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(),
+	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
 	if err != nil {
-		log.Print(err.Error())
+		log.Error(err.Error())
 	}
 
 	// Get tagged members from request
-	tagged_members := createPostRequest.UUIDs
+	taggedMembers := createPostRequest.UUIDs
 
-	for _, member := range tagged_members {
+	for _, member := range taggedMembers {
 		// create tag activity
-		activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, member, constants.Post, post_id.(primitive.ObjectID), headers[utils.HeadersMemberId], constants.TaggedInPost, gin.H{
+		activityID, err := handlers.CreateActivity(communityId, []string{headers[utils.HeadersMemberId]}, member, constants.Post, postId.(primitive.ObjectID), headers[utils.HeadersMemberId], constants.TaggedInPost, gin.H{
 			"entity_type": constants.PostEntityType,
-			"post_id":     post_id.(primitive.ObjectID).Hex(),
+			"post_id":     postId.(primitive.ObjectID).Hex(),
 		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -374,7 +376,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// filter options
-	filter_options, err := generatePageFilterOptions(c, "")
+	filterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -386,11 +388,11 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetch_post_data, err := fetchPostData(handlers, post_id.(primitive.ObjectID).Hex(), community_id,
-		filter_options, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode],
+	fetchPostData, err := fetchPostData(handlers, postId.(primitive.ObjectID).Hex(), communityId,
+		filterOptions, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode])
 	if err == nil {
-		response["post"] = fetch_post_data
+		response["post"] = fetchPostData
 	}
 
 	// return final response
@@ -404,31 +406,31 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// Get Query Params
-	param_post_ids := c.Query("post_ids")
-	param_is_cm, _ := strconv.ParseBool(c.Query("user_is_cm"))
+	paramPostIds := c.Query("post_ids")
+	paramIsCm, _ := strconv.ParseBool(c.Query("user_is_cm"))
 
 	// If user is not cm, return error
-	if !param_is_cm {
+	if !paramIsCm {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
 
 	// Unmarshal post_ids
-	var post_ids []string
-	err := json.Unmarshal([]byte(param_post_ids), &post_ids)
+	var postIds []string
+	err := json.Unmarshal([]byte(paramPostIds), &postIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch multiple posts data using internal method
-	posts_response, err := fetchMultiplePostsData(handlers, post_ids, community_id, headers[utils.HeadersMemberId],
+	postsResponse, err := fetchMultiplePostsData(handlers, postIds, communityId, headers[utils.HeadersMemberId],
 		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -437,7 +439,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	// reponse data
 	response := gin.H{
-		"posts":   posts_response,
+		"posts":   postsResponse,
 		"success": true,
 	}
 
@@ -449,22 +451,22 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
-	param_is_cm := c.Query("user_is_cm")
-	is_cm := false
+	postId := c.Param("post_id")
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
 
-	if param_is_cm == "true" {
-		is_cm = true
+	if paramIsCm == "true" {
+		isCm = true
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -476,14 +478,14 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetch_post_data, err := fetchPostData(handlers, post_id, community_id, comment_filter_options,
-		headers[utils.HeadersMemberId], is_cm, headers[utils.HeadersVersionCode],
+	fetchPostData, err := fetchPostData(handlers, postId, communityId, commentFilterOptions,
+		headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
-	response["post"] = fetch_post_data
+	response["post"] = fetchPostData
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -494,11 +496,11 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
+	postId := c.Param("post_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -510,14 +512,14 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// Check if user is cm or post creator
-	if !editPostRequest.UserIsCm && post_data.UserId != headers[utils.HeadersMemberId] {
+	if !editPostRequest.UserIsCm && postData.UserId != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
@@ -537,21 +539,21 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(post_data.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments)
+	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch post response data
-	fetch_post_data, err := fetchPostData(handlers, post_id, community_id, comment_filter_options,
+	fetchPostData, err := fetchPostData(handlers, postId, communityId, commentFilterOptions,
 		headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -559,7 +561,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// update post data in elastic search
-	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -567,7 +569,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"post":    fetch_post_data,
+		"post":    fetchPostData,
 	})
 
 }
@@ -576,11 +578,11 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
+	postId := c.Param("post_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -592,20 +594,20 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// validation of user permission
-	if !deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != post_data.UserId {
+	if !deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != postData.UserId {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
 	}
 
 	// update data
-	update_data := gin.H{
+	updateData := gin.H{
 		"$set": gin.H{
 			"is_deleted":    true,
 			"delete_reason": deletePostRequest.DeleteReason,
@@ -614,14 +616,14 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// update post using the helper method
-	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, update_data)
+	err = handlers.postHelper.UpdatePostByIdHelper(postData.ID, updateData)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// delete post data in elastic search
-	err = handlers.esHelper.DeleteDocument(c, post_data.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.DeleteDocument(c, postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -629,13 +631,13 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// remove activity for the post
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.Post,
-		"entity_id":   post_data.ID,
+		"entity_id":   postData.ID,
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
 
 	// if deleted by CM, create delete activity
-	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != post_data.UserId {
-		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.CMDeletedPost, gin.H{}, false, false)
+	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != postData.UserId {
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CMDeletedPost, gin.H{}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -655,44 +657,44 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 // Exposed Method to pin a Post
 func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	// fetch url params
-	post_id := c.Param("post_id")
+	postId := c.Param("post_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// update data
-	update_data := gin.H{
+	updateData := gin.H{
 		"$set": gin.H{
-			"is_pinned": !post_data.IsPinned,
+			"is_pinned": !postData.IsPinned,
 		},
 	}
 
 	// update post using the helper method
-	err = handlers.postHelper.UpdatePostByIdHelper(post_data.ID, update_data)
+	err = handlers.postHelper.UpdatePostByIdHelper(postData.ID, updateData)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// fetch updated post data using post_id
-	post_data, err = fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err = fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// update post data in elastic search
-	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(post_data), post_data.ID.Hex(),
+	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -708,59 +710,59 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
-	user_id := c.Param("user_id")
-	param_is_cm := c.Query("user_is_cm")
-	is_cm := false
+	userId := c.Param("user_id")
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
 
-	if param_is_cm == "true" {
-		is_cm = true
+	if paramIsCm == "true" {
+		isCm = true
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// post filter data
-	post_filter_data := gin.H{
-		"user_id":      user_id,
+	postFilterData := gin.H{
+		"user_id":      userId,
 		"is_deleted":   false,
-		"community_id": community_id,
+		"community_id": communityId,
 	}
 
 	// fetch posts count using helper method
-	posts_count, err := handlers.postHelper.CountPostHelper(post_filter_data)
+	postsCount, err := handlers.postHelper.CountPostHelper(postFilterData)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// filter options
-	post_filter_options, err := generatePageFilterOptions(c, "")
+	postFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch post using helper method
-	post_results, err := handlers.postHelper.FindPostHelper(post_filter_data, post_filter_options)
+	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, postFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	created_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, post_results, user_id, is_cm, headers[utils.HeadersVersionCode],
+	createdPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, postResults, userId, isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode])
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, created_post_response,
-		posts_count))
+	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse,
+		postsCount))
 }
 
-func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, user_id string,
-	is_cm bool, versionCode string, platformCode string) []requests.PostResponse {
+func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, userId string,
+	isCm bool, versionCode string, platformCode string) []requests.PostResponse {
 	postDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
 	var postList []entities.Post
 
@@ -776,10 +778,10 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 		postList = append(postList, post)
 	}
 
-	post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, postList, user_id, is_cm, versionCode, platformCode)
+	postResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, postList, userId, isCm, versionCode, platformCode)
 
-	return post_response
+	return postResponse
 }
 
 // Exposed Method to search Posts
@@ -795,26 +797,26 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	// fetch pagination query params
-	page, page_size, err := fetchPaginationParams(c)
+	page, pageSize, err := fetchPaginationParams(c)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// parsing of chatroom ids
-	excluded_chatroom_ids := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
-	parsed_excluded_chatroom_ids, _ := json.Marshal(excluded_chatroom_ids)
+	excludedChatroomIds := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
+	parsedExcludedChatroomIds, _ := json.Marshal(excludedChatroomIds)
 
 	// dsl query to search posts
-	post_query := GetPostFilterQuery(page, page_size, searchPostRequest.SearchType,
-		searchPostRequest.Search, fmt.Sprintf("%v", string(parsed_excluded_chatroom_ids)), community_id)
-	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
+	postQuery := GetPostFilterQuery(page, pageSize, searchPostRequest.SearchType,
+		searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId)
+	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
 		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
@@ -829,7 +831,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 // Exposed Method to search user created Posts
 func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	// fetch query params and headers
-	user_id := c.Param("user_id")
+	userId := c.Param("user_id")
 	headers := utils.GetHeaders(c)
 	var searchPostRequest requests.SearchPostRequest
 
@@ -840,27 +842,27 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	// fetch pagination query params
-	page, page_size, err := fetchPaginationParams(c)
+	page, pageSize, err := fetchPaginationParams(c)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
-	if user_id != headers[utils.HeadersMemberId] {
+	if userId != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
 	}
 
 	// dsl query to search posts
-	post_query := GetSelfPostFilterQuery(page, page_size, searchPostRequest.SearchType,
-		searchPostRequest.Search, user_id, community_id)
-	response := handlers.esHelper.ExecuteQuery(post_query, constants.PostIndexName)
+	postQuery := GetSelfPostFilterQuery(page, pageSize, searchPostRequest.SearchType,
+		searchPostRequest.Search, userId, communityId)
+	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
 		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])

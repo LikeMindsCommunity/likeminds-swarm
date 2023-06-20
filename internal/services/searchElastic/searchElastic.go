@@ -2,8 +2,10 @@ package searchElastic
 
 import (
 	"encoding/json"
-	"log"
-	"os"
+	"fmt"
+
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	// Import the Elasticsearch library packages
 	"github.com/elastic/go-elasticsearch/v7"
@@ -16,20 +18,20 @@ func getESClusterInfo(client *elasticsearch.Client) {
 
 	res, err := client.Info()
 	if err != nil {
-		log.Fatalf("Search(Elastic): Error getting response: %s", err)
+		log.Fatal(fmt.Sprintf("Search(Elastic): Error getting response: %s", err))
 	}
 	defer res.Body.Close()
 	// Check response status
 	if res.IsError() {
-		log.Fatalf("Search(Elastic): Error: %s", res.String())
+		log.Fatal(fmt.Sprintf("Search(Elastic): Error: %s", res.String()))
 	}
 	// Deserialize the response into a map.
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-		log.Fatalf("Search(Elastic): Error parsing the response body: %s", err)
+		log.Fatal(fmt.Sprintf("Search(Elastic): Error parsing the response body: %s", err))
 	}
 	// Print client and server version numbers.
-	log.Printf("Search(Elastic): Client: %s", elasticsearch.Version)
-	log.Printf("Search(Elastic): Server: %s", r["version"].(map[string]interface{})["number"])
+	log.Info(fmt.Sprintf("Search(Elastic): Client: %s", elasticsearch.Version))
+	log.Info(fmt.Sprintf("Search(Elastic): Server: %s", r["version"].(map[string]interface{})["number"]))
 }
 
 func InitiateES() *elasticsearch.Client {
@@ -39,7 +41,7 @@ func InitiateES() *elasticsearch.Client {
 		// Instantiate an Elasticsearch configuration
 		cfg := elasticsearch.Config{
 			Addresses: []string{
-				os.Getenv("ELASTIC_SEARCH_HOST"),
+				environment.GoDotEnvVariable("ELASTIC_SEARCH_HOST"),
 			},
 		}
 
@@ -48,7 +50,7 @@ func InitiateES() *elasticsearch.Client {
 
 		// Check for connection errors to the Elasticsearch cluster
 		if err != nil {
-			log.Fatalf("Search(Elastic): Elasticsearch connection error: %v", err)
+			log.Fatal(fmt.Sprintf("Search(Elastic): Elasticsearch connection error: %v", err))
 		}
 
 		// Get cluster info

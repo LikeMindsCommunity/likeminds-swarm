@@ -19,96 +19,96 @@ import (
 )
 
 // Internal Method to fetch comments count of a Post
-func fetchPostCommentsCount(helper interfaces.CommentHelper, post_id string) (int64, error) {
+func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) (int64, error) {
 	// comment filter data
-	comment_filter_data := gin.H{
-		"post_id":    post_id,
+	commentFilterData := gin.H{
+		"post_id":    postId,
 		"is_deleted": false,
 		"level":      constants.CommentBaseLevel,
 	}
 
 	// fetch likes count using helper method
-	likes_count, err := helper.CountCommentHelper(comment_filter_data)
+	likesCount, err := helper.CountCommentHelper(commentFilterData)
 	if err != nil {
 		return 0, err
 	}
 
-	return likes_count, nil
+	return likesCount, nil
 }
 
 // Internal Method to fetch replies count of a Comment
-func fetchCommentRepliesCount(helper interfaces.CommentHelper, comment_id string) (int64, error) {
-	comment_data, err := fetchCommentByIdInternal(helper, comment_id)
+func fetchCommentRepliesCount(helper interfaces.CommentHelper, commentId string) (int64, error) {
+	commentData, err := fetchCommentByIdInternal(helper, commentId)
 	if err != nil {
 		return 0, err
 	}
 
-	reply_filter_data := gin.H{
+	replyFilterData := gin.H{
 		"_id": gin.H{
-			"$in": comment_data.Replies,
+			"$in": commentData.Replies,
 		},
 		"is_deleted": false,
 	}
 
 	// fetch replies count using helper method
-	likes_count, err := helper.CountCommentHelper(reply_filter_data)
+	likesCount, err := helper.CountCommentHelper(replyFilterData)
 	if err != nil {
 		return 0, err
 	}
 
-	return likes_count, nil
+	return likesCount, nil
 }
 
 // Internal Method to fetch parent comment of a Comment
-func fetchParentComment(helper interfaces.CommentHelper, comment_id primitive.ObjectID,
-	post_id primitive.ObjectID) (*entities.Comment, error) {
+func fetchParentComment(helper interfaces.CommentHelper, commentId primitive.ObjectID,
+	postId primitive.ObjectID) (*entities.Comment, error) {
 	// comment filter data
-	comment_filter_data := gin.H{
-		"replies":    comment_id,
+	commentFilterData := gin.H{
+		"replies":    commentId,
 		"is_deleted": false,
-		"post_id":    post_id,
+		"post_id":    postId,
 	}
 
 	// fetch comment using helper method
-	comment_results, err := helper.FindCommentHelper(comment_filter_data, gin.H{})
+	commentResults, err := helper.FindCommentHelper(commentFilterData, gin.H{})
 	if err != nil {
 		return nil, err
 	}
 
 	// validation of comment
-	if len(comment_results) == 0 {
+	if len(commentResults) == 0 {
 		return nil, fmt.Errorf("invalid comment_id sent")
 	}
 
-	return &comment_results[0], nil
+	return &commentResults[0], nil
 }
 
 // Internal Method to fetch a comment using comment_id
-func fetchCommentByIdInternal(helper interfaces.CommentHelper, comment_id string) (*entities.Comment, error) {
+func fetchCommentByIdInternal(helper interfaces.CommentHelper, commentId string) (*entities.Comment, error) {
 	// comment filter data
-	comment_filter_data := gin.H{
-		"_id":        comment_id,
+	commentFilterData := gin.H{
+		"_id":        commentId,
 		"is_deleted": false,
 	}
 
 	// fetch comment using helper method
-	comment_results, err := helper.FindCommentHelper(comment_filter_data, gin.H{})
+	commentResults, err := helper.FindCommentHelper(commentFilterData, gin.H{})
 	if err != nil {
 		return nil, err
 	}
 
 	// validation of comment
-	if len(comment_results) == 0 {
+	if len(commentResults) == 0 {
 		return nil, fmt.Errorf("invalid comment_id sent")
 	}
 
-	return &comment_results[0], nil
+	return &commentResults[0], nil
 }
 
 // fetchCommentByID | get comment by id
-func fetchCommentByID(helper interfaces.CommentHelper, comment_id string) (*entities.Comment, error) {
+func fetchCommentByID(helper interfaces.CommentHelper, commentId string) (*entities.Comment, error) {
 	filter := gin.H{
-		"_id": comment_id,
+		"_id": commentId,
 	}
 
 	commentResults, err := helper.FindCommentHelper(filter, gin.H{})
@@ -125,90 +125,91 @@ func fetchCommentByID(helper interfaces.CommentHelper, comment_id string) (*enti
 
 // Internal Method to fetch multiple comments data using comment_ids
 func fetchMultipleCommentsData(handlers *FeedHandlers,
-	comment_ids []string,
-	community_id int,
-	user_id string,
-	is_cm bool,
+	commentIds []string,
+	communityId int,
+	userId string,
+	isCm bool,
 	versionCode string,
 	platformCode string) (map[string]requests.FetchCommentsResponse, error) {
 
 	// convert comment_ids to object ids
-	comment_object_ids := helpers.ConvertIdsToObjectIds(comment_ids)
+	commentObjectIds := helpers.ConvertIdsToObjectIds(commentIds)
 
 	// comment filter data
-	comment_filter_data := gin.H{
+	commentFilterData := gin.H{
 		"_id": gin.H{
-			"$in": comment_object_ids,
+			"$in": commentObjectIds,
 		},
-		"community_id": community_id,
+		"community_id": communityId,
 	}
 
 	// fetch comments using helper method
-	comments, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, nil)
+	comments, err := handlers.commentHelper.FindCommentHelper(commentFilterData, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// Make key value pair map for response, comment_id -> comment
-	parsed_comments_response := map[string]requests.FetchCommentsResponse{}
+	parsedCommentsResponse := map[string]requests.FetchCommentsResponse{}
 	for _, comment := range comments {
 
 		// Parse comment for response
-		parseCommentsResponse := parseCommentsResponse(handlers, comment, user_id, is_cm, versionCode, platformCode)
+		parseCommentsResponse := parseCommentsResponse(handlers, comment, userId, isCm, versionCode, platformCode)
 
 		// Add to response map
-		parsed_comments_response[comment.ID.Hex()] = parseCommentsResponse
+		parsedCommentsResponse[comment.ID.Hex()] = parseCommentsResponse
 
 	}
 
-	return parsed_comments_response, nil
+	return parsedCommentsResponse, nil
 }
 
 // Internal Method to fetch a comment using comment_id and post_id
-func fetchComment(helper interfaces.CommentHelper, comment_id string, post_id string) (*entities.Comment, error) {
+func fetchComment(helper interfaces.CommentHelper, commentId string, postId string) (*entities.Comment, error) {
 	// comment filter data
-	comment_filter_data := gin.H{
-		"_id":        comment_id,
+	commentFilterData := gin.H{
+		"_id":        commentId,
 		"is_deleted": false,
-		"post_id":    post_id,
+		"post_id":    postId,
 	}
 
 	// fetch comment using helper method
-	comment_results, err := helper.FindCommentHelper(comment_filter_data, gin.H{})
+	commentResults, err := helper.FindCommentHelper(commentFilterData, gin.H{})
 	if err != nil {
 		return nil, err
 	}
 
 	// validation of comment
-	if len(comment_results) == 0 {
+	if len(commentResults) == 0 {
 		return nil, fmt.Errorf("invalid comment_id sent")
 	}
 
-	return &comment_results[0], nil
+	return &commentResults[0], nil
 }
 
 // Internal Method to parse comment for response
 func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	comment entities.Comment, user_id string, is_cm bool, versionCode string, platformCode string) requests.CommentResponse {
-	likes_count, _ := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
+	comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string) requests.CommentResponse {
+	likesCount, _ := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
 	var response requests.CommentResponse
 
 	response.ID = comment.ID
+	response.TempID = comment.TempID
 	response.Text = comment.Text
 	response.Level = comment.Level
 	response.CommunityId = comment.CommunityId
 	response.PostId = comment.PostId
 	response.UserId = comment.UserId
 	response.UUID = comment.UserId
-	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, comment.ID.Hex(), constants.CommentEntityType, user_id)
-	response.LikesCount = int(likes_count)
+	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, comment.ID.Hex(), constants.CommentEntityType, userId)
+	response.LikesCount = int(likesCount)
 	response.IsDeleted = comment.IsDeleted
 	response.IsEdited = comment.IsEdited
-	response.MenuItems = getEntityMenuItems(constants.CommentEntityType, is_cm, user_id == comment.UserId, false, versionCode, platformCode)
+	response.MenuItems = getEntityMenuItems(constants.CommentEntityType, isCm, userId == comment.UserId, false, versionCode, platformCode)
 
 	if comment.Level == constants.CommentBaseLevel {
-		replies_count, _ := fetchCommentRepliesCount(commentHelper, comment.ID.Hex())
-		response.CommentsCount = int(replies_count)
+		repliesCount, _ := fetchCommentRepliesCount(commentHelper, comment.ID.Hex())
+		response.CommentsCount = int(repliesCount)
 	}
 
 	if comment.IsDeleted {
@@ -224,43 +225,43 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 
 // Internal Method to parse multiple comments for response
 func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	comments []entities.Comment, user_id string, is_cm bool,
+	comments []entities.Comment, userId string, isCm bool,
 	versionCode string, platformCode string) []requests.CommentResponse {
 	var response []requests.CommentResponse
 	for _, comment := range comments {
-		response = append(response, parseCommentResponse(likeHelper, commentHelper, comment, user_id, is_cm, versionCode, platformCode))
+		response = append(response, parseCommentResponse(likeHelper, commentHelper, comment, userId, isCm, versionCode, platformCode))
 	}
 
 	return response
 }
 
 // Internal method to parse comments for FetchCommentsResponse
-func parseCommentsResponse(handlers *FeedHandlers, comment entities.Comment, user_id string, is_cm bool, versionCode string, platformCode string) requests.FetchCommentsResponse {
+func parseCommentsResponse(handlers *FeedHandlers, comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string) requests.FetchCommentsResponse {
 
-	fetch_comment_response := requests.FetchCommentsResponse{
-		CommentResponse: parseCommentResponse(handlers.likeHelper, handlers.commentHelper, comment, user_id, is_cm, versionCode, platformCode),
+	fetchCommentResponse := requests.FetchCommentsResponse{
+		CommentResponse: parseCommentResponse(handlers.likeHelper, handlers.commentHelper, comment, userId, isCm, versionCode, platformCode),
 	}
 
 	// Fetch parent comment if exists
-	if fetch_comment_response.Level > constants.CommentBaseLevel {
-		parent_comment, err := fetchParentComment(handlers.commentHelper, comment.ID, comment.PostId)
+	if fetchCommentResponse.Level > constants.CommentBaseLevel {
+		parentComment, err := fetchParentComment(handlers.commentHelper, comment.ID, comment.PostId)
 		if err == nil {
-			parent_comment_response := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *parent_comment, user_id, is_cm, versionCode, platformCode)
-			fetch_comment_response.ParentComment = &parent_comment_response
+			parentCommentResponse := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *parentComment, userId, isCm, versionCode, platformCode)
+			fetchCommentResponse.ParentComment = &parentCommentResponse
 		}
 	}
 
-	return fetch_comment_response
+	return fetchCommentResponse
 
 }
 
 // Internal Method to parse comment data for FetchComment API
 func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	raw_comment *entities.Comment, replies []requests.CommentResponse, user_id string, is_cm bool,
+	rawComment *entities.Comment, replies []requests.CommentResponse, userId string, isCm bool,
 	versionCode string, platformCode string) requests.FetchCommentResponse {
 	var response requests.FetchCommentResponse
 
-	response.CommentResponse = parseCommentResponse(likeHelper, commentHelper, *raw_comment, user_id, is_cm, versionCode, platformCode)
+	response.CommentResponse = parseCommentResponse(likeHelper, commentHelper, *rawComment, userId, isCm, versionCode, platformCode)
 
 	if len(replies) > 0 {
 		response.Replies = replies
@@ -269,10 +270,10 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	}
 
 	if response.CommentResponse.Level > constants.CommentBaseLevel {
-		comment_data, err := fetchParentComment(commentHelper, raw_comment.ID, raw_comment.PostId)
+		commentData, err := fetchParentComment(commentHelper, rawComment.ID, rawComment.PostId)
 		if err == nil {
-			parent_comment_response := parseCommentResponse(likeHelper, commentHelper, *comment_data, user_id, is_cm, versionCode, platformCode)
-			response.ParentComment = &parent_comment_response
+			parentCommentResponse := parseCommentResponse(likeHelper, commentHelper, *commentData, userId, isCm, versionCode, platformCode)
+			response.ParentComment = &parentCommentResponse
 		}
 	}
 
@@ -283,59 +284,59 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	comment_id := c.Param("comment_id")
-	param_is_cm := c.Query("user_is_cm")
-	is_cm := false
+	commentId := c.Param("comment_id")
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
 
-	if param_is_cm == "true" {
-		is_cm = true
+	if paramIsCm == "true" {
+		isCm = true
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// fetch comment data
-	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, comment_id)
+	commentData, err := fetchCommentByIdInternal(handlers.commentHelper, commentId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	comment_filter_data := gin.H{
+	commentFilterData := gin.H{
 		"_id": gin.H{
-			"$in": comment_data.Replies,
+			"$in": commentData.Replies,
 		},
 		"is_deleted": false,
-		"post_id":    comment_data.PostId.Hex(),
+		"post_id":    commentData.PostId.Hex(),
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment using helper method
-	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, comment_filter_options)
+	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, commentFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, headers[utils.HeadersMemberId],
-		is_cm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
-	fetch_comment_response := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		comment_data, replies_response, headers[utils.HeadersMemberId], is_cm, headers[utils.HeadersVersionCode],
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, headers[utils.HeadersMemberId],
+		isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
+		commentData, repliesResponse, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode])
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"comment": fetch_comment_response,
+		"comment": fetchCommentResponse,
 	})
 }
 
@@ -346,31 +347,31 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// Get Query Params
-	param_comment_ids := c.Query("comment_ids")
-	param_is_cm, _ := strconv.ParseBool(c.Query("user_is_cm"))
+	paramCommentIds := c.Query("comment_ids")
+	paramIsCm, _ := strconv.ParseBool(c.Query("user_is_cm"))
 
 	// Check if user is CM or not
-	if !param_is_cm {
+	if !paramIsCm {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
 
 	// Unmarshal comment_ids
-	var comment_ids []string
-	err := json.Unmarshal([]byte(param_comment_ids), &comment_ids)
+	var commentIds []string
+	err := json.Unmarshal([]byte(paramCommentIds), &commentIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// Fetch comments using comment_ids
-	comments, err := fetchMultipleCommentsData(handlers, comment_ids, community_id, headers[utils.HeadersMemberId], param_is_cm,
+	comments, err := fetchMultipleCommentsData(handlers, commentIds, communityId, headers[utils.HeadersMemberId], paramIsCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -387,62 +388,62 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func fetchCommentData(handlers *FeedHandlers, comment_id string, post_id string, filter_options map[string]interface{}, member_id string, is_cm bool, versionCode string, platformCode string) (interface{}, error) {
+func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{}, memberId string, isCm bool, versionCode string, platformCode string) (interface{}, error) {
 	// fetch comment data
-	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
 	if err != nil {
 		return nil, err
 	}
 
-	comment_filter_data := gin.H{
+	commentFilterData := gin.H{
 		"_id": gin.H{
-			"$in": comment_data.Replies,
+			"$in": commentData.Replies,
 		},
 		"is_deleted": false,
-		"post_id":    post_id,
+		"post_id":    postId,
 	}
 
 	// fetch comment using helper method
-	comment_results, err := handlers.commentHelper.FindCommentHelper(comment_filter_data, filter_options)
+	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	replies_response := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, comment_results, member_id, is_cm, versionCode, platformCode)
-	fetch_comment_response := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		comment_data, replies_response, member_id, is_cm, versionCode, platformCode)
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm, versionCode, platformCode)
+	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
+		commentData, repliesResponse, memberId, isCm, versionCode, platformCode)
 
-	return fetch_comment_response, nil
+	return fetchCommentResponse, nil
 }
 
 // Exposed method to fetch comment by comment_id and post_id
 func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
-	comment_id := c.Param("comment_id")
-	param_is_cm := c.Query("user_is_cm")
-	is_cm := false
+	postId := c.Param("post_id")
+	commentId := c.Param("comment_id")
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
 
-	if param_is_cm == "true" {
-		is_cm = true
+	if paramIsCm == "true" {
+		isCm = true
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// fetch post data
-	_, err := fetchPost(handlers.postHelper, post_id, community_id)
+	_, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -454,14 +455,14 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	}
 
 	// fetch comment response data
-	fetch_comment_response, err := fetchCommentData(handlers, comment_id, post_id, comment_filter_options, headers[utils.HeadersMemberId], is_cm,
+	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], isCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	response["comment"] = fetch_comment_response
+	response["comment"] = fetchCommentResponse
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -471,11 +472,11 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
+	postId := c.Param("post_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -495,38 +496,38 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// create comment using the helper method
-	comment_id, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, post_data.ID, community_id,
-		constants.CommentBaseLevel, headers[utils.HeadersMemberId])
+	commentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
+		constants.CommentBaseLevel, headers[utils.HeadersMemberId], createCommentRequest.TempID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	tagged_members, err := getTaggedUsers(createCommentRequest.Text)
+	taggedMembers, err := getTaggedUsers(createCommentRequest.Text)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	var is_creator_tagged bool = false
+	var isCreatorTagged bool = false
 
-	for _, member := range tagged_members {
-		if member == post_data.UserId {
-			is_creator_tagged = true
+	for _, member := range taggedMembers {
+		if member == postData.UserId {
+			isCreatorTagged = true
 		}
 
 		// create tag activity
-		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, comment_id.(primitive.ObjectID), post_data.UserId, constants.TaggedInPostComment, gin.H{
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
 			"entity_type": constants.CommentEntityType,
-			"post_id":     post_id,
-			"comment_id":  comment_id.(primitive.ObjectID).Hex(),
+			"post_id":     postId,
+			"comment_id":  commentId.(primitive.ObjectID).Hex(),
 		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -539,11 +540,11 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	}
 
-	if !is_creator_tagged {
-		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.CommentOnPost, gin.H{
+	if !isCreatorTagged {
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CommentOnPost, gin.H{
 			"entity_type": constants.CommentEntityType,
-			"post_id":     post_id,
-			"comment_id":  comment_id.(primitive.ObjectID).Hex(),
+			"post_id":     postId,
+			"comment_id":  commentId.(primitive.ObjectID).Hex(),
 		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -556,7 +557,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -568,10 +569,10 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// fetch comment response data
-	fetch_comment_response, err := fetchCommentData(handlers, comment_id.(primitive.ObjectID).Hex(), post_id, comment_filter_options, headers[utils.HeadersMemberId], false,
+	fetchCommentResponse, err := fetchCommentData(handlers, commentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err == nil {
-		response["comment"] = fetch_comment_response
+		response["comment"] = fetchCommentResponse
 	}
 
 	// return final response
@@ -583,12 +584,12 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
-	comment_id := c.Param("comment_id")
+	postId := c.Param("post_id")
+	commentId := c.Param("comment_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -608,27 +609,27 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	}
 
 	// Check if Post_id is valid
-	_, err := fetchPost(handlers.postHelper, post_id, community_id)
+	_, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment data
-	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// If user is not cm and is not the comment creator
-	if !editCommentRequest.UserIsCm && comment_data.UserId != headers[utils.HeadersMemberId] {
+	if !editCommentRequest.UserIsCm && commentData.UserId != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
 
 	// comment update data
-	comment_update_data := gin.H{
+	commentUpdateData := gin.H{
 		"$set": gin.H{
 			"text":      editCommentRequest.Text,
 			"is_edited": true,
@@ -636,21 +637,21 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	}
 
 	// update comment data
-	err = handlers.commentHelper.UpdateCommentByIdHelper(comment_data.ID, comment_update_data)
+	err = handlers.commentHelper.UpdateCommentByIdHelper(commentData.ID, commentUpdateData)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// Generate page filter options
-	comment_filter_options, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment response data
-	fetch_comment_response, err := fetchCommentData(handlers, comment_id, post_id, comment_filter_options, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm,
+	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -660,7 +661,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	// reponse data
 	response := gin.H{
 		"success": true,
-		"comment": fetch_comment_response,
+		"comment": fetchCommentResponse,
 	}
 
 	// return final response
@@ -671,12 +672,12 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
-	comment_id := c.Param("comment_id")
+	postId := c.Param("post_id")
+	commentId := c.Param("comment_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -688,65 +689,65 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment data
-	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// validation of comment level
-	if comment_data.Level >= constants.CommentAllowedLevel {
+	if commentData.Level >= constants.CommentAllowedLevel {
 		utils.GeneralAPIValidationError(c, constants.CommentAllowedErrorMessage)
 		return
 	}
 
 	// create comment using the helper method
-	new_comment_id, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, post_data.ID, community_id,
-		comment_data.Level+1, headers[utils.HeadersMemberId])
+	newCommentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
+		commentData.Level+1, headers[utils.HeadersMemberId], createCommentRequest.TempID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// comment update data
-	comment_update_data := gin.H{
+	commentUpdateData := gin.H{
 		"$push": gin.H{
-			"replies": new_comment_id.(primitive.ObjectID),
+			"replies": newCommentId.(primitive.ObjectID),
 		},
 	}
 
 	// update post using the helper method
-	err = handlers.commentHelper.UpdateCommentByIdHelper(comment_data.ID, comment_update_data)
+	err = handlers.commentHelper.UpdateCommentByIdHelper(commentData.ID, commentUpdateData)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	tagged_members, err := getTaggedUsers(createCommentRequest.Text)
+	taggedMembers, err := getTaggedUsers(createCommentRequest.Text)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	var is_creator_tagged bool = false
+	var isCreatorTagged bool = false
 
-	for _, member := range tagged_members {
-		if member == comment_data.UserId {
-			is_creator_tagged = true
+	for _, member := range taggedMembers {
+		if member == commentData.UserId {
+			isCreatorTagged = true
 		}
 
 		// create tag activity
-		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, new_comment_id.(primitive.ObjectID), post_data.UserId, constants.TaggedInPostComment, gin.H{
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
 			"entity_type": constants.CommentEntityType,
-			"post_id":     post_id,
-			"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
+			"post_id":     postId,
+			"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
 		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -759,12 +760,12 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	}
 
-	if !is_creator_tagged {
+	if !isCreatorTagged {
 		// create comment activity
-		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CommentOnComment, gin.H{
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CommentOnComment, gin.H{
 			"entity_type": constants.CommentEntityType,
-			"post_id":     post_id,
-			"comment_id":  new_comment_id.(primitive.ObjectID).Hex(),
+			"post_id":     postId,
+			"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
 		}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -778,7 +779,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// filter options
-	comment_filter_options, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "")
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -790,10 +791,10 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// fetch comment response data
-	fetch_comment_response, err := fetchCommentData(handlers, new_comment_id.(primitive.ObjectID).Hex(), post_id, comment_filter_options, headers[utils.HeadersMemberId], false,
+	fetchCommentResponse, err := fetchCommentData(handlers, newCommentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	if err == nil {
-		response["comment"] = fetch_comment_response
+		response["comment"] = fetchCommentResponse
 	}
 
 	// return final response
@@ -804,12 +805,12 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	post_id := c.Param("post_id")
-	comment_id := c.Param("comment_id")
+	postId := c.Param("post_id")
+	commentId := c.Param("comment_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -821,27 +822,27 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	}
 
 	// fetch post data
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment data
-	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// validation of user permission
-	if !deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != comment_data.UserId {
+	if !deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != commentData.UserId {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
 	}
 
 	// comment update data
-	comment_update_data := gin.H{
+	commentUpdateData := gin.H{
 		"$set": gin.H{
 			"is_deleted":    true,
 			"delete_reason": deleteCommentRequest.DeleteReason,
@@ -850,7 +851,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	}
 
 	// update post using the helper method
-	err = handlers.commentHelper.UpdateCommentByIdHelper(comment_data.ID, comment_update_data)
+	err = handlers.commentHelper.UpdateCommentByIdHelper(commentData.ID, commentUpdateData)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -859,13 +860,13 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	// remove activity for the comment
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.Comment,
-		"entity_id":   comment_data.ID,
+		"entity_id":   commentData.ID,
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
 
 	// create delete activity if deleted if CM
-	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != comment_data.UserId {
-		activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.CMDeletedComment, gin.H{}, false, false)
+	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != commentData.UserId {
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CMDeletedComment, gin.H{}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return

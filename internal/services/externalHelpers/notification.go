@@ -2,7 +2,8 @@ package externalHelpers
 
 import (
 	"fmt"
-	"log"
+
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,7 +36,7 @@ func SendNotification(member_ids []string, title string, sub_title string, route
 	//Send Request
 	respBytes, _, err := GetRequestResponse(CaravanService, SendNotificationEndPoint, POSTRequestRawBody, headers, nil, postBody)
 	if respBytes == nil {
-		log.Fatalf("An Error Occured %v", err)
+		log.Error(fmt.Sprintf("An Error Occured %v", err))
 	}
 
 	// Printing output
