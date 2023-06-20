@@ -13,53 +13,57 @@ import (
 // internal method to parse attachments
 func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 
-	var post_attachments []entities.Attachment
+	var postAttachments []entities.Attachment
 
 	// parse attachments
 	for _, element := range attachments {
 
-		meta_data := element.AttachmentMeta
-		og_tags := meta_data.OgTags
-		meta_og_tags := entities.NewOgTags(og_tags.Title, og_tags.Image, og_tags.Description, og_tags.Url)
-		attachment_meta := entities.NewAttachmentMeta(meta_data.Name, meta_data.Url, meta_data.Format, meta_data.Size,
-			meta_data.Duration, meta_data.PageCount, meta_data.ThumbnailUrl, meta_og_tags)
-		attachment := entities.NewAttachment(element.AttachmentType, attachment_meta)
-		post_attachments = append(post_attachments, attachment)
+		metaData := element.AttachmentMeta
+		ogTags := metaData.OgTags
+		metaOgTags := entities.NewOgTags(ogTags.Title, ogTags.Image, ogTags.Description, ogTags.Url)
+		attachmentMeta := entities.NewAttachmentMeta(metaData.Name, metaData.Url, metaData.Format, metaData.Size,
+			metaData.Duration, metaData.PageCount, metaData.ThumbnailUrl, metaOgTags)
+		attachment := entities.NewAttachment(element.AttachmentType, attachmentMeta)
+		postAttachments = append(postAttachments, attachment)
 	}
 
-	return post_attachments
+	return postAttachments
 }
 
 // Exposed Helper Method to Create Post
-func (helper *postHelper) CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment,
-	chatroom_id int) (interface{}, error) {
+func (helper *postHelper) CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
+	chatroomId int, tempId *string) (interface{}, error) {
 
 	// parse attachments
-	post_attachments := parseAttachments(attachments)
+	postAttachments := parseAttachments(attachments)
 
-	post := entities.NewPost(text, heading, community_id, user_id, post_attachments, chatroom_id)
-	post_id, err := helper.postRepository.Create(&post)
+	if tempId != nil && *tempId == "" {
+		tempId = nil
+	}
 
-	return post_id, err
+	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId)
+	postId, err := helper.postRepository.Create(&post)
+
+	return postId, err
 }
 
 // Exposed Helper Method to Edit Post
-func (helper *postHelper) EditPostHelper(post_id primitive.ObjectID, text string, heading string, attachments []requests.Attachment) error {
+func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment) error {
 
 	// parse attachments
-	post_attachments := parseAttachments(attachments)
+	postAttachments := parseAttachments(attachments)
 
-	update_body := gin.H{
+	updateBody := gin.H{
 		"$set": gin.H{
 			"text":        text,
 			"heading":     heading,
-			"attachments": post_attachments,
+			"attachments": postAttachments,
 			"is_edited":   true,
 			"updated_at":  time.Now(),
 		},
 	}
 
-	err := helper.postRepository.Update(gin.H{"_id": post_id}, update_body)
+	err := helper.postRepository.Update(gin.H{"_id": postId}, updateBody)
 
 	return err
 
@@ -80,16 +84,16 @@ func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOp
 }
 
 // Exposed Helper Method to Update Post
-func (helper *postHelper) UpdatePostByIdHelper(post_id primitive.ObjectID, update map[string]interface{}) error {
-	set_data := gin.H{}
+func (helper *postHelper) UpdatePostByIdHelper(postId primitive.ObjectID, update map[string]interface{}) error {
+	setData := gin.H{}
 
 	if _, ok := update["$set"]; ok {
-		set_data = update["$set"].(gin.H)
+		setData = update["$set"].(gin.H)
 	}
-	set_data["updated_at"] = time.Now()
-	update["$set"] = set_data
+	setData["updated_at"] = time.Now()
+	update["$set"] = setData
 
-	err := helper.postRepository.Update(gin.H{"_id": post_id}, update)
+	err := helper.postRepository.Update(gin.H{"_id": postId}, update)
 
 	return err
 }

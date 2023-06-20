@@ -16,8 +16,8 @@ type CommentRepository interface {
 
 // Interface for Comment Helper
 type CommentHelper interface {
-	CreateCommentHelper(text string, postId primitive.ObjectID, community_id int, level int, userId string) (interface{}, error)
+	CreateCommentHelper(text string, postId primitive.ObjectID, communityId int, level int, userId string, tempId *string) (interface{}, error)
 	FindCommentHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Comment, error)
-	UpdateCommentByIdHelper(comment_id primitive.ObjectID, update map[string]interface{}) error
+	UpdateCommentByIdHelper(commentId primitive.ObjectID, update map[string]interface{}) error
 	CountCommentHelper(filter map[string]interface{}) (int64, error)
 }

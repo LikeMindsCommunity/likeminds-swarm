@@ -6,7 +6,8 @@ import (
 
 // Request Structure for Create Comment
 type CreateCommentRequest struct {
-	Text string `json:"text" binding:"required"`
+	Text   string  `json:"text" binding:"required"`
+	TempID *string `json:"temp_id"`
 }
 
 // Request Structure for Edit Comment
@@ -24,6 +25,7 @@ type DeleteCommentRequest struct {
 // Response Structure for Comment
 type CommentResponse struct {
 	ID            primitive.ObjectID `json:"_id"`
+	TempID        *string            `json:"temp_id"`
 	Text          string             `json:"text"`
 	Level         int                `json:"level"`
 	UserId        string             `json:"user_id"`

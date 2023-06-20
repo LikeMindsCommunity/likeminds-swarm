@@ -19,7 +19,8 @@ type PostRepository interface {
 
 // Interface for Post Helper
 type PostHelper interface {
-	CreatePostHelper(text string, heading string, community_id int, user_id string, attachments []requests.Attachment, chatroom_id int) (interface{}, error)
+	CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
+		chatroomId int, tempId *string) (interface{}, error)
 	EditPostHelper(post_id primitive.ObjectID, text string, heading string, attachments []requests.Attachment) error
 	FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error)
 	UpdatePostByIdHelper(post_id primitive.ObjectID, update map[string]interface{}) error

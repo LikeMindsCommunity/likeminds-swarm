@@ -10,11 +10,15 @@ import (
 )
 
 // Exposed Helper Method to Create a Comment
-func (helper *commentHelper) CreateCommentHelper(text string, postId primitive.ObjectID, community_id int, level int, userId string) (interface{}, error) {
-	comment := entities.NewComment(text, postId, community_id, level, userId)
-	comment_id, err := helper.commentRepository.Create(&comment)
+func (helper *commentHelper) CreateCommentHelper(text string, postId primitive.ObjectID, communityId int, level int, userId string, tempId *string) (interface{}, error) {
+	if tempId != nil && *tempId == "" {
+		tempId = nil
+	}
 
-	return comment_id, err
+	comment := entities.NewComment(text, postId, communityId, level, userId, tempId)
+	commentId, err := helper.commentRepository.Create(&comment)
+
+	return commentId, err
 }
 
 // Exposed Helper Method to Find a Comment
@@ -31,16 +35,16 @@ func (helper *commentHelper) FindCommentHelper(filter map[string]interface{}, fi
 }
 
 // Exposed Helper Method to Update a Comment
-func (helper *commentHelper) UpdateCommentByIdHelper(comment_id primitive.ObjectID, update map[string]interface{}) error {
-	set_data := gin.H{}
+func (helper *commentHelper) UpdateCommentByIdHelper(commentId primitive.ObjectID, update map[string]interface{}) error {
+	setData := gin.H{}
 
 	if _, ok := update["$set"]; ok {
-		set_data = update["$set"].(gin.H)
+		setData = update["$set"].(gin.H)
 	}
-	set_data["updated_at"] = time.Now()
-	update["$set"] = set_data
+	setData["updated_at"] = time.Now()
+	update["$set"] = setData
 
-	err := helper.commentRepository.Update(gin.H{"_id": comment_id}, update)
+	err := helper.commentRepository.Update(gin.H{"_id": commentId}, update)
 
 	return err
 }
