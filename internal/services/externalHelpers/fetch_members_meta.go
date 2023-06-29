@@ -21,6 +21,7 @@ type MemberMeta struct {
 	Name          string        `json:"name"`
 	ImageUrl      string        `json:"image_url"`
 	UserUniqueId  string        `json:"user_unique_id"`
+	UUID          string        `json:"uuid"`
 	IsGuest       bool          `json:"is_guest"`
 	CustomTitle   string        `json:"custom_title"`
 	SDKClientInfo SDKClientInfo `json:"sdk_client_info"`
