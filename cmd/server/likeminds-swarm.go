@@ -70,7 +70,7 @@ func main() {
 	// scripts.RunScripts(feedHandlers)
 
 	log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
-	log.Fatal(router.Run(":8081"))
+	log.Fatal(router.Run(":8080"))
 }
 
 // Internal Method to initiate Gin module in the server
