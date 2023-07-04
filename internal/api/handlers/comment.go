@@ -215,6 +215,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	if comment.IsDeleted {
 		response.DeleteReason = comment.DeleteReason
 		response.DeletedBy = comment.DeletedBy
+		response.DeletedByUUID = comment.DeletedBy
 	}
 
 	response.CreatedAt = int(comment.CreatedAt.UnixMilli())

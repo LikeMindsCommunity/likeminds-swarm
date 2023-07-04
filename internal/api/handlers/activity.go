@@ -41,6 +41,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]
 			EntityType:         activity.EntityType,
 			EntityID:           activity.EntityID,
 			EntityOwnerID:      activity.EntityOwnerID,
+			UUID:               activity.EntityOwnerID,
 			Action:             activity.Action,
 			CTA:                activity.CTA,
 			IsRead:             activity.IsRead,

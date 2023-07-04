@@ -8,6 +8,7 @@ type LikeResponse struct {
 	UserId    string             `json:"user_id"`
 	CreatedAt int                `json:"created_at"`
 	UpdatedAt int                `json:"updated_at"`
+	UUID      string             `json:"uuid"`
 }
 
 // Response Structure for Fetch Likes
