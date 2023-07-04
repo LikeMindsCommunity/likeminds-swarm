@@ -72,6 +72,7 @@ type PostResponse struct {
 	IsDeleted     bool                  `json:"is_deleted,omitempty"`
 	IsEdited      bool                  `json:"is_edited"`
 	DeletedBy     string                `json:"deleted_by,omitempty"`
+	DeletedByUUID string                `json:"deleted_by_uuid,omitempty"`
 	DeleteReason  string                `json:"delete_reason,omitempty"`
 	IsLiked       bool                  `json:"is_liked"`
 	IsSaved       bool                  `json:"is_saved"`

@@ -18,6 +18,7 @@ type UserActivityResponse struct {
 	EntityType         constants.EntityType     `json:"entity_type"`
 	EntityID           primitive.ObjectID       `json:"entity_id"`
 	EntityOwnerID      string                   `json:"entity_owner_id"`
+	UUID               string                   `json:"uuid"`
 	Action             constants.ActivityAction `json:"action"`
 	CTA                string                   `json:"cta"`
 	IsRead             bool                     `json:"is_read"`

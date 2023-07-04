@@ -7,13 +7,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// SDKClientInfo | defines sdk client info object schema
+type SDKClientInfo struct {
+	User         int    `json:"user"`
+	UserUniqueID string `json:"user_unique_id"`
+	UUID         string `json:"uuid"`
+	Community    int    `json:"community"`
+}
+
 // Structure for Member Meta Object
 type MemberMeta struct {
-	Id           int    `json:"id"`
-	Name         string `json:"name"`
-	ImageUrl     string `json:"image_url"`
-	UserUniqueId string `json:"user_unique_id"`
-	IsGuest      bool   `json:"is_guest"`
+	Id            int           `json:"id"`
+	Name          string        `json:"name"`
+	ImageUrl      string        `json:"image_url"`
+	UserUniqueId  string        `json:"user_unique_id"`
+	UUID          string        `json:"uuid"`
+	IsGuest       bool          `json:"is_guest"`
+	CustomTitle   string        `json:"custom_title"`
+	SDKClientInfo SDKClientInfo `json:"sdk_client_info"`
 }
 
 // Structure for Member Meta Response
