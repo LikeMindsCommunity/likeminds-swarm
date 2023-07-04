@@ -38,6 +38,7 @@ type CommentResponse struct {
 	IsEdited      bool               `json:"is_edited"`
 	IsDeleted     bool               `json:"is_deleted,omitempty"`
 	DeletedBy     string             `json:"deleted_by,omitempty"`
+	DeletedByUUID string             `json:"deleted_by_uuid,omitempty"`
 	DeleteReason  string             `json:"delete_reason,omitempty"`
 	MenuItems     []MenuResponse     `json:"menu_items"`
 	CreatedAt     int                `json:"created_at"`

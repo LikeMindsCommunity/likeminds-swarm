@@ -19,6 +19,7 @@ func parseLikeResponse(like entities.Like) requests.LikeResponse {
 
 	response.ID = like.ID
 	response.UserId = like.LikedBy
+	response.UUID = like.LikedBy
 	response.CreatedAt = int(like.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(like.UpdatedAt.UnixMilli())
 
