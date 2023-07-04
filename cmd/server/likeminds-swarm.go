@@ -27,7 +27,7 @@ var (
 
 // Internal Method to initiate the server
 func main() {
-	var AppVersion string = "0.10.0"
+	var AppVersion string = "0.11.0"
 
 	initGin()
 	db := database.InitiateDB()
@@ -70,7 +70,7 @@ func main() {
 	// scripts.RunScripts(feedHandlers)
 
 	log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
-	log.Fatal(router.Run(":8080"))
+	log.Fatal(router.Run(":8081"))
 }
 
 // Internal Method to initiate Gin module in the server
