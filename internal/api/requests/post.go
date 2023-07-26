@@ -1,7 +1,7 @@
 package requests
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -28,10 +28,10 @@ type AttachmentMeta struct {
 
 // Attachment Structure
 type Attachment struct {
-	AttachmentType int                      `json:"attachment_type"`
-	AttachmentMeta AttachmentMeta           `json:"attachment_meta"`
-	Type           constants.AttachmentType `json:"type"`
-	MetaData       AttachmentMeta           `json:"meta_data"`
+	AttachmentType int                  `json:"attachment_type"`
+	AttachmentMeta AttachmentMeta       `json:"attachment_meta"`
+	Type           enums.AttachmentType `json:"type"`
+	MetaData       AttachmentMeta       `json:"meta_data"`
 }
 
 // Request Structure for Create Post
@@ -64,10 +64,10 @@ type PostResponse struct {
 	TempID        *string               `json:"temp_id"`
 	Text          string                `json:"text"`
 	Heading       string                `json:"heading"`
-	CommunityId   int                   `json:"community_id"`
+	CommunityId   int                   `json:"community_id,omitempty"`
 	ChatroomId    int                   `json:"feedroom_id,omitempty"`
 	IsPinned      bool                  `json:"is_pinned"`
-	UserId        string                `json:"user_id"`
+	UserId        string                `json:"user_id,omitempty"`
 	UUID          string                `json:"uuid,omitempty"`
 	Attachments   []entities.Attachment `json:"attachments"`
 	LikesCount    int                   `json:"likes_count"`

@@ -106,7 +106,7 @@ func CheckVersionInverted(featureVersionCode map[string]int, versionCode string,
 	return isVersionCheck
 }
 
-func ApiRevampV1Check(acceptVersion string) bool {
+func ApiRevampCheckV1(acceptVersion string) bool {
 	/*
 		This function is used for checking if x-accept-version header is v1 or not
 		returns TRUE if,

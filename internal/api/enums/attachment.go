@@ -1,4 +1,6 @@
-package constants
+package enums
+
+import "github.com/nateshr/likeminds-swarm/internal/api/constants"
 
 type AttachmentType string
 
@@ -8,6 +10,22 @@ const (
 	DocumentType AttachmentType = "document"
 	LinkType     AttachmentType = "link"
 )
+
+// Create New Attachment Type from int
+func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
+	switch attachment_type {
+	case constants.ImageWidget:
+		return ImageType
+	case constants.VideoWidget:
+		return VideoType
+	case constants.DocumentWidget:
+		return DocumentType
+	case constants.LinkWidget:
+		return LinkType
+	}
+
+	return ""
+}
 
 // checks if the attachment type is valid
 func (at AttachmentType) IsValid() bool {
@@ -27,13 +45,13 @@ func (at AttachmentType) ToString() string {
 func (at AttachmentType) ToInt() int {
 	switch at {
 	case ImageType:
-		return ImageWidget
+		return constants.ImageWidget
 	case VideoType:
-		return VideoWidget
+		return constants.VideoWidget
 	case DocumentType:
-		return DocumentWidget
+		return constants.DocumentWidget
 	case LinkType:
-		return LinkWidget
+		return constants.LinkWidget
 	}
 	return 0
 }

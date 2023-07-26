@@ -16,14 +16,17 @@ import (
 )
 
 // Internal Method to parse User activity list
-func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]requests.UserActivityResponse, interface{}, error) {
+func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
+	apiRevampV1Check bool) ([]requests.UserActivityResponse, interface{}, error) {
+
 	response := []requests.UserActivityResponse{}
 	userDatas := make(map[string]interface{})
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
 
-		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID)
+		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
+			apiRevampV1Check)
 		if err != nil {
 			return response, userDatas, err
 		}
@@ -70,11 +73,13 @@ func getActivityUserData(activity entities.Activity) (map[string]interface{}, st
 	return nil, ""
 }
 
-func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int) (interface{}, error) {
+func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int,
+	apiRevampV1Check bool) (interface{}, error) {
 
 	switch entityType {
 	case constants.Post:
-		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "")
+		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "",
+			apiRevampV1Check)
 		if err != nil {
 			return nil, err
 		}
@@ -414,6 +419,8 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userID := c.Param("user_id")
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	if userID != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
@@ -449,7 +456,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	}
 
 	// parse user activity response
-	activityResponse, userDatas, err := parseUserActivity(*handlers, activityResults)
+	activityResponse, userDatas, err := parseUserActivity(*handlers, activityResults, apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
