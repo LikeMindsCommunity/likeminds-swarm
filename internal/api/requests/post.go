@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -27,8 +28,10 @@ type AttachmentMeta struct {
 
 // Attachment Structure
 type Attachment struct {
-	AttachmentType int            `json:"attachment_type" binding:"required"`
-	AttachmentMeta AttachmentMeta `json:"attachment_meta"`
+	AttachmentType int                      `json:"attachment_type"`
+	AttachmentMeta AttachmentMeta           `json:"attachment_meta"`
+	Type           constants.AttachmentType `json:"type"`
+	MetaData       AttachmentMeta           `json:"meta_data"`
 }
 
 // Request Structure for Create Post

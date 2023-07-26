@@ -53,8 +53,62 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 }
 
 // Internal method to validate attachments for post
-func validatePostAttachments(c *gin.Context, attachments []requests.Attachment) bool {
+func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Attachment, apiRevampV1check bool) bool {
 
+	// Api revamp check to validate and update attachments
+	if apiRevampV1check {
+
+		for i := range attachments {
+
+			// If type in attachments is not empty
+			if attachments[i].Type != "" {
+
+				// Check if attachment type is valid
+				if !attachments[i].Type.IsValid() {
+					utils.GeneralAPIValidationError(c, "Invalid attachment type: "+attachments[i].Type.ToString())
+					return false
+				}
+
+				// Update attachment_type from type
+				attachments[i].AttachmentType = attachments[i].Type.ToInt()
+
+				// Update attachment_meta from meta_data
+				attachments[i].AttachmentMeta = attachments[i].MetaData
+			}
+
+			// validate attachment urls if present
+			if attachments[i].AttachmentMeta.Url != "" {
+				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.Url)
+
+				if !is_valid {
+					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.Url)
+					return false
+				}
+			}
+
+			if attachments[i].AttachmentMeta.ThumbnailUrl != "" {
+				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.ThumbnailUrl)
+
+				if !is_valid {
+					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.ThumbnailUrl)
+					return false
+				}
+			}
+
+			if attachments[i].AttachmentMeta.OgTags.Url != "" {
+				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.OgTags.Url)
+
+				if !is_valid {
+					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.OgTags.Url)
+					return false
+				}
+			}
+
+		}
+
+	}
+
+	// validate attachment_meta
 	for _, element := range attachments {
 		switch element.AttachmentType {
 		case constants.ImageWidget:
@@ -306,6 +360,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
 
+	api_revamp_check := utils.ApiRevampV1Check(headers[utils.HeadersAcceptVersion])
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -327,8 +383,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// validation of attachment objects
-	success := validatePostAttachments(c, createPostRequest.Attachments)
+	// validation of attachments
+	success := validateAndUpdatePostAttachments(c, createPostRequest.Attachments, api_revamp_check)
 	if !success {
 		return
 	}
@@ -499,6 +555,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
 
+	api_revamp_check := utils.ApiRevampV1Check(headers[utils.HeadersAcceptVersion])
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -526,7 +584,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validatePostAttachments(c, editPostRequest.Attachments)
+	success := validateAndUpdatePostAttachments(c, editPostRequest.Attachments, api_revamp_check)
 	if !success {
 		return
 	}
