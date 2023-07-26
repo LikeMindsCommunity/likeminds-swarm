@@ -125,7 +125,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	param_is_cm := c.Query("user_is_cm")
 	is_cm := false
 
-	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersVersionCode])
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	if param_is_cm == "true" {
 		is_cm = true

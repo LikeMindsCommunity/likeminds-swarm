@@ -332,7 +332,7 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 		handlers.saveHelper, *postData, memberId, isCm, versionCode, platformCode,
 		apiRevampV1Check)
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentResults, memberId, isCm, versionCode, platformCode)
+		commentResults, memberId, isCm, versionCode, platformCode, apiRevampV1Check)
 	fetchPostResponse := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
 		postResponse, repliesResponse)
 
