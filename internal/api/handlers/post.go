@@ -34,16 +34,16 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	for _, attachment := range attachments {
 		showUpdateAppImage := false
 
-		if feedLinkMediaCheck && attachment.AttachmentType == constants.LinkWidget {
+		if feedLinkMediaCheck && attachment.AttachmentType == enums.LinkWidget {
 			showUpdateAppImage = true
 		}
 
-		if feedVideoAndDocumentMediaCheck && (attachment.AttachmentType == constants.VideoWidget || attachment.AttachmentType == constants.DocumentWidget) {
+		if feedVideoAndDocumentMediaCheck && (attachment.AttachmentType == enums.VideoWidget || attachment.AttachmentType == enums.DocumentWidget) {
 			showUpdateAppImage = true
 		}
 
 		if showUpdateAppImage {
-			attachment.AttachmentType = constants.ImageWidget
+			attachment.AttachmentType = enums.ImageWidget
 			attachment.AttachmentMeta = &newAttachmentMeta
 		}
 
@@ -126,13 +126,13 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 	// validate attachment_meta
 	for _, element := range attachments {
 		switch element.AttachmentType {
-		case constants.ImageWidget:
+		case enums.ImageWidget:
 			if element.AttachmentMeta.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
 				return false
 			}
 
-		case constants.VideoWidget:
+		case enums.VideoWidget:
 			if element.AttachmentMeta.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
 				return false
@@ -143,7 +143,7 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 				return false
 			}
 
-		case constants.DocumentWidget:
+		case enums.DocumentWidget:
 			if element.AttachmentMeta.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
 				return false
@@ -159,7 +159,7 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 				return false
 			}
 
-		case constants.LinkWidget:
+		case enums.LinkWidget:
 			if element.AttachmentMeta.OgTags.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
 				return false
