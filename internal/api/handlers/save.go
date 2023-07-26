@@ -156,7 +156,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	}
 
 	// filter options
-	save_filter_options, err := generatePageFilterOptions(c, "")
+	save_filter_options, err := generatePageFilterOptions(c, "", 0)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

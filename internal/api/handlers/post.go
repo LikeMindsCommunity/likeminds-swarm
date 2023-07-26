@@ -377,7 +377,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// filter options
-	filterOptions, err := generatePageFilterOptions(c, "")
+	filterOptions, err := generatePageFilterOptions(c, "", 0)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -467,7 +467,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", 0)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -547,7 +547,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", 0)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -740,7 +740,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "")
+	postFilterOptions, err := generatePageFilterOptions(c, "", 0)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

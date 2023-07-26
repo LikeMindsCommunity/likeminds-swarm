@@ -21,18 +21,21 @@ type FeedHandlers struct {
 	postHelper     interfaces.PostHelper
 	activityHelper interfaces.ActivityHelper
 	saveHelper     interfaces.SaveHelper
+	topicHelper    interfaces.TopicHelper
 	esHelper       searchElastic.EsHelper
 }
 
 // Exposed Method to get an instance for Feed Handlers
 func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, postHelper interfaces.PostHelper,
-	saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, esHelper searchElastic.EsHelper) *FeedHandlers {
+	saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, topicHelper interfaces.TopicHelper,
+	esHelper searchElastic.EsHelper) *FeedHandlers {
 	return &FeedHandlers{
 		likeHelper:     likeHelper,
 		commentHelper:  commentHelper,
 		postHelper:     postHelper,
 		saveHelper:     saveHelper,
 		activityHelper: activityHelper,
+		topicHelper:    topicHelper,
 		esHelper:       esHelper,
 	}
 }
@@ -91,7 +94,7 @@ func addSortingOptions(options map[string]interface{}, orderBy string, order int
 }
 
 // Internal Method to generate filter from page params from an API
-func generatePageFilterOptions(c *gin.Context, sortKeyParam string) (map[string]interface{}, error) {
+func generatePageFilterOptions(c *gin.Context, sortKeyParam string, sortKeyOrderParam int) (map[string]interface{}, error) {
 	// fetch pagination query params
 	page, page_size, err := fetchPaginationParams(c)
 	if err != nil {
@@ -110,7 +113,13 @@ func generatePageFilterOptions(c *gin.Context, sortKeyParam string) (map[string]
 		sortKey = sortKeyParam
 	}
 
-	filter_options = addSortingOptions(filter_options, sortKey, -1)
+	sortKeyOrder := -1
+
+	if sortKeyOrderParam != 0 {
+		sortKeyOrder = sortKeyOrderParam
+	}
+
+	filter_options = addSortingOptions(filter_options, sortKey, sortKeyOrder)
 
 	return filter_options, nil
 }
