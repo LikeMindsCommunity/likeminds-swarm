@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -17,9 +18,9 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool) ([]requests.UserActivityResponse, interface{}, error) {
+	apiRevampV1Check bool) ([]interface{}, interface{}, error) {
 
-	response := []requests.UserActivityResponse{}
+	response := []interface{}{}
 	userDatas := make(map[string]interface{})
 
 	for _, activity := range activities {
@@ -37,22 +38,40 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		}
 
 		activity = activity
-		response = append(response, requests.UserActivityResponse{
+		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
 			ActionBy:           activity.ActionBy,
 			ActionOn:           activity.ActionOn,
-			EntityType:         activity.EntityType,
 			EntityID:           activity.EntityID,
 			EntityOwnerID:      activity.EntityOwnerID,
 			UUID:               activity.EntityOwnerID,
-			Action:             activity.Action,
 			CTA:                activity.CTA,
 			IsRead:             activity.IsRead,
 			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
 			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
 			ActivityEntityData: activityEntityData,
 			ActivityText:       activityText,
-		})
+		}
+
+		if apiRevampV1Check {
+
+			// API Revamp V1 Response
+			response = append(response, requests.UserActivityResponseV1{
+				UserActivityResponse: userActivity,
+				EntityType:           enums.NewEntityTypeFromInt(int(activity.EntityType)),
+				Action:               enums.NewActivityActionFromInt(int(activity.Action)),
+			})
+
+		} else {
+
+			// Old User Activity Response
+			response = append(response, requests.UserActivityResponseOld{
+				UserActivityResponse: userActivity,
+				EntityType:           activity.EntityType,
+				Action:               activity.Action,
+			})
+		}
+
 		userDatas[activityUserUID] = activityUserData[activityUserUID]
 	}
 
