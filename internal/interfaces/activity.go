@@ -4,13 +4,14 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ActivityRepository | Interface for Activity Repository
 type ActivityRepository interface {
-	Create(like *entities.Activity) (interface{}, error)
-	Find(filter map[string]interface{}, filterOptions *options.FindOptions) ([]entities.Activity, error)
+	Create(document interface{}) (interface{}, error)
+	Find(filter map[string]interface{}, filterOptions *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 }

@@ -1,55 +1,29 @@
 package repositories
 
 import (
-	"context"
-
-	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Exposed Repository Method to Create Activity
-func (repository *activityRepository) Create(like *entities.Activity) (interface{}, error) {
-	coll := repository.db.Collection("activity")
-	result, err := coll.InsertOne(context.TODO(), like)
-
-	return result.InsertedID, err
+func (repository *activityRepository) Create(document interface{}) (interface{}, error) {
+	return _createDocumentInDB(repository.db, ActivityCollection, document)
 }
 
 // Exposed Repository Method to Find Activity
-func (repository *activityRepository) Find(filter map[string]interface{}, filterOptions *options.FindOptions) ([]entities.Activity, error) {
-	coll := repository.db.Collection("activity")
-	cursor, err := coll.Find(context.TODO(), filter, filterOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []entities.Activity
-	if err = cursor.All(context.TODO(), &results); err != nil {
-		return nil, err
-	}
-
-	return results, nil
+func (repository *activityRepository) Find(filter map[string]interface{}, filterOptions *options.FindOptions) (*mongo.Cursor, error) {
+	return _findDocumentsInDB(repository.db, ActivityCollection, filter, filterOptions)
 }
 
 // Exposed Repository Method to Update Activity
 func (repository *activityRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
-	coll := repository.db.Collection("activity")
-	_, err := coll.UpdateOne(context.TODO(), filter, update)
-
-	return err
+	return _updateDocumentsInDB(repository.db, ActivityCollection, filter, update)
 }
 
 // Count | returns count of activity with filter
 func (repository *activityRepository) Count(filter map[string]interface{}) (int64, error) {
-	coll := repository.db.Collection("activity")
-	count, err := coll.CountDocuments(context.TODO(), filter)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
+	return _countDocumentsInDB(repository.db, ActivityCollection, filter)
 }
 
 // Structure for Activity Repository

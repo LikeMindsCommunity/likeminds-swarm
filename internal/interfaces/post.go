@@ -5,13 +5,14 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Interface for Post Repository
 type PostRepository interface {
-	Create(post *entities.Post) (interface{}, error)
-	Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Post, error)
+	Create(document interface{}) (interface{}, error)
+	Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 	Aggregate(query []map[string]interface{}) ([]gin.H, error)

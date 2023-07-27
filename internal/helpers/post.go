@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -80,7 +81,16 @@ func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOp
 		return nil, err
 	}
 
-	results, err := helper.postRepository.Find(filter, &fOpts)
+	cursor, err := helper.postRepository.Find(filter, &fOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the results from fetched documents
+	var results []entities.Post
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
 
 	return results, err
 }

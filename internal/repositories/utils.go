@@ -3,12 +3,18 @@ package repositories
 import (
 	"context"
 
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
-	TopicCollection string = "topic"
+	PostCollection     string = "post"
+	LikeCollection     string = "like"
+	CommentCollection  string = "comment"
+	ActivityCollection string = "activity"
+	SaveCollection     string = "save"
+	TopicCollection    string = "topic"
 )
 
 // Internal Method to Insert a document in MongoDB
@@ -44,4 +50,20 @@ func _countDocumentsInDB(db *mongo.Database, collectionName string, filter map[s
 	}
 
 	return count, nil
+}
+
+// Internal Method to Perform Aggregration on Collection
+func _aggregateDocumentsInDB(db *mongo.Database, collectionName string, query []map[string]interface{}) ([]gin.H, error) {
+	coll := db.Collection(collectionName)
+	cursor, err := coll.Aggregate(context.TODO(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = []gin.H{}
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
