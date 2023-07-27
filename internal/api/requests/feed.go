@@ -1,5 +1,11 @@
 package requests
 
+// Request Structure for Universal Feed
+type FetchUniversalFeedRequest struct {
+	IsCm     bool   `form:"user_is_cm"`
+	TopicIds string `form:"topic_ids"`
+}
+
 // Request Structure for Fetch Explore Feed
 type FetchExploreFeedRequest struct {
 	OrderType           int    `form:"order_type"`
@@ -12,6 +18,13 @@ type FetchExploreFeedResponse struct {
 	Success     bool        `json:"success"`
 	ChatroomIDs []int       `json:"chatroom_ids"`
 	PostCounts  map[int]int `json:"post_counts"`
+}
+
+// Request Structure for Group Feed
+type FetchGroupFeedRequest struct {
+	IsCm       bool   `form:"user_is_cm"`
+	FeedroomId string `form:"feedroom_id"`
+	TopicIds   string `form:"topic_ids"`
 }
 
 // Request Structure for Delete User Data

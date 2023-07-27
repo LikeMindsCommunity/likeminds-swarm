@@ -36,6 +36,7 @@ type CreatePostRequest struct {
 	Text        string       `json:"text"`
 	Heading     string       `json:"heading"`
 	TempID      *string      `json:"temp_id"`
+	TopicIds    []string     `json:"topic_ids"`
 	Attachments []Attachment `json:"attachments"`
 	ChatroomID  int          `json:"feedroom_id"`
 	UUIDs       []string     `json:"uuids"`
@@ -45,6 +46,7 @@ type CreatePostRequest struct {
 type EditPostRequest struct {
 	Text        string       `json:"text"`
 	Heading     string       `json:"heading"`
+	TopicIds    []string     `json:"topic_ids,omitempty"`
 	Attachments []Attachment `json:"attachments"`
 	UserIsCm    bool         `json:"user_is_cm"`
 }
@@ -59,6 +61,7 @@ type DeletePostRequest struct {
 type PostResponse struct {
 	ID            primitive.ObjectID    `json:"_id"`
 	TempID        *string               `json:"temp_id"`
+	Topics        []TopicResponse       `json:"topics"`
 	Text          string                `json:"text"`
 	Heading       string                `json:"heading"`
 	CommunityId   int                   `json:"community_id"`

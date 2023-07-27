@@ -120,17 +120,38 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []re
 	return response
 }
 
+// Internal Method to parse topics response
+func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int) ([]requests.TopicResponse, error) {
+	// Fetch topics using topic Ids
+	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false)
+	if err != nil {
+		return nil, err
+	}
+
+	topicsResponse := []requests.TopicResponse{}
+
+	// Parse all fetched topics Data
+	for _, topic := range topics {
+		topicsResponse = append(topicsResponse, parseTopicResponse(&topic))
+	}
+
+	return topicsResponse, nil
+}
+
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, post entities.Post, userId string, isCm bool,
-	versionCode string, platformCode string) requests.PostResponse {
+	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, post entities.Post,
+	userId string, isCm bool, versionCode string, platformCode string) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
+	topics, _ := parseTopicsResponse(topicHelper, post.TopicIds, post.CommunityId)
+
 	var response requests.PostResponse
 
 	response.ID = post.ID
 	response.TempID = post.TempId
 	response.Text = post.Text
+	response.Topics = topics
 	response.Heading = post.Heading
 	response.CommunityId = post.CommunityId
 	response.ChatroomId = post.ChatroomId
@@ -162,13 +183,13 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 
 // Internal Method to parse multiple post for response
 func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, posts []entities.Post, userId string, isCm bool,
-	versionCode string, platformCode string) []requests.PostResponse {
+	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, posts []entities.Post, userId string,
+	isCm bool, versionCode string, platformCode string) []requests.PostResponse {
 	response := []requests.PostResponse{}
 
 	for _, post := range posts {
-		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, post,
-			userId, isCm, versionCode, platformCode))
+		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, topicHelper,
+			post, userId, isCm, versionCode, platformCode))
 	}
 
 	return response
@@ -253,7 +274,7 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 	}
 
 	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, *postData, memberId, isCm, versionCode, platformCode)
+		handlers.saveHelper, handlers.topicHelper, *postData, memberId, isCm, versionCode, platformCode)
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
 		commentResults, memberId, isCm, versionCode, platformCode)
 	fetchPostResponse := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
@@ -294,7 +315,7 @@ func fetchMultiplePostsData(handlers *FeedHandlers,
 	// parse post response data for each post
 	for _, post := range postsLists {
 		postResponse[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			post, userId, isCm, versionCode, platformCode)
+			handlers.topicHelper, post, userId, isCm, versionCode, platformCode)
 	}
 
 	return postResponse, nil
@@ -333,10 +354,29 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// convert topic_ids to object ids
+	topicIDs := helpers.ConvertIdsToObjectIds(createPostRequest.TopicIds)
+
+	// fetch all the topics sent in the create post body
+	if len(topicIDs) > 0 {
+		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, true)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		// Validation of Topics
+		if len(topics) != len(topicIDs) {
+			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
+			return
+		}
+	}
+
 	// create post using the helper method
 	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text,
 		createPostRequest.Heading, communityId, headers[utils.HeadersMemberId],
-		createPostRequest.Attachments, createPostRequest.ChatroomID, createPostRequest.TempID)
+		createPostRequest.Attachments, createPostRequest.ChatroomID, createPostRequest.TempID,
+		topicIDs)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -494,7 +534,6 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 
 // Exposed Method to edit a Post
 func (handlers *FeedHandlers) EditPost(c *gin.Context) {
-
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
@@ -539,8 +578,29 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
+	topicIDs := postData.TopicIds
+
+	// fetch all the topics sent in the edit post body
+	if editPostRequest.TopicIds != nil {
+		// convert topic_ids to object ids
+		topicIDs = helpers.ConvertIdsToObjectIds(editPostRequest.TopicIds)
+
+		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, true)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		// Validation of Topics
+		if len(topics) != len(topicIDs) {
+			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
+			return
+		}
+	}
+
 	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments)
+	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments,
+		topicIDs)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -754,8 +814,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	createdPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, postResults, userId, isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode])
+		handlers.saveHelper, handlers.topicHelper, postResults, userId, isCm,
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse,
@@ -780,7 +840,7 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 	}
 
 	postResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, postList, userId, isCm, versionCode, platformCode)
+		handlers.saveHelper, handlers.topicHelper, postList, userId, isCm, versionCode, platformCode)
 
 	return postResponse
 }

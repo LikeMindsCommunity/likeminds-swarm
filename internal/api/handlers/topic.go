@@ -47,6 +47,30 @@ func fetchTopicByID(helper interfaces.TopicHelper, topicId string, communityId i
 	return &topicResults[0], nil
 }
 
+// Internal Method to fetch topics using topic_ids and community_id
+func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int,
+	filterEnabled bool) ([]entities.Topic, error) {
+	// topic filter data
+	topicsFilterData := gin.H{
+		"_id": gin.H{
+			"$in": topicIds,
+		},
+		"community_id": communityId,
+	}
+
+	if filterEnabled {
+		topicsFilterData["is_enabled"] = filterEnabled
+	}
+
+	// fetch topic using helper method
+	topicResults, err := helper.FindTopicHelper(topicsFilterData, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	return topicResults, nil
+}
+
 // Internal Method to fetch topics using community_id
 func fetchTopicsByCommunityID(helper interfaces.TopicHelper, communityId int, filterOptions map[string]interface{}) ([]entities.Topic, error) {
 	// topic filter data
