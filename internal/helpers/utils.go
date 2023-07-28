@@ -1,6 +1,8 @@
 package helpers
 
 import (
+	"net/url"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -63,4 +65,15 @@ func ConvertIdsToObjectIds(list_ids []string) []primitive.ObjectID {
 	}
 
 	return hex_ids
+}
+
+// Helper method to check if string is a valid URL or not
+func IsValidURL(url_string string) bool {
+	u, err := url.Parse(url_string)
+
+	if err != nil || u.Host == "" || u.Scheme == "" {
+		return false
+	}
+
+	return true
 }

@@ -1,5 +1,9 @@
 package entities
 
+import (
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
+)
+
 // Structure for OG Tags
 type OGTags struct {
 	Title       string `json:"title,omitempty" bson:"title,omitempty"`
@@ -22,8 +26,10 @@ type AttachmentMeta struct {
 
 // Structure for Attachment
 type Attachment struct {
-	AttachmentType int             `json:"attachment_type" bson:"attachment_type"`
-	AttachmentMeta *AttachmentMeta `json:"attachment_meta,omitempty" bson:"attachment_meta,omitempty"`
+	AttachmentType int                  `json:"attachment_type,omitempty" bson:"attachment_type,omitempty"`
+	AttachmentMeta *AttachmentMeta      `json:"attachment_meta,omitempty" bson:"attachment_meta,omitempty"`
+	Type           enums.AttachmentType `json:"type,omitempty" bson:"type,omitempty"`
+	MetaData       *AttachmentMeta      `json:"meta_data,omitempty" bson:"meta_data,omitempty"`
 }
 
 // Exposed Method to Create New Attachment
