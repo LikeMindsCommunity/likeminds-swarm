@@ -89,7 +89,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "", 0)
+	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -99,7 +99,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	if page == 1 {
 		// pinned post filter options
-		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", -1)
+		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
 
 		// fetch pinned post using helper method
 		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData,
@@ -472,7 +472,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "", 0)
+	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -482,7 +482,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	if page == 1 {
 		// pinned post filter options
-		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", -1)
+		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
 
 		// fetch pinned post using helper method
 		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData,

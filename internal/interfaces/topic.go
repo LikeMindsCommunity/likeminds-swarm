@@ -9,7 +9,7 @@ import (
 
 // Interface for Topic Repository
 type TopicRepository interface {
-	Create(like interface{}) (interface{}, error)
+	Create(document interface{}) (interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)

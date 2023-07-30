@@ -14,6 +14,12 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
+const (
+	OrderTypeAscending  int = 1
+	OrderTypeDescending int = -1
+	OrderTypeDefault    int = 0
+)
+
 // Feed Handlers structure for all Helper classes
 type FeedHandlers struct {
 	likeHelper     interfaces.LikeHelper
@@ -80,10 +86,10 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 
 // Internal method to add sorting options to a map
 func addSortingOptions(options map[string]interface{}, orderBy string, order int) map[string]interface{} {
-	if order >= 0 {
-		order = 1
+	if order >= OrderTypeDefault {
+		order = OrderTypeAscending
 	} else {
-		order = -1
+		order = OrderTypeDescending
 	}
 
 	options["$sort"] = gin.H{
@@ -113,9 +119,9 @@ func generatePageFilterOptions(c *gin.Context, sortKeyParam string, sortKeyOrder
 		sortKey = sortKeyParam
 	}
 
-	sortKeyOrder := -1
+	sortKeyOrder := OrderTypeDescending
 
-	if sortKeyOrderParam != 0 {
+	if sortKeyOrderParam != OrderTypeDefault {
 		sortKeyOrder = sortKeyOrderParam
 	}
 

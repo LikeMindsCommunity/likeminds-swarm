@@ -433,7 +433,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	activitySortKey := "updated_at"
 
 	// filter options
-	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey, -1)
+	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey, OrderTypeDescending)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

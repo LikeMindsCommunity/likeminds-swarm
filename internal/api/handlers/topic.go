@@ -172,13 +172,13 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 	}
 
 	// filter options
-	filterOptions, err := generatePageFilterOptions(c, "name", 1)
+	filterOptions, err := generatePageFilterOptions(c, "name", OrderTypeAscending)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// fetch topic data using new topic_id
+	// fetch topics data using new communityId
 	topicsResponse, err := fetchTopicsByCommunityIDResponse(handlers, communityId, filterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
