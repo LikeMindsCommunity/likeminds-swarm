@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -16,14 +17,17 @@ import (
 )
 
 // Internal Method to parse User activity list
-func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]requests.UserActivityResponse, interface{}, error) {
-	response := []requests.UserActivityResponse{}
+func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
+	apiRevampV1Check bool) ([]interface{}, interface{}, error) {
+
+	response := []interface{}{}
 	userDatas := make(map[string]interface{})
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
 
-		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID)
+		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
+			apiRevampV1Check)
 		if err != nil {
 			return response, userDatas, err
 		}
@@ -33,22 +37,40 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity) ([]
 			return response, userDatas, err
 		}
 
-		response = append(response, requests.UserActivityResponse{
+		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
 			ActionBy:           activity.ActionBy,
 			ActionOn:           activity.ActionOn,
-			EntityType:         activity.EntityType,
 			EntityID:           activity.EntityID,
 			EntityOwnerID:      activity.EntityOwnerID,
 			UUID:               activity.EntityOwnerID,
-			Action:             activity.Action,
 			CTA:                activity.CTA,
 			IsRead:             activity.IsRead,
 			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
 			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
 			ActivityEntityData: activityEntityData,
 			ActivityText:       activityText,
-		})
+		}
+
+		if apiRevampV1Check {
+
+			// API Revamp V1 Response
+			response = append(response, requests.UserActivityResponseV1{
+				UserActivityResponse: userActivity,
+				EntityType:           enums.NewEntityTypeFromInt(int(activity.EntityType)),
+				Action:               enums.NewActivityActionFromInt(int(activity.Action)),
+			})
+
+		} else {
+
+			// Old User Activity Response
+			response = append(response, requests.UserActivityResponseOld{
+				UserActivityResponse: userActivity,
+				EntityType:           activity.EntityType,
+				Action:               activity.Action,
+			})
+		}
+
 		userDatas[activityUserUID] = activityUserData[activityUserUID]
 	}
 
@@ -69,11 +91,13 @@ func getActivityUserData(activity entities.Activity) (map[string]interface{}, st
 	return nil, ""
 }
 
-func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int) (interface{}, error) {
+func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int,
+	apiRevampV1Check bool) (interface{}, error) {
 
 	switch entityType {
 	case constants.Post:
-		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "")
+		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "",
+			apiRevampV1Check)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +105,8 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 		return postData[entityID.Hex()], nil
 
 	case constants.Comment:
-		commentData, err := fetchMultipleCommentsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "")
+		commentData, err := fetchMultipleCommentsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "",
+			apiRevampV1Check)
 		if err != nil {
 			return nil, err
 		}
@@ -412,6 +437,8 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userID := c.Param("user_id")
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	if userID != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
@@ -447,7 +474,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	}
 
 	// parse user activity response
-	activityResponse, userDatas, err := parseUserActivity(*handlers, activityResults)
+	activityResponse, userDatas, err := parseUserActivity(*handlers, activityResults, apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

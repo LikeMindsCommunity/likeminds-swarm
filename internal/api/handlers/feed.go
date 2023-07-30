@@ -19,6 +19,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	var universalFeedRequest requests.FetchUniversalFeedRequest
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	err := c.BindQuery(&universalFeedRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -112,7 +114,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		// parse pinned posts
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
-			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+			apiRevampV1Check)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -128,7 +131,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// parse unpinned posts
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
-		universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check)
 
 	response = append(response, unpinnedPostResponse...)
 
@@ -411,6 +415,8 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	var groupFeedRequest requests.FetchGroupFeedRequest
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	err := c.BindQuery(&groupFeedRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -495,7 +501,8 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		// parse pinned posts
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
-			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+			apiRevampV1Check)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -511,7 +518,8 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	// parse unpinned posts
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
-		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check)
 
 	response = append(response, unpinnedPostResponse...)
 

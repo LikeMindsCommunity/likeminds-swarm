@@ -125,6 +125,8 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	param_is_cm := c.Query("user_is_cm")
 	is_cm := false
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	if param_is_cm == "true" {
 		is_cm = true
 	}
@@ -186,7 +188,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 
 	saved_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, post_results, user_id, is_cm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, saved_post_response,

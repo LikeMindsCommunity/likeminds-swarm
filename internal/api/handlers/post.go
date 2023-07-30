@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
@@ -22,7 +23,7 @@ import (
 
 // Internal Method to parse Post Attachments
 func parsePostAttachments(attachments []entities.Attachment, versionCode string,
-	platformCode string) []entities.Attachment {
+	platformCode string, apiRevampV1Check bool) []entities.Attachment {
 	parsedAttachments := []entities.Attachment{}
 	feedLinkMediaCheck := utils.CheckVersionInverted(utils.FeedLinkMediaVersion, versionCode, platformCode)
 	feedVideoAndDocumentMediaCheck := utils.CheckVersionInverted(utils.FeedVideoAndDocumentMediaVersions, versionCode, platformCode)
@@ -33,37 +34,105 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	for _, attachment := range attachments {
 		showUpdateAppImage := false
 
-		if feedLinkMediaCheck && attachment.AttachmentType == constants.LinkWidget {
+		if feedLinkMediaCheck && attachment.AttachmentType == enums.LinkWidget {
 			showUpdateAppImage = true
 		}
 
-		if feedVideoAndDocumentMediaCheck && (attachment.AttachmentType == constants.VideoWidget || attachment.AttachmentType == constants.DocumentWidget) {
+		if feedVideoAndDocumentMediaCheck && (attachment.AttachmentType == enums.VideoWidget || attachment.AttachmentType == enums.DocumentWidget) {
 			showUpdateAppImage = true
 		}
 
 		if showUpdateAppImage {
-			attachment.AttachmentType = constants.ImageWidget
+			attachment.AttachmentType = enums.ImageWidget
 			attachment.AttachmentMeta = &newAttachmentMeta
 		}
 
 		parsedAttachments = append(parsedAttachments, attachment)
 	}
 
+	// Api revamp check for attachments
+	if apiRevampV1Check {
+		for i := range parsedAttachments {
+
+			// Update attachment_type from type and remove attachment_type
+			parsedAttachments[i].Type = enums.NewAttachmentTypeFromInt(parsedAttachments[i].AttachmentType)
+			parsedAttachments[i].AttachmentType = 0
+
+			// Update attachment_meta from meta_data and remove attachment_meta
+			parsedAttachments[i].MetaData = parsedAttachments[i].AttachmentMeta
+			parsedAttachments[i].AttachmentMeta = nil
+		}
+	}
+
 	return parsedAttachments
 }
 
 // Internal method to validate attachments for post
-func validatePostAttachments(c *gin.Context, attachments []requests.Attachment) bool {
+func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Attachment, apiRevampV1check bool) bool {
 
+	// Api revamp check to validate and update attachments
+	if apiRevampV1check {
+
+		for i := range attachments {
+
+			// If type in attachments is not empty
+			if attachments[i].Type != "" {
+
+				// Check if attachment type is valid
+				if !attachments[i].Type.IsValid() {
+					utils.GeneralAPIValidationError(c, "Invalid attachment type: "+attachments[i].Type.ToString())
+					return false
+				}
+
+				// Update attachment_type from type
+				attachments[i].AttachmentType = attachments[i].Type.ToInt()
+
+				// Update attachment_meta from meta_data
+				attachments[i].AttachmentMeta = attachments[i].MetaData
+			}
+
+			// validate attachment urls if present
+			if attachments[i].AttachmentMeta.Url != "" {
+				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.Url)
+
+				if !is_valid {
+					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.Url)
+					return false
+				}
+			}
+
+			if attachments[i].AttachmentMeta.ThumbnailUrl != "" {
+				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.ThumbnailUrl)
+
+				if !is_valid {
+					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.ThumbnailUrl)
+					return false
+				}
+			}
+
+			if attachments[i].AttachmentMeta.OgTags.Url != "" {
+				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.OgTags.Url)
+
+				if !is_valid {
+					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.OgTags.Url)
+					return false
+				}
+			}
+
+		}
+
+	}
+
+	// validate attachment_meta
 	for _, element := range attachments {
 		switch element.AttachmentType {
-		case constants.ImageWidget:
+		case enums.ImageWidget:
 			if element.AttachmentMeta.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
 				return false
 			}
 
-		case constants.VideoWidget:
+		case enums.VideoWidget:
 			if element.AttachmentMeta.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
 				return false
@@ -74,7 +143,7 @@ func validatePostAttachments(c *gin.Context, attachments []requests.Attachment) 
 				return false
 			}
 
-		case constants.DocumentWidget:
+		case enums.DocumentWidget:
 			if element.AttachmentMeta.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
 				return false
@@ -90,7 +159,7 @@ func validatePostAttachments(c *gin.Context, attachments []requests.Attachment) 
 				return false
 			}
 
-		case constants.LinkWidget:
+		case enums.LinkWidget:
 			if element.AttachmentMeta.OgTags.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
 				return false
@@ -141,7 +210,7 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, post entities.Post,
-	userId string, isCm bool, versionCode string, platformCode string) requests.PostResponse {
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 	topics, _ := parseTopicsResponse(topicHelper, post.TopicIds, post.CommunityId)
@@ -158,7 +227,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
 	response.UUID = post.UserId
-	response.Attachments = parsePostAttachments(post.Attachments, versionCode, platformCode)
+	response.Attachments = parsePostAttachments(post.Attachments, versionCode, platformCode, apiRevampV1Check)
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
 	response.IsDeleted = post.IsDeleted
@@ -178,18 +247,25 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.CreatedAt = int(post.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
 
+	if apiRevampV1Check {
+		// remove community_id and user_id from post response
+		response.CommunityId = 0
+		response.UserId = ""
+
+	}
+
 	return response
 }
 
 // Internal Method to parse multiple post for response
 func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, posts []entities.Post, userId string,
-	isCm bool, versionCode string, platformCode string) []requests.PostResponse {
+	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) []requests.PostResponse {
 	response := []requests.PostResponse{}
 
 	for _, post := range posts {
 		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, topicHelper,
-			post, userId, isCm, versionCode, platformCode))
+			post, userId, isCm, versionCode, platformCode, apiRevampV1Check))
 	}
 
 	return response
@@ -255,7 +331,7 @@ func getPostByID(helper interfaces.PostHelper, postID string) (*entities.Post, e
 // Internal Method to fetch post data
 func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 	filterOptions map[string]interface{}, memberId string, isCm bool, versionCode string,
-	platformCode string) (interface{}, error) {
+	platformCode string, apiRevampV1Check bool) (interface{}, error) {
 	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
 		return nil, err
@@ -274,9 +350,10 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 	}
 
 	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, *postData, memberId, isCm, versionCode, platformCode)
+		handlers.saveHelper, handlers.topicHelper, *postData, memberId, isCm, versionCode, platformCode,
+		apiRevampV1Check)
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentResults, memberId, isCm, versionCode, platformCode)
+		commentResults, memberId, isCm, versionCode, platformCode, apiRevampV1Check)
 	fetchPostResponse := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
 		postResponse, repliesResponse)
 
@@ -284,13 +361,9 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 }
 
 // Internal Method to fetch multiple posts data using post_ids
-func fetchMultiplePostsData(handlers *FeedHandlers,
-	postIds []string,
-	communityId int,
-	userId string,
-	isCm bool,
-	versionCode string,
-	platformCode string) (map[string]requests.PostResponse, error) {
+func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityId int, userId string,
+	isCm bool, versionCode string, platformCode string,
+	apiRevampV1Check bool) (map[string]requests.PostResponse, error) {
 
 	// convert post_ids to object ids
 	postObjectIds := helpers.ConvertIdsToObjectIds(postIds)
@@ -315,7 +388,7 @@ func fetchMultiplePostsData(handlers *FeedHandlers,
 	// parse post response data for each post
 	for _, post := range postsLists {
 		postResponse[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			handlers.topicHelper, post, userId, isCm, versionCode, platformCode)
+			handlers.topicHelper, post, userId, isCm, versionCode, platformCode, apiRevampV1Check)
 	}
 
 	return postResponse, nil
@@ -326,6 +399,8 @@ func fetchMultiplePostsData(handlers *FeedHandlers,
 func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -348,8 +423,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// validation of attachment objects
-	success := validatePostAttachments(c, createPostRequest.Attachments)
+	// validation of attachments
+	success := validateAndUpdatePostAttachments(c, createPostRequest.Attachments, apiRevampV1Check)
 	if !success {
 		return
 	}
@@ -431,7 +506,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch post response data
 	fetchPostData, err := fetchPostData(handlers, postId.(primitive.ObjectID).Hex(), communityId,
 		filterOptions, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err == nil {
 		response["post"] = fetchPostData
 	}
@@ -445,6 +520,8 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	// fetch headers
 	headers := utils.GetHeaders(c)
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -472,7 +549,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	// fetch multiple posts data using internal method
 	postsResponse, err := fetchMultiplePostsData(handlers, postIds, communityId, headers[utils.HeadersMemberId],
-		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -495,6 +572,8 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	postId := c.Param("post_id")
 	paramIsCm := c.Query("user_is_cm")
 	isCm := false
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -521,7 +600,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	// fetch post response data
 	fetchPostData, err := fetchPostData(handlers, postId, communityId, commentFilterOptions,
 		headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -537,6 +616,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -565,7 +646,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validatePostAttachments(c, editPostRequest.Attachments)
+	success := validateAndUpdatePostAttachments(c, editPostRequest.Attachments, apiRevampV1Check)
 	if !success {
 		return
 	}
@@ -614,8 +695,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetchPostData, err := fetchPostData(handlers, postId, communityId, commentFilterOptions,
-		headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	fetchPostData, err := fetchPostData(handlers, postId, communityId, commentFilterOptions, headers[utils.HeadersMemberId],
+		editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -775,6 +857,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	paramIsCm := c.Query("user_is_cm")
 	isCm := false
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	if paramIsCm == "true" {
 		isCm = true
 	}
@@ -815,7 +899,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 
 	createdPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, postResults, userId, isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse,
@@ -823,7 +907,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 }
 
 func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, userId string,
-	isCm bool, versionCode string, platformCode string) []requests.PostResponse {
+	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) []requests.PostResponse {
 	postDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
 	var postList []entities.Post
 
@@ -840,7 +924,8 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 	}
 
 	postResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, postList, userId, isCm, versionCode, platformCode)
+		handlers.saveHelper, handlers.topicHelper, postList, userId, isCm, versionCode, platformCode,
+		apiRevampV1Check)
 
 	return postResponse
 }
@@ -849,6 +934,9 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	// fetch query params and headers
 	headers := utils.GetHeaders(c)
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	var searchPostRequest requests.SearchPostRequest
 
 	err := c.BindQuery(&searchPostRequest)
@@ -880,7 +968,8 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
-		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -894,6 +983,9 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	// fetch query params and headers
 	userId := c.Param("user_id")
 	headers := utils.GetHeaders(c)
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	var searchPostRequest requests.SearchPostRequest
 
 	err := c.BindQuery(&searchPostRequest)
@@ -926,7 +1018,8 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
-		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{

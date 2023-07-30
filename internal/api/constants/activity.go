@@ -1,5 +1,6 @@
 package constants
 
+// Not being used anywhere | can be deprecated
 const ActivityEntityType string = "activity"
 const (
 	LikeAction                         string = "like"
@@ -14,7 +15,7 @@ const (
 	CreateCommentPermitRemovedAction   string = "create_comment_permit_removed"
 )
 
-// EntityType | defines enum for activity entities
+// EntityType | constants for activity entities
 type EntityType uint8
 
 const (
@@ -29,7 +30,7 @@ const (
 	User EntityType = 2
 )
 
-// ActivityAction | defines enum for activity actions
+// ActivityAction | constants for activity actions
 type ActivityAction uint8
 
 const (
