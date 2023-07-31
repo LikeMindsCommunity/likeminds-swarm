@@ -1,55 +1,29 @@
 package repositories
 
 import (
-	"context"
-
-	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Exposed Helper Method to Create Save
-func (repository *saveRepository) Create(like *entities.Save) (interface{}, error) {
-	coll := repository.db.Collection("save")
-	result, err := coll.InsertOne(context.TODO(), like)
-
-	return result.InsertedID, err
+func (repository *saveRepository) Create(document interface{}) (interface{}, error) {
+	return _createDocumentInDB(repository.db, SaveCollection, document)
 }
 
 // Exposed Helper Method to Find Saves
-func (repository *saveRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) ([]entities.Save, error) {
-	coll := repository.db.Collection("save")
-	cursor, err := coll.Find(context.TODO(), filter, filterOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []entities.Save
-	if err = cursor.All(context.TODO(), &results); err != nil {
-		return nil, err
-	}
-
-	return results, nil
+func (repository *saveRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error) {
+	return _findDocumentsInDB(repository.db, SaveCollection, filter, filterOpts)
 }
 
 // Exposed Helper Method to Update Saves
 func (repository *saveRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
-	coll := repository.db.Collection("save")
-	_, err := coll.UpdateOne(context.TODO(), filter, update)
-
-	return err
+	return _updateDocumentsInDB(repository.db, SaveCollection, filter, update)
 }
 
 // Exposed Helper Method to Fetch Saves Count
 func (repository *saveRepository) Count(filter map[string]interface{}) (int64, error) {
-	coll := repository.db.Collection("save")
-	count, err := coll.CountDocuments(context.TODO(), filter)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
+	return _countDocumentsInDB(repository.db, SaveCollection, filter)
 }
 
 // Structure for Save Repository

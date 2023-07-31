@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +30,18 @@ func (helper *commentHelper) FindCommentHelper(filter map[string]interface{}, fi
 	if err != nil {
 		return nil, err
 	}
-	results, err := helper.commentRepository.Find(filter, &fOpts)
+
+	// Find the document in the collection
+	cursor, err := helper.commentRepository.Find(filter, &fOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the results from fetched documents
+	var results []entities.Comment
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
 
 	return results, err
 }

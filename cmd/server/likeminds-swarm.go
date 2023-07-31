@@ -46,6 +46,7 @@ func main() {
 	commentRepository := repositories.NewCommentRepository(db)
 	saveRepository := repositories.NewSaveRepository(db)
 	activityRepository := repositories.NewActivityRepository(db)
+	topicRepository := repositories.NewTopicRepository(db)
 
 	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)
@@ -53,18 +54,20 @@ func main() {
 	commentHelper := helpers.NewCommentHelper(commentRepository)
 	saveHelper := helpers.NewSaveHelper(saveRepository)
 	activityHelper := helpers.NewActivityHelper(activityRepository)
+	topicHelper := helpers.NewTopicHelper(topicRepository)
 
 	// Dependency injection of elasticSearch Helper
 	esHelper := searchElastic.NewESHelper(es)
 
 	// New feed Handler
-	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper, esHelper)
+	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper, topicHelper, esHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)
 	routes.PostRouter(routerGroup, feedHandlers)
 	routes.UserRouter(routerGroup, feedHandlers)
 	routes.FeedRouter(routerGroup, feedHandlers)
+	routes.TopicRouter(routerGroup, feedHandlers)
 
 	// Run Scripts
 	// scripts.RunScripts(feedHandlers)

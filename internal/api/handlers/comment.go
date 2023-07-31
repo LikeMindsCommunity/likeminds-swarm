@@ -326,7 +326,7 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -462,7 +462,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -578,7 +578,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -667,7 +667,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	}
 
 	// Generate page filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -804,7 +804,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
