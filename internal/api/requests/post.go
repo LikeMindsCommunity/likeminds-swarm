@@ -64,7 +64,7 @@ type DeletePostRequest struct {
 type PostResponse struct {
 	ID            primitive.ObjectID    `json:"_id"`
 	TempID        *string               `json:"temp_id"`
-	Topics        []TopicResponse       `json:"topics"`
+	Topics        []primitive.ObjectID  `json:"topics"`
 	Text          string                `json:"text"`
 	Heading       string                `json:"heading"`
 	CommunityId   int                   `json:"community_id,omitempty"`
@@ -102,9 +102,10 @@ type FetchPostResponse struct {
 
 // Response Structure for Fetch Multiple Post
 type FetchUserMultiplePostResponse struct {
-	Success    bool           `json:"success"`
-	TotalCount int            `json:"total_count,omitempty"`
-	Posts      []PostResponse `json:"posts"`
+	Success    bool            `json:"success"`
+	TotalCount int             `json:"total_count,omitempty"`
+	Posts      []PostResponse  `json:"posts"`
+	Topics     []TopicResponse `json:"topic_ids"`
 }
 
 // Request Structure for Search Post

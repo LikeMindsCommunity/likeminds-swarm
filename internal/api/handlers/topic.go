@@ -72,10 +72,20 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 }
 
 // Internal Method to fetch topics using community_id
-func fetchTopicsByCommunityID(helper interfaces.TopicHelper, communityId int, filterOptions map[string]interface{}) ([]entities.Topic, error) {
+func fetchTopicsByCommunityID(helper interfaces.TopicHelper, communityId int, isEnabled string,
+	filterOptions map[string]interface{}) ([]entities.Topic, error) {
 	// topic filter data
 	topicFilterData := gin.H{
 		"community_id": communityId,
+	}
+
+	if isEnabled != "" {
+		if isEnabled == "true" {
+			topicFilterData["is_enabled"] = true
+		}
+		if isEnabled == "false" {
+			topicFilterData["is_enabled"] = false
+		}
 	}
 
 	// fetch topic using helper method
@@ -100,8 +110,8 @@ func fetchTopicByIDResponse(handlers *FeedHandlers, topicId string, communityId 
 }
 
 // Internal Method to fetch multiple topics data
-func fetchTopicsByCommunityIDResponse(handlers *FeedHandlers, communityId int, filterOptions map[string]interface{}) ([]interface{}, error) {
-	topicsData, err := fetchTopicsByCommunityID(handlers.topicHelper, communityId, filterOptions)
+func fetchTopicsByCommunityIDResponse(handlers *FeedHandlers, communityId int, isEnabled string, filterOptions map[string]interface{}) ([]interface{}, error) {
+	topicsData, err := fetchTopicsByCommunityID(handlers.topicHelper, communityId, isEnabled, filterOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +175,8 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 
 // Exposed Method to Fetch Topics for a Community
 func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
+	isEnabled := c.Query("is_enabled")
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -179,7 +191,8 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 	}
 
 	// fetch topics data using new communityId
-	topicsResponse, err := fetchTopicsByCommunityIDResponse(handlers, communityId, filterOptions)
+	topicsResponse, err := fetchTopicsByCommunityIDResponse(handlers, communityId,
+		isEnabled, filterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

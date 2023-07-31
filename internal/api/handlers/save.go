@@ -191,6 +191,6 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, saved_post_response,
-		save_count))
+	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, handlers.topicHelper,
+		saved_post_response, save_count, community_id))
 }

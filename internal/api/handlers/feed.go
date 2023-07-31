@@ -137,7 +137,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	response = append(response, unpinnedPostResponse...)
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, response, -1))
+	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, handlers.topicHelper,
+		response, -1, communityId))
 }
 
 // Internal Method to parse Explore feed for response
@@ -524,5 +525,6 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	response = append(response, unpinnedPostResponse...)
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, response, -1))
+	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, handlers.topicHelper,
+		response, -1, communityId))
 }
