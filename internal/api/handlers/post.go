@@ -599,7 +599,16 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 		"success": true,
 	}
 
-	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	postsList := []requests.PostResponse{}
+	for _, value := range postsResponse {
+		postsList = append(postsList, value)
+	}
+
+	parsedResponse := gin.H{
+		"posts": postsList,
+	}
+
+	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
