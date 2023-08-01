@@ -140,9 +140,12 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	// reponse data
 	finalParsedResponse := gin.H{
-		"posts":       finalResponse.Posts,
-		"success":     finalResponse.Success,
-		"total_count": finalResponse.TotalCount,
+		"posts":   finalResponse.Posts,
+		"success": finalResponse.Success,
+	}
+
+	if finalResponse.TotalCount > 0 {
+		finalParsedResponse["total_count"] = finalResponse.TotalCount
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
@@ -538,9 +541,12 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	// reponse data
 	finalParsedResponse := gin.H{
-		"posts":       finalResponse.Posts,
-		"success":     finalResponse.Success,
-		"total_count": finalResponse.TotalCount,
+		"posts":   finalResponse.Posts,
+		"success": finalResponse.Success,
+	}
+
+	if finalResponse.TotalCount > 0 {
+		finalParsedResponse["total_count"] = finalResponse.TotalCount
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
