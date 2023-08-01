@@ -136,9 +136,19 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	response = append(response, unpinnedPostResponse...)
 
+	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+
+	// reponse data
+	finalParsedResponse := gin.H{
+		"posts":       finalResponse.Posts,
+		"success":     finalResponse.Success,
+		"total_count": finalResponse.TotalCount,
+	}
+
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, handlers.topicHelper,
-		response, -1, communityId))
+	c.JSON(http.StatusOK, finalParsedResponse)
 }
 
 // Internal Method to parse Explore feed for response
@@ -524,7 +534,17 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	response = append(response, unpinnedPostResponse...)
 
+	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+
+	// reponse data
+	finalParsedResponse := gin.H{
+		"posts":       finalResponse.Posts,
+		"success":     finalResponse.Success,
+		"total_count": finalResponse.TotalCount,
+	}
+
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, handlers.topicHelper,
-		response, -1, communityId))
+	c.JSON(http.StatusOK, finalParsedResponse)
 }

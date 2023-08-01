@@ -102,10 +102,9 @@ type FetchPostResponse struct {
 
 // Response Structure for Fetch Multiple Post
 type FetchUserMultiplePostResponse struct {
-	Success    bool            `json:"success"`
-	TotalCount int             `json:"total_count,omitempty"`
-	Posts      []PostResponse  `json:"posts"`
-	Topics     []TopicResponse `json:"topic_ids"`
+	Success    bool           `json:"success"`
+	TotalCount int            `json:"total_count,omitempty"`
+	Posts      []PostResponse `json:"posts"`
 }
 
 // Request Structure for Search Post
