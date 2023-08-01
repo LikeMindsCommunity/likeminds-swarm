@@ -950,9 +950,12 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 
 	// response data
 	finalResponse := gin.H{
-		"posts":       response.Posts,
-		"success":     response.Success,
-		"total_count": response.TotalCount,
+		"posts":   response.Posts,
+		"success": response.Success,
+	}
+
+	if response.TotalCount > 0 {
+		finalResponse["total_count"] = response.TotalCount
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
