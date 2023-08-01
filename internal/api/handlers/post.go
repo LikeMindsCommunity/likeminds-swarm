@@ -175,13 +175,11 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 }
 
 // Internal Method to parse response for fetch multiple posts api
-func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, topicHelper interfaces.TopicHelper,
-	posts []requests.PostResponse, posts_count int64, communityId int) requests.FetchUserMultiplePostResponse {
+func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse, posts_count int64) requests.FetchUserMultiplePostResponse {
 	response := requests.FetchUserMultiplePostResponse{}
 
 	response.Success = true
 	response.Posts = posts
-	response.Topics = getTopicDataFromPosts(topicHelper, response, communityId)
 
 	if posts_count > 0 {
 		response.TotalCount = int(posts_count)
@@ -191,18 +189,18 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, topicHelpe
 }
 
 // Internal Method to parse topics response
-func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int) ([]requests.TopicResponse, error) {
+func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int) (map[string]requests.TopicResponse, error) {
 	// Fetch topics using topic Ids
 	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false)
 	if err != nil {
 		return nil, err
 	}
 
-	topicsResponse := []requests.TopicResponse{}
+	topicsResponse := map[string]requests.TopicResponse{}
 
 	// Parse all fetched topics Data
 	for _, topic := range topics {
-		topicsResponse = append(topicsResponse, parseTopicResponse(&topic))
+		topicsResponse[topic.ID.Hex()] = parseTopicResponse(&topic)
 	}
 
 	return topicsResponse, nil
@@ -239,7 +237,7 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 }
 
 // Internal Method to get topics Data from Posts response
-func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) []requests.TopicResponse {
+func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]requests.TopicResponse {
 	topicIds := getTopicIdsFromPosts(response)
 
 	topicsData, _ := parseTopicsResponse(topicHelper, topicIds, communityId)
@@ -948,11 +946,22 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		handlers.saveHelper, handlers.topicHelper, postResults, userId, isCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
-	response := parseFetchMultiplePostResponse(handlers.postHelper, handlers.topicHelper,
-		createdPostResponse, postsCount, communityId)
+	response := parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse, postsCount)
+
+	// response data
+	finalResponse := gin.H{
+		"posts":   response.Posts,
+		"success": response.Success,
+	}
+
+	if response.TotalCount > 0 {
+		finalResponse["total_count"] = response.TotalCount
+	}
+
+	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
 
 	// return final response
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, finalResponse)
 }
 
 func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, userId string,

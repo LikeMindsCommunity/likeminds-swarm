@@ -159,7 +159,7 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	// fetch topic data using new topic_id
 	topicResponse, err := fetchTopicByIDResponse(handlers, topicId.(primitive.ObjectID).Hex(), communityId)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
@@ -194,7 +194,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 	topicsResponse, err := fetchTopicsByCommunityIDResponse(handlers, communityId,
 		isEnabled, filterOptions)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
@@ -229,7 +229,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	// fetch topic using topic_id
 	topic, err := fetchTopicByID(handlers.topicHelper, topicId, communityId)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
@@ -264,7 +264,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	// Fetch Updated topic Response
 	topicResponse, err := fetchTopicByIDResponse(handlers, topicId, communityId)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
