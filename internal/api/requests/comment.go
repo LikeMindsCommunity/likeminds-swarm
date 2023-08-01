@@ -28,7 +28,7 @@ type CommentResponse struct {
 	TempID        *string            `json:"temp_id"`
 	Text          string             `json:"text"`
 	Level         int                `json:"level"`
-	UserId        string             `json:"user_id"`
+	UserId        string             `json:"user_id,omitempty"`
 	UUID          string             `json:"uuid"`
 	CommunityId   int                `json:"community_id,omitempty"`
 	PostId        primitive.ObjectID `json:"post_id,omitempty"`

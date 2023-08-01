@@ -3,13 +3,14 @@ package interfaces
 import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Interface for Comment Repository
 type CommentRepository interface {
-	Create(like *entities.Comment) (interface{}, error)
-	Find(filter map[string]interface{}, filterOptions *options.FindOptions) ([]entities.Comment, error)
+	Create(document interface{}) (interface{}, error)
+	Find(filter map[string]interface{}, filterOptions *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 }

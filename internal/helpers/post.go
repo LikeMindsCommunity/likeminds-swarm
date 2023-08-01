@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,7 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 
 // Exposed Helper Method to Create Post
 func (helper *postHelper) CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
-	chatroomId int, tempId *string) (interface{}, error) {
+	chatroomId int, tempId *string, topicIds []primitive.ObjectID) (interface{}, error) {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -41,14 +42,15 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 		tempId = nil
 	}
 
-	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId)
+	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId, topicIds)
 	postId, err := helper.postRepository.Create(&post)
 
 	return postId, err
 }
 
 // Exposed Helper Method to Edit Post
-func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment) error {
+func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
+	topicIds []primitive.ObjectID) error {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -59,6 +61,7 @@ func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string,
 			"heading":     heading,
 			"attachments": postAttachments,
 			"is_edited":   true,
+			"topic_ids":   topicIds,
 			"updated_at":  time.Now(),
 		},
 	}
@@ -78,7 +81,16 @@ func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOp
 		return nil, err
 	}
 
-	results, err := helper.postRepository.Find(filter, &fOpts)
+	cursor, err := helper.postRepository.Find(filter, &fOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the results from fetched documents
+	var results []entities.Post
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
 
 	return results, err
 }

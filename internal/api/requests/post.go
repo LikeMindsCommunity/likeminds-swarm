@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -27,8 +28,10 @@ type AttachmentMeta struct {
 
 // Attachment Structure
 type Attachment struct {
-	AttachmentType int            `json:"attachment_type" binding:"required"`
-	AttachmentMeta AttachmentMeta `json:"attachment_meta"`
+	AttachmentType int                  `json:"attachment_type"`
+	AttachmentMeta AttachmentMeta       `json:"attachment_meta"`
+	Type           enums.AttachmentType `json:"type"`
+	MetaData       AttachmentMeta       `json:"meta_data"`
 }
 
 // Request Structure for Create Post
@@ -36,6 +39,7 @@ type CreatePostRequest struct {
 	Text        string       `json:"text"`
 	Heading     string       `json:"heading"`
 	TempID      *string      `json:"temp_id"`
+	TopicIds    []string     `json:"topic_ids"`
 	Attachments []Attachment `json:"attachments"`
 	ChatroomID  int          `json:"feedroom_id"`
 	UUIDs       []string     `json:"uuids"`
@@ -45,6 +49,7 @@ type CreatePostRequest struct {
 type EditPostRequest struct {
 	Text        string       `json:"text"`
 	Heading     string       `json:"heading"`
+	TopicIds    []string     `json:"topic_ids,omitempty"`
 	Attachments []Attachment `json:"attachments"`
 	UserIsCm    bool         `json:"user_is_cm"`
 }
@@ -59,12 +64,13 @@ type DeletePostRequest struct {
 type PostResponse struct {
 	ID            primitive.ObjectID    `json:"_id"`
 	TempID        *string               `json:"temp_id"`
+	Topics        []primitive.ObjectID  `json:"topics"`
 	Text          string                `json:"text"`
 	Heading       string                `json:"heading"`
-	CommunityId   int                   `json:"community_id"`
+	CommunityId   int                   `json:"community_id,omitempty"`
 	ChatroomId    int                   `json:"feedroom_id,omitempty"`
 	IsPinned      bool                  `json:"is_pinned"`
-	UserId        string                `json:"user_id"`
+	UserId        string                `json:"user_id,omitempty"`
 	UUID          string                `json:"uuid,omitempty"`
 	Attachments   []entities.Attachment `json:"attachments"`
 	LikesCount    int                   `json:"likes_count"`

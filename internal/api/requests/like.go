@@ -5,7 +5,7 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 // Response Structure for Likes
 type LikeResponse struct {
 	ID        primitive.ObjectID `json:"_id"`
-	UserId    string             `json:"user_id"`
+	UserId    string             `json:"user_id,omitempty"`
 	CreatedAt int                `json:"created_at"`
 	UpdatedAt int                `json:"updated_at"`
 	UUID      string             `json:"uuid"`

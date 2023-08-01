@@ -124,13 +124,9 @@ func fetchCommentByID(helper interfaces.CommentHelper, commentId string) (*entit
 }
 
 // Internal Method to fetch multiple comments data using comment_ids
-func fetchMultipleCommentsData(handlers *FeedHandlers,
-	commentIds []string,
-	communityId int,
-	userId string,
-	isCm bool,
-	versionCode string,
-	platformCode string) (map[string]requests.FetchCommentsResponse, error) {
+func fetchMultipleCommentsData(handlers *FeedHandlers, commentIds []string, communityId int,
+	userId string, isCm bool, versionCode string, platformCode string,
+	apiRevampV1Check bool) (map[string]requests.FetchCommentsResponse, error) {
 
 	// convert comment_ids to object ids
 	commentObjectIds := helpers.ConvertIdsToObjectIds(commentIds)
@@ -154,7 +150,7 @@ func fetchMultipleCommentsData(handlers *FeedHandlers,
 	for _, comment := range comments {
 
 		// Parse comment for response
-		parseCommentsResponse := parseCommentsResponse(handlers, comment, userId, isCm, versionCode, platformCode)
+		parseCommentsResponse := parseCommentsResponse(handlers, comment, userId, isCm, versionCode, platformCode, apiRevampV1Check)
 
 		// Add to response map
 		parsedCommentsResponse[comment.ID.Hex()] = parseCommentsResponse
@@ -189,7 +185,8 @@ func fetchComment(helper interfaces.CommentHelper, commentId string, postId stri
 
 // Internal Method to parse comment for response
 func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string) requests.CommentResponse {
+	comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string,
+	apiRevampV1Check bool) requests.CommentResponse {
 	likesCount, _ := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
 	var response requests.CommentResponse
 
@@ -221,33 +218,43 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.CreatedAt = int(comment.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(comment.UpdatedAt.UnixMilli())
 
+	// ApiRevampV1Check to remove user_id and community_id from comment
+	if apiRevampV1Check {
+		response.UserId = ""
+		response.CommunityId = 0
+	}
+
 	return response
 }
 
 // Internal Method to parse multiple comments for response
 func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	comments []entities.Comment, userId string, isCm bool,
-	versionCode string, platformCode string) []requests.CommentResponse {
+	versionCode string, platformCode string, apiRevampV1Check bool) []requests.CommentResponse {
 	var response []requests.CommentResponse
 	for _, comment := range comments {
-		response = append(response, parseCommentResponse(likeHelper, commentHelper, comment, userId, isCm, versionCode, platformCode))
+		response = append(response, parseCommentResponse(likeHelper, commentHelper, comment, userId, isCm, versionCode, platformCode,
+			apiRevampV1Check))
 	}
 
 	return response
 }
 
 // Internal method to parse comments for FetchCommentsResponse
-func parseCommentsResponse(handlers *FeedHandlers, comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string) requests.FetchCommentsResponse {
+func parseCommentsResponse(handlers *FeedHandlers, comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string,
+	apiRevampV1Check bool) requests.FetchCommentsResponse {
 
 	fetchCommentResponse := requests.FetchCommentsResponse{
-		CommentResponse: parseCommentResponse(handlers.likeHelper, handlers.commentHelper, comment, userId, isCm, versionCode, platformCode),
+		CommentResponse: parseCommentResponse(handlers.likeHelper, handlers.commentHelper, comment, userId, isCm, versionCode, platformCode,
+			apiRevampV1Check),
 	}
 
 	// Fetch parent comment if exists
 	if fetchCommentResponse.Level > constants.CommentBaseLevel {
 		parentComment, err := fetchParentComment(handlers.commentHelper, comment.ID, comment.PostId)
 		if err == nil {
-			parentCommentResponse := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *parentComment, userId, isCm, versionCode, platformCode)
+			parentCommentResponse := parseCommentResponse(handlers.likeHelper, handlers.commentHelper, *parentComment, userId, isCm, versionCode, platformCode,
+				apiRevampV1Check)
 			fetchCommentResponse.ParentComment = &parentCommentResponse
 		}
 	}
@@ -259,10 +266,11 @@ func parseCommentsResponse(handlers *FeedHandlers, comment entities.Comment, use
 // Internal Method to parse comment data for FetchComment API
 func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	rawComment *entities.Comment, replies []requests.CommentResponse, userId string, isCm bool,
-	versionCode string, platformCode string) requests.FetchCommentResponse {
+	versionCode string, platformCode string, apiRevampV1Check bool) requests.FetchCommentResponse {
 	var response requests.FetchCommentResponse
 
-	response.CommentResponse = parseCommentResponse(likeHelper, commentHelper, *rawComment, userId, isCm, versionCode, platformCode)
+	response.CommentResponse = parseCommentResponse(likeHelper, commentHelper, *rawComment, userId, isCm, versionCode, platformCode,
+		apiRevampV1Check)
 
 	if len(replies) > 0 {
 		response.Replies = replies
@@ -273,7 +281,8 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	if response.CommentResponse.Level > constants.CommentBaseLevel {
 		commentData, err := fetchParentComment(commentHelper, rawComment.ID, rawComment.PostId)
 		if err == nil {
-			parentCommentResponse := parseCommentResponse(likeHelper, commentHelper, *commentData, userId, isCm, versionCode, platformCode)
+			parentCommentResponse := parseCommentResponse(likeHelper, commentHelper, *commentData, userId, isCm, versionCode, platformCode,
+				apiRevampV1Check)
 			response.ParentComment = &parentCommentResponse
 		}
 	}
@@ -288,6 +297,8 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	commentId := c.Param("comment_id")
 	paramIsCm := c.Query("user_is_cm")
 	isCm := false
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -315,7 +326,7 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -329,10 +340,10 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	}
 
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, headers[utils.HeadersMemberId],
-		isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
 		commentData, repliesResponse, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -346,6 +357,8 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -373,7 +386,7 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 
 	// Fetch comments using comment_ids
 	comments, err := fetchMultipleCommentsData(handlers, commentIds, communityId, headers[utils.HeadersMemberId], paramIsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -389,7 +402,9 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{}, memberId string, isCm bool, versionCode string, platformCode string) (interface{}, error) {
+func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
+	memberId string, isCm bool, versionCode string, platformCode string,
+	apiRevampV1Check bool) (interface{}, error) {
 	// fetch comment data
 	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
 	if err != nil {
@@ -410,9 +425,10 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 		return nil, err
 	}
 
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm, versionCode, platformCode)
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
+		versionCode, platformCode, apiRevampV1Check)
 	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentData, repliesResponse, memberId, isCm, versionCode, platformCode)
+		commentData, repliesResponse, memberId, isCm, versionCode, platformCode, apiRevampV1Check)
 
 	return fetchCommentResponse, nil
 }
@@ -425,6 +441,8 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	commentId := c.Param("comment_id")
 	paramIsCm := c.Query("user_is_cm")
 	isCm := false
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -444,7 +462,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -457,7 +475,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -474,6 +492,8 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -558,7 +578,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -571,7 +591,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -587,6 +607,8 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
 	commentId := c.Param("comment_id")
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -645,7 +667,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	}
 
 	// Generate page filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -653,7 +675,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -675,6 +697,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
 	commentId := c.Param("comment_id")
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -780,7 +804,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// filter options
-	commentFilterOptions, err := generatePageFilterOptions(c, "")
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -792,8 +816,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// fetch comment response data
-	fetchCommentResponse, err := fetchCommentData(handlers, newCommentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+	fetchCommentResponse, err := fetchCommentData(handlers, newCommentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions,
+		headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}

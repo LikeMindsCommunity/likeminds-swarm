@@ -14,7 +14,7 @@ import (
 )
 
 // Internal Method to parse likes as response
-func parseLikeResponse(like entities.Like) requests.LikeResponse {
+func parseLikeResponse(like entities.Like, apiRevampV1Check bool) requests.LikeResponse {
 	var response requests.LikeResponse
 
 	response.ID = like.ID
@@ -23,27 +23,31 @@ func parseLikeResponse(like entities.Like) requests.LikeResponse {
 	response.CreatedAt = int(like.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(like.UpdatedAt.UnixMilli())
 
+	if apiRevampV1Check {
+		response.UserId = ""
+	}
+
 	return response
 }
 
 // Internal Method to parse multiple likes for response
-func parseMultipleLikeResponse(likes []entities.Like) []requests.LikeResponse {
+func parseMultipleLikeResponse(likes []entities.Like, apiRevampV1Check bool) []requests.LikeResponse {
 	response := []requests.LikeResponse{}
 
 	for _, like := range likes {
-		response = append(response, parseLikeResponse(like))
+		response = append(response, parseLikeResponse(like, apiRevampV1Check))
 	}
 
 	return response
 }
 
 // Internal Method to parse like response for Fetch Likes API
-func parseFetchLikeResponse(likes []entities.Like, total_count int) requests.FetchLikesResponse {
+func parseFetchLikeResponse(likes []entities.Like, total_count int, apiRevampV1Check bool) requests.FetchLikesResponse {
 	var response requests.FetchLikesResponse
 
 	response.Success = true
 	response.TotalCount = total_count
-	response.Likes = parseMultipleLikeResponse(likes)
+	response.Likes = parseMultipleLikeResponse(likes, apiRevampV1Check)
 
 	return response
 }
@@ -197,6 +201,11 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 
 // Exposed Method to fetch the likes on a Post
 func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
+
+	headers := utils.GetHeaders(c)
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	// fetch url params
 	post_id := c.Param("post_id")
 
@@ -221,7 +230,7 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	}
 
 	// filter options
-	like_filter_options, err := generatePageFilterOptions(c, "")
+	like_filter_options, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -235,7 +244,7 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	}
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count)))
+	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count), apiRevampV1Check))
 }
 
 // Exposed Method to like a Comment
@@ -322,6 +331,11 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 
 // Exposed Method to fetch likes on a Comment
 func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
+
+	headers := utils.GetHeaders(c)
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	// fetch url params
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
@@ -354,7 +368,7 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	}
 
 	// filter options
-	like_filter_options, err := generatePageFilterOptions(c, "")
+	like_filter_options, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -368,5 +382,5 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	}
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count)))
+	c.JSON(http.StatusOK, parseFetchLikeResponse(like_results, int(likes_count), apiRevampV1Check))
 }
