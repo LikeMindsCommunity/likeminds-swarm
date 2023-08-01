@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +27,17 @@ func (helper *saveHelper) FindSaveHelper(filter map[string]interface{}, filterOp
 		return nil, err
 	}
 
-	results, err := helper.saveRepository.Find(filter, &fOpts)
+	// Find the document in the collection
+	cursor, err := helper.saveRepository.Find(filter, &fOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the results from fetched documents
+	var results []entities.Save
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
 
 	return results, err
 }

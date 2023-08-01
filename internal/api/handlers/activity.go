@@ -37,7 +37,6 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, err
 		}
 
-		activity = activity
 		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
 			ActionBy:           activity.ActionBy,
@@ -318,7 +317,6 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 // DeleteActivity | delete activity records with filter
 func (handlers *FeedHandlers) DeleteActivity(filter map[string]interface{}) {
 	handlers.activityHelper.DeleteActivityHelper(filter)
-	return
 }
 
 // FetchActivityCtaForAction | get CTA corresponding to action
@@ -462,7 +460,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	activitySortKey := "updated_at"
 
 	// filter options
-	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey)
+	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey, OrderTypeDescending)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

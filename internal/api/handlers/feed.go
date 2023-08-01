@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -16,14 +17,18 @@ import (
 func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
-	param_is_cm := c.Query("user_is_cm")
-	is_cm := false
+	var universalFeedRequest requests.FetchUniversalFeedRequest
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
-	if param_is_cm == "true" {
-		is_cm = true
+	err := c.BindQuery(&universalFeedRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
 	}
+
+	// Parse topic Ids string array
+	topicIds := parseStringArrayParam(universalFeedRequest.TopicIds)
 
 	// fetch pagination query params
 	page, _, err := fetchPaginationParams(c)
@@ -33,16 +38,16 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// pinned posts filter data
-	pinned_post_filter_data := gin.H{
+	pinnedPostFilterData := gin.H{
 		"is_pinned":    true,
 		"is_deleted":   false,
-		"community_id": community_id,
+		"community_id": communityId,
 		"$or": []gin.H{
 			{
 				"chatroom_id": gin.H{
@@ -56,10 +61,10 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// unpinned posts filter data
-	unpinned_post_filter_data := gin.H{
+	unpinnedPostFilterData := gin.H{
 		"is_pinned":    false,
 		"is_deleted":   false,
-		"community_id": community_id,
+		"community_id": communityId,
 		"$or": []gin.H{
 			{
 				"chatroom_id": gin.H{
@@ -72,8 +77,21 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		},
 	}
 
+	// Add topic id filter if topic_ids param exists
+	if len(topicIds) > 0 {
+		topicObjectIds := helpers.ConvertIdsToObjectIds(topicIds)
+
+		pinnedPostFilterData["topic_ids"] = gin.H{
+			"$in": topicObjectIds,
+		}
+
+		unpinnedPostFilterData["topic_ids"] = gin.H{
+			"$in": topicObjectIds,
+		}
+	}
+
 	// filter options
-	post_filter_options, err := generatePageFilterOptions(c, "")
+	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -83,41 +101,57 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	if page == 1 {
 		// pinned post filter options
-		pinned_post_filter_options := addSortingOptions(map[string]interface{}{}, "created_at", -1)
+		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
 
 		// fetch pinned post using helper method
-		pinned_post_results, err := handlers.postHelper.FindPostHelper(pinned_post_filter_data,
-			pinned_post_filter_options)
+		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData,
+			pinnedPostFilterOptions)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
 		// parse pinned posts
-		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-			handlers.saveHelper, pinned_post_results, headers[utils.HeadersMemberId], is_cm,
-			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
+			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+			apiRevampV1Check)
 
-		response = append(response, pinned_post_response...)
+		response = append(response, pinnedPostResponse...)
 	}
 
 	// fetch unpinned post using helper method
-	unpinned_post_results, err := handlers.postHelper.FindPostHelper(unpinned_post_filter_data,
-		post_filter_options)
+	unpinnedPostResults, err := handlers.postHelper.FindPostHelper(unpinnedPostFilterData,
+		postFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// parse unpinned posts
-	unpinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, unpinned_post_results, headers[utils.HeadersMemberId], is_cm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
+		universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check)
 
-	response = append(response, unpinned_post_response...)
+	response = append(response, unpinnedPostResponse...)
+
+	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+
+	// reponse data
+	finalParsedResponse := gin.H{
+		"posts":   finalResponse.Posts,
+		"success": finalResponse.Success,
+	}
+
+	if finalResponse.TotalCount > 0 {
+		finalParsedResponse["total_count"] = finalResponse.TotalCount
+	}
+
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, response, -1))
+	c.JSON(http.StatusOK, finalParsedResponse)
 }
 
 // Internal Method to parse Explore feed for response
@@ -133,23 +167,23 @@ func parseExploreFeedResponse(chatroom_ids []int, post_counts map[int]int) reque
 
 // Internal Method to parse ChatroomIds to int list
 func parseChatroomIds(chatrooms []gin.H) []int {
-	chatroom_ids := []int{}
+	chatroomIds := []int{}
 	for _, chatroom := range chatrooms {
-		if chatroom_id, ok := chatroom["chatroom_id"]; ok {
-			chatroom_ids = append(chatroom_ids, int(chatroom_id.(int32)))
+		if chatroomId, ok := chatroom["chatroom_id"]; ok {
+			chatroomIds = append(chatroomIds, int(chatroomId.(int32)))
 		}
 	}
 
-	return chatroom_ids
+	return chatroomIds
 }
 
 // Internal Method to get posts count in a Chatroom
 func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) map[int]int {
-	post_count_response := map[int]int{}
-	post_filter_data := []map[string]interface{}{}
+	postCountResponse := map[int]int{}
+	postFilterData := []map[string]interface{}{}
 
 	// Add match logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$match": gin.H{
 			"is_deleted": false,
 			"chatroom_id": gin.H{
@@ -160,7 +194,7 @@ func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) 
 	})
 
 	// Add group logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$group": gin.H{
 			"_id": "$chatroom_id",
 			"post_count": gin.H{
@@ -170,7 +204,7 @@ func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) 
 	})
 
 	// Add projection logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$project": gin.H{
 			"_id":         0,
 			"chatroom_id": "$_id",
@@ -179,28 +213,28 @@ func getPostCountInChatrooms(postHelper interfaces.PostHelper, chatrooms []int) 
 	})
 
 	// fetch post using helper method
-	post_results, err := postHelper.AggregatePostHelper(post_filter_data)
+	postResults, err := postHelper.AggregatePostHelper(postFilterData)
 	if err == nil {
-		for _, chatroom := range post_results {
-			chatroom_id, ok1 := chatroom["chatroom_id"]
-			post_count, ok2 := chatroom["post_count"]
+		for _, chatroom := range postResults {
+			chatroomId, ok1 := chatroom["chatroom_id"]
+			postCount, ok2 := chatroom["post_count"]
 
 			if ok1 && ok2 {
-				post_count_response[int(chatroom_id.(int32))] = int(post_count.(int32))
+				postCountResponse[int(chatroomId.(int32))] = int(postCount.(int32))
 			}
 		}
 	}
 
-	return post_count_response
+	return postCountResponse
 }
 
 // Internal Method to fetch Chatrooms ordered by recency of activity
 func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.PostHelper,
-	communityId int, excludedChatroomIds []int, page int, page_size int) []int {
-	post_filter_data := []map[string]interface{}{}
+	communityId int, excludedChatroomIds []int, page int, pageSize int) []int {
+	postFilterData := []map[string]interface{}{}
 
 	// Add match logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$match": gin.H{
 			"is_deleted":   false,
 			"community_id": communityId,
@@ -212,7 +246,7 @@ func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.Pos
 	})
 
 	// Add group logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$group": gin.H{
 			"_id": "$chatroom_id",
 			"created_at": gin.H{
@@ -222,14 +256,14 @@ func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.Pos
 	})
 
 	// Add sorting logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$sort": gin.H{
 			"created_at": -1,
 		},
 	})
 
 	// Add projection logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$project": gin.H{
 			"_id":         0,
 			"chatroom_id": "$_id",
@@ -237,33 +271,33 @@ func getChatroomsBasedOnRecentActivity(c *gin.Context, postHelper interfaces.Pos
 	})
 
 	// Add pagination logic
-	post_filter_data = append(post_filter_data, gin.H{
-		"$skip": page_size * (page - 1),
+	postFilterData = append(postFilterData, gin.H{
+		"$skip": pageSize * (page - 1),
 	})
 
-	post_filter_data = append(post_filter_data, gin.H{
-		"$limit": page_size,
+	postFilterData = append(postFilterData, gin.H{
+		"$limit": pageSize,
 	})
 
 	// fetch post using helper method
-	post_results, err := postHelper.AggregatePostHelper(post_filter_data)
+	postResults, err := postHelper.AggregatePostHelper(postFilterData)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return []int{}
 	}
 
-	chatroom_ids := parseChatroomIds(post_results)
+	chatroomIds := parseChatroomIds(postResults)
 
-	return chatroom_ids
+	return chatroomIds
 }
 
 // Internal Method to fetch Chatrooms ordered by count of messages
 func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostHelper, communityId int,
-	excludedChatroomIds []int, page int, page_size int) []int {
-	post_filter_data := []map[string]interface{}{}
+	excludedChatroomIds []int, page int, pageSize int) []int {
+	postFilterData := []map[string]interface{}{}
 
 	// Add match logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$match": gin.H{
 			"is_deleted":   false,
 			"community_id": communityId,
@@ -275,7 +309,7 @@ func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostH
 	})
 
 	// Add group logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$group": gin.H{
 			"_id": "$chatroom_id",
 			"post_count": gin.H{
@@ -285,14 +319,14 @@ func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostH
 	})
 
 	// Add sorting logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$sort": gin.H{
 			"post_count": -1,
 		},
 	})
 
 	// Add projection logic
-	post_filter_data = append(post_filter_data, gin.H{
+	postFilterData = append(postFilterData, gin.H{
 		"$project": gin.H{
 			"_id":         0,
 			"chatroom_id": "$_id",
@@ -300,24 +334,24 @@ func getChatroomsBasedOnMostMessages(c *gin.Context, postHelper interfaces.PostH
 	})
 
 	// Add pagination logic
-	post_filter_data = append(post_filter_data, gin.H{
-		"$skip": page_size * (page - 1),
+	postFilterData = append(postFilterData, gin.H{
+		"$skip": pageSize * (page - 1),
 	})
 
-	post_filter_data = append(post_filter_data, gin.H{
-		"$limit": page_size,
+	postFilterData = append(postFilterData, gin.H{
+		"$limit": pageSize,
 	})
 
 	// fetch post using helper method
-	post_results, err := postHelper.AggregatePostHelper(post_filter_data)
+	postResults, err := postHelper.AggregatePostHelper(postFilterData)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return []int{}
 	}
 
-	chatroom_ids := parseChatroomIds(post_results)
+	chatroomIds := parseChatroomIds(postResults)
 
-	return chatroom_ids
+	return chatroomIds
 }
 
 // Exposed Method to fetch the Explore Feed
@@ -333,15 +367,15 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	}
 
 	// fetch pagination query params
-	page, page_size, err := fetchPaginationParams(c)
+	page, pageSize, err := fetchPaginationParams(c)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
@@ -351,8 +385,8 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	isValidOrderType := false
 
 	// Validation of order types
-	for _, order_type := range validOrderTypes {
-		if order_type == exploreFeedRequest.OrderType {
+	for _, orderType := range validOrderTypes {
+		if orderType == exploreFeedRequest.OrderType {
 			isValidOrderType = true
 		}
 	}
@@ -362,54 +396,58 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 		return
 	}
 
-	chatroom_ids := []int{}
+	chatroomIds := []int{}
 
 	// Order by newest chatroom on top
 	if (exploreFeedRequest.OrderType == constants.GroupOrderTypeNewest ||
 		exploreFeedRequest.OrderType == constants.GroupOrderTypeMostParticipants) &&
 		len(exploreFeedRequest.ChatroomIDs) > 0 {
-		chatroom_ids = parseIntArrayParam(exploreFeedRequest.ChatroomIDs)
+		chatroomIds = parseIntArrayParam(exploreFeedRequest.ChatroomIDs)
 	} else
 
 	// Order by Recently active chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeRecentlyActive {
-		chatroom_ids = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, community_id,
-			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
+		chatroomIds = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, communityId,
+			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
 	} else
 
 	// Order by Most messaged chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeMostMessages {
-		chatroom_ids = getChatroomsBasedOnMostMessages(c, handlers.postHelper, community_id,
-			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, page_size)
+		chatroomIds = getChatroomsBasedOnMostMessages(c, handlers.postHelper, communityId,
+			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
 	}
 
-	postData := getPostCountInChatrooms(handlers.postHelper, chatroom_ids)
+	postData := getPostCountInChatrooms(handlers.postHelper, chatroomIds)
 
 	// return final response
-	c.JSON(http.StatusOK, parseExploreFeedResponse(chatroom_ids, postData))
+	c.JSON(http.StatusOK, parseExploreFeedResponse(chatroomIds, postData))
 }
 
 // Exposed Method to fetch the Group Feed
 func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
-	param_is_cm := c.Query("user_is_cm")
-	param_feedroom_id := c.Query("feedroom_id")
+	var groupFeedRequest requests.FetchGroupFeedRequest
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
-	is_cm := false
-
-	if param_is_cm == "true" {
-		is_cm = true
+	err := c.BindQuery(&groupFeedRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
 	}
 
-	if param_feedroom_id == "" {
+	// Feedroom Id Validation
+	if groupFeedRequest.FeedroomId == "" {
 		utils.GeneralAPIValidationError(c, "send feedroom_id in params")
 		return
 	}
 
-	feedroom_id, _ := strconv.Atoi(param_feedroom_id)
+	// Conversation of feedroom Id from string to Int
+	feedroomId, _ := strconv.Atoi(groupFeedRequest.FeedroomId)
+
+	// Parse topic Ids string array
+	topicIds := parseStringArrayParam(groupFeedRequest.TopicIds)
 
 	// fetch pagination query params
 	page, _, err := fetchPaginationParams(c)
@@ -419,29 +457,42 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// pinned posts filter data
-	pinned_post_filter_data := gin.H{
+	pinnedPostFilterData := gin.H{
 		"is_pinned":    true,
 		"is_deleted":   false,
-		"community_id": community_id,
-		"chatroom_id":  feedroom_id,
+		"community_id": communityId,
+		"chatroom_id":  feedroomId,
 	}
 
 	// unpinned posts filter data
-	unpinned_post_filter_data := gin.H{
+	unpinnedPostFilterData := gin.H{
 		"is_pinned":    false,
 		"is_deleted":   false,
-		"community_id": community_id,
-		"chatroom_id":  feedroom_id,
+		"community_id": communityId,
+		"chatroom_id":  feedroomId,
+	}
+
+	// Add topic id filter if topic_ids param exists
+	if len(topicIds) > 0 {
+		topicObjectIds := helpers.ConvertIdsToObjectIds(topicIds)
+
+		pinnedPostFilterData["topic_ids"] = gin.H{
+			"$in": topicObjectIds,
+		}
+
+		unpinnedPostFilterData["topic_ids"] = gin.H{
+			"$in": topicObjectIds,
+		}
 	}
 
 	// filter options
-	post_filter_options, err := generatePageFilterOptions(c, "")
+	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -451,39 +502,55 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	if page == 1 {
 		// pinned post filter options
-		pinned_post_filter_options := addSortingOptions(map[string]interface{}{}, "created_at", -1)
+		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
 
 		// fetch pinned post using helper method
-		pinned_post_results, err := handlers.postHelper.FindPostHelper(pinned_post_filter_data,
-			pinned_post_filter_options)
+		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData,
+			pinnedPostFilterOptions)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
 		// parse pinned posts
-		pinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-			handlers.saveHelper, pinned_post_results, headers[utils.HeadersMemberId], is_cm,
-			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
+			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+			apiRevampV1Check)
 
-		response = append(response, pinned_post_response...)
+		response = append(response, pinnedPostResponse...)
 	}
 
 	// fetch unpinned post using helper method
-	unpinned_post_results, err := handlers.postHelper.FindPostHelper(unpinned_post_filter_data,
-		post_filter_options)
+	unpinnedPostResults, err := handlers.postHelper.FindPostHelper(unpinnedPostFilterData,
+		postFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// parse unpinned posts
-	unpinned_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, unpinned_post_results, headers[utils.HeadersMemberId], is_cm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
+		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check)
 
-	response = append(response, unpinned_post_response...)
+	response = append(response, unpinnedPostResponse...)
+
+	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+
+	// reponse data
+	finalParsedResponse := gin.H{
+		"posts":   finalResponse.Posts,
+		"success": finalResponse.Success,
+	}
+
+	if finalResponse.TotalCount > 0 {
+		finalParsedResponse["total_count"] = finalResponse.TotalCount
+	}
+
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, response, -1))
+	c.JSON(http.StatusOK, finalParsedResponse)
 }

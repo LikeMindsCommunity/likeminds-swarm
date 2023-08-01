@@ -121,76 +121,89 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	user_id := c.Param("user_id")
-	param_is_cm := c.Query("user_is_cm")
-	is_cm := false
+	userId := c.Param("user_id")
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
-	if param_is_cm == "true" {
-		is_cm = true
+	if paramIsCm == "true" {
+		isCm = true
 	}
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
-	if user_id != headers[utils.HeadersMemberId] {
+	if userId != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
 	}
 
 	// save filter data
-	save_filter_data := gin.H{
+	saveFilterData := gin.H{
 		"entity_type":  constants.PostEntityType,
 		"saved_by":     headers[utils.HeadersMemberId],
-		"community_id": community_id,
+		"community_id": communityId,
 		"is_deleted":   false,
 	}
 
 	// fetch save count using helper method
-	save_count, err := handlers.saveHelper.CountSaveHelper(save_filter_data)
+	saveCount, err := handlers.saveHelper.CountSaveHelper(saveFilterData)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// filter options
-	save_filter_options, err := generatePageFilterOptions(c, "")
+	saveFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch save using helper method
-	save_results, err := handlers.saveHelper.FindSaveHelper(save_filter_data, save_filter_options)
+	saveResults, err := handlers.saveHelper.FindSaveHelper(saveFilterData, saveFilterOptions)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// posts filter data
-	post_filter_data := gin.H{
+	postFilterData := gin.H{
 		"_id": gin.H{
-			"$in": fetchPostIdsFromSave(save_results),
+			"$in": fetchPostIdsFromSave(saveResults),
 		},
 		"is_deleted": false,
 	}
 
 	// fetch posts using helper method
-	post_results, err := handlers.postHelper.FindPostHelper(post_filter_data, save_filter_options)
+	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, saveFilterOptions)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	saved_post_response := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, post_results, user_id, is_cm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	savedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, handlers.topicHelper, postResults, userId, isCm,
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+
+	response := parseFetchMultiplePostResponse(handlers.postHelper, savedPostResponse, saveCount)
+
+	// response data
+	finalResponse := gin.H{
+		"posts":   response.Posts,
+		"success": response.Success,
+	}
+
+	if response.TotalCount > 0 {
+		finalResponse["total_count"] = response.TotalCount
+	}
+
+	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
 
 	// return final response
-	c.JSON(http.StatusOK, parseFetchMultiplePostResponse(handlers.postHelper, saved_post_response,
-		save_count))
+	c.JSON(http.StatusOK, finalResponse)
 }

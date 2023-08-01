@@ -14,6 +14,12 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
+const (
+	OrderTypeAscending  int = 1
+	OrderTypeDescending int = -1
+	OrderTypeDefault    int = 0
+)
+
 // Feed Handlers structure for all Helper classes
 type FeedHandlers struct {
 	likeHelper     interfaces.LikeHelper
@@ -21,18 +27,21 @@ type FeedHandlers struct {
 	postHelper     interfaces.PostHelper
 	activityHelper interfaces.ActivityHelper
 	saveHelper     interfaces.SaveHelper
+	topicHelper    interfaces.TopicHelper
 	esHelper       searchElastic.EsHelper
 }
 
 // Exposed Method to get an instance for Feed Handlers
 func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, postHelper interfaces.PostHelper,
-	saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, esHelper searchElastic.EsHelper) *FeedHandlers {
+	saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, topicHelper interfaces.TopicHelper,
+	esHelper searchElastic.EsHelper) *FeedHandlers {
 	return &FeedHandlers{
 		likeHelper:     likeHelper,
 		commentHelper:  commentHelper,
 		postHelper:     postHelper,
 		saveHelper:     saveHelper,
 		activityHelper: activityHelper,
+		topicHelper:    topicHelper,
 		esHelper:       esHelper,
 	}
 }
@@ -77,10 +86,10 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 
 // Internal method to add sorting options to a map
 func addSortingOptions(options map[string]interface{}, orderBy string, order int) map[string]interface{} {
-	if order >= 0 {
-		order = 1
+	if order >= OrderTypeDefault {
+		order = OrderTypeAscending
 	} else {
-		order = -1
+		order = OrderTypeDescending
 	}
 
 	options["$sort"] = gin.H{
@@ -91,7 +100,7 @@ func addSortingOptions(options map[string]interface{}, orderBy string, order int
 }
 
 // Internal Method to generate filter from page params from an API
-func generatePageFilterOptions(c *gin.Context, sortKeyParam string) (map[string]interface{}, error) {
+func generatePageFilterOptions(c *gin.Context, sortKeyParam string, sortKeyOrderParam int) (map[string]interface{}, error) {
 	// fetch pagination query params
 	page, page_size, err := fetchPaginationParams(c)
 	if err != nil {
@@ -110,7 +119,13 @@ func generatePageFilterOptions(c *gin.Context, sortKeyParam string) (map[string]
 		sortKey = sortKeyParam
 	}
 
-	filter_options = addSortingOptions(filter_options, sortKey, -1)
+	sortKeyOrder := OrderTypeDescending
+
+	if sortKeyOrderParam != OrderTypeDefault {
+		sortKeyOrder = sortKeyOrderParam
+	}
+
+	filter_options = addSortingOptions(filter_options, sortKey, sortKeyOrder)
 
 	return filter_options, nil
 }
@@ -204,20 +219,50 @@ func checkIfFibonacciNumber(num int) bool {
 func parseIntArrayParam(param string) []int {
 	response := []int{}
 
-	if len(param) == 0 {
-		return response
-	}
-
-	intermediate_string := strings.Split(param, "[")[1]
-	intermediate_string = strings.Split(intermediate_string, "]")[0]
-
-	intermediate_strings := strings.Split(intermediate_string, ",")
+	intermediate_strings := parseStringArrayParam(param)
 
 	for _, value := range intermediate_strings {
-		value = strings.TrimSpace(value)
 		convertedValue, err := strconv.Atoi(value)
 		if err == nil {
 			response = append(response, convertedValue)
+		}
+	}
+
+	return response
+}
+
+// Internal Method to parse a String Array from query params
+func parseStringArrayParam(param string) []string {
+	response := []string{}
+
+	// Removal of square braces from array string
+	if len(param) > 0 && param[0] == '[' {
+		param = param[1:]
+	}
+
+	if len(param) > 0 && param[len(param)-1] == ']' {
+		param = param[:len(param)-1]
+	}
+
+	// Removal of extra spaces from the array string
+	param = strings.TrimSpace(param)
+
+	if len(param) > 0 {
+		paramValues := strings.Split(param, ",")
+
+		for _, value := range paramValues {
+			value = strings.TrimSpace(value)
+
+			// Removal of quotes from each string from array
+			if len(value) > 0 && value[0] == '"' {
+				value = value[1:]
+			}
+
+			if len(value) > 0 && value[len(value)-1] == '"' {
+				value = value[:len(value)-1]
+			}
+
+			response = append(response, value)
 		}
 	}
 
