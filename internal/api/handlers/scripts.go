@@ -24,19 +24,49 @@ func (handlers *FeedHandlers) IndexAllPostData() error {
 	}
 
 	// post filter data
-	post_filter_data := gin.H{
+	postFilterData := gin.H{
 		"is_deleted": false,
 	}
 
 	// fetch post using helper method
-	post_results, err := handlers.postHelper.FindPostHelper(post_filter_data, gin.H{})
+	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
 	if err != nil {
 		return err
 	}
 
-	for _, post_data := range post_results {
+	for _, postData := range postResults {
 		// insert post data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParsePostIndexData(&post_data), post_data.ID.Hex(), constants.PostIndexName)
+		err = handlers.esHelper.InsertDocument(context.Background(), ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (handlers *FeedHandlers) IndexAllTopicData() error {
+	// delete topic index in elastic search
+	err := handlers.esHelper.DeleteIndex(constants.TopicIndexName)
+	if err != nil {
+		return err
+	}
+
+	// create topic index in elastic search
+	err = handlers.esHelper.CreateIndex(constants.TopicIndexName)
+	if err != nil {
+		return err
+	}
+
+	// fetch topic using helper method
+	topicResults, err := handlers.topicHelper.FindTopicHelper(gin.H{}, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	for _, topicData := range topicResults {
+		// insert topic data in elastic search
+		err = handlers.esHelper.InsertDocument(context.Background(), ParseTopicIndexData(&topicData), topicData.ID.Hex(), constants.TopicIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -49,30 +79,30 @@ func (handlers *FeedHandlers) IndexAllPostData() error {
 func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 
 	// fetch all comments
-	comment_results, err := handlers.commentHelper.FindCommentHelper(gin.H{}, gin.H{})
+	commentResults, err := handlers.commentHelper.FindCommentHelper(gin.H{}, gin.H{})
 	if err != nil {
 		return err
 	}
 
-	for _, comment := range comment_results {
-		post_id := comment.PostId
+	for _, comment := range commentResults {
+		postId := comment.PostId
 
 		// fetch post using helper method
-		post_data, err := handlers.postHelper.FindPostHelper(gin.H{"_id": post_id}, gin.H{})
-		if err != nil || len(post_data) == 0 {
+		postData, err := handlers.postHelper.FindPostHelper(gin.H{"_id": postId}, gin.H{})
+		if err != nil || len(postData) == 0 {
 			log.Error(fmt.Sprintf("Post not found for comment id: %s", comment.ID.Hex()))
 			continue
 		}
 
 		// comment update data
-		comment_update_data := gin.H{
+		commentUpdateData := gin.H{
 			"$set": gin.H{
-				"community_id": post_data[0].CommunityId,
+				"community_id": postData[0].CommunityId,
 			},
 		}
 
 		// update comment data
-		err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, comment_update_data)
+		err = handlers.commentHelper.UpdateCommentByIdHelper(comment.ID, commentUpdateData)
 		if err != nil {
 			log.Error(fmt.Sprintf("Error while updating comment with id: %s", comment.ID.Hex()))
 			continue

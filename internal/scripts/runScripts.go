@@ -10,6 +10,7 @@ import (
 
 func RunScripts(handlers *handlers.FeedHandlers) {
 	// indexPostData(handlers)
+	// indexTopicData(handlers)
 	// addCommunityIdToComments(handlers)
 }
 
@@ -17,6 +18,14 @@ func indexPostData(handlers *handlers.FeedHandlers) {
 	err := handlers.IndexAllPostData()
 	if err != nil {
 		log.Error(fmt.Sprintf("Scripts: Error running indexPostData: %s", err.Error()))
+		return
+	}
+}
+
+func indexTopicData(handlers *handlers.FeedHandlers) {
+	err := handlers.IndexAllTopicData()
+	if err != nil {
+		log.Error(fmt.Sprintf("Scripts: Error running indexTopicData: %s", err.Error()))
 		return
 	}
 }

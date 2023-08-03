@@ -1,5 +1,6 @@
 package constants
 
 const (
-	PostIndexName = "post"
+	PostIndexName  = "post"
+	TopicIndexName = "topic"
 )

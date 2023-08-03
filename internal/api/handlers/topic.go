@@ -1,15 +1,18 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -71,61 +74,6 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 	return topicResults, nil
 }
 
-// Internal Method to fetch topics using community_id
-func fetchTopicsByCommunityID(helper interfaces.TopicHelper, communityId int, isEnabled string,
-	filterOptions map[string]interface{}) ([]entities.Topic, error) {
-	// topic filter data
-	topicFilterData := gin.H{
-		"community_id": communityId,
-	}
-
-	if isEnabled != "" {
-		if isEnabled == "true" {
-			topicFilterData["is_enabled"] = true
-		}
-		if isEnabled == "false" {
-			topicFilterData["is_enabled"] = false
-		}
-	}
-
-	// fetch topic using helper method
-	topicResults, err := helper.FindTopicHelper(topicFilterData, filterOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	return topicResults, nil
-}
-
-// Internal Method to fetch topic data
-func fetchTopicByIDResponse(handlers *FeedHandlers, topicId string, communityId int) (interface{}, error) {
-	topicData, err := fetchTopicByID(handlers.topicHelper, topicId, communityId)
-	if err != nil {
-		return nil, err
-	}
-
-	topicResponse := parseTopicResponse(topicData)
-
-	return topicResponse, nil
-}
-
-// Internal Method to fetch multiple topics data
-func fetchTopicsByCommunityIDResponse(handlers *FeedHandlers, communityId int, isEnabled string, filterOptions map[string]interface{}) ([]interface{}, error) {
-	topicsData, err := fetchTopicsByCommunityID(handlers.topicHelper, communityId, isEnabled, filterOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	topicsResponse := []interface{}{}
-
-	// Parse all fetched topics Data
-	for _, topic := range topicsData {
-		topicsResponse = append(topicsResponse, parseTopicResponse(&topic))
-	}
-
-	return topicsResponse, nil
-}
-
 // Exposed Method to Create a Topic
 func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	// validation of api_key
@@ -156,12 +104,20 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 		return
 	}
 
-	// fetch topic data using new topic_id
-	topicResponse, err := fetchTopicByIDResponse(handlers, topicId.(primitive.ObjectID).Hex(), communityId)
+	topicData, err := fetchTopicByID(handlers.topicHelper, topicId.(primitive.ObjectID).Hex(), communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
+
+	// insert topic data in elastic search
+	err = handlers.esHelper.InsertDocument(c, ParseTopicIndexData(topicData), topicData.ID.Hex(),
+		constants.TopicIndexName)
+	if err != nil {
+		log.Error(err.Error())
+	}
+
+	topicResponse := parseTopicResponse(topicData)
 
 	// reponse data
 	response := gin.H{
@@ -173,9 +129,41 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func processTopicSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.TopicResponse {
+	topicDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
+	var topicList []entities.Topic
+
+	for _, data := range topicDetails {
+		topicData := data.(map[string]interface{})["_source"].(map[string]interface{})
+		topicData["_id"] = topicData["id"]
+
+		// convert the data to topic entity
+		var topic entities.Topic
+		b, _ := json.Marshal(topicData)
+		json.Unmarshal(b, &topic)
+
+		topicList = append(topicList, topic)
+	}
+
+	topicsResponse := []requests.TopicResponse{}
+
+	// Parse all fetched topics Data
+	for _, topic := range topicList {
+		topicsResponse = append(topicsResponse, parseTopicResponse(&topic))
+	}
+
+	return topicsResponse
+}
+
 // Exposed Method to Fetch Topics for a Community
 func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
-	isEnabled := c.Query("is_enabled")
+	// parse fetch topic request
+	var fetchTopicRequest requests.FetchTopicRequest
+	err := c.BindQuery(&fetchTopicRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -183,29 +171,38 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		return
 	}
 
-	// filter options
-	filterOptions, err := generatePageFilterOptions(c, "name", OrderTypeAscending)
+	// fetch pagination query params
+	page, pageSize, err := fetchPaginationParams(c)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// fetch topics data using new communityId
-	topicsResponse, err := fetchTopicsByCommunityIDResponse(handlers, communityId,
-		isEnabled, filterOptions)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
+	filterIsEnabled := false
+	isEnabled := false
+	if fetchTopicRequest.IsEnabled != "" {
+		filterIsEnabled = true
+
+		if fetchTopicRequest.IsEnabled == "true" {
+			isEnabled = true
+		}
 	}
+
+	// dsl query to search topics
+	topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType,
+		fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled)
+	response := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
+
+	finalResponse := processTopicSearchData(handlers, response)
 
 	// reponse data
-	response := gin.H{
+	finalParsedResponse := gin.H{
 		"success": true,
-		"topics":  topicsResponse,
+		"topics":  finalResponse,
 	}
 
 	// return final response
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, finalParsedResponse)
 }
 
 // Exposed Method to Edit a Topic
@@ -234,7 +231,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	}
 
 	// topic update data
-	topic_update_data := gin.H{
+	topicUpdateData := gin.H{
 		"$set": gin.H{},
 	}
 
@@ -243,30 +240,38 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 
 	// Update set object with name field, if changed
 	if len(editTopicRequest.Name) > 0 && topic.Name != editTopicRequest.Name {
-		topic_update_data["$set"].(gin.H)["name"] = editTopicRequest.Name
+		topicUpdateData["$set"].(gin.H)["name"] = editTopicRequest.Name
 	}
 
 	// Update set object with is_enabled field, if changed
 	if topic.IsEnabled != editTopicRequest.IsEnabled {
-		topic_update_data["$set"].(gin.H)["is_enabled"] = editTopicRequest.IsEnabled
+		topicUpdateData["$set"].(gin.H)["is_enabled"] = editTopicRequest.IsEnabled
 	}
 
 	// Validation of data change
-	if len(topic_update_data["$set"].(gin.H)) > 0 {
+	if len(topicUpdateData["$set"].(gin.H)) > 0 {
 		// update topic using the helper method
-		err = handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topic_update_data)
+		err = handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		topic, err = fetchTopicByID(handlers.topicHelper, topic.ID.Hex(), communityId)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		// update topic data in elastic search
+		err = handlers.esHelper.UpdateDocument(c, ParseTopicIndexData(topic), topic.ID.Hex(), constants.TopicIndexName)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 
 	// Fetch Updated topic Response
-	topicResponse, err := fetchTopicByIDResponse(handlers, topicId, communityId)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
+	topicResponse := parseTopicResponse(topic)
 
 	// reponse data
 	response := gin.H{
