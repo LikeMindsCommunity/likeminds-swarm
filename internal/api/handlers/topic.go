@@ -74,18 +74,6 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 	return topicResults, nil
 }
 
-// Internal Method to fetch topic data
-func fetchTopicByIDResponse(handlers *FeedHandlers, topicId string, communityId int) (interface{}, error) {
-	topicData, err := fetchTopicByID(handlers.topicHelper, topicId, communityId)
-	if err != nil {
-		return nil, err
-	}
-
-	topicResponse := parseTopicResponse(topicData)
-
-	return topicResponse, nil
-}
-
 // Exposed Method to Create a Topic
 func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	// validation of api_key
@@ -243,7 +231,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	}
 
 	// topic update data
-	topic_update_data := gin.H{
+	topicUpdateData := gin.H{
 		"$set": gin.H{},
 	}
 
@@ -252,30 +240,38 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 
 	// Update set object with name field, if changed
 	if len(editTopicRequest.Name) > 0 && topic.Name != editTopicRequest.Name {
-		topic_update_data["$set"].(gin.H)["name"] = editTopicRequest.Name
+		topicUpdateData["$set"].(gin.H)["name"] = editTopicRequest.Name
 	}
 
 	// Update set object with is_enabled field, if changed
 	if topic.IsEnabled != editTopicRequest.IsEnabled {
-		topic_update_data["$set"].(gin.H)["is_enabled"] = editTopicRequest.IsEnabled
+		topicUpdateData["$set"].(gin.H)["is_enabled"] = editTopicRequest.IsEnabled
 	}
 
 	// Validation of data change
-	if len(topic_update_data["$set"].(gin.H)) > 0 {
+	if len(topicUpdateData["$set"].(gin.H)) > 0 {
 		// update topic using the helper method
-		err = handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topic_update_data)
+		err = handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		topic, err = fetchTopicByID(handlers.topicHelper, topic.ID.Hex(), communityId)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		// update topic data in elastic search
+		err = handlers.esHelper.UpdateDocument(c, ParseTopicIndexData(topic), topic.ID.Hex(), constants.TopicIndexName)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 
 	// Fetch Updated topic Response
-	topicResponse, err := fetchTopicByIDResponse(handlers, topicId, communityId)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
+	topicResponse := parseTopicResponse(topic)
 
 	// reponse data
 	response := gin.H{
