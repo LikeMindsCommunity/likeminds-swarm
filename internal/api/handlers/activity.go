@@ -18,10 +18,11 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool) ([]interface{}, interface{}, error) {
+	apiRevampV1Check bool) ([]interface{}, interface{}, interface{}, error) {
 
 	response := []interface{}{}
 	userDatas := make(map[string]interface{})
+	topicDatas := map[string]interface{}{}
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
@@ -29,12 +30,12 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
 			apiRevampV1Check)
 		if err != nil {
-			return response, userDatas, err
+			return response, userDatas, topicDatas, err
 		}
 
 		activityText, err := getActivityText(activityUserData, activityEntityData, activity)
 		if err != nil {
-			return response, userDatas, err
+			return response, userDatas, topicDatas, err
 		}
 
 		userActivity := requests.UserActivityResponse{
@@ -72,9 +73,18 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		}
 
 		userDatas[activityUserUID] = activityUserData[activityUserUID]
+
+		if activity.EntityType == constants.Post {
+			topicsData, _ := parseTopicsResponse(handler.topicHelper, activityEntityData.(requests.PostResponse).Topics,
+				activity.CommunityID)
+
+			for topicId, topicData := range topicsData {
+				topicDatas[topicId] = topicData
+			}
+		}
 	}
 
-	return response, userDatas, nil
+	return response, userDatas, topicDatas, nil
 }
 
 func getActivityUserData(activity entities.Activity) (map[string]interface{}, string) {
@@ -474,7 +484,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	}
 
 	// parse user activity response
-	activityResponse, userDatas, err := parseUserActivity(*handlers, activityResults, apiRevampV1Check)
+	activityResponse, userDatas, topicDatas, err := parseUserActivity(*handlers, activityResults, apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -485,6 +495,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 		"success":    true,
 		"activities": activityResponse,
 		"users":      userDatas,
+		"topics":     topicDatas,
 	})
 }
 

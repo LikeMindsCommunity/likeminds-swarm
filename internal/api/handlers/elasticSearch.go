@@ -12,6 +12,7 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 		Id:          Post.ID.Hex(),
 		Text:        Post.Text,
 		Heading:     Post.Heading,
+		TopicIds:    Post.TopicIds,
 		ChatroomId:  Post.ChatroomId,
 		CommunityId: Post.CommunityId,
 		IsPinned:    Post.IsPinned,
@@ -155,4 +156,72 @@ func GetSelfPostFilterQuery(page int, page_size int, search_type string, search 
 		}
 	}
 	`, from, page_size, communityQuery, searchQuery, userQuery)
+}
+
+func ParseTopicIndexData(Topic *entities.Topic) searchElastic.TopicIndex {
+	return searchElastic.TopicIndex{
+		Id:          Topic.ID.Hex(),
+		Name:        Topic.Name,
+		IsEnabled:   Topic.IsEnabled,
+		CommunityId: Topic.CommunityId,
+		CreatedAt:   Topic.CreatedAt,
+		UpdatedAt:   Topic.UpdatedAt,
+	}
+}
+
+// Exposed method to create topic search query
+func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool, isEnabled bool) string {
+	from := pageSize * (page - 1)
+
+	communityQuery := ""
+	if communityId != 0 {
+		communityQuery = fmt.Sprintf(`{
+			"match": {
+				"community_id": {
+					"query": %d
+				}
+			}
+		}`, communityId)
+	}
+
+	isEnabledQuery := ""
+	if filterIsEnabled {
+		isEnabledQuery = fmt.Sprintf(`,{
+			"match": {
+				"is_enabled": {
+					"query": %t
+				}
+			}
+		}`, isEnabled)
+	}
+
+	searchQuery := ""
+	if search != "" && searchType != "" {
+		searchQuery = fmt.Sprintf(`,{
+			"match": {
+				"%s": {
+					"query": "%s",
+					"analyzer": "standard"
+				}
+			}
+		}`, searchType, search)
+	}
+
+	return fmt.Sprintf(`
+	{
+		"from": %d,
+		"size": %d,
+		"sort": [
+			{"name.raw": {"order": "asc"}}
+		],
+		"query": {
+			"bool": {
+				"must": [
+					%s
+					%s
+					%s
+				]
+			}
+		}
+	}`, from, pageSize, communityQuery, isEnabledQuery, searchQuery)
 }

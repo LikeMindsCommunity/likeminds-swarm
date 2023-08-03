@@ -19,3 +19,10 @@ type TopicResponse struct {
 	Name      string             `json:"name"`
 	IsEnabled bool               `json:"is_enabled"`
 }
+
+// Request Structure for Fetch Topic
+type FetchTopicRequest struct {
+	Search     string `form:"search"`
+	SearchType string `form:"search_type"`
+	IsEnabled  string `form:"is_enabled"`
+}
