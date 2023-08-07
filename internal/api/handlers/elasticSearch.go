@@ -8,7 +8,7 @@ import (
 )
 
 func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
-	return searchElastic.PostIndex{
+	postEntity := searchElastic.PostIndex{
 		Id:          Post.ID.Hex(),
 		Text:        Post.Text,
 		Heading:     Post.Heading,
@@ -21,6 +21,12 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 		CreatedAt:   Post.CreatedAt,
 		UpdatedAt:   Post.UpdatedAt,
 	}
+
+	if Post.OriginalAuthorUUID != "" {
+		postEntity.OriginalAuthorUUID = Post.OriginalAuthorUUID
+	}
+
+	return postEntity
 }
 
 // Exposed method to create post search query
