@@ -462,6 +462,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	UserIsCM := createPostRequest.User_is_cm
+
 	// strip text to check if it is empty
 	createPostRequest.Text = strings.Trim(createPostRequest.Text, " ")
 
@@ -497,7 +499,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// if on_behalf_of_uuid is not empty
 	if createPostRequest.On_behalf_of_uuid != "" {
 		// Validate if user is cm or not
-		if !createPostRequest.User_is_cm {
+		if !UserIsCM {
 			utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 			return
 		}
@@ -565,7 +567,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// fetch post response data
 	fetchPostData, err := fetchPostData(handlers, postId.(primitive.ObjectID).Hex(), communityId,
-		filterOptions, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode],
+		filterOptions, headers[utils.HeadersMemberId], UserIsCM, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err == nil {
 		response["post"] = fetchPostData
