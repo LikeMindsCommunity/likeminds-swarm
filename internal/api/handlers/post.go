@@ -281,10 +281,6 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 		response.DeletedByUUID = post.DeletedBy
 	}
 
-	if post.OriginalAuthorUUID != "" {
-		response.OriginalAuthorUUID = post.OriginalAuthorUUID
-	}
-
 	response.CreatedAt = int(post.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
 
