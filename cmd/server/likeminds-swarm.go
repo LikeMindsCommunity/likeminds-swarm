@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-redis/redis/v7"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-contrib/cors"
@@ -22,7 +24,8 @@ import (
 )
 
 var (
-	router *gin.Engine
+	redisCache *redis.Client
+	router     *gin.Engine
 )
 
 // Internal Method to initiate the server
@@ -30,6 +33,7 @@ func main() {
 	var AppVersion string = "0.12.1"
 
 	initGin()
+	redisCache = cache.InitRedis()
 	db := database.InitiateDB()
 	es := searchElastic.InitiateES()
 
