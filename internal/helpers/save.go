@@ -11,11 +11,11 @@ import (
 )
 
 // Exposed Helper Method to Create Save Instance
-func (helper *saveHelper) CreateSaveHelper(entity_type string, entity_id primitive.ObjectID, saved_by string, community_id int) (interface{}, error) {
-	save := entities.NewSave(entity_type, entity_id, saved_by, community_id)
-	save_id, err := helper.saveRepository.Create(&save)
+func (helper *saveHelper) CreateSaveHelper(entityType string, entityId primitive.ObjectID, savedBy string, communityId int) (interface{}, error) {
+	save := entities.NewSave(entityType, entityId, savedBy, communityId)
+	saveId, err := helper.saveRepository.Create(&save)
 
-	return save_id, err
+	return saveId, err
 }
 
 // Exposed Helper Method to Find Saves
@@ -43,16 +43,16 @@ func (helper *saveHelper) FindSaveHelper(filter map[string]interface{}, filterOp
 }
 
 // Exposed Helper Method to Update Saves
-func (helper *saveHelper) UpdateSaveByIdHelper(activity_id primitive.ObjectID, update map[string]interface{}) error {
-	set_data := gin.H{}
+func (helper *saveHelper) UpdateSaveByIdHelper(activityId primitive.ObjectID, update map[string]interface{}) error {
+	setData := gin.H{}
 
 	if _, ok := update["$set"]; ok {
-		set_data = update["$set"].(gin.H)
+		setData = update["$set"].(gin.H)
 	}
-	set_data["updated_at"] = time.Now()
-	update["$set"] = set_data
+	setData["updated_at"] = time.Now()
+	update["$set"] = setData
 
-	err := helper.saveRepository.Update(gin.H{"_id": activity_id}, update)
+	err := helper.saveRepository.Update(gin.H{"_id": activityId}, update)
 
 	return err
 }

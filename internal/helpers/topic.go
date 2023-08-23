@@ -16,9 +16,9 @@ func (helper *topicHelper) CreateTopicHelper(name string, is_enabled bool, commu
 	topic := entities.NewTopic(name, is_enabled, community_id)
 
 	// Insert the document in the collection
-	topic_id, err := helper.topicRepository.Create(topic)
+	topicId, err := helper.topicRepository.Create(topic)
 
-	return topic_id, err
+	return topicId, err
 }
 
 // Exposed Helper Method to Find Topics
@@ -48,14 +48,14 @@ func (helper *topicHelper) FindTopicHelper(filter map[string]interface{}, filter
 
 // Exposed Helper Method to Update Topics
 func (helper *topicHelper) UpdateTopicByIdHelper(topic_id primitive.ObjectID, update map[string]interface{}) error {
-	set_data := gin.H{}
+	setData := gin.H{}
 
 	// Create set filter
 	if _, ok := update["$set"]; ok {
-		set_data = update["$set"].(gin.H)
+		setData = update["$set"].(gin.H)
 	}
-	set_data["updated_at"] = time.Now()
-	update["$set"] = set_data
+	setData["updated_at"] = time.Now()
+	update["$set"] = setData
 
 	// Update the document in the collection
 	err := helper.topicRepository.Update(gin.H{"_id": topic_id}, update)

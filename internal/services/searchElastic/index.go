@@ -33,6 +33,23 @@ type TopicIndex struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// Struct for Elasticsearch Custom Widget Index fields
+type CustomWidgetIndex struct {
+	Id               string      `json:"id"`
+	CreatedByLM      bool        `json:"created_by_lm"`
+	ParentEntityID   string      `json:"parent_entity_id"`
+	ParentEntityType string      `json:"parent_entity_type"`
+	MetaData         interface{} `json:"metadata"`
+	CommunityId      int         `json:"community_id"`
+	CreatedAt        time.Time   `json:"created_at"`
+	UpdatedAt        time.Time   `json:"updated_at"`
+}
+
+// type CustomWidgetIndex struct {
+// 	Data     CustomWidgetData `json:"data"`
+// 	FlatData []interface{}    `json:"flat_data"`
+// }
+
 var IndexMapping = map[string]string{
 	constants.PostIndexName: `
 	{
@@ -110,6 +127,17 @@ var IndexMapping = map[string]string{
 							"type": "keyword"
 						}
 					}
+				}
+			}
+		}
+	}
+	`,
+	constants.CustomWidgetIndexName: `
+	{
+		"mappings": {
+			"properties": {
+				"metadata": {
+					"type": "flattened"
 				}
 			}
 		}

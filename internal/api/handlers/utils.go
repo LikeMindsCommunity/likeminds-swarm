@@ -22,27 +22,29 @@ const (
 
 // Feed Handlers structure for all Helper classes
 type FeedHandlers struct {
-	likeHelper     interfaces.LikeHelper
-	commentHelper  interfaces.CommentHelper
-	postHelper     interfaces.PostHelper
-	activityHelper interfaces.ActivityHelper
-	saveHelper     interfaces.SaveHelper
-	topicHelper    interfaces.TopicHelper
-	esHelper       searchElastic.EsHelper
+	likeHelper         interfaces.LikeHelper
+	commentHelper      interfaces.CommentHelper
+	postHelper         interfaces.PostHelper
+	activityHelper     interfaces.ActivityHelper
+	saveHelper         interfaces.SaveHelper
+	topicHelper        interfaces.TopicHelper
+	customWidgetHelper interfaces.CustomWidgetHelper
+	esHelper           searchElastic.EsHelper
 }
 
 // Exposed Method to get an instance for Feed Handlers
 func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, postHelper interfaces.PostHelper,
 	saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, topicHelper interfaces.TopicHelper,
-	esHelper searchElastic.EsHelper) *FeedHandlers {
+	customWidgetHelper interfaces.CustomWidgetHelper, esHelper searchElastic.EsHelper) *FeedHandlers {
 	return &FeedHandlers{
-		likeHelper:     likeHelper,
-		commentHelper:  commentHelper,
-		postHelper:     postHelper,
-		saveHelper:     saveHelper,
-		activityHelper: activityHelper,
-		topicHelper:    topicHelper,
-		esHelper:       esHelper,
+		likeHelper:         likeHelper,
+		commentHelper:      commentHelper,
+		postHelper:         postHelper,
+		saveHelper:         saveHelper,
+		activityHelper:     activityHelper,
+		topicHelper:        topicHelper,
+		customWidgetHelper: customWidgetHelper,
+		esHelper:           esHelper,
 	}
 }
 
