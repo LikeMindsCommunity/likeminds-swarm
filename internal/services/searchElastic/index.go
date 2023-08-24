@@ -45,11 +45,6 @@ type CustomWidgetIndex struct {
 	UpdatedAt        time.Time   `json:"updated_at"`
 }
 
-// type CustomWidgetIndex struct {
-// 	Data     CustomWidgetData `json:"data"`
-// 	FlatData []interface{}    `json:"flat_data"`
-// }
-
 var IndexMapping = map[string]string{
 	constants.PostIndexName: `
 	{
