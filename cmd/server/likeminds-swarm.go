@@ -27,7 +27,7 @@ var (
 
 // Internal Method to initiate the server
 func main() {
-	var AppVersion string = "0.12.1"
+	var AppVersion string = "1.0.0"
 
 	initGin()
 	db := database.InitiateDB()

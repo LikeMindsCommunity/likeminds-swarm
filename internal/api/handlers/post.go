@@ -437,6 +437,12 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
 
+	// Post owner user_id
+	postUserId := headers[utils.HeadersMemberId]
+
+	// Set OriginalAuthorUUID to empty string for new posts
+	OriginalAuthorUUID := ""
+
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
@@ -451,6 +457,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
+
+	UserIsCM := createPostRequest.User_is_cm
 
 	// strip text to check if it is empty
 	createPostRequest.Text = strings.Trim(createPostRequest.Text, " ")
@@ -484,11 +492,23 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		}
 	}
 
+	// if on_behalf_of_uuid is not empty
+	if createPostRequest.On_behalf_of_uuid != "" {
+		// Validate if user is cm or not
+		if !UserIsCM {
+			utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+			return
+		}
+
+		// update postUserId and OriginalAuthorUUID
+		OriginalAuthorUUID = postUserId
+		postUserId = createPostRequest.On_behalf_of_uuid
+	}
+
 	// create post using the helper method
-	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text,
-		createPostRequest.Heading, communityId, headers[utils.HeadersMemberId],
-		createPostRequest.Attachments, createPostRequest.ChatroomID, createPostRequest.TempID,
-		topicIDs)
+	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading,
+		communityId, postUserId, createPostRequest.Attachments, createPostRequest.ChatroomID,
+		createPostRequest.TempID, topicIDs, OriginalAuthorUUID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -513,10 +533,11 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	for _, member := range taggedMembers {
 		// create tag activity
-		activityID, err := handlers.CreateActivity(communityId, []string{headers[utils.HeadersMemberId]}, member, constants.Post, postId.(primitive.ObjectID), headers[utils.HeadersMemberId], constants.TaggedInPost, gin.H{
-			"entity_type": constants.PostEntityType,
-			"post_id":     postId.(primitive.ObjectID).Hex(),
-		}, false, false)
+		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post, postId.(primitive.ObjectID), postUserId,
+			constants.TaggedInPost, gin.H{
+				"entity_type": constants.PostEntityType,
+				"post_id":     postId.(primitive.ObjectID).Hex(),
+			}, false, false)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -542,7 +563,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// fetch post response data
 	fetchPostData, err := fetchPostData(handlers, postId.(primitive.ObjectID).Hex(), communityId,
-		filterOptions, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode],
+		filterOptions, headers[utils.HeadersMemberId], UserIsCM, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err == nil {
 		response["post"] = fetchPostData

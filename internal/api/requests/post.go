@@ -36,13 +36,15 @@ type Attachment struct {
 
 // Request Structure for Create Post
 type CreatePostRequest struct {
-	Text        string       `json:"text"`
-	Heading     string       `json:"heading"`
-	TempID      *string      `json:"temp_id"`
-	TopicIds    []string     `json:"topic_ids"`
-	Attachments []Attachment `json:"attachments"`
-	ChatroomID  int          `json:"feedroom_id"`
-	UUIDs       []string     `json:"uuids"`
+	Text              string       `json:"text"`
+	Heading           string       `json:"heading"`
+	TempID            *string      `json:"temp_id"`
+	TopicIds          []string     `json:"topic_ids"`
+	Attachments       []Attachment `json:"attachments"`
+	ChatroomID        int          `json:"feedroom_id"`
+	UUIDs             []string     `json:"uuids"`
+	On_behalf_of_uuid string       `json:"on_behalf_of_uuid,omitempty"`
+	User_is_cm        bool         `json:"user_is_cm,omitempty"`
 }
 
 // Request Structure for Edit Post
@@ -62,29 +64,30 @@ type DeletePostRequest struct {
 
 // Resonse Structure for Post
 type PostResponse struct {
-	ID            primitive.ObjectID    `json:"_id"`
-	TempID        *string               `json:"temp_id"`
-	Topics        []primitive.ObjectID  `json:"topics"`
-	Text          string                `json:"text"`
-	Heading       string                `json:"heading"`
-	CommunityId   int                   `json:"community_id,omitempty"`
-	ChatroomId    int                   `json:"feedroom_id,omitempty"`
-	IsPinned      bool                  `json:"is_pinned"`
-	UserId        string                `json:"user_id,omitempty"`
-	UUID          string                `json:"uuid,omitempty"`
-	Attachments   []entities.Attachment `json:"attachments"`
-	LikesCount    int                   `json:"likes_count"`
-	CommentsCount int                   `json:"comments_count"`
-	IsDeleted     bool                  `json:"is_deleted,omitempty"`
-	IsEdited      bool                  `json:"is_edited"`
-	DeletedBy     string                `json:"deleted_by,omitempty"`
-	DeletedByUUID string                `json:"deleted_by_uuid,omitempty"`
-	DeleteReason  string                `json:"delete_reason,omitempty"`
-	IsLiked       bool                  `json:"is_liked"`
-	IsSaved       bool                  `json:"is_saved"`
-	MenuItems     []MenuResponse        `json:"menu_items"`
-	CreatedAt     int                   `json:"created_at"`
-	UpdatedAt     int                   `json:"updated_at"`
+	ID                 primitive.ObjectID    `json:"_id"`
+	TempID             *string               `json:"temp_id"`
+	Topics             []primitive.ObjectID  `json:"topics"`
+	Text               string                `json:"text"`
+	Heading            string                `json:"heading"`
+	CommunityId        int                   `json:"community_id,omitempty"`
+	ChatroomId         int                   `json:"feedroom_id,omitempty"`
+	IsPinned           bool                  `json:"is_pinned"`
+	UserId             string                `json:"user_id,omitempty"`
+	UUID               string                `json:"uuid,omitempty"`
+	Attachments        []entities.Attachment `json:"attachments"`
+	LikesCount         int                   `json:"likes_count"`
+	CommentsCount      int                   `json:"comments_count"`
+	IsDeleted          bool                  `json:"is_deleted,omitempty"`
+	IsEdited           bool                  `json:"is_edited"`
+	OriginalAuthorUUID string                `json:"original_author_uuid,omitempty"`
+	DeletedBy          string                `json:"deleted_by,omitempty"`
+	DeletedByUUID      string                `json:"deleted_by_uuid,omitempty"`
+	DeleteReason       string                `json:"delete_reason,omitempty"`
+	IsLiked            bool                  `json:"is_liked"`
+	IsSaved            bool                  `json:"is_saved"`
+	MenuItems          []MenuResponse        `json:"menu_items"`
+	CreatedAt          int                   `json:"created_at"`
+	UpdatedAt          int                   `json:"updated_at"`
 }
 
 // Response Structure for Menu Item of an Entity
