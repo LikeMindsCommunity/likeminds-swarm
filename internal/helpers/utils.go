@@ -56,20 +56,20 @@ func mergeFilterOptions(filterOptions map[string]interface{}) options.FindOption
 }
 
 // Helper Method to convert Multiple Ids to Object Ids without throwing error
-func ConvertIdsToObjectIds(list_ids []string) []primitive.ObjectID {
+func ConvertIdsToObjectIds(listIds []string) []primitive.ObjectID {
 
-	hex_ids := make([]primitive.ObjectID, len(list_ids))
+	hexIds := make([]primitive.ObjectID, len(listIds))
 
-	for i, id := range list_ids {
-		hex_ids[i], _ = primitive.ObjectIDFromHex(id)
+	for i, id := range listIds {
+		hexIds[i], _ = primitive.ObjectIDFromHex(id)
 	}
 
-	return hex_ids
+	return hexIds
 }
 
 // Helper method to check if string is a valid URL or not
-func IsValidURL(url_string string) bool {
-	u, err := url.Parse(url_string)
+func IsValidURL(urlString string) bool {
+	u, err := url.Parse(urlString)
 
 	if err != nil || u.Host == "" || u.Scheme == "" {
 		return false

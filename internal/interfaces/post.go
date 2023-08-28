@@ -22,10 +22,10 @@ type PostRepository interface {
 type PostHelper interface {
 	CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
 		chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string) (interface{}, error)
-	EditPostHelper(post_id primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
+	EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
 		topicIds []primitive.ObjectID) error
 	FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error)
-	UpdatePostByIdHelper(post_id primitive.ObjectID, update map[string]interface{}) error
+	UpdatePostByIdHelper(postId primitive.ObjectID, update map[string]interface{}) error
 	CountPostHelper(filter map[string]interface{}) (int64, error)
 	AggregatePostHelper(query []map[string]interface{}) ([]gin.H, error)
 }

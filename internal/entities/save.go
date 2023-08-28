@@ -19,15 +19,15 @@ type Save struct {
 }
 
 // Exposed Method to Create a New Save Instance
-func NewSave(entity_type string, entity_id primitive.ObjectID, saved_by string, community_id int) Save {
-	created_at := time.Now()
+func NewSave(entityType string, entityId primitive.ObjectID, savedBy string, communityId int) Save {
+	createdAt := time.Now()
 	return Save{
-		EntityType:  entity_type,
-		EntityId:    entity_id,
-		CommunityId: community_id,
-		SavedBy:     saved_by,
+		EntityType:  entityType,
+		EntityId:    entityId,
+		CommunityId: communityId,
+		SavedBy:     savedBy,
 		IsDeleted:   false,
-		CreatedAt:   created_at,
-		UpdatedAt:   created_at,
+		CreatedAt:   createdAt,
+		UpdatedAt:   createdAt,
 	}
 }
