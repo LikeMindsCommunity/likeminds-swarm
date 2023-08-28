@@ -47,7 +47,7 @@ func main() {
 	saveRepository := repositories.NewSaveRepository(db)
 	activityRepository := repositories.NewActivityRepository(db)
 	topicRepository := repositories.NewTopicRepository(db)
-	customWidgetRepository := repositories.NewCustomRepository(db)
+	customWidgetRepository := repositories.NewCustomWidgetRepository(db)
 
 	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)

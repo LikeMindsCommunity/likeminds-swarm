@@ -32,7 +32,7 @@ type customWidgetRepository struct {
 }
 
 // Exposed Method to Create New CustomWidget Repository
-func NewCustomRepository(db *mongo.Database) interfaces.CustomWidgetRepository {
+func NewCustomWidgetRepository(db *mongo.Database) interfaces.CustomWidgetRepository {
 	return &customWidgetRepository{
 		db: db,
 	}

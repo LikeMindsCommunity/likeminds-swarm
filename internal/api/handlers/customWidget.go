@@ -108,7 +108,7 @@ func processCustomWidgetSearchData(handlers *FeedHandlers, data map[string]inter
 		customWidgetData := data.(map[string]interface{})["_source"].(map[string]interface{})
 		customWidgetData["_id"] = customWidgetData["id"]
 
-		// convert the data to topic entity
+		// convert the data to custom widget entity
 		var customWidget entities.CustomWidget
 		b, _ := json.Marshal(customWidgetData)
 		json.Unmarshal(b, &customWidget)
@@ -118,7 +118,7 @@ func processCustomWidgetSearchData(handlers *FeedHandlers, data map[string]inter
 
 	customWidgetResponse := []requests.CustomWidgetResponse{}
 
-	// Parse all fetched topics Data
+	// Parse all fetched custom Widget Data
 	for _, customWidget := range customWidgetList {
 		customWidgetResponse = append(customWidgetResponse, parseCustomWidgetResponse(&customWidget))
 	}
@@ -174,7 +174,7 @@ func (handlers *FeedHandlers) FetchCustomWidget(c *gin.Context) {
 	c.JSON(http.StatusOK, finalParsedResponse)
 }
 
-// Exposed Method to Edit a Topic
+// Exposed Method to Edit a Custom Widget
 func (handlers *FeedHandlers) EditCustomWidget(c *gin.Context) {
 	// fetch url params
 	widgetId := c.Param("widget_id")
