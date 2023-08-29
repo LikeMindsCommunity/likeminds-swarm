@@ -17,14 +17,15 @@ type SDKClientInfo struct {
 
 // Structure for Member Meta Object
 type MemberMeta struct {
-	Id            int           `json:"id"`
-	Name          string        `json:"name"`
-	ImageUrl      string        `json:"image_url"`
-	UserUniqueId  string        `json:"user_unique_id"`
-	UUID          string        `json:"uuid"`
-	IsGuest       bool          `json:"is_guest"`
-	CustomTitle   string        `json:"custom_title"`
-	SDKClientInfo SDKClientInfo `json:"sdk_client_info"`
+	Id              int           `json:"id"`
+	Name            string        `json:"name"`
+	ImageUrl        string        `json:"image_url"`
+	UserUniqueId    string        `json:"user_unique_id"`
+	UUID            string        `json:"uuid"`
+	IsGuest         bool          `json:"is_guest"`
+	CustomTitle     string        `json:"custom_title"`
+	SDKClientInfo   SDKClientInfo `json:"sdk_client_info"`
+	QuestionAnswers []interface{} `json:"question_answers"`
 }
 
 // Structure for Member Meta Response

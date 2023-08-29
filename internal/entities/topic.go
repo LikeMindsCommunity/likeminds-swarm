@@ -17,13 +17,13 @@ type Topic struct {
 }
 
 // Exposed Method to Create a New Topic Instance
-func NewTopic(name string, is_enabled bool, community_id int) Topic {
-	created_at := time.Now()
+func NewTopic(name string, isEnabled bool, communityId int) Topic {
+	createdAt := time.Now()
 	return Topic{
 		Name:        name,
-		IsEnabled:   is_enabled,
-		CommunityId: community_id,
-		CreatedAt:   created_at,
-		UpdatedAt:   created_at,
+		IsEnabled:   isEnabled,
+		CommunityId: communityId,
+		CreatedAt:   createdAt,
+		UpdatedAt:   createdAt,
 	}
 }

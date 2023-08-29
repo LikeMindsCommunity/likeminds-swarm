@@ -17,8 +17,8 @@ type TopicRepository interface {
 
 // Interface for Topic Helper
 type TopicHelper interface {
-	CreateTopicHelper(name string, is_enabled bool, community_id int) (interface{}, error)
+	CreateTopicHelper(name string, isEnabled bool, communityId int) (interface{}, error)
 	FindTopicHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Topic, error)
-	UpdateTopicByIdHelper(topic_id primitive.ObjectID, update map[string]interface{}) error
+	UpdateTopicByIdHelper(topicId primitive.ObjectID, update map[string]interface{}) error
 	CountTopicHelper(filter map[string]interface{}) (int64, error)
 }
