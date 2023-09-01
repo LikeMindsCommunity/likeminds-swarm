@@ -31,11 +31,12 @@ func parseCustomWidgetResponse(customWidget *entities.CustomWidget) requests.Cus
 }
 
 // Internal Method to fetch custom widget using custom widget id and communityId
-func fetchCustomWidgetByID(helper interfaces.CustomWidgetHelper, customWidgetId string, communityId int) (*entities.CustomWidget, error) {
+func fetchCustomWidgetByID(helper interfaces.CustomWidgetHelper, customWidgetId string, communityId int, isLMCreated bool) (*entities.CustomWidget, error) {
 	// custom widget filter data
 	customWidgetFilterData := gin.H{
-		"_id":          customWidgetId,
-		"community_id": communityId,
+		"_id":           customWidgetId,
+		"community_id":  communityId,
+		"created_by_lm": isLMCreated,
 	}
 
 	// fetch custom widget using helper method
@@ -75,7 +76,7 @@ func (handlers *FeedHandlers) CreateCustomWidget(c *gin.Context) {
 		return
 	}
 
-	customWidgetData, err := fetchCustomWidgetByID(handlers.customWidgetHelper, customWidgetId.(primitive.ObjectID).Hex(), communityId)
+	customWidgetData, err := fetchCustomWidgetByID(handlers.customWidgetHelper, customWidgetId.(primitive.ObjectID).Hex(), communityId, false)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -193,7 +194,7 @@ func (handlers *FeedHandlers) EditCustomWidget(c *gin.Context) {
 	}
 
 	// fetch custom Widget using widget_id
-	customWidget, err := fetchCustomWidgetByID(handlers.customWidgetHelper, widgetId, communityId)
+	customWidget, err := fetchCustomWidgetByID(handlers.customWidgetHelper, widgetId, communityId, false)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -218,7 +219,7 @@ func (handlers *FeedHandlers) EditCustomWidget(c *gin.Context) {
 			return
 		}
 
-		customWidget, err = fetchCustomWidgetByID(handlers.customWidgetHelper, customWidget.ID.Hex(), communityId)
+		customWidget, err = fetchCustomWidgetByID(handlers.customWidgetHelper, customWidget.ID.Hex(), communityId, false)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
