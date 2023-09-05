@@ -21,8 +21,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Internal Method to process attachments for custom widgets
-func processAttachmentsForCustomWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
+// Internal Method to process attachments for widgets
+func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
 	postId string, communityId int) ([]requests.Attachment, bool) {
 	// process attachments for custom widgets
 	updatedAttachments := []requests.Attachment{}
@@ -586,8 +586,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// process attachments for custom widgets
-	updatedAttachments, ok := processAttachmentsForCustomWidgets(c, handlers, createPostRequest.Attachments,
+	// process attachments for widgets
+	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, createPostRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId)
 	if !ok {
 		return
@@ -837,8 +837,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		}
 	}
 
-	// process attachments for custom widgets
-	updatedAttachments, ok := processAttachmentsForCustomWidgets(c, handlers, editPostRequest.Attachments, postId, communityId)
+	// process attachments for widgets
+	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId)
 	if !ok {
 		return
 	}
