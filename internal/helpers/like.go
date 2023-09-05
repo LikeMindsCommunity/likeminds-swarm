@@ -11,11 +11,11 @@ import (
 )
 
 // Exposed Helper Method to Create a Like
-func (helper *likeHelper) CreateLikeHelper(entity_type string, entity_id primitive.ObjectID, liked_by string) (interface{}, error) {
-	like := entities.NewLike(entity_type, entity_id, liked_by)
-	like_id, err := helper.likeRepository.Create(&like)
+func (helper *likeHelper) CreateLikeHelper(entityType string, entityId primitive.ObjectID, likedBy string) (interface{}, error) {
+	like := entities.NewLike(entityType, entityId, likedBy)
+	likeId, err := helper.likeRepository.Create(&like)
 
-	return like_id, err
+	return likeId, err
 }
 
 // Exposed Helper Method to Find Likes
@@ -43,16 +43,16 @@ func (helper *likeHelper) FindLikeHelper(filter map[string]interface{}, filterOp
 }
 
 // Exposed Helper Method to Update Likes
-func (helper *likeHelper) UpdateLikeByIdHelper(like_id primitive.ObjectID, update map[string]interface{}) error {
-	set_data := gin.H{}
+func (helper *likeHelper) UpdateLikeByIdHelper(likeId primitive.ObjectID, update map[string]interface{}) error {
+	setData := gin.H{}
 
 	if _, ok := update["$set"]; ok {
-		set_data = update["$set"].(gin.H)
+		setData = update["$set"].(gin.H)
 	}
-	set_data["updated_at"] = time.Now()
-	update["$set"] = set_data
+	setData["updated_at"] = time.Now()
+	update["$set"] = setData
 
-	err := helper.likeRepository.Update(gin.H{"_id": like_id}, update)
+	err := helper.likeRepository.Update(gin.H{"_id": likeId}, update)
 
 	return err
 }

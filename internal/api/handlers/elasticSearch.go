@@ -231,3 +231,58 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		}
 	}`, from, pageSize, communityQuery, isEnabledQuery, searchQuery)
 }
+
+func ParseCustomWidgetIndexData(CustomWidget *entities.CustomWidget) searchElastic.CustomWidgetIndex {
+	return searchElastic.CustomWidgetIndex{
+		Id:               CustomWidget.ID.Hex(),
+		CreatedByLM:      CustomWidget.CreatedByLM,
+		ParentEntityID:   CustomWidget.ParentEntityID,
+		ParentEntityType: CustomWidget.ParentEntityType,
+		MetaData:         CustomWidget.MetaData,
+		CommunityId:      CustomWidget.CommunityId,
+		CreatedAt:        CustomWidget.CreatedAt,
+		UpdatedAt:        CustomWidget.UpdatedAt,
+	}
+}
+
+// Exposed method to create custom widget search query
+func GetCustomWidgetFilterQuery(page int, pageSize int, communityId int, searchKey string, searchValue string) string {
+	from := pageSize * (page - 1)
+
+	communityQuery := ""
+	if communityId != 0 {
+		communityQuery = fmt.Sprintf(`{
+			"match": {
+				"community_id": {
+					"query": %d
+				}
+			}
+		}`, communityId)
+	}
+
+	searchQuery := ""
+	if searchKey != "" && searchValue != "" {
+		searchQuery = fmt.Sprintf(`,{
+			"term": {
+				%s: %s
+			}
+		}`, searchKey, searchValue)
+	}
+
+	return fmt.Sprintf(`
+	{
+		"from": %d,
+		"size": %d,
+		"sort": [
+			{"updated_at": {"order": "desc"}}
+		],
+		"query": {
+			"bool": {
+				"must": [
+					%s
+					%s
+				]
+			}
+		}
+	}`, from, pageSize, communityQuery, searchQuery)
+}

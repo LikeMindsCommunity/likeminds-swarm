@@ -30,7 +30,7 @@ var (
 
 // Internal Method to initiate the server
 func main() {
-	var AppVersion string = "0.12.1"
+	var AppVersion string = "1.1.0"
 
 	initGin()
 	redisCache = cache.InitRedis()
@@ -51,6 +51,7 @@ func main() {
 	saveRepository := repositories.NewSaveRepository(db)
 	activityRepository := repositories.NewActivityRepository(db)
 	topicRepository := repositories.NewTopicRepository(db)
+	customWidgetRepository := repositories.NewCustomWidgetRepository(db)
 
 	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)
@@ -59,12 +60,14 @@ func main() {
 	saveHelper := helpers.NewSaveHelper(saveRepository)
 	activityHelper := helpers.NewActivityHelper(activityRepository)
 	topicHelper := helpers.NewTopicHelper(topicRepository)
+	customWidgetHepler := helpers.NewCustomWidgetHelper(customWidgetRepository)
 
 	// Dependency injection of elasticSearch Helper
 	esHelper := searchElastic.NewESHelper(es)
 
 	// New feed Handler
-	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper, topicHelper, esHelper)
+	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper,
+		topicHelper, customWidgetHepler, esHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)
@@ -72,6 +75,7 @@ func main() {
 	routes.UserRouter(routerGroup, feedHandlers)
 	routes.FeedRouter(routerGroup, feedHandlers)
 	routes.TopicRouter(routerGroup, feedHandlers)
+	routes.CustomWidgetRouter(routerGroup, feedHandlers)
 
 	// Run Scripts
 	// scripts.RunScripts(feedHandlers)

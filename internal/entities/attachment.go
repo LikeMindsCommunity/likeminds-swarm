@@ -41,7 +41,7 @@ func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachme
 }
 
 // Exposed Method to Create New Attachment Meta
-func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, thumbnail_url string,
+func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, thumbnailUrl string,
 	ogTags OGTags) AttachmentMeta {
 	return AttachmentMeta{
 		Name:         name,
@@ -50,7 +50,7 @@ func NewAttachmentMeta(name string, url string, format string, size int, duratio
 		Size:         size,
 		Duration:     duration,
 		PageCount:    pageCount,
-		ThumbnailUrl: thumbnail_url,
+		ThumbnailUrl: thumbnailUrl,
 		OgTags:       &ogTags,
 	}
 }
