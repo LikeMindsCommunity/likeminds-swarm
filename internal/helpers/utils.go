@@ -77,3 +77,18 @@ func IsValidURL(urlString string) bool {
 
 	return true
 }
+
+// Helper method to check if strings are valid URLs or not
+func AreValidURLs(urlStrings []string) string {
+	for _, urlString := range urlStrings {
+		if urlString != "" {
+			isValid := IsValidURL(urlString)
+
+			if !isValid {
+				return "Invalid url in attachments meta_data: " + urlString
+			}
+		}
+	}
+
+	return ""
+}

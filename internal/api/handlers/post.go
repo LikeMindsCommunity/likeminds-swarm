@@ -21,6 +21,72 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to process attachments for custom widgets
+func processAttachmentsForCustomWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
+	postId string, communityId int) ([]requests.Attachment, bool) {
+	// process attachments for custom widgets
+	updatedAttachments := []requests.Attachment{}
+
+	for _, attachment := range attachments {
+		isLMCreatedCustomWidget := false
+
+		switch attachment.AttachmentType {
+		case enums.PollWidget, enums.ArticleWidget:
+			isLMCreatedCustomWidget = true
+		}
+
+		switch attachment.Type {
+		case enums.PollType, enums.ArticleType:
+			isLMCreatedCustomWidget = true
+		}
+
+		if isLMCreatedCustomWidget {
+			// meta data conversion to desired type
+			metaData := map[string]interface{}{}
+			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
+			_ = json.Unmarshal(convertedMetaData, &metaData)
+
+			// Edit the metadata keys in case entity_id already exists in LM Created widget
+			if attachment.AttachmentMeta.EntityID != "" {
+				delete(metaData, "entity_id")
+
+				// update widget from given metadata
+				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, communityId)
+				if !ok {
+					return nil, false
+				}
+
+				updatedAttachments = append(updatedAttachments, attachment)
+
+				// Else create a new LM Created widget
+			} else {
+
+				// create widget from given metadata
+				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, communityId)
+				if !ok {
+					return nil, false
+				}
+
+				// creating updated attachment
+				updatedAttachment := requests.Attachment{
+					AttachmentType: attachment.AttachmentType,
+					AttachmentMeta: requests.AttachmentMeta{
+						EntityID: widgetData.ID.Hex(),
+					},
+				}
+
+				updatedAttachments = append(updatedAttachments, updatedAttachment)
+			}
+
+			// Else do nothing
+		} else {
+			updatedAttachments = append(updatedAttachments, attachment)
+		}
+	}
+
+	return updatedAttachments, true
+}
+
 // Internal Method to parse Post Attachments
 func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	platformCode string, apiRevampV1Check bool) []entities.Attachment {
@@ -92,33 +158,18 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 			}
 
 			// validate attachment urls if present
-			if attachments[i].AttachmentMeta.Url != "" {
-				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.Url)
-
-				if !is_valid {
-					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.Url)
-					return false
-				}
+			urlArray := []string{
+				attachments[i].AttachmentMeta.Url,
+				attachments[i].AttachmentMeta.ThumbnailUrl,
+				attachments[i].AttachmentMeta.OgTags.Url,
+				attachments[i].AttachmentMeta.CoverImageUrl,
 			}
 
-			if attachments[i].AttachmentMeta.ThumbnailUrl != "" {
-				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.ThumbnailUrl)
-
-				if !is_valid {
-					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.ThumbnailUrl)
-					return false
-				}
+			err := helpers.AreValidURLs(urlArray)
+			if err != "" {
+				utils.GeneralAPIValidationError(c, err)
+				return false
 			}
-
-			if attachments[i].AttachmentMeta.OgTags.Url != "" {
-				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.OgTags.Url)
-
-				if !is_valid {
-					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.OgTags.Url)
-					return false
-				}
-			}
-
 		}
 
 	}
@@ -163,6 +214,27 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 			if element.AttachmentMeta.OgTags.Url == "" {
 				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
 				return false
+			}
+
+		case enums.CustomWidget:
+			if element.AttachmentMeta.EntityID == "" {
+				utils.GeneralAPIValidationError(c, "Send entity_id in attachment_meta for custom widget")
+				return false
+			}
+
+		case enums.ArticleWidget:
+			if element.AttachmentMeta.Body == "" {
+				utils.GeneralAPIValidationError(c, "Send body in attachment_meta for article")
+				return false
+			}
+
+			if element.AttachmentMeta.Title == "" {
+				utils.GeneralAPIValidationError(c, "Send title in attachment_meta for article")
+				return false
+			}
+
+			if element.AttachmentMeta.CoverImageUrl == "" {
+				utils.GeneralAPIValidationError(c, "Send cover_image_url in attachment_meta for article")
 			}
 
 		default:
@@ -514,6 +586,21 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// process attachments for custom widgets
+	updatedAttachments, ok := processAttachmentsForCustomWidgets(c, handlers, createPostRequest.Attachments,
+		postId.(primitive.ObjectID).Hex(), communityId)
+	if !ok {
+		return
+	}
+
+	// update post data using helper method
+	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), createPostRequest.Text,
+		createPostRequest.Heading, updatedAttachments, topicIDs)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
 	// fetch post data using new post_id
 	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
 	if err != nil {
@@ -750,8 +837,14 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		}
 	}
 
+	// process attachments for custom widgets
+	updatedAttachments, ok := processAttachmentsForCustomWidgets(c, handlers, editPostRequest.Attachments, postId, communityId)
+	if !ok {
+		return
+	}
+
 	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments,
+	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
 		topicIDs)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
