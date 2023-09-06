@@ -235,6 +235,7 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 
 			if element.AttachmentMeta.CoverImageUrl == "" {
 				utils.GeneralAPIValidationError(c, "Send cover_image_url in attachment_meta for article")
+				return false
 			}
 
 		default:
@@ -333,7 +334,13 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 
 	if post, ok := response.(gin.H)["post"]; ok {
 		for _, attachment := range post.(requests.FetchPostResponse).Attachments {
-			entityId := attachment.AttachmentMeta.EntityID
+			entityId := primitive.NilObjectID
+			if attachment.AttachmentMeta != nil {
+				entityId = attachment.AttachmentMeta.EntityID
+			} else if attachment.MetaData != nil {
+				entityId = attachment.MetaData.EntityID
+			}
+
 			if entityId != primitive.NilObjectID {
 				if _, exists := tempWidgetIds[entityId]; !exists {
 					tempWidgetIds[entityId] = true
@@ -345,7 +352,13 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 	if posts, ok := response.(gin.H)["posts"]; ok {
 		for _, post := range posts.([]requests.PostResponse) {
 			for _, attachment := range post.Attachments {
-				entityId := attachment.AttachmentMeta.EntityID
+				entityId := primitive.NilObjectID
+				if attachment.AttachmentMeta != nil {
+					entityId = attachment.AttachmentMeta.EntityID
+				} else if attachment.MetaData != nil {
+					entityId = attachment.MetaData.EntityID
+				}
+
 				if entityId != primitive.NilObjectID {
 					if _, exists := tempWidgetIds[entityId]; !exists {
 						tempWidgetIds[entityId] = true
