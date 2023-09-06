@@ -278,6 +278,24 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 	return topicsResponse, nil
 }
 
+// Internal Method to parse widgets response
+func parseWidgetsResponse(widgetHelper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) (map[string]requests.WidgetResponse, error) {
+	// Fetch widgets using widget Ids
+	widgets, err := fetchWidgetsByIDs(widgetHelper, widgetIds, communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	widgetsResponse := map[string]requests.WidgetResponse{}
+
+	// Parse all fetched widgets Data
+	for _, widget := range widgets {
+		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(&widget)
+	}
+
+	return widgetsResponse, nil
+}
+
 // Internal Method to parse topic_ids from posts
 func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	uniqueTopicIds := []primitive.ObjectID{}
@@ -308,6 +326,42 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	return uniqueTopicIds
 }
 
+// Internal Method to parse widget_ids from posts
+func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
+	uniqueWidgetIds := []primitive.ObjectID{}
+	tempWidgetIds := map[primitive.ObjectID]bool{}
+
+	if post, ok := response.(gin.H)["post"]; ok {
+		for _, attachment := range post.(requests.FetchPostResponse).Attachments {
+			entityId := attachment.AttachmentMeta.EntityID
+			if entityId != primitive.NilObjectID {
+				if _, exists := tempWidgetIds[entityId]; !exists {
+					tempWidgetIds[entityId] = true
+				}
+			}
+		}
+	}
+
+	if posts, ok := response.(gin.H)["posts"]; ok {
+		for _, post := range posts.([]requests.PostResponse) {
+			for _, attachment := range post.Attachments {
+				entityId := attachment.AttachmentMeta.EntityID
+				if entityId != primitive.NilObjectID {
+					if _, exists := tempWidgetIds[entityId]; !exists {
+						tempWidgetIds[entityId] = true
+					}
+				}
+			}
+		}
+	}
+
+	for key := range tempWidgetIds {
+		uniqueWidgetIds = append(uniqueWidgetIds, key)
+	}
+
+	return uniqueWidgetIds
+}
+
 // Internal Method to get topics Data from Posts response
 func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]requests.TopicResponse {
 	topicIds := getTopicIdsFromPosts(response)
@@ -315,6 +369,15 @@ func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interfac
 	topicsData, _ := parseTopicsResponse(topicHelper, topicIds, communityId)
 
 	return topicsData
+}
+
+// Internal Method to get widget Data from Posts response
+func getWidgetDataFromPosts(widgetHelper interfaces.WidgetHelper, response interface{}, communityId int) map[string]requests.WidgetResponse {
+	widgetIds := getWidgetIdsFromPosts(response)
+
+	widgetsData, _ := parseWidgetsResponse(widgetHelper, widgetIds, communityId)
+
+	return widgetsData
 }
 
 // Internal Method to parse post for response
@@ -655,6 +718,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+		response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
 	}
 
 	// return final response
@@ -717,6 +781,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, parsedResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -764,6 +829,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 	response["post"] = fetchPostData
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -886,6 +952,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -1089,6 +1156,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
+	finalResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, finalResponse)
@@ -1164,8 +1232,8 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 		"posts":   finalResponse,
 	}
 
-	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse,
-		communityId)
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -1219,8 +1287,8 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 		"posts":   finalResponse,
 	}
 
-	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse,
-		communityId)
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)

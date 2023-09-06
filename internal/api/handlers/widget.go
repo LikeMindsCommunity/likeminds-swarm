@@ -102,6 +102,25 @@ func parseWidgetResponse(widget *entities.Widget) requests.WidgetResponse {
 	return response
 }
 
+// Internal Method to fetch topics using topic_ids and community_id
+func fetchWidgetsByIDs(helper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) ([]entities.Widget, error) {
+	// widget filter data
+	widgetFilterData := gin.H{
+		"_id": gin.H{
+			"$in": widgetIds,
+		},
+		"community_id": communityId,
+	}
+
+	// fetch widget using helper method
+	widgetResults, err := helper.FindWidgetHelper(widgetFilterData, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	return widgetResults, nil
+}
+
 // Internal Method to fetch widget using widget id and communityId
 func fetchWidgetByID(helper interfaces.WidgetHelper, widgetId string, createdByLM bool, communityId int) (*entities.Widget, error) {
 	// widget filter data
