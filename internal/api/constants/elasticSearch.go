@@ -1,7 +1,7 @@
 package constants
 
 const (
-	PostIndexName         = "post"
-	TopicIndexName        = "topic"
-	CustomWidgetIndexName = "widget"
+	PostIndexName   = "post"
+	TopicIndexName  = "topic"
+	WidgetIndexName = "widget"
 )
