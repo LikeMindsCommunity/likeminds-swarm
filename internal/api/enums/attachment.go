@@ -6,6 +6,9 @@ const (
 	VideoWidget
 	DocumentWidget
 	LinkWidget
+	CustomWidget
+	PollWidget
+	ArticleWidget
 )
 
 // AttachmentType represents the type of attachment
@@ -17,6 +20,9 @@ const (
 	VideoType    AttachmentType = "video"
 	DocumentType AttachmentType = "document"
 	LinkType     AttachmentType = "link"
+	CustomType   AttachmentType = "custom"
+	PollType     AttachmentType = "poll"
+	ArticleType  AttachmentType = "article"
 )
 
 // Create New Attachment Type from int
@@ -30,6 +36,12 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 		return DocumentType
 	case LinkWidget:
 		return LinkType
+	case CustomWidget:
+		return CustomType
+	case PollWidget:
+		return PollType
+	case ArticleWidget:
+		return ArticleType
 	}
 
 	return ""
@@ -38,7 +50,8 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 // checks if the attachment type is valid
 func (at AttachmentType) IsValid() bool {
 	switch at {
-	case ImageType, VideoType, DocumentType, LinkType:
+	case ImageType, VideoType, DocumentType, LinkType,
+		CustomType, PollType, ArticleType:
 		return true
 	}
 	return false
@@ -60,6 +73,12 @@ func (at AttachmentType) ToInt() int {
 		return DocumentWidget
 	case LinkType:
 		return LinkWidget
+	case CustomType:
+		return CustomWidget
+	case PollType:
+		return PollWidget
+	case ArticleType:
+		return ArticleWidget
 	}
 	return 0
 }

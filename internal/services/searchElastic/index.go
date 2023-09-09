@@ -33,8 +33,8 @@ type TopicIndex struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// Struct for Elasticsearch Custom Widget Index fields
-type CustomWidgetIndex struct {
+// Struct for Elasticsearch Widget Index fields
+type WidgetIndex struct {
 	Id               string      `json:"id"`
 	CreatedByLM      bool        `json:"created_by_lm"`
 	ParentEntityID   string      `json:"parent_entity_id"`
@@ -127,7 +127,7 @@ var IndexMapping = map[string]string{
 		}
 	}
 	`,
-	constants.CustomWidgetIndexName: `
+	constants.WidgetIndexName: `
 	{
 		"mappings": {
 			"properties": {

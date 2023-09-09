@@ -232,21 +232,21 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 	}`, from, pageSize, communityQuery, isEnabledQuery, searchQuery)
 }
 
-func ParseCustomWidgetIndexData(CustomWidget *entities.CustomWidget) searchElastic.CustomWidgetIndex {
-	return searchElastic.CustomWidgetIndex{
-		Id:               CustomWidget.ID.Hex(),
-		CreatedByLM:      CustomWidget.CreatedByLM,
-		ParentEntityID:   CustomWidget.ParentEntityID,
-		ParentEntityType: CustomWidget.ParentEntityType,
-		MetaData:         CustomWidget.MetaData,
-		CommunityId:      CustomWidget.CommunityId,
-		CreatedAt:        CustomWidget.CreatedAt,
-		UpdatedAt:        CustomWidget.UpdatedAt,
+func ParseWidgetIndexData(Widget *entities.Widget) searchElastic.WidgetIndex {
+	return searchElastic.WidgetIndex{
+		Id:               Widget.ID.Hex(),
+		CreatedByLM:      Widget.CreatedByLM,
+		ParentEntityID:   Widget.ParentEntityID,
+		ParentEntityType: Widget.ParentEntityType,
+		MetaData:         Widget.MetaData,
+		CommunityId:      Widget.CommunityId,
+		CreatedAt:        Widget.CreatedAt,
+		UpdatedAt:        Widget.UpdatedAt,
 	}
 }
 
-// Exposed method to create custom widget search query
-func GetCustomWidgetFilterQuery(page int, pageSize int, communityId int, searchKey string, searchValue string) string {
+// Exposed method to create widget search query
+func GetWidgetFilterQuery(page int, pageSize int, communityId int, searchKey string, searchValue string) string {
 	from := pageSize * (page - 1)
 
 	communityQuery := ""
