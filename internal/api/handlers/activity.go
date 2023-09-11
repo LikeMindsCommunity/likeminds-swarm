@@ -18,11 +18,12 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool) ([]interface{}, interface{}, interface{}, error) {
+	apiRevampV1Check bool) ([]interface{}, interface{}, interface{}, interface{}, error) {
 
 	response := []interface{}{}
 	userDatas := make(map[string]interface{})
 	topicDatas := map[string]interface{}{}
+	widgetDatas := map[string]interface{}{}
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
@@ -30,12 +31,12 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
 			apiRevampV1Check)
 		if err != nil {
-			return response, userDatas, topicDatas, err
+			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
 		activityText, err := getActivityText(activityUserData, activityEntityData, activity)
 		if err != nil {
-			return response, userDatas, topicDatas, err
+			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
 		userActivity := requests.UserActivityResponse{
@@ -78,13 +79,20 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			topicsData, _ := parseTopicsResponse(handler.topicHelper, activityEntityData.(requests.PostResponse).Topics,
 				activity.CommunityID)
 
+			widgetIds := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
+			widgetsData, _ := parseWidgetsResponse(handler.widgetHelper, widgetIds, activity.CommunityID)
+
 			for topicId, topicData := range topicsData {
 				topicDatas[topicId] = topicData
+			}
+
+			for widgetId, widgetData := range widgetsData {
+				widgetDatas[widgetId] = widgetData
 			}
 		}
 	}
 
-	return response, userDatas, topicDatas, nil
+	return response, userDatas, topicDatas, widgetDatas, nil
 }
 
 func getActivityUserData(activity entities.Activity) (map[string]interface{}, string) {
@@ -484,7 +492,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	}
 
 	// parse user activity response
-	activityResponse, userDatas, topicDatas, err := parseUserActivity(*handlers, activityResults, apiRevampV1Check)
+	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserActivity(*handlers, activityResults, apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -496,6 +504,7 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 		"activities": activityResponse,
 		"users":      userDatas,
 		"topics":     topicDatas,
+		"widgets":    widgetDatas,
 	})
 }
 

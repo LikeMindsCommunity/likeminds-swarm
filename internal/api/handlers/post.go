@@ -332,42 +332,55 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	return uniqueTopicIds
 }
 
+// Internal Method to parse widget_ids from attachments
+func getWidgetIdsFromAttachments(attachments []entities.Attachment) []primitive.ObjectID {
+	widgetIds := map[primitive.ObjectID]bool{}
+	finalWidgetIds := []primitive.ObjectID{}
+
+	for _, attachment := range attachments {
+		entityId := primitive.NilObjectID
+		if attachment.AttachmentMeta != nil {
+			entityId = attachment.AttachmentMeta.EntityID
+		} else if attachment.MetaData != nil {
+			entityId = attachment.MetaData.EntityID
+		}
+
+		if entityId != primitive.NilObjectID {
+			if _, exists := widgetIds[entityId]; !exists {
+				widgetIds[entityId] = true
+			}
+		}
+	}
+
+	for key := range widgetIds {
+		finalWidgetIds = append(finalWidgetIds, key)
+	}
+
+	return finalWidgetIds
+}
+
 // Internal Method to parse widget_ids from posts
 func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 	uniqueWidgetIds := []primitive.ObjectID{}
 	tempWidgetIds := map[primitive.ObjectID]bool{}
 
 	if post, ok := response.(gin.H)["post"]; ok {
-		for _, attachment := range post.(requests.FetchPostResponse).Attachments {
-			entityId := primitive.NilObjectID
-			if attachment.AttachmentMeta != nil {
-				entityId = attachment.AttachmentMeta.EntityID
-			} else if attachment.MetaData != nil {
-				entityId = attachment.MetaData.EntityID
-			}
+		widgetIds := getWidgetIdsFromAttachments(post.(requests.FetchPostResponse).Attachments)
 
-			if entityId != primitive.NilObjectID {
-				if _, exists := tempWidgetIds[entityId]; !exists {
-					tempWidgetIds[entityId] = true
-				}
+		for _, widgetId := range widgetIds {
+			if _, exists := tempWidgetIds[widgetId]; !exists {
+				tempWidgetIds[widgetId] = true
 			}
 		}
 	}
 
 	if posts, ok := response.(gin.H)["posts"]; ok {
 		for _, post := range posts.([]requests.PostResponse) {
-			for _, attachment := range post.Attachments {
-				entityId := primitive.NilObjectID
-				if attachment.AttachmentMeta != nil {
-					entityId = attachment.AttachmentMeta.EntityID
-				} else if attachment.MetaData != nil {
-					entityId = attachment.MetaData.EntityID
-				}
+			widgetIds := getWidgetIdsFromAttachments(post.Attachments)
 
-				if entityId != primitive.NilObjectID {
-					if _, exists := tempWidgetIds[entityId]; !exists {
-						tempWidgetIds[entityId] = true
-					}
+			for _, widgetId := range widgetIds {
+				if _, exists := tempWidgetIds[widgetId]; !exists {
+					tempWidgetIds[widgetId] = true
 				}
 			}
 		}
