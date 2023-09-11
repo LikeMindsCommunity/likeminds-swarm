@@ -52,7 +52,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 
 // Exposed Helper Method to Edit Post
 func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
-	topicIds []primitive.ObjectID) error {
+	topicIds []primitive.ObjectID, markIsEdited bool) error {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -62,10 +62,13 @@ func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string,
 			"text":        text,
 			"heading":     heading,
 			"attachments": postAttachments,
-			"is_edited":   true,
 			"topic_ids":   topicIds,
 			"updated_at":  time.Now(),
 		},
+	}
+
+	if markIsEdited {
+		updateBody["is_edited"] = markIsEdited
 	}
 
 	err := helper.postRepository.Update(gin.H{"_id": postId}, updateBody)
