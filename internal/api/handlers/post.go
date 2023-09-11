@@ -43,6 +43,8 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 		if isLMCreatedCustomWidget {
 			// meta data conversion to desired type
 			metaData := map[string]interface{}{}
+			entityId := ""
+
 			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
 			_ = json.Unmarshal(convertedMetaData, &metaData)
 
@@ -56,7 +58,7 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 					return nil, false
 				}
 
-				updatedAttachments = append(updatedAttachments, attachment)
+				entityId = attachment.AttachmentMeta.EntityID
 
 				// Else create a new LM Created widget
 			} else {
@@ -67,16 +69,19 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 					return nil, false
 				}
 
-				// creating updated attachment
-				updatedAttachment := requests.Attachment{
-					AttachmentType: attachment.AttachmentType,
-					AttachmentMeta: requests.AttachmentMeta{
-						EntityID: widgetData.ID.Hex(),
-					},
-				}
+				entityId = widgetData.ID.Hex()
 
-				updatedAttachments = append(updatedAttachments, updatedAttachment)
 			}
+
+			// updated attachment
+			updatedAttachment := requests.Attachment{
+				AttachmentType: attachment.AttachmentType,
+				AttachmentMeta: requests.AttachmentMeta{
+					EntityID: entityId,
+				},
+			}
+
+			updatedAttachments = append(updatedAttachments, updatedAttachment)
 
 			// Else do nothing
 		} else {
@@ -671,7 +676,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// update post data using helper method
 	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), createPostRequest.Text,
-		createPostRequest.Heading, updatedAttachments, topicIDs)
+		createPostRequest.Heading, updatedAttachments, topicIDs, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -924,7 +929,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// update post data using helper method
 	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
-		topicIDs)
+		topicIDs, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
