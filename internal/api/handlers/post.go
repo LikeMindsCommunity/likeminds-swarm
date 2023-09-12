@@ -43,6 +43,8 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 		if isLMCreatedCustomWidget {
 			// meta data conversion to desired type
 			metaData := map[string]interface{}{}
+			entityId := ""
+
 			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
 			_ = json.Unmarshal(convertedMetaData, &metaData)
 
@@ -56,7 +58,7 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 					return nil, false
 				}
 
-				updatedAttachments = append(updatedAttachments, attachment)
+				entityId = attachment.AttachmentMeta.EntityID
 
 				// Else create a new LM Created widget
 			} else {
@@ -67,16 +69,19 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 					return nil, false
 				}
 
-				// creating updated attachment
-				updatedAttachment := requests.Attachment{
-					AttachmentType: attachment.AttachmentType,
-					AttachmentMeta: requests.AttachmentMeta{
-						EntityID: widgetData.ID.Hex(),
-					},
-				}
+				entityId = widgetData.ID.Hex()
 
-				updatedAttachments = append(updatedAttachments, updatedAttachment)
 			}
+
+			// updated attachment
+			updatedAttachment := requests.Attachment{
+				AttachmentType: attachment.AttachmentType,
+				AttachmentMeta: requests.AttachmentMeta{
+					EntityID: entityId,
+				},
+			}
+
+			updatedAttachments = append(updatedAttachments, updatedAttachment)
 
 			// Else do nothing
 		} else {
@@ -327,42 +332,55 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	return uniqueTopicIds
 }
 
+// Internal Method to parse widget_ids from attachments
+func getWidgetIdsFromAttachments(attachments []entities.Attachment) []primitive.ObjectID {
+	widgetIds := map[primitive.ObjectID]bool{}
+	finalWidgetIds := []primitive.ObjectID{}
+
+	for _, attachment := range attachments {
+		entityId := primitive.NilObjectID
+		if attachment.AttachmentMeta != nil {
+			entityId = attachment.AttachmentMeta.EntityID
+		} else if attachment.MetaData != nil {
+			entityId = attachment.MetaData.EntityID
+		}
+
+		if entityId != primitive.NilObjectID {
+			if _, exists := widgetIds[entityId]; !exists {
+				widgetIds[entityId] = true
+			}
+		}
+	}
+
+	for key := range widgetIds {
+		finalWidgetIds = append(finalWidgetIds, key)
+	}
+
+	return finalWidgetIds
+}
+
 // Internal Method to parse widget_ids from posts
 func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 	uniqueWidgetIds := []primitive.ObjectID{}
 	tempWidgetIds := map[primitive.ObjectID]bool{}
 
 	if post, ok := response.(gin.H)["post"]; ok {
-		for _, attachment := range post.(requests.FetchPostResponse).Attachments {
-			entityId := primitive.NilObjectID
-			if attachment.AttachmentMeta != nil {
-				entityId = attachment.AttachmentMeta.EntityID
-			} else if attachment.MetaData != nil {
-				entityId = attachment.MetaData.EntityID
-			}
+		widgetIds := getWidgetIdsFromAttachments(post.(requests.FetchPostResponse).Attachments)
 
-			if entityId != primitive.NilObjectID {
-				if _, exists := tempWidgetIds[entityId]; !exists {
-					tempWidgetIds[entityId] = true
-				}
+		for _, widgetId := range widgetIds {
+			if _, exists := tempWidgetIds[widgetId]; !exists {
+				tempWidgetIds[widgetId] = true
 			}
 		}
 	}
 
 	if posts, ok := response.(gin.H)["posts"]; ok {
 		for _, post := range posts.([]requests.PostResponse) {
-			for _, attachment := range post.Attachments {
-				entityId := primitive.NilObjectID
-				if attachment.AttachmentMeta != nil {
-					entityId = attachment.AttachmentMeta.EntityID
-				} else if attachment.MetaData != nil {
-					entityId = attachment.MetaData.EntityID
-				}
+			widgetIds := getWidgetIdsFromAttachments(post.Attachments)
 
-				if entityId != primitive.NilObjectID {
-					if _, exists := tempWidgetIds[entityId]; !exists {
-						tempWidgetIds[entityId] = true
-					}
+			for _, widgetId := range widgetIds {
+				if _, exists := tempWidgetIds[widgetId]; !exists {
+					tempWidgetIds[widgetId] = true
 				}
 			}
 		}
@@ -671,7 +689,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// update post data using helper method
 	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), createPostRequest.Text,
-		createPostRequest.Heading, updatedAttachments, topicIDs)
+		createPostRequest.Heading, updatedAttachments, topicIDs, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -924,7 +942,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// update post data using helper method
 	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
-		topicIDs)
+		topicIDs, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
