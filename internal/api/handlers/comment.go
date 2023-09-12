@@ -882,6 +882,9 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 		return
 	}
 
+	// remove user post comment activity
+	deleteUserPostCommentActivity(handlers, postData, c, headers)
+
 	// remove activity for the comment
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.Comment,
@@ -889,7 +892,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
 
-	// create delete activity if deleted if CM
+	// create delete activity if deleted by CM
 	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != commentData.UserId {
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CMDeletedComment, gin.H{}, false, false)
 		if err != nil {
@@ -907,4 +910,45 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
+}
+
+func deleteUserPostCommentActivity(
+	handlers *FeedHandlers,
+	postData *entities.Post,
+	c *gin.Context,
+	headers map[string]string) {
+
+	activityFilterData := gin.H{
+		"communityID": postData.CommunityId,
+		"entityType":  constants.PostEntityType,
+		"entityID":    postData.ID,
+		"action":      constants.CommentOnPost,
+	}
+
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	if activity == nil {
+		return
+	}
+
+	// remove uuid from like action list
+	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+
+	// activity update data
+	activityUpdateData := gin.H{
+		"$set": gin.H{
+			"actionBy": actionBy,
+		},
+	}
+
+	// update activity data, exisiting activity timestamp remains same to maintain order
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 }
