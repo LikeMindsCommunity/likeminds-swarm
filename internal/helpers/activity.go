@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -26,7 +27,11 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 	}
 
 	if len(existingActivity) > 0 {
-		updatedActionBy := append(existingActivity[0].ActionBy, actionBy...)
+
+		//remove user from action_by list, if exist from previous actions
+		existingActionBy := utils.RemoveAllOccurenceStringList(existingActivity[0].ActionBy, actionBy[0])
+
+		updatedActionBy := append(existingActionBy, actionBy...)
 		updateData := gin.H{
 			"$set": gin.H{
 				"action_by": updatedActionBy,

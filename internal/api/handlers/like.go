@@ -162,7 +162,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			return
 		}
 
-		createLikeActivity(handlers, post_data, c, headers)
+		createUserPostLikeActivity(handlers, post_data, c, headers)
 
 	} else {
 		like_data := like_results[0]
@@ -182,9 +182,9 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		}
 
 		if !like_data.IsDeleted {
-			deleteLikeActivity(handlers, post_data, c, headers)
+			deleteUserPostLikeActivity(handlers, post_data, c, headers)
 		} else {
-			createLikeActivity(handlers, post_data, c, headers)
+			createUserPostLikeActivity(handlers, post_data, c, headers)
 		}
 	}
 
@@ -194,7 +194,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	})
 }
 
-func createLikeActivity(
+func createUserPostLikeActivity(
 	handlers *FeedHandlers,
 	postData *entities.Post,
 	c *gin.Context,
@@ -214,7 +214,7 @@ func createLikeActivity(
 	}
 }
 
-func deleteLikeActivity(
+func deleteUserPostLikeActivity(
 	handlers *FeedHandlers,
 	postData *entities.Post,
 	c *gin.Context,
