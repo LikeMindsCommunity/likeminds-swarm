@@ -21,6 +21,77 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to process attachments for widgets
+func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
+	postId string, communityId int) ([]requests.Attachment, bool) {
+	// process attachments for custom widgets
+	updatedAttachments := []requests.Attachment{}
+
+	for _, attachment := range attachments {
+		isLMCreatedCustomWidget := false
+
+		switch attachment.AttachmentType {
+		case enums.PollWidget, enums.ArticleWidget:
+			isLMCreatedCustomWidget = true
+		}
+
+		switch attachment.Type {
+		case enums.PollType, enums.ArticleType:
+			isLMCreatedCustomWidget = true
+		}
+
+		if isLMCreatedCustomWidget {
+			// meta data conversion to desired type
+			metaData := map[string]interface{}{}
+			entityId := ""
+
+			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
+			_ = json.Unmarshal(convertedMetaData, &metaData)
+
+			// Edit the metadata keys in case entity_id already exists in LM Created widget
+			if attachment.AttachmentMeta.EntityID != "" {
+				delete(metaData, "entity_id")
+
+				// update widget from given metadata
+				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, communityId)
+				if !ok {
+					return nil, false
+				}
+
+				entityId = attachment.AttachmentMeta.EntityID
+
+				// Else create a new LM Created widget
+			} else {
+
+				// create widget from given metadata
+				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, communityId)
+				if !ok {
+					return nil, false
+				}
+
+				entityId = widgetData.ID.Hex()
+
+			}
+
+			// updated attachment
+			updatedAttachment := requests.Attachment{
+				AttachmentType: attachment.AttachmentType,
+				AttachmentMeta: requests.AttachmentMeta{
+					EntityID: entityId,
+				},
+			}
+
+			updatedAttachments = append(updatedAttachments, updatedAttachment)
+
+			// Else do nothing
+		} else {
+			updatedAttachments = append(updatedAttachments, attachment)
+		}
+	}
+
+	return updatedAttachments, true
+}
+
 // Internal Method to parse Post Attachments
 func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	platformCode string, apiRevampV1Check bool) []entities.Attachment {
@@ -92,33 +163,18 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 			}
 
 			// validate attachment urls if present
-			if attachments[i].AttachmentMeta.Url != "" {
-				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.Url)
-
-				if !is_valid {
-					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.Url)
-					return false
-				}
+			urlArray := []string{
+				attachments[i].AttachmentMeta.Url,
+				attachments[i].AttachmentMeta.ThumbnailUrl,
+				attachments[i].AttachmentMeta.OgTags.Url,
+				attachments[i].AttachmentMeta.CoverImageUrl,
 			}
 
-			if attachments[i].AttachmentMeta.ThumbnailUrl != "" {
-				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.ThumbnailUrl)
-
-				if !is_valid {
-					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.ThumbnailUrl)
-					return false
-				}
+			err := helpers.AreValidURLs(urlArray)
+			if err != "" {
+				utils.GeneralAPIValidationError(c, err)
+				return false
 			}
-
-			if attachments[i].AttachmentMeta.OgTags.Url != "" {
-				is_valid := helpers.IsValidURL(attachments[i].AttachmentMeta.OgTags.Url)
-
-				if !is_valid {
-					utils.GeneralAPIValidationError(c, "Invalid url in attachments meta_data: "+attachments[i].AttachmentMeta.OgTags.Url)
-					return false
-				}
-			}
-
 		}
 
 	}
@@ -165,6 +221,28 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 				return false
 			}
 
+		case enums.CustomWidget:
+			if element.AttachmentMeta.EntityID == "" {
+				utils.GeneralAPIValidationError(c, "Send entity_id in attachment_meta for custom widget")
+				return false
+			}
+
+		case enums.ArticleWidget:
+			if element.AttachmentMeta.Body == "" {
+				utils.GeneralAPIValidationError(c, "Send body in attachment_meta for article")
+				return false
+			}
+
+			if element.AttachmentMeta.Title == "" {
+				utils.GeneralAPIValidationError(c, "Send title in attachment_meta for article")
+				return false
+			}
+
+			if element.AttachmentMeta.CoverImageUrl == "" {
+				utils.GeneralAPIValidationError(c, "Send cover_image_url in attachment_meta for article")
+				return false
+			}
+
 		default:
 			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
 			return false
@@ -206,6 +284,24 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 	return topicsResponse, nil
 }
 
+// Internal Method to parse widgets response
+func parseWidgetsResponse(widgetHelper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) (map[string]requests.WidgetResponse, error) {
+	// Fetch widgets using widget Ids
+	widgets, err := fetchWidgetsByIDs(widgetHelper, widgetIds, communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	widgetsResponse := map[string]requests.WidgetResponse{}
+
+	// Parse all fetched widgets Data
+	for _, widget := range widgets {
+		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(&widget)
+	}
+
+	return widgetsResponse, nil
+}
+
 // Internal Method to parse topic_ids from posts
 func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	uniqueTopicIds := []primitive.ObjectID{}
@@ -236,6 +332,67 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	return uniqueTopicIds
 }
 
+// Internal Method to parse widget_ids from attachments
+func getWidgetIdsFromAttachments(attachments []entities.Attachment) []primitive.ObjectID {
+	widgetIds := map[primitive.ObjectID]bool{}
+	finalWidgetIds := []primitive.ObjectID{}
+
+	for _, attachment := range attachments {
+		entityId := primitive.NilObjectID
+		if attachment.AttachmentMeta != nil {
+			entityId = attachment.AttachmentMeta.EntityID
+		} else if attachment.MetaData != nil {
+			entityId = attachment.MetaData.EntityID
+		}
+
+		if entityId != primitive.NilObjectID {
+			if _, exists := widgetIds[entityId]; !exists {
+				widgetIds[entityId] = true
+			}
+		}
+	}
+
+	for key := range widgetIds {
+		finalWidgetIds = append(finalWidgetIds, key)
+	}
+
+	return finalWidgetIds
+}
+
+// Internal Method to parse widget_ids from posts
+func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
+	uniqueWidgetIds := []primitive.ObjectID{}
+	tempWidgetIds := map[primitive.ObjectID]bool{}
+
+	if post, ok := response.(gin.H)["post"]; ok {
+		widgetIds := getWidgetIdsFromAttachments(post.(requests.FetchPostResponse).Attachments)
+
+		for _, widgetId := range widgetIds {
+			if _, exists := tempWidgetIds[widgetId]; !exists {
+				tempWidgetIds[widgetId] = true
+			}
+		}
+	}
+
+	if posts, ok := response.(gin.H)["posts"]; ok {
+		for _, post := range posts.([]requests.PostResponse) {
+			widgetIds := getWidgetIdsFromAttachments(post.Attachments)
+
+			for _, widgetId := range widgetIds {
+				if _, exists := tempWidgetIds[widgetId]; !exists {
+					tempWidgetIds[widgetId] = true
+				}
+			}
+		}
+	}
+
+	for key := range tempWidgetIds {
+		uniqueWidgetIds = append(uniqueWidgetIds, key)
+	}
+
+	return uniqueWidgetIds
+}
+
 // Internal Method to get topics Data from Posts response
 func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]requests.TopicResponse {
 	topicIds := getTopicIdsFromPosts(response)
@@ -243,6 +400,15 @@ func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interfac
 	topicsData, _ := parseTopicsResponse(topicHelper, topicIds, communityId)
 
 	return topicsData
+}
+
+// Internal Method to get widget Data from Posts response
+func getWidgetDataFromPosts(widgetHelper interfaces.WidgetHelper, response interface{}, communityId int) map[string]requests.WidgetResponse {
+	widgetIds := getWidgetIdsFromPosts(response)
+
+	widgetsData, _ := parseWidgetsResponse(widgetHelper, widgetIds, communityId)
+
+	return widgetsData
 }
 
 // Internal Method to parse post for response
@@ -514,6 +680,21 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// process attachments for widgets
+	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, createPostRequest.Attachments,
+		postId.(primitive.ObjectID).Hex(), communityId)
+	if !ok {
+		return
+	}
+
+	// update post data using helper method
+	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), createPostRequest.Text,
+		createPostRequest.Heading, updatedAttachments, topicIDs, false)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
 	// fetch post data using new post_id
 	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
 	if err != nil {
@@ -568,6 +749,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+		response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
 	}
 
 	// return final response
@@ -630,6 +812,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, parsedResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -677,6 +860,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 	response["post"] = fetchPostData
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -750,9 +934,15 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		}
 	}
 
+	// process attachments for widgets
+	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId)
+	if !ok {
+		return
+	}
+
 	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, editPostRequest.Attachments,
-		topicIDs)
+	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
+		topicIDs, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -793,6 +983,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -996,6 +1187,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
+	finalResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, finalResponse)
@@ -1071,8 +1263,8 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 		"posts":   finalResponse,
 	}
 
-	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse,
-		communityId)
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -1126,8 +1318,8 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 		"posts":   finalResponse,
 	}
 
-	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse,
-		communityId)
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)

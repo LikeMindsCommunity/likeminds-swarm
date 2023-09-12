@@ -23,7 +23,7 @@ type PostHelper interface {
 	CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
 		chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string) (interface{}, error)
 	EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
-		topicIds []primitive.ObjectID) error
+		topicIds []primitive.ObjectID, markIsEdited bool) error
 	FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error)
 	UpdatePostByIdHelper(postId primitive.ObjectID, update map[string]interface{}) error
 	CountPostHelper(filter map[string]interface{}) (int64, error)
