@@ -170,7 +170,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " liked your post"
+		activityText += " liked your"
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
@@ -181,7 +181,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " commented on your post"
+		activityText += " commented on your"
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
@@ -213,7 +213,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 
-		activityText += " tagged you in their post"
+		activityText += " tagged you in their"
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
@@ -270,6 +270,15 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 		entityTextData = activityEntityData.(requests.CommentResponse).Text
 	}
 
+	// if post text is nil, add attachment type as text
+	if entityType == constants.Post && entityTextData == "" {
+		return " " + getPostAttachmentType(activityEntityData.(requests.PostResponse)) + "."
+	}
+
+	if entityType == constants.Post && entityTextData != "" {
+		return " post \"" + entityTextData + "\""
+	}
+
 	if entityTextData == "" {
 		return entityTextData + "."
 	}
@@ -277,6 +286,17 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	activityText := " \"" + entityTextData + "\""
 
 	return activityText
+}
+
+func getPostAttachmentType(postResponse requests.PostResponse) string {
+	if len(postResponse.Attachments) == 0 {
+		return ""
+	}
+
+	intAttachmentType := postResponse.Attachments[0].Type.ToInt()
+	enumAttachmentType := enums.NewAttachmentTypeFromInt(intAttachmentType)
+
+	return enumAttachmentType.ToString()
 }
 
 // Internal Method to fetch activity using activity_id
