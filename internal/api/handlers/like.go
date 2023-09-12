@@ -161,6 +161,9 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		createLikeActivity(handlers, post_data, c, headers)
+
 	} else {
 		like_data := like_results[0]
 
@@ -177,12 +180,29 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		if !like_data.IsDeleted {
+			deleteLikeActivity(handlers, post_data, c, headers)
+		} else {
+			createLikeActivity(handlers, post_data, c, headers)
+		}
 	}
 
+	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+	})
+}
+
+func createLikeActivity(
+	handlers *FeedHandlers,
+	postData *entities.Post,
+	c *gin.Context,
+	headers map[string]string) {
 	// create like activity
-	activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, post_data.UserId, constants.Post, post_data.ID, post_data.UserId, constants.LikeOnPost, gin.H{
+	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.LikeOnPost, gin.H{
 		"entity_type": constants.PostEntityType,
-		"post_id":     post_id,
+		"post_id":     postData.ID,
 	}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -192,11 +212,47 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	if activityID != nil {
 		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	}
+}
 
-	// return final response
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-	})
+func deleteLikeActivity(
+	handlers *FeedHandlers,
+	postData *entities.Post,
+	c *gin.Context,
+	headers map[string]string) {
+
+	activityFilterData := gin.H{
+		"communityID": postData.CommunityId,
+		"entityType":  constants.PostEntityType,
+		"entityID":    postData.ID,
+		"action":      constants.LikeOnPost,
+	}
+
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	if activity == nil {
+		return
+	}
+
+	// remove uuid from like action list
+	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+
+	// activity update data
+	activityUpdateData := gin.H{
+		"$set": gin.H{
+			"actionBy": actionBy,
+		},
+	}
+
+	// update activity data, exisiting activity timestamp remains same to maintain order
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 }
 
 // Exposed Method to fetch the likes on a Post
