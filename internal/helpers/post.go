@@ -68,7 +68,7 @@ func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string,
 	}
 
 	if markIsEdited {
-		updateBody["is_edited"] = markIsEdited
+		updateBody["$set"].(gin.H)["is_edited"] = markIsEdited
 	}
 
 	err := helper.postRepository.Update(gin.H{"_id": postId}, updateBody)
