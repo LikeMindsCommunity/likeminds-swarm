@@ -228,6 +228,22 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
 		return activityText, nil
+
+	case constants.AlsoCommentOnPost:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " also commented on"
+
+		activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
+		if activityEntityOwnerUserID != "" {
+			activityText += " " + getUserRoute(activityEntityOwnerUserData) + "'s"
+		}
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
 	}
 
 	return activityText, nil
@@ -257,6 +273,20 @@ func getMultipleUserActivityText(activity entities.Activity) string {
 	nOtherActivityText := fmt.Sprintf(nOtherActivityTemplate, strconv.Itoa(activityMembersTotalBarOne))
 
 	return nOtherActivityText
+}
+
+func fetchActivityEntityOwnerUserData(activity entities.Activity) (map[string]interface{}, string) {
+	userData := map[string]interface{}{}
+	userID := activity.EntityOwnerID
+	isSuccess := false
+
+	isSuccess, userData[userID] = externalHelpers.FetchMemberMeta([]string{userID}, activity.ActionOn, activity.CommunityID)
+	userData[userID] = userData[userID].(*externalHelpers.MemberMetaResponse).Members[0]
+	if isSuccess {
+		return userData, userID
+	}
+
+	return nil, ""
 }
 
 func getEntityText(entityType constants.EntityType, activityEntityData interface{}) string {
@@ -342,7 +372,8 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.LikeOnComment,
 		constants.CommentOnComment,
 		constants.TaggedInPost,
-		constants.TaggedInPostComment:
+		constants.TaggedInPostComment,
+		constants.AlsoCommentOnPost:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
 		return activityID, err
