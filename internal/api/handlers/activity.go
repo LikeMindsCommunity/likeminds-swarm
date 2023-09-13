@@ -352,6 +352,26 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 	return nil, nil
 }
 
+func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post) {
+	postCommentActivity, err := fetchActivity(handlers.activityHelper, activityID.(string))
+	if err != nil {
+		return
+	}
+
+	latestCommentUser := postCommentActivity.ActionBy[len(postCommentActivity.ActionBy)-1]
+	previousCommentUsers := utils.RemoveAllOccurenceStringList(postCommentActivity.ActionBy, latestCommentUser)
+
+	for _, previousCommentUser := range previousCommentUsers {
+		_, err := handlers.CreateActivity(postData.ChatroomId, []string{latestCommentUser}, previousCommentUser, constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     postData.ID,
+		}, false, false)
+
+		if err != nil {
+		}
+	}
+}
+
 // DeleteActivity | delete activity records with filter
 func (handlers *FeedHandlers) DeleteActivity(filter map[string]interface{}) {
 	handlers.activityHelper.DeleteActivityHelper(filter)

@@ -573,6 +573,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 
 		if activityID != nil {
+
+			createAlsoCommentedActivity(activityID, postData)
+
 			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 		}
 	}
@@ -598,6 +601,10 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, response)
+}
+
+func createAlsoCommentedActivity(activityID interface{}, postData *entities.Post) {
+
 }
 
 // Exposed Method to edit a comment
