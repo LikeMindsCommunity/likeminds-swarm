@@ -10,8 +10,8 @@ const (
 
 const (
 	DeletePostMenuItemTitle = "Delete Post"
-	PinPostMenuItemTitle    = "Pin this Post"
-	UnpinPostMenuItemTitle  = "Unpin this Post"
+	PinPostMenuItemTitle    = "Pin This Post"
+	UnpinPostMenuItemTitle  = "Unpin This Post"
 	ReportPostMenuItemTitle = "Report"
 	EditPostMenuItemTitle   = "Edit Post"
 )
