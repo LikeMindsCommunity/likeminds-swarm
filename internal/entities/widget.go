@@ -6,8 +6,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Structure for CustomWidget
-type CustomWidget struct {
+// Structure for Widget
+type Widget struct {
 	ID               primitive.ObjectID     `json:"_id" bson:"_id,omitempty"`
 	CreatedByLM      bool                   `json:"created_by_lm" bson:"created_by_lm"`
 	ParentEntityID   string                 `json:"parent_entity_id" bson:"parent_entity_id"`
@@ -18,12 +18,12 @@ type CustomWidget struct {
 	UpdatedAt        time.Time              `json:"updated_at" bson:"updated_at"`
 }
 
-// Exposed Method to Create a New CustomWidget Instance
-func NewCustomWidget(createdByLM bool, parentEntityID string, parentEntityType string, metaData map[string]interface{},
-	communityId int) CustomWidget {
+// Exposed Method to Create a New Widget Instance
+func NewWidget(createdByLM bool, parentEntityID string, parentEntityType string, metaData map[string]interface{},
+	communityId int) Widget {
 	createdAt := time.Now()
 
-	return CustomWidget{
+	return Widget{
 		CreatedByLM:      createdByLM,
 		ParentEntityID:   parentEntityID,
 		ParentEntityType: parentEntityType,
