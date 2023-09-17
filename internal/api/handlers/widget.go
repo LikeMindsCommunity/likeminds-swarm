@@ -18,9 +18,10 @@ import (
 
 // Internal Method to create a new widget with indexing
 func createWidget(c *gin.Context, handlers *FeedHandlers, createdByLM bool, parentEntityID string, parentEntityType string,
-	metaData map[string]interface{}, communityId int) (*entities.Widget, bool) {
+	metaData map[string]interface{}, lmMeta map[string]interface{}, communityId int) (*entities.Widget, bool) {
 	// create Widget using the helper method
-	widgetId, err := handlers.widgetHelper.CreateWidgetHelper(createdByLM, parentEntityID, parentEntityType, metaData, communityId)
+	widgetId, err := handlers.widgetHelper.CreateWidgetHelper(createdByLM, parentEntityID, parentEntityType, metaData, lmMeta,
+		communityId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return nil, false
@@ -44,7 +45,7 @@ func createWidget(c *gin.Context, handlers *FeedHandlers, createdByLM bool, pare
 
 // Internal Method to edit an existing widget with index update
 func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, createdByLM bool, metaData map[string]interface{},
-	communityId int) (*entities.Widget, bool) {
+	lmMeta map[string]interface{}, communityId int) (*entities.Widget, bool) {
 	// fetch Widget using widget_id
 	widget, err := fetchWidgetByID(handlers.widgetHelper, widgetId, createdByLM, communityId)
 	if err != nil {
@@ -57,9 +58,14 @@ func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, created
 		"$set": gin.H{},
 	}
 
-	// Update set object with name field, if changed
+	// Update set object with metadata field, if changed
 	if metaData != nil {
 		widgetUpdateData["$set"].(gin.H)["metadata"] = metaData
+	}
+
+	// Update set object with lmmeta field, if changed
+	if lmMeta != nil {
+		widgetUpdateData["$set"].(gin.H)["_lm_meta"] = lmMeta
 	}
 
 	// Validation of data change
@@ -161,7 +167,7 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 
 	// create Widget
 	widgetData, ok := createWidget(c, handlers, false, createWidgetRequest.ParentEntityID, createWidgetRequest.ParentEntityType,
-		createWidgetRequest.MetaData, communityId)
+		createWidgetRequest.MetaData, nil, communityId)
 	if !ok {
 		return
 	}
@@ -271,7 +277,7 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	}
 
 	// edit Widget
-	widget, ok := editWidget(c, handlers, widgetId, false, editWidgetRequest.MetaData, communityId)
+	widget, ok := editWidget(c, handlers, widgetId, false, editWidgetRequest.MetaData, nil, communityId)
 	if !ok {
 		return
 	}

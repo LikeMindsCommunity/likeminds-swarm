@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
@@ -48,12 +49,35 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
 			_ = json.Unmarshal(convertedMetaData, &metaData)
 
+			switch attachment.AttachmentType {
+			case enums.PollWidget:
+				if _, exists := metaData["is_anonymous"]; !exists {
+					metaData["is_anonymous"] = false
+				}
+
+				if _, exists := metaData["allow_add_option"]; !exists {
+					metaData["allow_add_option"] = false
+				}
+
+				if _, exists := metaData["poll_type"]; !exists {
+					metaData["poll_type"] = enums.InstantPollType
+				}
+
+				if _, exists := metaData["multiple_select_state"]; !exists {
+					metaData["multiple_select_state"] = enums.ExactlySelectStateType
+				}
+
+				if _, exists := metaData["multiple_select_number"]; !exists {
+					metaData["multiple_select_number"] = 1
+				}
+			}
+
 			// Edit the metadata keys in case entity_id already exists in LM Created widget
 			if attachment.AttachmentMeta.EntityID != "" {
 				delete(metaData, "entity_id")
 
 				// update widget from given metadata
-				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, communityId)
+				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, nil, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -64,7 +88,7 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			} else {
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, communityId)
+				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, nil, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -225,6 +249,26 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 			if element.AttachmentMeta.EntityID == "" {
 				utils.GeneralAPIValidationError(c, "Send entity_id in attachment_meta for custom widget")
 				return false
+			}
+
+		case enums.PollWidget:
+			if element.AttachmentMeta.PollType != "" && !enums.IsPollTypeValid(element.AttachmentMeta.PollType) {
+				utils.GeneralAPIValidationError(c, "Send valid poll_type in attachment_meta for poll widget")
+				return false
+			}
+
+			if element.AttachmentMeta.MultipleSelectState != "" && !enums.IsPollMultipleSelectStateValid(element.AttachmentMeta.MultipleSelectState) {
+				utils.GeneralAPIValidationError(c, "Send valid multiple_select_state in attachment_meta for poll widget")
+				return false
+			}
+
+			if element.AttachmentMeta.MultipleSelectNumber < 0 {
+				utils.GeneralAPIValidationError(c, "Send valid multiple_select_number in attachment_meta for poll widget")
+				return false
+			}
+
+			if element.AttachmentMeta.ExpiryTime != 0 && element.AttachmentMeta.ExpiryTime <= int64(time.Now().UnixMilli()) {
+				utils.GeneralAPIValidationError(c, "Send valid expiry_time in attachment_meta for poll widget")
 			}
 
 		case enums.ArticleWidget:
