@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -376,6 +377,9 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.AlsoCommentOnPost:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
+
+		handlers.pushActivitytoCache(activityID)
+
 		return activityID, err
 
 	}
@@ -665,4 +669,114 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{"success": true, "count": activityUnreadCount})
+}
+
+func (handlers *FeedHandlers) pushActivitytoCache(activityID interface{}) {
+	activityFilter := gin.H{
+		"_id": activityID,
+	}
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilter, gin.H{})
+	if err != nil {
+		return
+	}
+
+	userID := activity[0].ActionOn
+	activtyBytes, err := json.Marshal(activity[0])
+	if err != nil {
+		return
+	}
+	activityString := string(activtyBytes)
+
+	userActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
+	handlers.cacheHelper.LPush(userActivityFeedKey, activityID.(string), 20)
+
+	activityFeedKey := fmt.Sprintf("activity_{}", activityID.(string))
+	handlers.cacheHelper.Set(activityFeedKey, activityString, 0)
+}
+
+// WarmupCommunityUniversaFeedCache | push community universal feed first page to cache
+func (handlers *FeedHandlers) WarmupCommunityUniversaFeedCache(communityID int) {
+	handlers.deleteCommunityUniversalFeedCacheData(communityID)
+
+	// add create logic
+}
+
+func (handlers *FeedHandlers) deleteCommunityUniversalFeedCacheData(communityID int) {
+	cacheCommunityUniversalFeedPostsKey := fmt.Sprintf("community_{}_universal_feed_posts", communityID)
+
+	cacheCommunityUniversleFeedPostIDsString := handlers.cacheHelper.Get(cacheCommunityUniversalFeedPostsKey)
+	cacheCommunityUniversleFeedPostIDs := [](string){cacheCommunityUniversleFeedPostIDsString.Val()}
+
+	cachePostKeys := [](string){}
+	for _, cacheCommunityUniversleFeedPostID := range cacheCommunityUniversleFeedPostIDs {
+		cachePostKey := fmt.Sprintf("post_{}", cacheCommunityUniversleFeedPostID)
+		cachePostKeys = append(cachePostKeys, cachePostKey)
+	}
+
+	handlers.cacheHelper.DeleteMultiple(cachePostKeys)
+	handlers.cacheHelper.Delete(cacheCommunityUniversalFeedPostsKey)
+}
+
+// WarmupUserActivityFeedCache | push user activity feed first page to cache
+func (handlers *FeedHandlers) WarmupUserActivityFeedCache(communityID int, userID string) []entities.Activity {
+	handlers.deleteUserActivityFeedCacheData(userID)
+
+	userActivities := []entities.Activity{}
+
+	// activity filter data
+	activityFilterData := gin.H{
+		"action_on":    userID,
+		"community_id": communityID,
+		"is_deleted":   false,
+	}
+
+	activityFilterOptions := gin.H{
+		"": "",
+	}
+
+	// fetch activity using helper method
+	activityResults, err := handlers.activityHelper.FindActivityHelper(activityFilterData, activityFilterOptions)
+	if err != nil {
+		return userActivities
+	}
+
+	handlers.createUserActivityFeedCacheData(userID, activityResults)
+
+	return userActivities
+}
+
+func (handlers *FeedHandlers) deleteUserActivityFeedCacheData(userID string) {
+	userActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
+
+	cacheUserActivityIDsString := handlers.cacheHelper.Get(userActivityFeedKey)
+	cacheUserActivityIDs := [](string){cacheUserActivityIDsString.Val()}
+
+	cacheActivityKeys := [](string){}
+	for _, cacheUserActivityID := range cacheUserActivityIDs {
+		cacheActivityKey := fmt.Sprintf("activity_{}", cacheUserActivityID)
+		cacheActivityKeys = append(cacheActivityKeys, cacheActivityKey)
+	}
+
+	handlers.cacheHelper.DeleteMultiple(cacheActivityKeys)
+	handlers.cacheHelper.Delete(userActivityFeedKey)
+}
+
+func (handlers *FeedHandlers) createUserActivityFeedCacheData(userID string, activities []entities.Activity) {
+	userActivityIDs := [](string){}
+
+	for _, activity := range activities {
+
+		cacheActivityKey := fmt.Sprintf("activity_{}", activity.ID.Hex())
+		activtyBytes, err := json.Marshal(activity)
+		if err != nil {
+			return
+		}
+		activityString := string(activtyBytes)
+		handlers.cacheHelper.Set(cacheActivityKey, activityString, 0)
+
+		userActivityIDs = append(userActivityIDs, activity.ID.Hex())
+	}
+
+	cacheUserActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
+	handlers.cacheHelper.Set(cacheUserActivityFeedKey, userActivityIDs, 0)
 }
