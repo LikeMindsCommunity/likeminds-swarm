@@ -288,6 +288,30 @@ func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// Internal Method to fetch a users vote on a poll
+func GetPollVoteOfUUID(handlers *FeedHandlers, pollId string, communityId int, uuid string) (*entities.PollVotes, error) {
+	pollVoteFilterData := gin.H{
+		"poll_id":      pollId,
+		"community_id": communityId,
+		"votes.0": gin.H{
+			"$exists": true,
+		},
+		"uuid": uuid,
+	}
+
+	pollVotes, err := handlers.pollVotesHelper.FindPollVotesHelper(pollVoteFilterData, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of post_id
+	if len(pollVotes) == 0 {
+		return nil, fmt.Errorf("invalid poll_id sent")
+	}
+
+	return &pollVotes[0], nil
+}
+
 // Internal Method to fetch unique users on a Poll
 func getUniqueVotersOnPoll(handlers *FeedHandlers, pollId string, communityId int) (int64, error) {
 	pollUniqueVotersFilterData := gin.H{

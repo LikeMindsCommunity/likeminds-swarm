@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -99,10 +100,18 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 	communityId int, uuid string) map[string]interface{} {
 	// If option exists in LM Meta, it is a poll widget
 	if _, exists := lmMeta["options"]; exists {
-		// Fetch poll Votes Data
-		pollVotesData, err := getPollVotesDataUsingAggregation(handlers, entityId, communityId, uuid)
-		if err != nil {
-			return lmMeta
+		pollVotesData := []gin.H{}
+		var err error
+
+		pollType, pollTypeExists := metaData["poll_type"]
+		pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
+
+		if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil) {
+			// Fetch poll Votes Data
+			pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uuid)
+			if err != nil {
+				return lmMeta
+			}
 		}
 
 		parsedPollVotesData := gin.H{}
