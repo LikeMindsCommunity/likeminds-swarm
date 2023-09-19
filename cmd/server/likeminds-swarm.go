@@ -71,7 +71,7 @@ func main() {
 
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper,
-		topicHelper, widgetHepler, topicHelper, widgetHepler, pollVotesHelper, esHelper, cacheHelper)
+		topicHelper, widgetHepler, pollVotesHelper, esHelper, cacheHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)
