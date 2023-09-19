@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -555,4 +556,27 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
+}
+
+// WarmupCommunityUniversaFeedCache | push community universal feed first page to cache
+func (handlers *FeedHandlers) WarmupCommunityUniversaFeedCache(communityID int) {
+	handlers.deleteCommunityUniversalFeedCacheData(communityID)
+
+	// add create logic
+}
+
+func (handlers *FeedHandlers) deleteCommunityUniversalFeedCacheData(communityID int) {
+	cacheCommunityUniversalFeedPostsKey := fmt.Sprintf("community_{}_universal_feed_posts", communityID)
+
+	cacheCommunityUniversleFeedPostIDsString := handlers.cacheHelper.Get(cacheCommunityUniversalFeedPostsKey)
+	cacheCommunityUniversleFeedPostIDs := [](string){cacheCommunityUniversleFeedPostIDsString.Val()}
+
+	cachePostKeys := [](string){}
+	for _, cacheCommunityUniversleFeedPostID := range cacheCommunityUniversleFeedPostIDs {
+		cachePostKey := fmt.Sprintf("post_{}", cacheCommunityUniversleFeedPostID)
+		cachePostKeys = append(cachePostKeys, cachePostKey)
+	}
+
+	handlers.cacheHelper.DeleteMultiple(cachePostKeys)
+	handlers.cacheHelper.Delete(cacheCommunityUniversalFeedPostsKey)
 }
