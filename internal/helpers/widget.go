@@ -12,9 +12,9 @@ import (
 
 // Exposed Helper Method to Create Widget Instance
 func (helper *widgetHelper) CreateWidgetHelper(createdByLM bool, parentEntityID string, parentEntityType string,
-	metaData map[string]interface{}, community_id int) (interface{}, error) {
+	metaData map[string]interface{}, lmMeta map[string]interface{}, community_id int) (interface{}, error) {
 	// Create a new Widget Document
-	widget := entities.NewWidget(createdByLM, parentEntityID, parentEntityType, metaData, community_id)
+	widget := entities.NewWidget(createdByLM, parentEntityID, parentEntityType, metaData, lmMeta, community_id)
 
 	// Insert the document in the collection
 	widgetId, err := helper.widgetRepository.Create(widget)
