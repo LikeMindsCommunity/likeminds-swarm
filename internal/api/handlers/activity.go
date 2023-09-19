@@ -694,29 +694,6 @@ func (handlers *FeedHandlers) pushActivitytoCache(activityID interface{}) {
 	handlers.cacheHelper.Set(activityFeedKey, activityString, 0)
 }
 
-// WarmupCommunityUniversaFeedCache | push community universal feed first page to cache
-func (handlers *FeedHandlers) WarmupCommunityUniversaFeedCache(communityID int) {
-	handlers.deleteCommunityUniversalFeedCacheData(communityID)
-
-	// add create logic
-}
-
-func (handlers *FeedHandlers) deleteCommunityUniversalFeedCacheData(communityID int) {
-	cacheCommunityUniversalFeedPostsKey := fmt.Sprintf("community_{}_universal_feed_posts", communityID)
-
-	cacheCommunityUniversleFeedPostIDsString := handlers.cacheHelper.Get(cacheCommunityUniversalFeedPostsKey)
-	cacheCommunityUniversleFeedPostIDs := [](string){cacheCommunityUniversleFeedPostIDsString.Val()}
-
-	cachePostKeys := [](string){}
-	for _, cacheCommunityUniversleFeedPostID := range cacheCommunityUniversleFeedPostIDs {
-		cachePostKey := fmt.Sprintf("post_{}", cacheCommunityUniversleFeedPostID)
-		cachePostKeys = append(cachePostKeys, cachePostKey)
-	}
-
-	handlers.cacheHelper.DeleteMultiple(cachePostKeys)
-	handlers.cacheHelper.Delete(cacheCommunityUniversalFeedPostsKey)
-}
-
 // WarmupUserActivityFeedCache | push user activity feed first page to cache
 func (handlers *FeedHandlers) WarmupUserActivityFeedCache(communityID int, userID string) []entities.Activity {
 	handlers.deleteUserActivityFeedCacheData(userID)
