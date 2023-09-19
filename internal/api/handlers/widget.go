@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -18,9 +19,10 @@ import (
 
 // Internal Method to create a new widget with indexing
 func createWidget(c *gin.Context, handlers *FeedHandlers, createdByLM bool, parentEntityID string, parentEntityType string,
-	metaData map[string]interface{}, communityId int) (*entities.Widget, bool) {
+	metaData map[string]interface{}, lmMeta map[string]interface{}, communityId int) (*entities.Widget, bool) {
 	// create Widget using the helper method
-	widgetId, err := handlers.widgetHelper.CreateWidgetHelper(createdByLM, parentEntityID, parentEntityType, metaData, communityId)
+	widgetId, err := handlers.widgetHelper.CreateWidgetHelper(createdByLM, parentEntityID, parentEntityType, metaData, lmMeta,
+		communityId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return nil, false
@@ -44,7 +46,7 @@ func createWidget(c *gin.Context, handlers *FeedHandlers, createdByLM bool, pare
 
 // Internal Method to edit an existing widget with index update
 func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, createdByLM bool, metaData map[string]interface{},
-	communityId int) (*entities.Widget, bool) {
+	lmMeta map[string]interface{}, communityId int) (*entities.Widget, bool) {
 	// fetch Widget using widget_id
 	widget, err := fetchWidgetByID(handlers.widgetHelper, widgetId, createdByLM, communityId)
 	if err != nil {
@@ -57,9 +59,14 @@ func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, created
 		"$set": gin.H{},
 	}
 
-	// Update set object with name field, if changed
+	// Update set object with metadata field, if changed
 	if metaData != nil {
 		widgetUpdateData["$set"].(gin.H)["metadata"] = metaData
+	}
+
+	// Update set object with lmmeta field, if changed
+	if lmMeta != nil {
+		widgetUpdateData["$set"].(gin.H)["_lm_meta"] = lmMeta
 	}
 
 	// Validation of data change
@@ -88,14 +95,71 @@ func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, created
 	return widget, true
 }
 
+// Internal Method to parse LM meta object for response
+func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
+	communityId int, uuid string) map[string]interface{} {
+	// If option exists in LM Meta, it is a poll widget
+	if _, exists := lmMeta["options"]; exists {
+		pollVotesData := []gin.H{}
+		var err error
+
+		pollType, pollTypeExists := metaData["poll_type"]
+		pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
+
+		if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil) {
+			// Fetch poll Votes Data
+			pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uuid)
+			if err != nil {
+				return lmMeta
+			}
+		}
+
+		parsedPollVotesData := gin.H{}
+
+		// Process poll votes data
+		for _, pollVoteData := range pollVotesData {
+			if optionId, exists := pollVoteData["_id"]; exists {
+				parsedPollVotesData[optionId.(string)] = pollVoteData
+			}
+		}
+
+		// option data conversion to desired type
+		options := []gin.H{}
+		convertedOptions, _ := json.Marshal(lmMeta["options"])
+		_ = json.Unmarshal(convertedOptions, &options)
+
+		// Merge option data with votes data
+		for _, option := range options {
+			if optionId, exists := option["_id"]; exists {
+				voteData := parsedPollVotesData[optionId.(string)]
+
+				if voteData != nil {
+					for key, value := range voteData.(gin.H) {
+						option[key] = value
+					}
+				} else {
+					option["vote_count"] = 0
+					option["is_selected"] = false
+					option["percentage"] = 0
+				}
+			}
+		}
+
+		lmMeta["options"] = options
+	}
+
+	return lmMeta
+}
+
 // Internal Method to parse Widget for response
-func parseWidgetResponse(widget *entities.Widget) requests.WidgetResponse {
+func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, uuid string) requests.WidgetResponse {
 	var response requests.WidgetResponse
 
 	response.ID = widget.ID
 	response.ParentEntityID = widget.ParentEntityID
 	response.ParentEntityType = widget.ParentEntityType
 	response.MetaData = widget.MetaData
+	response.LMMeta = parseLMMeta(handlers, widget.ID.Hex(), widget.MetaData, widget.LMMeta, communityId, uuid)
 
 	response.CreatedAt = int(widget.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(widget.UpdatedAt.UnixMilli())
@@ -146,6 +210,9 @@ func fetchWidgetByID(helper interfaces.WidgetHelper, widgetId string, createdByL
 
 // Exposed Method to Create a Widget
 func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
+	// fetch headers
+	headers := utils.GetHeaders(c)
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -161,12 +228,12 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 
 	// create Widget
 	widgetData, ok := createWidget(c, handlers, false, createWidgetRequest.ParentEntityID, createWidgetRequest.ParentEntityType,
-		createWidgetRequest.MetaData, communityId)
+		createWidgetRequest.MetaData, nil, communityId)
 	if !ok {
 		return
 	}
 
-	widgetResponse := parseWidgetResponse(widgetData)
+	widgetResponse := parseWidgetResponse(handlers, widgetData, communityId, headers[utils.HeadersMemberId])
 
 	// response data
 	response := gin.H{
@@ -178,7 +245,7 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.WidgetResponse {
+func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}, communityId int, uuid string) []requests.WidgetResponse {
 	widgetDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
 	var widgetList []entities.Widget
 
@@ -198,7 +265,7 @@ func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}
 
 	// Parse all fetched Widget Data
 	for _, widget := range widgetList {
-		widgetResponse = append(widgetResponse, parseWidgetResponse(&widget))
+		widgetResponse = append(widgetResponse, parseWidgetResponse(handlers, &widget, communityId, uuid))
 	}
 
 	return widgetResponse
@@ -206,6 +273,9 @@ func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}
 
 // Exposed Method to Fetch CustomWidgets based on given params
 func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
+	// fetch headers
+	headers := utils.GetHeaders(c)
+
 	// parse fetch Widget request
 	var fetchWidgetRequest requests.FetchWidgetRequest
 	err := c.BindQuery(&fetchWidgetRequest)
@@ -240,7 +310,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 
 	response := handlers.esHelper.ExecuteQuery(widgetQuery, constants.WidgetIndexName)
 
-	finalResponse := processWidgetSearchData(handlers, response)
+	finalResponse := processWidgetSearchData(handlers, response, communityId, headers[utils.HeadersMemberId])
 
 	// reponse data
 	finalParsedResponse := gin.H{
@@ -254,7 +324,8 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 
 // Exposed Method to Edit a Widget
 func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
-	// fetch url params
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
 	widgetId := c.Param("widget_id")
 
 	// validation of api_key
@@ -271,13 +342,13 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	}
 
 	// edit Widget
-	widget, ok := editWidget(c, handlers, widgetId, false, editWidgetRequest.MetaData, communityId)
+	widget, ok := editWidget(c, handlers, widgetId, false, editWidgetRequest.MetaData, nil, communityId)
 	if !ok {
 		return
 	}
 
 	// Fetch Updated Widget Response
-	widgetResponse := parseWidgetResponse(widget)
+	widgetResponse := parseWidgetResponse(handlers, widget, communityId, headers[utils.HeadersMemberId])
 
 	// reponse data
 	response := gin.H{

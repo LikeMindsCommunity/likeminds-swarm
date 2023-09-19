@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
@@ -48,12 +49,35 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
 			_ = json.Unmarshal(convertedMetaData, &metaData)
 
+			switch attachment.AttachmentType {
+			case enums.PollWidget:
+				if _, exists := metaData["is_anonymous"]; !exists {
+					metaData["is_anonymous"] = false
+				}
+
+				if _, exists := metaData["allow_add_option"]; !exists {
+					metaData["allow_add_option"] = false
+				}
+
+				if _, exists := metaData["poll_type"]; !exists {
+					metaData["poll_type"] = enums.InstantPollType
+				}
+
+				if _, exists := metaData["multiple_select_state"]; !exists {
+					metaData["multiple_select_state"] = enums.ExactlySelectStateType
+				}
+
+				if _, exists := metaData["multiple_select_number"]; !exists {
+					metaData["multiple_select_number"] = 1
+				}
+			}
+
 			// Edit the metadata keys in case entity_id already exists in LM Created widget
 			if attachment.AttachmentMeta.EntityID != "" {
 				delete(metaData, "entity_id")
 
 				// update widget from given metadata
-				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, communityId)
+				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, nil, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -64,7 +88,7 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			} else {
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, communityId)
+				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, nil, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -227,6 +251,28 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 				return false
 			}
 
+		case enums.PollWidget:
+			if element.AttachmentMeta.PollType != "" && !enums.IsPollTypeValid(element.AttachmentMeta.PollType) {
+				utils.GeneralAPIValidationError(c, "Send valid poll_type in attachment_meta for poll widget")
+				return false
+			}
+
+			if element.AttachmentMeta.MultipleSelectState != "" && !enums.IsPollMultipleSelectStateValid(element.AttachmentMeta.MultipleSelectState) {
+				utils.GeneralAPIValidationError(c, "Send valid multiple_select_state in attachment_meta for poll widget")
+				return false
+			}
+
+			if element.AttachmentMeta.MultipleSelectNumber < 0 {
+				utils.GeneralAPIValidationError(c, "Send valid multiple_select_number in attachment_meta for poll widget")
+				return false
+			}
+
+			if (element.AttachmentMeta.ExpiryTime == 0) ||
+				(element.AttachmentMeta.ExpiryTime != 0 && element.AttachmentMeta.ExpiryTime <= int64(time.Now().UnixMilli())) {
+				utils.GeneralAPIValidationError(c, "Send valid expiry_time in attachment_meta for poll widget")
+				return false
+			}
+
 		case enums.ArticleWidget:
 			if element.AttachmentMeta.Body == "" {
 				utils.GeneralAPIValidationError(c, "Send body in attachment_meta for article")
@@ -285,9 +331,9 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 }
 
 // Internal Method to parse widgets response
-func parseWidgetsResponse(widgetHelper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) (map[string]requests.WidgetResponse, error) {
+func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int, uuid string) (map[string]requests.WidgetResponse, error) {
 	// Fetch widgets using widget Ids
-	widgets, err := fetchWidgetsByIDs(widgetHelper, widgetIds, communityId)
+	widgets, err := fetchWidgetsByIDs(handlers.widgetHelper, widgetIds, communityId)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +342,7 @@ func parseWidgetsResponse(widgetHelper interfaces.WidgetHelper, widgetIds []prim
 
 	// Parse all fetched widgets Data
 	for _, widget := range widgets {
-		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(&widget)
+		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(handlers, &widget, communityId, uuid)
 	}
 
 	return widgetsResponse, nil
@@ -403,10 +449,10 @@ func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interfac
 }
 
 // Internal Method to get widget Data from Posts response
-func getWidgetDataFromPosts(widgetHelper interfaces.WidgetHelper, response interface{}, communityId int) map[string]requests.WidgetResponse {
+func getWidgetDataFromPosts(handlers *FeedHandlers, response interface{}, communityId int, uuid string) map[string]requests.WidgetResponse {
 	widgetIds := getWidgetIdsFromPosts(response)
 
-	widgetsData, _ := parseWidgetsResponse(widgetHelper, widgetIds, communityId)
+	widgetsData, _ := parseWidgetsResponse(handlers, widgetIds, communityId, uuid)
 
 	return widgetsData
 }
@@ -749,7 +795,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-		response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
+		response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
 	}
 
 	// return final response
@@ -812,7 +858,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, parsedResponse, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers, parsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -860,7 +906,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 	response["post"] = fetchPostData
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -983,7 +1029,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -1187,7 +1233,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalResponse, communityId)
+	finalResponse["widgets"] = getWidgetDataFromPosts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalResponse)
@@ -1264,7 +1310,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -1319,7 +1365,7 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)

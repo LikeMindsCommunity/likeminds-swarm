@@ -28,6 +28,7 @@ type WidgetResponse struct {
 	ParentEntityID   string                 `json:"parent_entity_id"`
 	ParentEntityType string                 `json:"parent_entity_type"`
 	MetaData         map[string]interface{} `json:"metadata"`
+	LMMeta           map[string]interface{} `json:"_lm_meta"`
 	CreatedAt        int                    `json:"created_at"`
 	UpdatedAt        int                    `json:"updated_at"`
 }

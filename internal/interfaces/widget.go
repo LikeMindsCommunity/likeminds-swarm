@@ -18,7 +18,7 @@ type WidgetRepository interface {
 // Interface for Widget Helper
 type WidgetHelper interface {
 	CreateWidgetHelper(createdByLM bool, parentEntityID string, parentEntityType string, metaData map[string]interface{},
-		community_id int) (interface{}, error)
+		lmMeta map[string]interface{}, community_id int) (interface{}, error)
 	FindWidgetHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Widget, error)
 	UpdateWidgetByIdHelper(widgetId primitive.ObjectID, update map[string]interface{}) error
 	CountWidgetHelper(filter map[string]interface{}) (int64, error)
