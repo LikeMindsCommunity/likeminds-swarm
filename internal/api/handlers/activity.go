@@ -633,6 +633,8 @@ func (handlers *FeedHandlers) UserActivityMarkRead(c *gin.Context) {
 		return
 	}
 
+	handlers.updateActivityInCache(activity[0].ID.Hex())
+
 	// return final response
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -672,6 +674,30 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "count": activityUnreadCount})
 }
 
+// updateActivityInCache | update activity in cache storage
+func (handlers *FeedHandlers) updateActivityInCache(activityID string) {
+	cacheActivityKey := fmt.Sprintf("activity_{}", activityID)
+	cacheActivityString := handlers.cacheHelper.Get(cacheActivityKey)
+
+	if cacheActivityString == nil {
+		return
+	}
+	activityFilter := gin.H{
+		"_id": activityID,
+	}
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilter, gin.H{})
+	if err != nil {
+		return
+	}
+	activtyBytes, err := json.Marshal(activity[0])
+	if err != nil {
+		return
+	}
+	activityString := string(activtyBytes)
+
+	handlers.cacheHelper.Set(cacheActivityKey, activityString, 0)
+}
+
 func (handlers *FeedHandlers) pushActivitytoCache(activityID interface{}) {
 	activityFilter := gin.H{
 		"_id": activityID,
@@ -688,11 +714,11 @@ func (handlers *FeedHandlers) pushActivitytoCache(activityID interface{}) {
 	}
 	activityString := string(activtyBytes)
 
-	userActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
-	handlers.cacheHelper.LPush(userActivityFeedKey, activityID.(string), 20)
+	cacheUserActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
+	handlers.cacheHelper.LPush(cacheUserActivityFeedKey, activityID.(string), 20)
 
-	activityFeedKey := fmt.Sprintf("activity_{}", activityID.(string))
-	handlers.cacheHelper.Set(activityFeedKey, activityString, 0)
+	cacheActivityKey := fmt.Sprintf("activity_{}", activityID.(string))
+	handlers.cacheHelper.Set(cacheActivityKey, activityString, 0)
 }
 
 // WarmupUserActivityFeedCache | push user activity feed first page to cache
@@ -745,11 +771,11 @@ func (handlers *FeedHandlers) createUserActivityFeedCacheData(userID string, act
 	for _, activity := range activities {
 
 		cacheActivityKey := fmt.Sprintf("activity_{}", activity.ID.Hex())
-		activtyBytes, err := json.Marshal(activity)
+		activityBytes, err := json.Marshal(activity)
 		if err != nil {
 			return
 		}
-		activityString := string(activtyBytes)
+		activityString := string(activityBytes)
 		handlers.cacheHelper.Set(cacheActivityKey, activityString, 0)
 
 		userActivityIDs = append(userActivityIDs, activity.ID.Hex())
