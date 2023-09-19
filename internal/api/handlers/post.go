@@ -1109,6 +1109,8 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 		return
 	}
 
+	handlers.updatePinnedPostCache(postData)
+
 	// update post data in elastic search
 	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
@@ -1323,4 +1325,35 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
+}
+
+// updatePinnedPostCache | update pinned post data in cache storage
+func (handlers *FeedHandlers) updatePinnedPostCache(postData *entities.Post) {
+	if postData.IsPinned {
+		handlers.addPostToCommunityPinnedPostCache(postData)
+	}
+	handlers.removePostFromCommunityPinnedPostsCache(postData.CommunityId, postData.ID.Hex())
+}
+
+// addPostToCommunityPinnedPostCache | add post to cache storage
+func (handlers *FeedHandlers) addPostToCommunityPinnedPostCache(postData *entities.Post) {
+	communityPostPinnedKey := fmt.Sprintf("community_{}_pinned_posts", postData.CommunityId)
+	postDataBytes, err := json.Marshal(postData)
+	if err != nil {
+		return
+	}
+	postDataString := string(postDataBytes)
+
+	cachePostKey := fmt.Sprintf("post_{}", postData.ID.Hex())
+
+	handlers.cacheHelper.LPush(communityPostPinnedKey, postData.ID.Hex(), -1)
+	handlers.cacheHelper.Set(cachePostKey, postDataString, 0)
+}
+
+// removePostFromCommunityPinnedPostsCache | add post to cache storage
+func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityID int, postID string) {
+	communityPostPinnedKey := fmt.Sprintf("community_{}_pinned_posts", communityID)
+
+	handlers.cacheHelper.LRem(communityPostPinnedKey, 0, postID)
+	handlers.cacheHelper.Delete(fmt.Sprintf("post_{}", postID))
 }
