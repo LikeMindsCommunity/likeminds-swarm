@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	redisCache *redis.Client
-	router     *gin.Engine
+	redisClient *redis.Client
+	router      *gin.Engine
 )
 
 // Internal Method to initiate the server
@@ -33,7 +33,7 @@ func main() {
 	var AppVersion string = "1.2.1"
 
 	initGin()
-	redisCache = cache.InitRedis()
+	redisClient = cache.InitRedis()
 	db := database.InitiateDB()
 	es := searchElastic.InitiateES()
 
@@ -65,9 +65,11 @@ func main() {
 	// Dependency injection of elasticSearch Helper
 	esHelper := searchElastic.NewESHelper(es)
 
+	cacheHelper := cache.NewCacheHelper(redisClient)
+
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper,
-		topicHelper, widgetHepler, esHelper)
+		topicHelper, widgetHepler, esHelper, cacheHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)
