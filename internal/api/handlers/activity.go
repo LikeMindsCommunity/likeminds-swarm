@@ -18,7 +18,7 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool) ([]interface{}, interface{}, interface{}, interface{}, error) {
+	apiRevampV1Check bool, uuid string) ([]interface{}, interface{}, interface{}, interface{}, error) {
 
 	response := []interface{}{}
 	userDatas := make(map[string]interface{})
@@ -80,7 +80,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 				activity.CommunityID)
 
 			widgetIds := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
-			widgetsData, _ := parseWidgetsResponse(handler.widgetHelper, widgetIds, activity.CommunityID)
+			widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, uuid)
 
 			for topicId, topicData := range topicsData {
 				topicDatas[topicId] = topicData
@@ -492,7 +492,8 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	}
 
 	// parse user activity response
-	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserActivity(*handlers, activityResults, apiRevampV1Check)
+	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserActivity(*handlers, activityResults,
+		apiRevampV1Check, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

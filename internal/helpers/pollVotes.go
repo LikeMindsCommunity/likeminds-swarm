@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -68,7 +69,7 @@ func (helper *pollVotesHelper) UpdatePollVotesByIdHelper(pollVotesId primitive.O
 // Exposed Helper Method to Fetch PollVotes Count
 func (helper *pollVotesHelper) CountPollVotesHelper(filter map[string]interface{}) (int64, error) {
 	// Parse the object IDs
-	err := convertHexIdsToObjectIds(filter, []string{"_id"})
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "poll_id"})
 	if err != nil {
 		return 0, err
 	}
@@ -77,6 +78,22 @@ func (helper *pollVotesHelper) CountPollVotesHelper(filter map[string]interface{
 	count, err := helper.pollVotesRepository.Count(filter)
 
 	return count, err
+}
+
+// Exposed Helper Method to perform Aggregration on PollVotes
+func (helper *pollVotesHelper) AggregatePollVotesHelper(query []map[string]interface{}) ([]gin.H, error) {
+	for _, value := range query {
+		if matchGroup, ok := value["$match"]; ok {
+			err := convertHexIdsToObjectIds(matchGroup.(bson.M), []string{"_id", "poll_id"})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	results, err := helper.pollVotesRepository.Aggregate(query)
+
+	return results, err
 }
 
 // Structure for PollVotes Helper

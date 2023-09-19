@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // Internal Method to fetch poll votes using uuid id and poll_id
@@ -72,14 +74,19 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	}
 
 	lmMeta := map[string]interface{}{}
+	lmMetaOptions := []interface{}{}
 
 	// Fetch existing LM Meta Data
 	if pollWidget.LMMeta != nil {
 		lmMeta = pollWidget.LMMeta
 	}
 
-	if _, exists := lmMeta["options"]; !exists {
-		lmMeta["options"] = []interface{}{}
+	if _, exists := lmMeta["options"]; exists {
+		// option data conversion to desired type
+		options := []interface{}{}
+		convertedOptions, _ := json.Marshal(lmMeta["options"])
+		_ = json.Unmarshal(convertedOptions, &options)
+		lmMetaOptions = options
 	}
 
 	// Generating poll option
@@ -95,7 +102,8 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 		"uuid": headers[utils.HeadersMemberId],
 	}
 
-	lmMeta["options"] = append(lmMeta["options"].([]interface{}), pollOption)
+	lmMetaOptions = append(lmMetaOptions, pollOption)
+	lmMeta["options"] = lmMetaOptions
 
 	// update widget from given metadata
 	pollWidget, ok := editWidget(c, handlers, pollId, true, pollWidget.MetaData, lmMeta, communityId)
@@ -103,7 +111,7 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 		return
 	}
 
-	widgetResponse := parseWidgetResponse(pollWidget)
+	widgetResponse := parseWidgetResponse(handlers, pollWidget, communityId, headers[utils.HeadersMemberId])
 
 	// response data
 	response := gin.H{
@@ -153,7 +161,7 @@ func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 		return
 	}
 
-	if expiryTime.(int64) <= int64(time.Now().UnixMilli()) {
+	if expiryTime.(float64) <= float64(time.Now().UnixMilli()) {
 		utils.GeneralAPIValidationError(c, "Poll Expired")
 		return
 	}
@@ -195,9 +203,9 @@ func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 	votesLength := len(createVoteOnPollRequest.Votes)
 
 	// Check if invalid number of options are selected while voting
-	if (multipleSelectState == enums.ExactlySelectStateType && multipleSelectNumber.(int) != votesLength) ||
-		(multipleSelectState == enums.AtMaxSelectStateType && multipleSelectNumber.(int) < votesLength) ||
-		(multipleSelectState == enums.AtLeastSelectStateType && multipleSelectNumber.(int) > votesLength) {
+	if (multipleSelectState == enums.ExactlySelectStateType && multipleSelectNumber.(int32) != int32(votesLength)) ||
+		(multipleSelectState == enums.AtMaxSelectStateType && multipleSelectNumber.(float64) < float64(votesLength)) ||
+		(multipleSelectState == enums.AtLeastSelectStateType && multipleSelectNumber.(float64) > float64(votesLength)) {
 		utils.GeneralAPIValidationError(c, "Invalid number of options selected")
 		return
 	}
@@ -215,10 +223,15 @@ func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 		return
 	}
 
+	// option data conversion to desired type
+	options := []map[string]interface{}{}
+	convertedOptions, _ := json.Marshal(pollOptions)
+	_ = json.Unmarshal(convertedOptions, &options)
+
 	// process option Ids
 	optionIdsMap := map[string]bool{}
-	for _, option := range pollOptions.([]interface{}) {
-		optionIdsMap[option.(map[string]string)["_id"]] = true
+	for _, option := range options {
+		optionIdsMap[option["_id"].(string)] = true
 	}
 
 	// Check for valid vote Ids
@@ -263,10 +276,197 @@ func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// Internal Method to fetch unique users on a Poll
+func getUniqueVotersOnPoll(handlers *FeedHandlers, pollId string, communityId int) (int64, error) {
+	pollUniqueVotersFilterData := gin.H{
+		"poll_id":      pollId,
+		"community_id": communityId,
+		"votes.0": gin.H{
+			"$exists": true,
+		},
+	}
+
+	uniqueVotersCount, err := handlers.pollVotesHelper.CountPollVotesHelper(pollUniqueVotersFilterData)
+	if err != nil {
+		return 0, err
+	}
+
+	return uniqueVotersCount, nil
+}
+
+// Internal Method to fetch poll votes data using aggregation
+func getPollVotesDataUsingAggregation(handlers *FeedHandlers, pollId string, communityId int, uuid string) ([]gin.H, error) {
+	uniqueVotersOnPoll, err := getUniqueVotersOnPoll(handlers, pollId, communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	pollVotesDataFilterData := []map[string]interface{}{}
+
+	// Add match logic
+	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
+		"$match": bson.M{
+			"poll_id":      pollId,
+			"community_id": communityId,
+		},
+	})
+
+	// Add project logic
+	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
+		"$project": bson.M{
+			"_id":   0,
+			"uuid":  1,
+			"votes": 1,
+		},
+	})
+
+	// Add unwind logic
+	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
+		"$unwind": bson.M{
+			"path": "$votes",
+		},
+	})
+
+	// Add group logic
+	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
+		"$group": bson.M{
+			"_id": "$votes",
+			"users": bson.M{
+				"$addToSet": "$uuid",
+			},
+		},
+	})
+
+	// Add fields logic
+	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
+		"$addFields": bson.M{
+			"vote_count": bson.M{
+				"$size": "$users",
+			},
+			"is_selected": bson.M{
+				"$cond": []interface{}{
+					bson.M{
+						"$gt": []interface{}{
+							bson.M{
+								"$size": gin.H{
+									"$setIntersection": []interface{}{"$users", []string{uuid}},
+								},
+							}, 0,
+						},
+					}, true, false,
+				},
+			},
+		},
+	})
+
+	// Add fields logic
+	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
+		"$addFields": bson.M{
+			"percentage": bson.M{
+				"$multiply": []interface{}{
+					bson.M{
+						"$divide": []interface{}{"$vote_count", uniqueVotersOnPoll},
+					}, 100,
+				},
+			},
+		},
+	})
+
+	// Add project logic
+	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
+		"$project": bson.M{
+			"_id":         1,
+			"vote_count":  1,
+			"is_selected": 1,
+			"percentage":  1,
+		},
+	})
+
+	// fetch pollVotes using helper method
+	pollVotesResults, err := handlers.pollVotesHelper.AggregatePollVotesHelper(pollVotesDataFilterData)
+	if err != nil {
+		return nil, err
+	}
+
+	return pollVotesResults, nil
+}
+
+// Internal Method to Fetch Votes on a Poll using aggregation
+func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communityId int,
+	optionIds []string) ([]gin.H, error) {
+	// Run the aggregate query here
+	pollVotesFilterData := []map[string]interface{}{}
+
+	// Add match logic
+	pollVotesFilterData = append(pollVotesFilterData, gin.H{
+		"$match": gin.H{
+			"poll_id":      pollId,
+			"community_id": communityId,
+		},
+	})
+
+	if len(optionIds) > 0 {
+		// Add match logic
+		pollVotesFilterData = append(pollVotesFilterData, gin.H{
+			"$match": gin.H{
+				"votes": gin.H{
+					"$exists": true,
+					"$in":     optionIds,
+				},
+			},
+		})
+	}
+
+	// Add project logic
+	pollVotesFilterData = append(pollVotesFilterData, gin.H{
+		"$project": gin.H{
+			"_id":   0,
+			"uuid":  1,
+			"votes": 1,
+		},
+	})
+
+	// Add unwind logic
+	pollVotesFilterData = append(pollVotesFilterData, gin.H{
+		"$unwind": gin.H{
+			"path": "$votes",
+		},
+	})
+
+	if len(optionIds) > 0 {
+		// Add match logic
+		pollVotesFilterData = append(pollVotesFilterData, gin.H{
+			"$match": gin.H{
+				"votes": gin.H{
+					"$exists": true,
+					"$in":     optionIds,
+				},
+			},
+		})
+	}
+
+	// Add group logic
+	pollVotesFilterData = append(pollVotesFilterData, gin.H{
+		"$group": gin.H{
+			"_id": "$votes",
+			"users": gin.H{
+				"$addToSet": "$uuid",
+			},
+		},
+	})
+
+	// fetch pollVotes using helper method
+	pollVotesResults, err := handlers.pollVotesHelper.AggregatePollVotesHelper(pollVotesFilterData)
+	if err != nil {
+		return nil, err
+	}
+
+	return pollVotesResults, nil
+}
+
 // Exposed Method to Fetch Votes on a Poll
 func (handlers *FeedHandlers) GetPollVotes(c *gin.Context) {
 	// fetch headers and url params
-	// headers := utils.GetHeaders(c)
 	pollId := c.Param("poll_id")
 
 	// validation of api_key
@@ -315,27 +515,20 @@ func (handlers *FeedHandlers) GetPollVotes(c *gin.Context) {
 		}
 
 		// Check if options are present in poll
-		pollOptions, exists := pollWidget.LMMeta["options"]
+		_, exists := pollWidget.LMMeta["options"]
 		if !exists {
 			utils.GeneralAPIValidationError(c, "Invalid poll_id sent")
 			return
 		}
 
-		// process option Ids
-		optionIdsMap := map[string]bool{}
-		for _, option := range pollOptions.([]interface{}) {
-			optionIdsMap[option.(map[string]string)["_id"]] = true
+		// fetch pollVotes using internal method
+		pollVotesResults, err := getPollVotesUsingAggregation(handlers, pollId, communityId, voteIds)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
 		}
 
-		// Check for valid vote Ids
-		for _, voteId := range voteIds {
-			if !optionIdsMap[voteId] {
-				utils.GeneralAPIValidationError(c, "Invalid votes sent")
-				return
-			}
-		}
-
-		// Run the aggregate query here
+		response["votes"] = pollVotesResults
 	}
 
 	// return final response

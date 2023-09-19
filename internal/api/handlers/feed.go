@@ -149,7 +149,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -551,7 +551,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)

@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -24,6 +25,11 @@ func (repository *pollVotesRepository) Update(filter map[string]interface{}, upd
 // Exposed Helper Method to Fetch Topics Count
 func (repository *pollVotesRepository) Count(filter map[string]interface{}) (int64, error) {
 	return _countDocumentsInDB(repository.db, PollVotesCollection, filter)
+}
+
+// Exposed Helper Method to perform Aggregration on Post
+func (repository *pollVotesRepository) Aggregate(query []map[string]interface{}) ([]gin.H, error) {
+	return _aggregateDocumentsInDB(repository.db, PollVotesCollection, query)
 }
 
 // Structure for PollVotes Repository
