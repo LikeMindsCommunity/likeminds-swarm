@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -123,6 +124,110 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// Internal Method to perform validation on pollWidget
+func pollWidgetValidation(handlers *FeedHandlers, pollId string, communityId int) (*entities.Widget, error) {
+	// Fetch poll widget using poll Id
+	pollWidget, err := fetchWidgetByID(handlers.widgetHelper, pollId, true, communityId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid poll_id sent")
+	}
+
+	// Check if expiry_time key exists
+	expiryTime, exists := pollWidget.MetaData["expiry_time"]
+	if !exists {
+		return nil, fmt.Errorf("invalid poll_id sent")
+	}
+
+	if expiryTime.(float64) <= float64(time.Now().UnixMilli()) {
+		return nil, fmt.Errorf("poll expired")
+	}
+
+	// Check if poll_type key exists
+	_, exists = pollWidget.MetaData["poll_type"]
+	if !exists {
+		return nil, fmt.Errorf("invalid poll_id sent")
+	}
+
+	return pollWidget, nil
+}
+
+// Internal Method to perform validation on VoteOnPoll
+func voteOnPollValidation(createVoteOnPollRequest requests.CreateVoteOnPollRequest, handlers *FeedHandlers,
+	pollId string, communityId int, uuid string) (*entities.Widget, []entities.PollVotes, error) {
+	if len(createVoteOnPollRequest.Votes) < 1 {
+		return nil, nil, fmt.Errorf("invalid votes sent")
+	}
+
+	// perform poll widget validation
+	pollWidget, err := pollWidgetValidation(handlers, pollId, communityId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Fetch votes of the user, if exists
+	pollVotes, err := fetchPollVoteByUUID(handlers.pollVotesHelper, pollId,
+		uuid, communityId)
+	if err != nil {
+		return pollWidget, nil, err
+	}
+
+	// Check if user is trying to vote again on instant poll
+	if pollWidget.MetaData["poll_type"] == enums.InstantPollType && len(pollVotes) > 0 {
+		return pollWidget, pollVotes, fmt.Errorf("can't Vote again")
+	}
+
+	// Check if multiple_select_state and multiple_select_number key exists
+	multipleSelectState, exists := pollWidget.MetaData["multiple_select_state"]
+	if !exists {
+		return pollWidget, pollVotes, fmt.Errorf("invalid poll_id sent")
+	}
+
+	multipleSelectNumber, exists := pollWidget.MetaData["multiple_select_number"]
+	if !exists {
+		return pollWidget, pollVotes, fmt.Errorf("invalid poll_id sent")
+	}
+
+	votesLength := len(createVoteOnPollRequest.Votes)
+
+	// Check if invalid number of options are selected while voting
+	if (multipleSelectState == enums.ExactlySelectStateType && multipleSelectNumber.(int32) != int32(votesLength)) ||
+		(multipleSelectState == enums.AtMaxSelectStateType && multipleSelectNumber.(float64) < float64(votesLength)) ||
+		(multipleSelectState == enums.AtLeastSelectStateType && multipleSelectNumber.(float64) > float64(votesLength)) {
+		return pollWidget, pollVotes, fmt.Errorf("invalid number of options selected")
+	}
+
+	// Check if options are present in poll
+	if pollWidget.LMMeta == nil {
+		return pollWidget, pollVotes, fmt.Errorf("invalid votes sent")
+	}
+
+	// Check if options are present in poll
+	pollOptions, exists := pollWidget.LMMeta["options"]
+	if !exists {
+		return pollWidget, pollVotes, fmt.Errorf("invalid votes sent")
+	}
+
+	// option data conversion to desired type
+	options := []map[string]interface{}{}
+	convertedOptions, _ := json.Marshal(pollOptions)
+	_ = json.Unmarshal(convertedOptions, &options)
+
+	// process option Ids
+	optionIdsMap := map[string]bool{}
+	for _, option := range options {
+		optionIdsMap[option["_id"].(string)] = true
+	}
+
+	// Check for valid vote Ids
+	for _, voteId := range createVoteOnPollRequest.Votes {
+		if !optionIdsMap[voteId] {
+			return pollWidget, pollVotes, fmt.Errorf("invalid votes sent")
+		}
+	}
+
+	return pollWidget, pollVotes, nil
+}
+
 // Exposed Method to Vote on a Poll
 func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 	// fetch headers and url params
@@ -142,104 +247,11 @@ func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 		return
 	}
 
-	if len(createVoteOnPollRequest.Votes) < 1 {
-		utils.GeneralAPIValidationError(c, "Invalid votes sent")
-		return
-	}
-
-	// Fetch poll widget using poll Id
-	pollWidget, err := fetchWidgetByID(handlers.widgetHelper, pollId, true, communityId)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, "Invalid poll_id sent")
-		return
-	}
-
-	// Check if expiry_time key exists
-	expiryTime, exists := pollWidget.MetaData["expiry_time"]
-	if !exists {
-		utils.GeneralAPIValidationError(c, "Invalid poll_id sent")
-		return
-	}
-
-	if expiryTime.(float64) <= float64(time.Now().UnixMilli()) {
-		utils.GeneralAPIValidationError(c, "Poll Expired")
-		return
-	}
-
-	// Check if poll_type key exists
-	pollType, exists := pollWidget.MetaData["poll_type"]
-	if !exists {
-		utils.GeneralAPIValidationError(c, "Invalid poll_id sent")
-		return
-	}
-
-	// Fetch votes of the user, if exists
-	pollVotes, err := fetchPollVoteByUUID(handlers.pollVotesHelper, pollId,
-		headers[utils.HeadersMemberId], communityId)
+	pollWidget, pollVotes, err := voteOnPollValidation(createVoteOnPollRequest, handlers,
+		pollId, communityId, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
-	}
-
-	// Check if user is trying to vote again on instant poll
-	if pollType == enums.InstantPollType && len(pollVotes) > 0 {
-		utils.GeneralAPIValidationError(c, "Can't Vote again")
-		return
-	}
-
-	// Check if multiple_select_state and multiple_select_number key exists
-	multipleSelectState, exists := pollWidget.MetaData["multiple_select_state"]
-	if !exists {
-		utils.GeneralAPIValidationError(c, "Invalid poll_id sent")
-		return
-	}
-
-	multipleSelectNumber, exists := pollWidget.MetaData["multiple_select_number"]
-	if !exists {
-		utils.GeneralAPIValidationError(c, "Invalid poll_id sent")
-		return
-	}
-
-	votesLength := len(createVoteOnPollRequest.Votes)
-
-	// Check if invalid number of options are selected while voting
-	if (multipleSelectState == enums.ExactlySelectStateType && multipleSelectNumber.(int32) != int32(votesLength)) ||
-		(multipleSelectState == enums.AtMaxSelectStateType && multipleSelectNumber.(float64) < float64(votesLength)) ||
-		(multipleSelectState == enums.AtLeastSelectStateType && multipleSelectNumber.(float64) > float64(votesLength)) {
-		utils.GeneralAPIValidationError(c, "Invalid number of options selected")
-		return
-	}
-
-	// Check if options are present in poll
-	if pollWidget.LMMeta == nil {
-		utils.GeneralAPIValidationError(c, "Invalid votes sent")
-		return
-	}
-
-	// Check if options are present in poll
-	pollOptions, exists := pollWidget.LMMeta["options"]
-	if !exists {
-		utils.GeneralAPIValidationError(c, "Invalid votes sent")
-		return
-	}
-
-	// option data conversion to desired type
-	options := []map[string]interface{}{}
-	convertedOptions, _ := json.Marshal(pollOptions)
-	_ = json.Unmarshal(convertedOptions, &options)
-
-	// process option Ids
-	optionIdsMap := map[string]bool{}
-	for _, option := range options {
-		optionIdsMap[option["_id"].(string)] = true
-	}
-
-	// Check for valid vote Ids
-	for _, voteId := range createVoteOnPollRequest.Votes {
-		if !optionIdsMap[voteId] {
-			utils.GeneralAPIValidationError(c, "Invalid votes sent")
-			return
-		}
 	}
 
 	if len(pollVotes) == 0 {
