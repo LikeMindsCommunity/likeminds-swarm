@@ -417,10 +417,14 @@ func getPollVotesDataUsingAggregation(handlers *FeedHandlers, pollId string, com
 	pollVotesDataFilterData = append(pollVotesDataFilterData, bson.M{
 		"$addFields": bson.M{
 			"percentage": bson.M{
-				"$multiply": []interface{}{
+				"$round": []interface{}{
 					bson.M{
-						"$divide": []interface{}{"$vote_count", uniqueVotersOnPoll},
-					}, 100,
+						"$multiply": []interface{}{
+							bson.M{
+								"$divide": []interface{}{"$vote_count", uniqueVotersOnPoll},
+							}, 100,
+						},
+					}, 2,
 				},
 			},
 		},
