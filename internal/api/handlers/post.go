@@ -24,7 +24,7 @@ import (
 
 // Internal Method to process attachments for widgets
 func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
-	postId string, communityId int) ([]requests.Attachment, bool) {
+	postId string, communityId int, uuid string) ([]requests.Attachment, bool) {
 	// process attachments for custom widgets
 	updatedAttachments := []requests.Attachment{}
 
@@ -74,10 +74,25 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 
 			// Edit the metadata keys in case entity_id already exists in LM Created widget
 			if attachment.AttachmentMeta.EntityID != "" {
-				delete(metaData, "entity_id")
+				widgetData, err := fetchWidgetByID(handlers.widgetHelper, attachment.AttachmentMeta.EntityID, true, communityId)
+				if err != nil {
+					return nil, false
+				}
+
+				updatedMetaData := widgetData.MetaData
+
+				if attachment.AttachmentType == enums.PollWidget {
+					if _, exists := metaData["title"]; exists {
+						updatedMetaData["title"] = metaData["title"]
+					}
+				} else {
+					updatedMetaData = metaData
+				}
+
+				delete(updatedMetaData, "entity_id")
 
 				// update widget from given metadata
-				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, nil, communityId)
+				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, updatedMetaData, nil, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -86,9 +101,28 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 
 				// Else create a new LM Created widget
 			} else {
+				// Generate LM Meta
+				lmMeta := map[string]interface{}{}
+
+				switch attachment.AttachmentType {
+				case enums.PollWidget:
+					// create poll options
+					pollOptionObjects, err := createPollOptionObjects(attachment.AttachmentMeta.Options, uuid)
+					if err != nil {
+						return nil, false
+					}
+
+					lmMeta["options"] = pollOptionObjects
+					delete(metaData, "options")
+
+				default:
+					if len(lmMeta) == 0 {
+						lmMeta = nil
+					}
+				}
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, nil, communityId)
+				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, lmMeta, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -163,7 +197,8 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 }
 
 // Internal method to validate attachments for post
-func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Attachment, apiRevampV1check bool) bool {
+func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Attachment, apiRevampV1check bool,
+	isEditRequest bool) bool {
 
 	// Api revamp check to validate and update attachments
 	if apiRevampV1check {
@@ -247,30 +282,42 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 
 		case enums.CustomWidget:
 			if element.AttachmentMeta.EntityID == "" {
-				utils.GeneralAPIValidationError(c, "Send entity_id in attachment_meta for custom widget")
+				utils.GeneralAPIValidationError(c, "send entity_id in attachment_meta for custom widget")
 				return false
 			}
 
 		case enums.PollWidget:
-			if element.AttachmentMeta.PollType != "" && !enums.IsPollTypeValid(element.AttachmentMeta.PollType) {
-				utils.GeneralAPIValidationError(c, "Send valid poll_type in attachment_meta for poll widget")
+			if element.AttachmentMeta.Title == "" {
+				utils.GeneralAPIValidationError(c, "send title in attachment_meta for poll widget")
 				return false
 			}
 
-			if element.AttachmentMeta.MultipleSelectState != "" && !enums.IsPollMultipleSelectStateValid(element.AttachmentMeta.MultipleSelectState) {
-				utils.GeneralAPIValidationError(c, "Send valid multiple_select_state in attachment_meta for poll widget")
-				return false
-			}
+			if !isEditRequest {
+				if len(element.AttachmentMeta.Options) == 0 {
+					utils.GeneralAPIValidationError(c, "send options in attachment_meta for poll widget")
+					return false
+				}
 
-			if element.AttachmentMeta.MultipleSelectNumber < 0 {
-				utils.GeneralAPIValidationError(c, "Send valid multiple_select_number in attachment_meta for poll widget")
-				return false
-			}
+				if element.AttachmentMeta.PollType != "" && !enums.IsPollTypeValid(element.AttachmentMeta.PollType) {
+					utils.GeneralAPIValidationError(c, "send valid poll_type in attachment_meta for poll widget")
+					return false
+				}
 
-			if (element.AttachmentMeta.ExpiryTime == 0) ||
-				(element.AttachmentMeta.ExpiryTime != 0 && element.AttachmentMeta.ExpiryTime <= int64(time.Now().UnixMilli())) {
-				utils.GeneralAPIValidationError(c, "Send valid expiry_time in attachment_meta for poll widget")
-				return false
+				if element.AttachmentMeta.MultipleSelectState != "" && !enums.IsPollMultipleSelectStateValid(element.AttachmentMeta.MultipleSelectState) {
+					utils.GeneralAPIValidationError(c, "send valid multiple_select_state in attachment_meta for poll widget")
+					return false
+				}
+
+				if element.AttachmentMeta.MultipleSelectNumber < 0 {
+					utils.GeneralAPIValidationError(c, "Send valid multiple_select_number in attachment_meta for poll widget")
+					return false
+				}
+
+				if (element.AttachmentMeta.ExpiryTime == 0) ||
+					(element.AttachmentMeta.ExpiryTime != 0 && element.AttachmentMeta.ExpiryTime <= int64(time.Now().UnixMilli())) {
+					utils.GeneralAPIValidationError(c, "Send valid expiry_time in attachment_meta for poll widget")
+					return false
+				}
 			}
 
 		case enums.ArticleWidget:
@@ -681,7 +728,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// validation of attachments
-	success := validateAndUpdatePostAttachments(c, createPostRequest.Attachments, apiRevampV1Check)
+	success := validateAndUpdatePostAttachments(c, createPostRequest.Attachments, apiRevampV1Check, false)
 	if !success {
 		return
 	}
@@ -728,7 +775,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// process attachments for widgets
 	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, createPostRequest.Attachments,
-		postId.(primitive.ObjectID).Hex(), communityId)
+		postId.(primitive.ObjectID).Hex(), communityId, postUserId)
 	if !ok {
 		return
 	}
@@ -947,7 +994,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validateAndUpdatePostAttachments(c, editPostRequest.Attachments, apiRevampV1Check)
+	success := validateAndUpdatePostAttachments(c, editPostRequest.Attachments, apiRevampV1Check, true)
 	if !success {
 		return
 	}
@@ -981,7 +1028,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId)
+	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId,
+		headers[utils.HeadersMemberId])
 	if !ok {
 		return
 	}

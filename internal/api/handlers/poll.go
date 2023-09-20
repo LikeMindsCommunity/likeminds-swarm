@@ -36,6 +36,29 @@ func fetchPollVoteByUUID(helper interfaces.PollVotesHelper, pollId string, uuid 
 	return pollVotesResults, nil
 }
 
+// Internal Method to create a poll option object using text
+func createPollOptionObjects(optionTexts []string, userUUID string) ([]interface{}, error) {
+	pollOptions := []interface{}{}
+
+	for _, optionText := range optionTexts {
+		// Generating poll option
+		pollOptionId, err := uuid.NewRandom()
+		if err != nil {
+			return nil, err
+		}
+
+		pollOption := gin.H{
+			"_id":  pollOptionId.String(),
+			"text": optionText,
+			"uuid": userUUID,
+		}
+
+		pollOptions = append(pollOptions, pollOption)
+	}
+
+	return pollOptions, nil
+}
+
 // Exposed Method to Add a New Poll Option
 func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	// fetch headers and url params
@@ -90,20 +113,15 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 		lmMetaOptions = options
 	}
 
-	// Generating poll option
-	pollOptionId, err := uuid.NewRandom()
+	// Generating poll options
+	pollOptionObjects, err := createPollOptionObjects([]string{createPollOptionRequest.Text},
+		headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	pollOption := gin.H{
-		"_id":  pollOptionId.String(),
-		"text": createPollOptionRequest.Text,
-		"uuid": headers[utils.HeadersMemberId],
-	}
-
-	lmMetaOptions = append(lmMetaOptions, pollOption)
+	lmMetaOptions = append(lmMetaOptions, pollOptionObjects...)
 	lmMeta["options"] = lmMetaOptions
 
 	// update widget from given metadata
@@ -434,8 +452,8 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 	pollVotesFilterData := []map[string]interface{}{}
 
 	// Add match logic
-	pollVotesFilterData = append(pollVotesFilterData, gin.H{
-		"$match": gin.H{
+	pollVotesFilterData = append(pollVotesFilterData, bson.M{
+		"$match": bson.M{
 			"poll_id":      pollId,
 			"community_id": communityId,
 		},
@@ -443,9 +461,9 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 
 	if len(optionIds) > 0 {
 		// Add match logic
-		pollVotesFilterData = append(pollVotesFilterData, gin.H{
-			"$match": gin.H{
-				"votes": gin.H{
+		pollVotesFilterData = append(pollVotesFilterData, bson.M{
+			"$match": bson.M{
+				"votes": bson.M{
 					"$exists": true,
 					"$in":     optionIds,
 				},
@@ -454,8 +472,8 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 	}
 
 	// Add project logic
-	pollVotesFilterData = append(pollVotesFilterData, gin.H{
-		"$project": gin.H{
+	pollVotesFilterData = append(pollVotesFilterData, bson.M{
+		"$project": bson.M{
 			"_id":   0,
 			"uuid":  1,
 			"votes": 1,
@@ -463,17 +481,17 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 	})
 
 	// Add unwind logic
-	pollVotesFilterData = append(pollVotesFilterData, gin.H{
-		"$unwind": gin.H{
+	pollVotesFilterData = append(pollVotesFilterData, bson.M{
+		"$unwind": bson.M{
 			"path": "$votes",
 		},
 	})
 
 	if len(optionIds) > 0 {
 		// Add match logic
-		pollVotesFilterData = append(pollVotesFilterData, gin.H{
-			"$match": gin.H{
-				"votes": gin.H{
+		pollVotesFilterData = append(pollVotesFilterData, bson.M{
+			"$match": bson.M{
+				"votes": bson.M{
 					"$exists": true,
 					"$in":     optionIds,
 				},
@@ -482,10 +500,10 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 	}
 
 	// Add group logic
-	pollVotesFilterData = append(pollVotesFilterData, gin.H{
-		"$group": gin.H{
+	pollVotesFilterData = append(pollVotesFilterData, bson.M{
+		"$group": bson.M{
 			"_id": "$votes",
-			"users": gin.H{
+			"users": bson.M{
 				"$addToSet": "$uuid",
 			},
 		},
