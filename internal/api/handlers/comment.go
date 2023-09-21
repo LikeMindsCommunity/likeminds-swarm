@@ -573,10 +573,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 
 		if activityID != nil {
-
-			handlers.CreateAlsoCommentedActivity(activityID, postData)
-
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			handlers.CreateAlsoCommentedActivity(activityID, postData, headers)
 		}
 	}
 
@@ -888,7 +885,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	// remove user post comment activity
 	deleteUserPostCommentActivity(handlers, postData, c, headers)
 
-	// remove activity for the comment
+	// remove other activity for the comment
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.Comment,
 		"entity_id":   commentData.ID,

@@ -387,8 +387,8 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 	return nil, nil
 }
 
-func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post) {
-	postCommentActivity, err := fetchActivity(handlers.activityHelper, activityID.(string))
+func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post, headers map[string]string) {
+	postCommentActivity, err := fetchActivity(handlers.activityHelper, activityID.(primitive.ObjectID).Hex())
 	if err != nil {
 		return
 	}
@@ -396,13 +396,23 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 	latestCommentUser := postCommentActivity.ActionBy[len(postCommentActivity.ActionBy)-1]
 	previousCommentUsers := utils.RemoveAllOccurenceStringList(postCommentActivity.ActionBy, latestCommentUser)
 
+	// if previousCommentUsers = [], no need to create activity
+	if len(previousCommentUsers) == 0 {
+		return
+	}
+
 	for _, previousCommentUser := range previousCommentUsers {
-		_, err := handlers.CreateActivity(postData.ChatroomId, []string{latestCommentUser}, previousCommentUser, constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, gin.H{
+		activityID, err := handlers.CreateActivity(postData.ChatroomId, []string{latestCommentUser}, previousCommentUser, constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, gin.H{
 			"entity_type": constants.PostEntityType,
-			"post_id":     postData.ID,
+			"post_id":     postData.ID.Hex(),
 		}, false, false)
 
 		if err != nil {
+			return
+		}
+
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 		}
 	}
 }
