@@ -203,7 +203,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalResponse, communityId)
+	finalResponse["widgets"] = getWidgetDataFromPosts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalResponse)

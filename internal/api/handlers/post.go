@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
@@ -21,9 +22,75 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to process poll attachment data
+func processPollCustomAttachmentData(metaData map[string]interface{}) map[string]interface{} {
+	if _, exists := metaData["is_anonymous"]; !exists {
+		metaData["is_anonymous"] = false
+	}
+
+	if _, exists := metaData["allow_add_option"]; !exists {
+		metaData["allow_add_option"] = false
+	}
+
+	if _, exists := metaData["poll_type"]; !exists {
+		metaData["poll_type"] = enums.InstantPollType
+	}
+
+	if _, exists := metaData["multiple_select_state"]; !exists {
+		metaData["multiple_select_state"] = enums.ExactlySelectStateType
+	}
+
+	if _, exists := metaData["multiple_select_number"]; !exists {
+		metaData["multiple_select_number"] = 1
+	}
+
+	return metaData
+}
+
+// Internal Method to process meta data before widget creation
+func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData map[string]interface{},
+	lmMeta map[string]interface{}, uuid string) (map[string]interface{}, map[string]interface{}, bool) {
+	switch attachment.AttachmentType {
+	case enums.PollWidget:
+		// create poll options
+		pollOptionObjects, err := createPollOptionObjects(attachment.AttachmentMeta.Options, uuid)
+		if err != nil {
+			return metaData, lmMeta, false
+		}
+
+		lmMeta["options"] = pollOptionObjects
+		delete(metaData, "options")
+
+	default:
+		if len(lmMeta) == 0 {
+			lmMeta = nil
+		}
+	}
+
+	return metaData, lmMeta, true
+}
+
+// Internal Method to process meta data before widget edition
+func processMetaBeforeWidgetEdition(attachment requests.Attachment, metaData map[string]interface{},
+	existingMetaData map[string]interface{}) map[string]interface{} {
+	updatedMetaData := existingMetaData
+
+	if attachment.AttachmentType == enums.PollWidget {
+		if _, exists := metaData["title"]; exists {
+			updatedMetaData["title"] = metaData["title"]
+		}
+	} else {
+		updatedMetaData = metaData
+	}
+
+	delete(updatedMetaData, "entity_id")
+
+	return updatedMetaData
+}
+
 // Internal Method to process attachments for widgets
 func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
-	postId string, communityId int) ([]requests.Attachment, bool) {
+	postId string, communityId int, uuid string) ([]requests.Attachment, bool) {
 	// process attachments for custom widgets
 	updatedAttachments := []requests.Attachment{}
 
@@ -48,12 +115,23 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
 			_ = json.Unmarshal(convertedMetaData, &metaData)
 
+			switch attachment.AttachmentType {
+			case enums.PollWidget:
+				metaData = processPollCustomAttachmentData(metaData)
+			}
+
 			// Edit the metadata keys in case entity_id already exists in LM Created widget
 			if attachment.AttachmentMeta.EntityID != "" {
-				delete(metaData, "entity_id")
+				widgetData, err := fetchWidgetByID(handlers.widgetHelper, attachment.AttachmentMeta.EntityID, true, communityId)
+				if err != nil {
+					return nil, false
+				}
+
+				// process meta data before widget edition
+				updatedMetaData := processMetaBeforeWidgetEdition(attachment, metaData, widgetData.MetaData)
 
 				// update widget from given metadata
-				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, metaData, communityId)
+				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, updatedMetaData, nil, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -62,9 +140,17 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 
 				// Else create a new LM Created widget
 			} else {
+				// Generate LM Meta
+				lmMeta := map[string]interface{}{}
+
+				// process meta data before widget creation
+				metaData, lmMeta, ok := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, uuid)
+				if !ok {
+					return nil, false
+				}
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, communityId)
+				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, lmMeta, communityId)
 				if !ok {
 					return nil, false
 				}
@@ -138,8 +224,115 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	return parsedAttachments
 }
 
+// Internal Method to validate image attachment
+func validateImageAttachment(attachment requests.Attachment) (string, bool) {
+	if attachment.AttachmentMeta.Url == "" {
+		return "send url in attachment_meta for image", false
+	}
+
+	return "", true
+}
+
+// Internal Method to validate video attachment
+func validateVideoAttachment(attachment requests.Attachment) (string, bool) {
+	if attachment.AttachmentMeta.Url == "" {
+		return "send url in attachment_meta for video", false
+	}
+
+	if attachment.AttachmentMeta.Duration == 0 {
+		return "send duration in attachment_meta for video", false
+	}
+
+	return "", true
+}
+
+// Internal Method to validate document attachment
+func validateDocumentAttachment(attachment requests.Attachment) (string, bool) {
+	if attachment.AttachmentMeta.Url == "" {
+		return "send url in attachment_meta for document", false
+	}
+
+	if attachment.AttachmentMeta.Format == "" {
+		return "send format in attachment_meta for document", false
+	}
+
+	if attachment.AttachmentMeta.Size == 0 {
+		return "send size in attachment_meta for document", false
+	}
+
+	return "", true
+}
+
+// Internal Method to validate link attachment
+func validateLinkAttachment(attachment requests.Attachment) (string, bool) {
+	if attachment.AttachmentMeta.OgTags.Url == "" {
+		return "send url in og_tags in attachment_meta for link", false
+	}
+
+	return "", true
+}
+
+// Internal Method to validate custom attachment
+func validateCustomAttachment(attachment requests.Attachment) (string, bool) {
+	if attachment.AttachmentMeta.EntityID == "" {
+		return "send entity_id in attachment_meta for custom widget", false
+	}
+
+	return "", true
+}
+
+// Internal Method to validate poll attachment
+func validatePollAttachment(attachment requests.Attachment, isEditRequest bool) (string, bool) {
+	if attachment.AttachmentMeta.Title == "" {
+		return "send title in attachment_meta for poll widget", false
+	}
+
+	if !isEditRequest {
+		if len(attachment.AttachmentMeta.Options) == 0 {
+			return "send options in attachment_meta for poll widget", false
+		}
+
+		if attachment.AttachmentMeta.PollType != "" && !enums.IsPollTypeValid(attachment.AttachmentMeta.PollType) {
+			return "send valid poll_type in attachment_meta for poll widget", false
+		}
+
+		if attachment.AttachmentMeta.MultipleSelectState != "" && !enums.IsPollMultipleSelectStateValid(attachment.AttachmentMeta.MultipleSelectState) {
+			return "send valid multiple_select_state in attachment_meta for poll widget", false
+		}
+
+		if attachment.AttachmentMeta.MultipleSelectNumber < 0 {
+			return "Send valid multiple_select_number in attachment_meta for poll widget", false
+		}
+
+		if (attachment.AttachmentMeta.ExpiryTime == 0) ||
+			(attachment.AttachmentMeta.ExpiryTime != 0 && attachment.AttachmentMeta.ExpiryTime <= int64(time.Now().UnixMilli())) {
+			return "Send valid expiry_time in attachment_meta for poll widget", false
+		}
+	}
+
+	return "", true
+}
+
+// Internal Method to validate article attachment
+func validateArticleAttachment(attachment requests.Attachment) (string, bool) {
+	if attachment.AttachmentMeta.Body == "" {
+		return "Send body in attachment_meta for article", false
+	}
+
+	if attachment.AttachmentMeta.Title == "" {
+		return "Send title in attachment_meta for article", false
+	}
+
+	if attachment.AttachmentMeta.CoverImageUrl == "" {
+		return "Send cover_image_url in attachment_meta for article", false
+	}
+
+	return "", true
+}
+
 // Internal method to validate attachments for post
-func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Attachment, apiRevampV1check bool) bool {
+func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Attachment, apiRevampV1check bool,
+	isEditRequest bool) bool {
 
 	// Api revamp check to validate and update attachments
 	if apiRevampV1check {
@@ -183,63 +376,51 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 	for _, element := range attachments {
 		switch element.AttachmentType {
 		case enums.ImageWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for image")
+			errorMessage, ok := validateImageAttachment(element)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
 
 		case enums.VideoWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for video")
-				return false
-			}
-
-			if element.AttachmentMeta.Duration == 0 {
-				utils.GeneralAPIValidationError(c, "send duration in attachment_meta for video")
+			errorMessage, ok := validateVideoAttachment(element)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
 
 		case enums.DocumentWidget:
-			if element.AttachmentMeta.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in attachment_meta for document")
-				return false
-			}
-
-			if element.AttachmentMeta.Format == "" {
-				utils.GeneralAPIValidationError(c, "send format in attachment_meta for document")
-				return false
-			}
-
-			if element.AttachmentMeta.Size == 0 {
-				utils.GeneralAPIValidationError(c, "send size in attachment_meta for document")
+			errorMessage, ok := validateDocumentAttachment(element)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
 
 		case enums.LinkWidget:
-			if element.AttachmentMeta.OgTags.Url == "" {
-				utils.GeneralAPIValidationError(c, "send url in og_tags in attachment_meta for link")
+			errorMessage, ok := validateLinkAttachment(element)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
 
 		case enums.CustomWidget:
-			if element.AttachmentMeta.EntityID == "" {
-				utils.GeneralAPIValidationError(c, "Send entity_id in attachment_meta for custom widget")
+			errorMessage, ok := validateCustomAttachment(element)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
+				return false
+			}
+
+		case enums.PollWidget:
+			errorMessage, ok := validatePollAttachment(element, isEditRequest)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
 
 		case enums.ArticleWidget:
-			if element.AttachmentMeta.Body == "" {
-				utils.GeneralAPIValidationError(c, "Send body in attachment_meta for article")
-				return false
-			}
-
-			if element.AttachmentMeta.Title == "" {
-				utils.GeneralAPIValidationError(c, "Send title in attachment_meta for article")
-				return false
-			}
-
-			if element.AttachmentMeta.CoverImageUrl == "" {
-				utils.GeneralAPIValidationError(c, "Send cover_image_url in attachment_meta for article")
+			errorMessage, ok := validateArticleAttachment(element)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
 
@@ -285,9 +466,9 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 }
 
 // Internal Method to parse widgets response
-func parseWidgetsResponse(widgetHelper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) (map[string]requests.WidgetResponse, error) {
+func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int, uuid string) (map[string]requests.WidgetResponse, error) {
 	// Fetch widgets using widget Ids
-	widgets, err := fetchWidgetsByIDs(widgetHelper, widgetIds, communityId)
+	widgets, err := fetchWidgetsByIDs(handlers.widgetHelper, widgetIds, communityId)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +477,7 @@ func parseWidgetsResponse(widgetHelper interfaces.WidgetHelper, widgetIds []prim
 
 	// Parse all fetched widgets Data
 	for _, widget := range widgets {
-		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(&widget)
+		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(handlers, &widget, communityId, uuid)
 	}
 
 	return widgetsResponse, nil
@@ -403,10 +584,10 @@ func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interfac
 }
 
 // Internal Method to get widget Data from Posts response
-func getWidgetDataFromPosts(widgetHelper interfaces.WidgetHelper, response interface{}, communityId int) map[string]requests.WidgetResponse {
+func getWidgetDataFromPosts(handlers *FeedHandlers, response interface{}, communityId int, uuid string) map[string]requests.WidgetResponse {
 	widgetIds := getWidgetIdsFromPosts(response)
 
-	widgetsData, _ := parseWidgetsResponse(widgetHelper, widgetIds, communityId)
+	widgetsData, _ := parseWidgetsResponse(handlers, widgetIds, communityId, uuid)
 
 	return widgetsData
 }
@@ -635,7 +816,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// validation of attachments
-	success := validateAndUpdatePostAttachments(c, createPostRequest.Attachments, apiRevampV1Check)
+	success := validateAndUpdatePostAttachments(c, createPostRequest.Attachments, apiRevampV1Check, false)
 	if !success {
 		return
 	}
@@ -682,7 +863,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// process attachments for widgets
 	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, createPostRequest.Attachments,
-		postId.(primitive.ObjectID).Hex(), communityId)
+		postId.(primitive.ObjectID).Hex(), communityId, postUserId)
 	if !ok {
 		return
 	}
@@ -749,7 +930,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-		response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
+		response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
 	}
 
 	// return final response
@@ -812,7 +993,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, parsedResponse, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers, parsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -860,7 +1041,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 	response["post"] = fetchPostData
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -901,7 +1082,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validateAndUpdatePostAttachments(c, editPostRequest.Attachments, apiRevampV1Check)
+	success := validateAndUpdatePostAttachments(c, editPostRequest.Attachments, apiRevampV1Check, true)
 	if !success {
 		return
 	}
@@ -935,7 +1116,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId)
+	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId,
+		headers[utils.HeadersMemberId])
 	if !ok {
 		return
 	}
@@ -983,7 +1165,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, response, communityId)
+	response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -1187,7 +1369,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalResponse, communityId)
+	finalResponse["widgets"] = getWidgetDataFromPosts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalResponse)
@@ -1264,7 +1446,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -1319,7 +1501,7 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers.widgetHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)

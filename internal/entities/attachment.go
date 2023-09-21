@@ -15,18 +15,24 @@ type OGTags struct {
 
 // Structure for Attachment Meta
 type AttachmentMeta struct {
-	Name          string             `json:"name,omitempty" bson:"name,omitempty"`
-	Url           string             `json:"url,omitempty" bson:"url,omitempty"`
-	Format        string             `json:"format,omitempty" bson:"format,omitempty"`
-	Size          int                `json:"size,omitempty" bson:"size,omitempty"`
-	Duration      int                `json:"duration,omitempty" bson:"duration,omitempty"`
-	PageCount     int                `json:"page_count,omitempty" bson:"page_count,omitempty"`
-	ThumbnailUrl  string             `json:"thumbnail_url,omitempty" bson:"thumbnail_url,omitempty"`
-	OgTags        *OGTags            `json:"og_tags,omitempty" bson:"og_tags,omitempty"`
-	EntityID      primitive.ObjectID `json:"entity_id,omitempty" bson:"entity_id,omitempty"`
-	CoverImageUrl string             `json:"cover_image_url,omitempty" bson:"cover_image_url,omitempty"`
-	Title         string             `json:"title,omitempty" bson:"title,omitempty"`
-	Body          string             `json:"body,omitempty" bson:"body,omitempty"`
+	Name                 string             `json:"name,omitempty" bson:"name,omitempty"`
+	Url                  string             `json:"url,omitempty" bson:"url,omitempty"`
+	Format               string             `json:"format,omitempty" bson:"format,omitempty"`
+	Size                 int                `json:"size,omitempty" bson:"size,omitempty"`
+	Duration             int                `json:"duration,omitempty" bson:"duration,omitempty"`
+	PageCount            int                `json:"page_count,omitempty" bson:"page_count,omitempty"`
+	ThumbnailUrl         string             `json:"thumbnail_url,omitempty" bson:"thumbnail_url,omitempty"`
+	OgTags               *OGTags            `json:"og_tags,omitempty" bson:"og_tags,omitempty"`
+	EntityID             primitive.ObjectID `json:"entity_id,omitempty" bson:"entity_id,omitempty"`
+	CoverImageUrl        string             `json:"cover_image_url,omitempty" bson:"cover_image_url,omitempty"`
+	Title                string             `json:"title,omitempty" bson:"title,omitempty"`
+	Body                 string             `json:"body,omitempty" bson:"body,omitempty"`
+	ExpiryTime           int64              `json:"expiry_time,omitempty" bson:"expiry_time,omitempty"`
+	PollType             string             `json:"poll_type,omitempty" bson:"poll_type,omitempty"`
+	MultipleSelectState  string             `json:"multiple_select_state,omitempty" bson:"multiple_select_state,omitempty"`
+	MultipleSelectNumber int                `json:"multiple_select_number,omitempty" bson:"multiple_select_number,omitempty"`
+	IsAnonymous          bool               `json:"is_anonymous,omitempty" bson:"is_anonymous,omitempty"`
+	AllowAddOption       bool               `json:"allow_add_option,omitempty" bson:"allow_add_option,omitempty"`
 }
 
 // Structure for Attachment
@@ -47,20 +53,27 @@ func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachme
 
 // Exposed Method to Create New Attachment Meta
 func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, thumbnailUrl string,
-	ogTags OGTags, entityId primitive.ObjectID, coverImageUrl string, title string, body string) AttachmentMeta {
+	ogTags OGTags, entityId primitive.ObjectID, coverImageUrl string, title string, body string, expiryTime int64, pollType string,
+	multipleSelectState string, multipleSelectNumber int, isAnonymous bool, allowAddOption bool) AttachmentMeta {
 	return AttachmentMeta{
-		Name:          name,
-		Url:           url,
-		Format:        format,
-		Size:          size,
-		Duration:      duration,
-		PageCount:     pageCount,
-		ThumbnailUrl:  thumbnailUrl,
-		OgTags:        &ogTags,
-		EntityID:      entityId,
-		CoverImageUrl: coverImageUrl,
-		Title:         title,
-		Body:          body,
+		Name:                 name,
+		Url:                  url,
+		Format:               format,
+		Size:                 size,
+		Duration:             duration,
+		PageCount:            pageCount,
+		ThumbnailUrl:         thumbnailUrl,
+		OgTags:               &ogTags,
+		EntityID:             entityId,
+		CoverImageUrl:        coverImageUrl,
+		Title:                title,
+		Body:                 body,
+		ExpiryTime:           expiryTime,
+		PollType:             pollType,
+		MultipleSelectState:  multipleSelectState,
+		MultipleSelectNumber: multipleSelectNumber,
+		IsAnonymous:          isAnonymous,
+		AllowAddOption:       allowAddOption,
 	}
 }
 
