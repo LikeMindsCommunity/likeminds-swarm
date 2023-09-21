@@ -95,32 +95,43 @@ func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, created
 	return widget, true
 }
 
+// Internal Method to fetch pollVotes Data Map for poll options
+func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map[string]interface{},
+	communityId int, uuid string) (gin.H, error) {
+	pollVotesData := []gin.H{}
+	parsedPollVotesData := gin.H{}
+	var err error
+
+	pollType, pollTypeExists := metaData["poll_type"]
+	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
+
+	if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil) {
+		// Fetch poll Votes Data
+		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uuid)
+		if err != nil {
+			return parsedPollVotesData, err
+		}
+	}
+
+	// Process poll votes data
+	for _, pollVoteData := range pollVotesData {
+		if optionId, exists := pollVoteData["_id"]; exists {
+			parsedPollVotesData[optionId.(string)] = pollVoteData
+		}
+	}
+
+	return parsedPollVotesData, nil
+}
+
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
 	communityId int, uuid string) map[string]interface{} {
 	// If option exists in LM Meta, it is a poll widget
 	if _, exists := lmMeta["options"]; exists {
-		pollVotesData := []gin.H{}
-		var err error
-
-		pollType, pollTypeExists := metaData["poll_type"]
-		pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
-
-		if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil) {
-			// Fetch poll Votes Data
-			pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uuid)
-			if err != nil {
-				return lmMeta
-			}
-		}
-
-		parsedPollVotesData := gin.H{}
-
-		// Process poll votes data
-		for _, pollVoteData := range pollVotesData {
-			if optionId, exists := pollVoteData["_id"]; exists {
-				parsedPollVotesData[optionId.(string)] = pollVoteData
-			}
+		// fetch poll votes data
+		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, communityId, uuid)
+		if err != nil {
+			return lmMeta
 		}
 
 		// option data conversion to desired type
