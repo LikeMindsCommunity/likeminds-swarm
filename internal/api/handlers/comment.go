@@ -922,10 +922,10 @@ func deleteUserPostCommentActivity(
 	headers map[string]string) {
 
 	activityFilterData := gin.H{
-		"communityID": postData.CommunityId,
-		"entityType":  constants.PostEntityType,
-		"entityID":    postData.ID,
-		"action":      constants.CommentOnPost,
+		"community_id": postData.CommunityId,
+		"entity_type":  constants.Post,
+		"entity_id":    postData.ID,
+		"action":       constants.CommentOnPost,
 	}
 
 	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
@@ -944,8 +944,18 @@ func deleteUserPostCommentActivity(
 	// activity update data
 	activityUpdateData := gin.H{
 		"$set": gin.H{
-			"actionBy": actionBy,
+			"action_by": actionBy,
 		},
+	}
+
+	// if action by is [], no user comments on post, mark activity as deleted
+	if len(actionBy) == 0 {
+		activityUpdateData = gin.H{
+			"$set": gin.H{
+				"action_by":  actionBy,
+				"is_deleted": true,
+			},
+		}
 	}
 
 	// update activity data, exisiting activity timestamp remains same to maintain order
