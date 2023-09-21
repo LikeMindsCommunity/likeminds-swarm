@@ -1,22 +1,19 @@
 package cache
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/go-redis/redis/v7"
 )
 
 // LPush | left push into a cache list, trims list if listMaxLength is valid
-func (cacheHelper *cacheHelper) LPush(key string, object string, listMaxLength int) {
-	insertResult, err := cacheHelper.redisClient.LPush(key, object).Result()
-	if err != nil {
-		fmt.Println(insertResult)
-	}
+func (cacheHelper *cacheHelper) LPush(key string, object string, listMaxLength int) *redis.IntCmd {
+	intCMD := cacheHelper.redisClient.LPush(key, object)
 
 	if listMaxLength != -1 {
 		cacheHelper.redisClient.LTrim(key, 0, int64(listMaxLength))
 	}
+	return intCMD
 }
 
 // Set | set the key with object value into cache storage, set expiration = 0 for no expiry
@@ -32,15 +29,19 @@ func (cacheHelper *cacheHelper) Get(key string) *redis.StringCmd {
 }
 
 // DeleteMultiple | delete muktiple keys in the list from cache storage
-func (cacheHelper *cacheHelper) DeleteMultiple(keys []string) {
+func (cacheHelper *cacheHelper) DelMultiple(keys []string) []*redis.IntCmd {
+	intCMDs := [](*redis.IntCmd){}
 	for _, key := range keys {
-		cacheHelper.redisClient.Del(key)
+		intCMD := cacheHelper.redisClient.Del(key)
+		intCMDs = append(intCMDs, intCMD)
 	}
+	return intCMDs
 }
 
 // Delete | delete key from the cache storage
-func (cacheHelper *cacheHelper) Delete(key string) {
-	cacheHelper.redisClient.Del(key)
+func (cacheHelper *cacheHelper) Del(key string) *redis.IntCmd {
+	intCMd := cacheHelper.redisClient.Del(key)
+	return intCMd
 }
 
 // LRem | remove first count occurence from the element

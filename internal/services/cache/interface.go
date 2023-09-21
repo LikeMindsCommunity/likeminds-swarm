@@ -10,8 +10,8 @@ import (
 type Helper interface {
 	Set(key string, object interface{}, expiration time.Duration) *redis.StatusCmd
 	Get(key string) *redis.StringCmd
-	DeleteMultiple(keys []string)
-	Delete(key string)
-	LPush(key string, object string, listMaxLength int)
+	DelMultiple(keys []string) []*redis.IntCmd
+	Del(key string) *redis.IntCmd
+	LPush(key string, object string, listMaxLength int) *redis.IntCmd
 	LRem(key string, count int64, element interface{}) *redis.IntCmd
 }

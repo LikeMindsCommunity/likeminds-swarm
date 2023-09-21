@@ -1401,5 +1401,5 @@ func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityI
 	communityPostPinnedKey := fmt.Sprintf("community_{}_pinned_posts", communityID)
 
 	handlers.cacheHelper.LRem(communityPostPinnedKey, 0, postID)
-	handlers.cacheHelper.Delete(fmt.Sprintf("post_{}", postID))
+	handlers.cacheHelper.Del(fmt.Sprintf("post_{}", postID))
 }

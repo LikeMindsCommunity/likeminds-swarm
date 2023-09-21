@@ -577,6 +577,6 @@ func (handlers *FeedHandlers) deleteCommunityUniversalFeedCacheData(communityID 
 		cachePostKeys = append(cachePostKeys, cachePostKey)
 	}
 
-	handlers.cacheHelper.DeleteMultiple(cachePostKeys)
-	handlers.cacheHelper.Delete(cacheCommunityUniversalFeedPostsKey)
+	handlers.cacheHelper.DelMultiple(cachePostKeys)
+	handlers.cacheHelper.Del(cacheCommunityUniversalFeedPostsKey)
 }

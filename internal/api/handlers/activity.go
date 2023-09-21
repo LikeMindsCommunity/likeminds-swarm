@@ -761,8 +761,8 @@ func (handlers *FeedHandlers) deleteUserActivityFeedCacheData(userID string) {
 		cacheActivityKeys = append(cacheActivityKeys, cacheActivityKey)
 	}
 
-	handlers.cacheHelper.DeleteMultiple(cacheActivityKeys)
-	handlers.cacheHelper.Delete(userActivityFeedKey)
+	handlers.cacheHelper.DelMultiple(cacheActivityKeys)
+	handlers.cacheHelper.Del(userActivityFeedKey)
 }
 
 func (handlers *FeedHandlers) createUserActivityFeedCacheData(userID string, activities []entities.Activity) {
