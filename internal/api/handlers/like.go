@@ -199,10 +199,10 @@ func createUserPostLikeActivity(
 	postData *entities.Post,
 	c *gin.Context,
 	headers map[string]string) {
-	// create like activity
+	// create post like activity
 	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.LikeOnPost, gin.H{
 		"entity_type": constants.PostEntityType,
-		"post_id":     postData.ID,
+		"post_id":     postData.ID.Hex(),
 	}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -356,6 +356,9 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+
 	} else {
 		like_data := like_results[0]
 
@@ -372,13 +375,31 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
+
+		if !like_data.IsDeleted {
+			deleteUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+		} else {
+			createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+		}
 	}
 
+	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+	})
+}
+
+func createUserCommentLikeActivity(handlers *FeedHandlers,
+	postData *entities.Post,
+	commentData *entities.Comment,
+	c *gin.Context,
+	headers map[string]string) {
+	// create comment like activity
 	// create like activity
-	activityID, err := handlers.CreateActivity(post_data.CommunityId, []string{headers[utils.HeadersMemberId]}, comment_data.UserId, constants.Comment, comment_data.ID, comment_data.UserId, constants.LikeOnComment, gin.H{
+	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.LikeOnComment, gin.H{
 		"entity_type": constants.CommentEntityType,
-		"post_id":     post_id,
-		"comment_id":  comment_id,
+		"post_id":     postData.ID.Hex(),
+		"comment_id":  commentData.ID.Hex(),
 	}, false, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -388,11 +409,58 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	if activityID != nil {
 		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 	}
+}
 
-	// return final response
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-	})
+func deleteUserCommentLikeActivity(handlers *FeedHandlers,
+	postData *entities.Post,
+	commentData *entities.Comment,
+	c *gin.Context,
+	headers map[string]string) {
+
+	activityFilterData := gin.H{
+		"community_id": postData.CommunityId,
+		"entity_type":  constants.Comment,
+		"entity_id":    commentData.ID,
+		"action":       constants.LikeOnComment,
+	}
+
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	if activity == nil {
+		return
+	}
+
+	// remove uuid from like action list
+	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+
+	// activity update data
+	activityUpdateData := gin.H{
+		"$set": gin.H{
+			"action_by": actionBy,
+		},
+	}
+
+	// if this user is the only like on post, mark activity as deleted
+	if len(actionBy) == 0 {
+		activityUpdateData = gin.H{
+			"$set": gin.H{
+				"action_by":  actionBy,
+				"is_deleted": true,
+			},
+		}
+	}
+
+	// update activity data, exisiting activity timestamp remains same to maintain order
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
 }
 
 // Exposed Method to fetch likes on a Comment
