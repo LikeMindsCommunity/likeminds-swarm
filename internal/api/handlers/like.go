@@ -221,10 +221,10 @@ func deleteUserPostLikeActivity(
 	headers map[string]string) {
 
 	activityFilterData := gin.H{
-		"communityID": postData.CommunityId,
-		"entityType":  constants.PostEntityType,
-		"entityID":    postData.ID,
-		"action":      constants.LikeOnPost,
+		"community_id": postData.CommunityId,
+		"entity_type":  constants.Post,
+		"entity_id":    postData.ID,
+		"action":       constants.LikeOnPost,
 	}
 
 	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
@@ -243,8 +243,18 @@ func deleteUserPostLikeActivity(
 	// activity update data
 	activityUpdateData := gin.H{
 		"$set": gin.H{
-			"actionBy": actionBy,
+			"action_by": actionBy,
 		},
+	}
+
+	// if this user is the only like on post, mark activity as deleted
+	if len(actionBy) == 0 {
+		activityUpdateData = gin.H{
+			"$set": gin.H{
+				"action_by":  actionBy,
+				"is_deleted": true,
+			},
+		}
 	}
 
 	// update activity data, exisiting activity timestamp remains same to maintain order

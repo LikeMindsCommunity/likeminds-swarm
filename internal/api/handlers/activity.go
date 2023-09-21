@@ -714,10 +714,10 @@ func (handlers *FeedHandlers) pushActivitytoCache(activityID interface{}) {
 	}
 	activityString := string(activtyBytes)
 
-	cacheUserActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
-	handlers.cacheHelper.LPush(cacheUserActivityFeedKey, activityID.(string), 20)
+	cacheUserActivityFeedKey := fmt.Sprintf("user_%s_activity_feed", userID)
+	handlers.cacheHelper.LPush(cacheUserActivityFeedKey, activityID.(primitive.ObjectID).Hex(), 20)
 
-	cacheActivityKey := fmt.Sprintf("activity_{}", activityID.(string))
+	cacheActivityKey := fmt.Sprintf("activity_%s", activityID.(primitive.ObjectID).Hex())
 	handlers.cacheHelper.Set(cacheActivityKey, activityString, 0)
 }
 
