@@ -25,6 +25,7 @@ type ActivityHelper interface {
 	UpdateActivityByIDHelper(activityID primitive.ObjectID, update map[string]interface{}, shouldNotUpdateTimestamp bool, shouldPushActivityToCache bool) error
 	CountActivityHelper(filter map[string]interface{}) (int64, error)
 	DeleteActivityHelper(filter map[string]interface{}) error
+	WarmupUserActivityFeedCache(communityID int, userID string) []entities.Activity
 	PushActivitytoCache(activityID interface{})
 	UpdateActivityInCache(activityID string)
 }

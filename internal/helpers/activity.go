@@ -181,13 +181,77 @@ func (helper *activityHelper) PushActivitytoCache(activityID interface{}) {
 	helper.cacheHelper.Set(cacheActivityKey, activityString, 0)
 }
 
+// WarmupUserActivityFeedCache | push user activity feed first page to cache
+func (helper *activityHelper) WarmupUserActivityFeedCache(communityID int, userID string) []entities.Activity {
+	helper.deleteUserActivityFeedCacheData(userID)
+
+	userActivities := []entities.Activity{}
+
+	// activity filter data
+	activityFilterData := gin.H{
+		"action_on":    userID,
+		"community_id": communityID,
+		"is_deleted":   false,
+	}
+
+	activityFilterOptions := gin.H{
+		"": "",
+	}
+
+	// fetch activity using helper method
+	activityResults, err := helper.FindActivityHelper(activityFilterData, activityFilterOptions)
+	if err != nil {
+		return userActivities
+	}
+
+	helper.createUserActivityFeedCacheData(userID, activityResults)
+
+	return userActivities
+}
+
+func (helper *activityHelper) createUserActivityFeedCacheData(userID string, activities []entities.Activity) {
+	userActivityIDs := [](string){}
+
+	for _, activity := range activities {
+
+		cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activity.ID.Hex())
+		activityBytes, err := json.Marshal(activity)
+		if err != nil {
+			return
+		}
+		activityString := string(activityBytes)
+		helper.cacheHelper.Set(cacheActivityKey, activityString, 0)
+
+		userActivityIDs = append(userActivityIDs, activity.ID.Hex())
+	}
+
+	cacheUserActivityFeedKey := fmt.Sprintf(constants.UserActivityFeedCacheKey, userID)
+	helper.cacheHelper.Set(cacheUserActivityFeedKey, userActivityIDs, 0)
+}
+
+func (helper *activityHelper) deleteUserActivityFeedCacheData(userID string) {
+	userActivityFeedKey := fmt.Sprintf(constants.UserActivityFeedCacheKey, userID)
+
+	cacheUserActivityIDsString := helper.cacheHelper.Get(userActivityFeedKey)
+	cacheUserActivityIDs := [](string){cacheUserActivityIDsString.Val()}
+
+	cacheActivityKeys := [](string){}
+	for _, cacheUserActivityID := range cacheUserActivityIDs {
+		cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, cacheUserActivityID)
+		cacheActivityKeys = append(cacheActivityKeys, cacheActivityKey)
+	}
+
+	helper.cacheHelper.DelMultiple(cacheActivityKeys)
+	helper.cacheHelper.Del(userActivityFeedKey)
+}
+
 // Structure for Activity Helper
 type activityHelper struct {
 	activityRepository interfaces.ActivityRepository
 	cacheHelper        cache.Helper
 }
 
-// NewActivityHelper| method to Create New Activity Helper
+// NewActivityHelper | method to Create New Activity Helper
 func NewActivityHelper(activityRepository interfaces.ActivityRepository, cacheHelper cache.Helper) interfaces.ActivityHelper {
 	return &activityHelper{
 		activityRepository: activityRepository,
