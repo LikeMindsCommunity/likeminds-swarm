@@ -927,7 +927,6 @@ func deleteUserPostCommentActivity(
 
 	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 

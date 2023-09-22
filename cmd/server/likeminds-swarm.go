@@ -37,6 +37,8 @@ func main() {
 	db := database.InitiateDB()
 	es := searchElastic.InitiateES()
 
+	cacheHelper := cache.NewCacheHelper(redisClient)
+
 	router.Use(cors.New(enableCors()))
 	router.Use(LoggingMiddleware())
 
@@ -59,15 +61,13 @@ func main() {
 	likeHelper := helpers.NewLikeHelper(likeRepository)
 	commentHelper := helpers.NewCommentHelper(commentRepository)
 	saveHelper := helpers.NewSaveHelper(saveRepository)
-	activityHelper := helpers.NewActivityHelper(activityRepository)
+	activityHelper := helpers.NewActivityHelper(activityRepository, cacheHelper)
 	topicHelper := helpers.NewTopicHelper(topicRepository)
 	widgetHepler := helpers.NewWidgetHelper(widgetRepository)
 	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
 
 	// Dependency injection of elasticSearch Helper
 	esHelper := searchElastic.NewESHelper(es)
-
-	cacheHelper := cache.NewCacheHelper(redisClient)
 
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper,
