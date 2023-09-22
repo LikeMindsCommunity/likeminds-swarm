@@ -239,7 +239,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
 		if activityEntityOwnerUserID != "" {
-			activityText += " " + getUserRoute(activityEntityOwnerUserData) + "'s"
+			activityText += " " + getUserRoute(activityEntityOwnerUserData[activityEntityOwnerUserID]) + "'s"
 		}
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
@@ -402,7 +402,7 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 	}
 
 	for _, previousCommentUser := range previousCommentUsers {
-		activityID, err := handlers.CreateActivity(postData.ChatroomId, []string{latestCommentUser}, previousCommentUser, constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, gin.H{
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{latestCommentUser}, previousCommentUser, constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, gin.H{
 			"entity_type": constants.PostEntityType,
 			"post_id":     postData.ID.Hex(),
 		}, false, false)
