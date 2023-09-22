@@ -1236,6 +1236,10 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
 
+	// delete and fill cache data
+	handlers.activityHelper.WarmupUserActivityFeedCache(postData.CommunityId, postData.UserId)
+	handlers.activityHelper.WarmupUniversalFeedCache(postData.CommunityId)
+
 	// if deleted by CM, create delete activity
 	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != postData.UserId {
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CMDeletedPost, gin.H{}, false, false)

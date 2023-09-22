@@ -954,5 +954,6 @@ func deleteUserPostCommentActivity(
 	// if action by is [], no user comments on post, mark activity as deleted
 	if len(actionBy) == 0 {
 		handlers.activityHelper.DeleteActivityHelper(activityFilterData)
+		handlers.activityHelper.WarmupUserActivityFeedCache(activity[0].CommunityID, activity[0].ActionOn)
 	}
 }

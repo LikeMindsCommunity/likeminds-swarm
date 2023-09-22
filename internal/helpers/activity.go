@@ -245,6 +245,11 @@ func (helper *activityHelper) deleteUserActivityFeedCacheData(userID string) {
 	helper.cacheHelper.Del(userActivityFeedKey)
 }
 
+func (helper *activityHelper) WarmupUniversalFeedCache(CommunityID int) []entities.Post {
+	postsDAta := []entities.Post{}
+	return postsDAta
+}
+
 // Structure for Activity Helper
 type activityHelper struct {
 	activityRepository interfaces.ActivityRepository

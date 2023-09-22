@@ -26,6 +26,7 @@ type ActivityHelper interface {
 	CountActivityHelper(filter map[string]interface{}) (int64, error)
 	DeleteActivityHelper(filter map[string]interface{}) error
 	WarmupUserActivityFeedCache(communityID int, userID string) []entities.Activity
+	WarmupUniversalFeedCache(CommunityID int) []entities.Post
 	PushActivitytoCache(activityID interface{})
 	UpdateActivityInCache(activityID string)
 }
