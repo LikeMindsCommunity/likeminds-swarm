@@ -114,10 +114,12 @@ func (helper *activityHelper) DeleteActivityHelper(filter map[string]interface{}
 	}
 
 	delete := gin.H{
-		"is_deleted": true,
+		"$set": gin.H{
+			"is_deleted": true,
+		},
 	}
 
-	err = helper.activityRepository.Update(filter, delete)
+	err = helper.activityRepository.UpdateAll(filter, delete)
 
 	return err
 }

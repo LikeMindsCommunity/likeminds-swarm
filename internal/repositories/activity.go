@@ -21,6 +21,11 @@ func (repository *activityRepository) Update(filter map[string]interface{}, upda
 	return _updateDocumentsInDB(repository.db, ActivityCollection, filter, update)
 }
 
+// Exposed Repository Method to Update All filter Activity
+func (repository *activityRepository) UpdateAll(filter map[string]interface{}, update map[string]interface{}) error {
+	return _updateAllDocumentsInDB(repository.db, ActivityCollection, filter, update)
+}
+
 // Count | returns count of activity with filter
 func (repository *activityRepository) Count(filter map[string]interface{}) (int64, error) {
 	return _countDocumentsInDB(repository.db, ActivityCollection, filter)

@@ -13,6 +13,7 @@ type ActivityRepository interface {
 	Create(document interface{}) (interface{}, error)
 	Find(filter map[string]interface{}, filterOptions *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
+	UpdateAll(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 }
 

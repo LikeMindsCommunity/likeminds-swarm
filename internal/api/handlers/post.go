@@ -1226,6 +1226,9 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
+	// remove activity for post comments
+	handlers.removePostCommentActivityData(postData.ID)
+
 	// remove activity for the post
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.Post,
@@ -1250,6 +1253,34 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
+}
+
+func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.ObjectID) {
+	commentsFilter := gin.H{
+		"post_id": postID,
+	}
+
+	// fetch comments using helper method
+	comments, err := handlers.commentHelper.FindCommentHelper(commentsFilter, nil)
+	if err != nil {
+		return
+	}
+
+	postCommentIds := [](primitive.ObjectID){}
+
+	for _, comment := range comments {
+		postCommentIds = append(postCommentIds, comment.ID)
+	}
+
+	// remove activity for the comment
+	deleteActivityFilter := gin.H{
+		"entity_type": constants.Comment,
+		"entity_id": gin.H{
+			"$in": postCommentIds,
+		},
+	}
+
+	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
 }
 
 // Exposed Method to pin a Post
