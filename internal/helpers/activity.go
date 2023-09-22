@@ -195,7 +195,11 @@ func (helper *activityHelper) WarmupUserActivityFeedCache(communityID int, userI
 	}
 
 	activityFilterOptions := gin.H{
-		"": "",
+		"$skip":  0,
+		"$limit": 20,
+		"$sort": gin.H{
+			"updated_at": 1,
+		},
 	}
 
 	// fetch activity using helper method
