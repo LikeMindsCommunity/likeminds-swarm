@@ -22,7 +22,9 @@ type ActivityHelper interface {
 	CreateActivityHelper(communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID,
 		entityOwnerID string, action constants.ActivityAction, cta string, isRead bool, isDeleted bool) (interface{}, error)
 	FindActivityHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Activity, error)
-	UpdateActivityByIDHelper(activityID primitive.ObjectID, update map[string]interface{}, shouldNotUpdateTimestamp bool) error
+	UpdateActivityByIDHelper(activityID primitive.ObjectID, update map[string]interface{}, shouldNotUpdateTimestamp bool, shouldPushActivityToCache bool) error
 	CountActivityHelper(filter map[string]interface{}) (int64, error)
 	DeleteActivityHelper(filter map[string]interface{}) error
+	PushActivitytoCache(activityID interface{})
+	UpdateActivityInCache(activityID string)
 }

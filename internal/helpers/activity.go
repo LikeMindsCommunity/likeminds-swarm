@@ -2,12 +2,15 @@ package helpers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -38,7 +41,7 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 				"is_deleted": false,
 			},
 		}
-		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData, false)
+		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData, false, true)
 
 		return existingActivity[0].ID, nil
 	}
@@ -74,7 +77,7 @@ func (helper *activityHelper) FindActivityHelper(filter map[string]interface{}, 
 }
 
 // Exposed Helper Method to Update Activity by activity_id
-func (helper *activityHelper) UpdateActivityByIDHelper(activityID primitive.ObjectID, update map[string]interface{}, shouldNotUpdateTimestamp bool) error {
+func (helper *activityHelper) UpdateActivityByIDHelper(activityID primitive.ObjectID, update map[string]interface{}, shouldNotUpdateTimestamp bool, shouldPushActivityToCache bool) error {
 	var setData gin.H
 
 	if _, ok := update["$set"]; ok {
@@ -90,6 +93,12 @@ func (helper *activityHelper) UpdateActivityByIDHelper(activityID primitive.Obje
 	update["$set"] = setData
 
 	err := helper.activityRepository.Update(gin.H{"_id": activityID}, update)
+
+	if shouldPushActivityToCache {
+		helper.PushActivitytoCache(activityID.Hex())
+	} else {
+		helper.UpdateActivityInCache(activityID.Hex())
+	}
 
 	return err
 }
@@ -124,14 +133,64 @@ func (helper *activityHelper) DeleteActivityHelper(filter map[string]interface{}
 	return err
 }
 
+// UpdateActivityInCache | update activity in cache storage
+func (helper *activityHelper) UpdateActivityInCache(activityID string) {
+	cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activityID)
+	cacheActivityString := helper.cacheHelper.Get(cacheActivityKey)
+
+	if cacheActivityString == nil {
+		return
+	}
+	activityFilter := gin.H{
+		"_id": activityID,
+	}
+	activity, err := helper.FindActivityHelper(activityFilter, gin.H{})
+	if err != nil {
+		return
+	}
+	activtyBytes, err := json.Marshal(activity[0])
+	if err != nil {
+		return
+	}
+	activityString := string(activtyBytes)
+
+	helper.cacheHelper.Set(cacheActivityKey, activityString, 0)
+}
+
+func (helper *activityHelper) PushActivitytoCache(activityID interface{}) {
+	activityFilter := gin.H{
+		"_id": activityID,
+	}
+	activity, err := helper.FindActivityHelper(activityFilter, gin.H{})
+	if err != nil {
+		return
+	}
+
+	userID := activity[0].ActionOn
+	activtyBytes, err := json.Marshal(activity[0])
+	if err != nil {
+		return
+	}
+	activityString := string(activtyBytes)
+
+	cacheUserActivityFeedKey := fmt.Sprintf(constants.UserActivityFeedCacheKey, userID)
+	helper.cacheHelper.LRem(cacheUserActivityFeedKey, 0, activityID.(primitive.ObjectID).Hex())
+	helper.cacheHelper.LPush(cacheUserActivityFeedKey, activityID.(primitive.ObjectID).Hex(), 20)
+
+	cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activityID.(primitive.ObjectID).Hex())
+	helper.cacheHelper.Set(cacheActivityKey, activityString, 0)
+}
+
 // Structure for Activity Helper
 type activityHelper struct {
 	activityRepository interfaces.ActivityRepository
+	cacheHelper        cache.Helper
 }
 
 // NewActivityHelper| method to Create New Activity Helper
-func NewActivityHelper(activityRepository interfaces.ActivityRepository) interfaces.ActivityHelper {
+func NewActivityHelper(activityRepository interfaces.ActivityRepository, cacheHelper cache.Helper) interfaces.ActivityHelper {
 	return &activityHelper{
 		activityRepository: activityRepository,
+		cacheHelper:        cacheHelper,
 	}
 }

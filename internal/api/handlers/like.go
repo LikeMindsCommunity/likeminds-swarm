@@ -247,21 +247,16 @@ func deleteUserPostLikeActivity(
 		},
 	}
 
-	// if this user is the only like on post, mark activity as deleted
-	if len(actionBy) == 0 {
-		activityUpdateData = gin.H{
-			"$set": gin.H{
-				"action_by":  actionBy,
-				"is_deleted": true,
-			},
-		}
-	}
-
 	// update activity data, exisiting activity timestamp remains same to maintain order
-	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true)
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	// if action by is [], no user comments on post, mark activity as deleted
+	if len(actionBy) == 0 {
+		handlers.activityHelper.DeleteActivityHelper(activityFilterData)
 	}
 }
 
@@ -444,21 +439,16 @@ func deleteUserCommentLikeActivity(handlers *FeedHandlers,
 		},
 	}
 
-	// if this user is the only like on post, mark activity as deleted
-	if len(actionBy) == 0 {
-		activityUpdateData = gin.H{
-			"$set": gin.H{
-				"action_by":  actionBy,
-				"is_deleted": true,
-			},
-		}
-	}
-
 	// update activity data, exisiting activity timestamp remains same to maintain order
-	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true)
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	// if action by is [], no user comments on post, mark activity as deleted
+	if len(actionBy) == 0 {
+		handlers.activityHelper.DeleteActivityHelper(activityFilterData)
 	}
 
 }
