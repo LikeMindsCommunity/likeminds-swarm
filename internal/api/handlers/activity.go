@@ -277,17 +277,21 @@ func getMultipleUserActivityText(activity entities.Activity) string {
 }
 
 func fetchActivityEntityOwnerUserData(activity entities.Activity) (map[string]interface{}, string) {
-	userData := map[string]interface{}{}
+	userData := make(map[string]interface{})
 	userID := activity.EntityOwnerID
 	isSuccess := false
 
 	isSuccess, userData[userID] = externalHelpers.FetchMemberMeta([]string{userID}, activity.ActionOn, activity.CommunityID)
-	userData[userID] = userData[userID].(*externalHelpers.MemberMetaResponse).Members[0]
-	if isSuccess {
-		return userData, userID
+	if !isSuccess {
+		return nil, ""
+	}
+	if userData[userID] == nil {
+		return nil, ""
 	}
 
-	return nil, ""
+	userData[userID] = userData[userID].(*externalHelpers.MemberMetaResponse).Members[0]
+
+	return userData, userID
 }
 
 func getEntityText(entityType constants.EntityType, activityEntityData interface{}) string {
