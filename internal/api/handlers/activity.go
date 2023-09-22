@@ -719,7 +719,7 @@ func (handlers *FeedHandlers) createUserActivityFeedCacheData(userID string, act
 
 	for _, activity := range activities {
 
-		cacheActivityKey := fmt.Sprintf("activity_{}", activity.ID.Hex())
+		cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activity.ID.Hex())
 		activityBytes, err := json.Marshal(activity)
 		if err != nil {
 			return
@@ -730,19 +730,19 @@ func (handlers *FeedHandlers) createUserActivityFeedCacheData(userID string, act
 		userActivityIDs = append(userActivityIDs, activity.ID.Hex())
 	}
 
-	cacheUserActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
+	cacheUserActivityFeedKey := fmt.Sprintf(constants.UserActivityFeedCacheKey, userID)
 	handlers.cacheHelper.Set(cacheUserActivityFeedKey, userActivityIDs, 0)
 }
 
 func (handlers *FeedHandlers) deleteUserActivityFeedCacheData(userID string) {
-	userActivityFeedKey := fmt.Sprintf("user_{}_activity_feed", userID)
+	userActivityFeedKey := fmt.Sprintf(constants.UserActivityFeedCacheKey, userID)
 
 	cacheUserActivityIDsString := handlers.cacheHelper.Get(userActivityFeedKey)
 	cacheUserActivityIDs := [](string){cacheUserActivityIDsString.Val()}
 
 	cacheActivityKeys := [](string){}
 	for _, cacheUserActivityID := range cacheUserActivityIDs {
-		cacheActivityKey := fmt.Sprintf("activity_{}", cacheUserActivityID)
+		cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, cacheUserActivityID)
 		cacheActivityKeys = append(cacheActivityKeys, cacheActivityKey)
 	}
 
