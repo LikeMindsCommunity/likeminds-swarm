@@ -184,7 +184,7 @@ func (helper *activityHelper) PushActivitytoCache(activityID interface{}) {
 	helper.cacheHelper.LRem(cacheUserActivityFeedKey, 0, activityIDString)
 	helper.cacheHelper.LPush(cacheUserActivityFeedKey, activityIDString, 20)
 
-	cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activityID.(primitive.ObjectID).Hex())
+	cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activityIDString)
 	helper.cacheHelper.Set(cacheActivityKey, activityString, 0)
 }
 
