@@ -327,7 +327,7 @@ func getPostAttachmentType(postResponse requests.PostResponse) string {
 		return ""
 	}
 
-	intAttachmentType := postResponse.Attachments[0].Type.ToInt()
+	intAttachmentType := postResponse.Attachments[0].AttachmentType
 	enumAttachmentType := enums.NewAttachmentTypeFromInt(intAttachmentType)
 
 	return enumAttachmentType.ToString()
