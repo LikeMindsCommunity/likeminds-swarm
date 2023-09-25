@@ -77,3 +77,9 @@ const (
 	// AlsoCommentOnPost | level 0 comment added on a commented post
 	AlsoCommentOnPost ActivityAction = 12
 )
+
+// ActivityCacheKey | cache key for activity instance
+const ActivityCacheKey = "activity_%s"
+
+// UserActivityFeedCacheKey | cache key for user activity feed
+const UserActivityFeedCacheKey = "user_%s_activity_feed"

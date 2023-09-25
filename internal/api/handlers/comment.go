@@ -573,7 +573,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 
 		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			handlers.CreateAlsoCommentedActivity(activityID, postData, headers)
 		}
 	}
 
@@ -882,14 +882,17 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	// remove activity for the comment
+	// remove user post comment activity
+	deleteUserPostCommentActivity(handlers, postData, c, headers)
+
+	// remove other activity for the comment
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.Comment,
 		"entity_id":   commentData.ID,
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
 
-	// create delete activity if deleted if CM
+	// create delete activity if deleted by CM
 	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != commentData.UserId {
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CMDeletedComment, gin.H{}, false, false)
 		if err != nil {
@@ -907,4 +910,50 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
+}
+
+func deleteUserPostCommentActivity(
+	handlers *FeedHandlers,
+	postData *entities.Post,
+	c *gin.Context,
+	headers map[string]string) {
+
+	activityFilterData := gin.H{
+		"community_id": postData.CommunityId,
+		"entity_type":  constants.Post,
+		"entity_id":    postData.ID,
+		"action":       constants.CommentOnPost,
+	}
+
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
+	if err != nil {
+		return
+	}
+
+	if activity == nil {
+		return
+	}
+
+	// remove uuid from like action list
+	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+
+	// activity update data
+	activityUpdateData := gin.H{
+		"$set": gin.H{
+			"action_by": actionBy,
+		},
+	}
+
+	// update activity data, exisiting activity timestamp remains same to maintain order
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true, true)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// if action by is [], no user comments on post, mark activity as deleted
+	if len(actionBy) == 0 {
+		handlers.activityHelper.DeleteActivityHelper(activityFilterData)
+		handlers.activityHelper.WarmupUserActivityFeedCache(activity[0].CommunityID, activity[0].ActionOn)
+	}
 }

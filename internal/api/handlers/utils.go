@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
@@ -31,12 +32,13 @@ type FeedHandlers struct {
 	widgetHelper    interfaces.WidgetHelper
 	pollVotesHelper interfaces.PollVotesHelper
 	esHelper        searchElastic.EsHelper
+	cacheHelper     cache.Helper
 }
 
 // Exposed Method to get an instance for Feed Handlers
 func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, postHelper interfaces.PostHelper,
 	saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, topicHelper interfaces.TopicHelper,
-	widgetHelper interfaces.WidgetHelper, pollVotesHelper interfaces.PollVotesHelper, esHelper searchElastic.EsHelper) *FeedHandlers {
+	widgetHelper interfaces.WidgetHelper, pollVotesHelper interfaces.PollVotesHelper, esHelper searchElastic.EsHelper, cacheHelper cache.Helper) *FeedHandlers {
 	return &FeedHandlers{
 		likeHelper:      likeHelper,
 		commentHelper:   commentHelper,
@@ -47,6 +49,7 @@ func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.
 		widgetHelper:    widgetHelper,
 		pollVotesHelper: pollVotesHelper,
 		esHelper:        esHelper,
+		cacheHelper:     cacheHelper,
 	}
 }
 
