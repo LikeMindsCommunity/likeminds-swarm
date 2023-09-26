@@ -295,11 +295,13 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 		return
 	}
 
-	if commentCount == 1 {
+	postCommentUsersCount := len(activity.ActionBy)
+
+	if postCommentUsersCount == 1 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name)
-	} else if commentCount == 2 {
+	} else if postCommentUsersCount == 2 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name)
-	} else if commentCount > 2 {
+	} else if postCommentUsersCount > 2 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1)
 	}
 
@@ -338,11 +340,13 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 		return
 	}
 
-	if commentCount == 1 {
+	commentReplyUserCount := len(activity.ActionBy)
+
+	if commentReplyUserCount == 1 {
 		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelOne, member.Name)
-	} else if commentCount == 2 {
+	} else if commentReplyUserCount == 2 {
 		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelTwo, member.Name)
-	} else if commentCount > 2 {
+	} else if commentReplyUserCount > 2 {
 		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelThree, member.Name, commentCount-1)
 	}
 
