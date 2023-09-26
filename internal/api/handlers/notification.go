@@ -222,8 +222,10 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 			return
 		}
 
+		latestCommentUserID := activity.ActionBy[len(activity.ActionBy)-1]
+
 		// Fetch member details
-		success, member_data := externalHelpers.FetchMemberMeta([](string){activity.ActionBy[0], activity.EntityOwnerID}, activity.ActionOn, activity.CommunityID)
+		success, member_data := externalHelpers.FetchMemberMeta([](string){latestCommentUserID, activity.EntityOwnerID}, activity.ActionOn, activity.CommunityID)
 		if !success || len(member_data.Members) == 0 {
 			return
 		}
