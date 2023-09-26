@@ -531,11 +531,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
-	taggedMembers, err := getTaggedUsers(createCommentRequest.Text)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
+	taggedMembers := createCommentRequest.UUIDs
 
 	var isCreatorTagged bool = false
 
