@@ -240,7 +240,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 				postOwner = member.Name
 			}
 
-			if member.UserUniqueId == activity.ActionBy[0] {
+			if member.UserUniqueId == latestCommentUserID {
 				commentOwner = member.Name
 			}
 		}
