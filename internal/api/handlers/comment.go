@@ -570,6 +570,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 		if activityID != nil {
 			handlers.CreateAlsoCommentedActivity(activityID, postData, headers)
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 		}
 	}
 

@@ -172,12 +172,19 @@ func (helper *activityHelper) PushActivitytoCache(activityID interface{}) {
 		return
 	}
 	activityString := string(activtyBytes)
+	activityIDString := ""
+
+	if _, ok := activityID.(string); ok {
+		activityIDString = activityID.(string)
+	} else {
+		activityIDString = activityID.(primitive.ObjectID).Hex()
+	}
 
 	cacheUserActivityFeedKey := fmt.Sprintf(constants.UserActivityFeedCacheKey, userID)
-	helper.cacheHelper.LRem(cacheUserActivityFeedKey, 0, activityID.(primitive.ObjectID).Hex())
-	helper.cacheHelper.LPush(cacheUserActivityFeedKey, activityID.(primitive.ObjectID).Hex(), 20)
+	helper.cacheHelper.LRem(cacheUserActivityFeedKey, 0, activityIDString)
+	helper.cacheHelper.LPush(cacheUserActivityFeedKey, activityIDString, 20)
 
-	cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activityID.(primitive.ObjectID).Hex())
+	cacheActivityKey := fmt.Sprintf(constants.ActivityCacheKey, activityIDString)
 	helper.cacheHelper.Set(cacheActivityKey, activityString, 0)
 }
 
