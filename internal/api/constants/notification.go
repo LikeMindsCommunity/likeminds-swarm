@@ -33,7 +33,7 @@ const (
 
 const (
 	CommentPermissionRemovedSubTitle = "Your permission to add comments and replies to the posts has been removed."
-	CommentPermissionAddedSubTitle   = "You now have the permission to add come comments on the posts. Start engaging now."
+	CommentPermissionAddedSubTitle   = "You now have the permission to add comments on the posts. Start engaging now."
 	PostPermissionRemovedSubTitle    = "Your permission to create posts in the community has been removed."
 	PostPermissionAddedSubTitle      = "You now have the permission to create posts in the community. Start posting now."
 	ModerationPostDeleteSubTitle     = "Your post has been deleted as it violates community guidelines. Reason: %s"

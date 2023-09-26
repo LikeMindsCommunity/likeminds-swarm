@@ -12,12 +12,12 @@ import (
 // Internal Method to send notification on Removal of Create Comment Permission for a user
 func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
 	subTitle := constants.CommentPermissionRemovedSubTitle
-	route := activity.CTA
+	route := "route://home"
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -27,7 +27,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 // Internal Method to send notification on Addition of Create Comment Permission for a user
 func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
@@ -42,12 +42,12 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 // Internal Method to send notification on Removal of Create Post Permission for a user
 func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
 	subTitle := constants.PostPermissionRemovedSubTitle
-	route := activity.CTA
+	route := "route://home"
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -57,7 +57,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 // Internal Method to send notification on Addition of Create Post Permission for a user
 func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
