@@ -223,7 +223,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		}
 
 		// Fetch member details
-		success, member_data := externalHelpers.FetchMemberMeta(activity.ActionBy, activity.ActionOn, activity.CommunityID)
+		success, member_data := externalHelpers.FetchMemberMeta([](string){activity.ActionBy[0], activity.EntityOwnerID}, activity.ActionOn, activity.CommunityID)
 		if !success || len(member_data.Members) == 0 {
 			return
 		}
