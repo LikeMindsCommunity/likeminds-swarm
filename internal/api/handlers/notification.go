@@ -17,7 +17,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	subCategory := constants.CommentPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
 	subTitle := constants.CommentPermissionRemovedSubTitle
-	route := "route://home"
+	route := "route://home" // placeholder route
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -47,7 +47,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 	subCategory := constants.PostPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
 	subTitle := constants.PostPermissionRemovedSubTitle
-	route := "route://home"
+	route := "route://home" // placeholder route
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
