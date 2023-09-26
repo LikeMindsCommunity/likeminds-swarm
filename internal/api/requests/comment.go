@@ -6,8 +6,9 @@ import (
 
 // Request Structure for Create Comment
 type CreateCommentRequest struct {
-	Text   string  `json:"text" binding:"required"`
-	TempID *string `json:"temp_id"`
+	Text   string   `json:"text" binding:"required"`
+	TempID *string  `json:"temp_id"`
+	UUIDs  []string `json:"uuids"`
 }
 
 // Request Structure for Edit Comment
