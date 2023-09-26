@@ -238,7 +238,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 				postOwner = member.Name
 			}
 
-			if member.UserUniqueId == activity.ActionOn {
+			if member.UserUniqueId == activity.ActionBy[0] {
 				commentOwner = member.Name
 			}
 		}
@@ -251,12 +251,14 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		subCategory := constants.AlsoCommentSubCategory
 		subTitle := ""
 
-		if len(activity.ActionOn) == 1 {
+		postCommentUsersCount := len(activity.ActionBy)
+
+		if postCommentUsersCount == 1 {
 			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelOne, commentOwner, postOwner)
-		} else if len(activity.ActionOn) == 2 {
+		} else if postCommentUsersCount == 2 {
 			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, postOwner)
-		} else if len(activity.ActionOn) > 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionOn)-1, postOwner)
+		} else if postCommentUsersCount > 2 {
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, postOwner)
 		}
 
 		// send notification
