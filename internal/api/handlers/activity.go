@@ -170,7 +170,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " liked your post"
+		activityText += " liked your"
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
@@ -181,7 +181,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " commented on your post"
+		activityText += " commented on your"
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
@@ -213,7 +213,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 
-		activityText += " tagged you in their post"
+		activityText += " tagged you in their"
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
@@ -224,6 +224,22 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		activityText += getUserRoute(activityByUserData)
 
 		activityText += " tagged you in their comment"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData)
+
+		return activityText, nil
+
+	case constants.AlsoCommentOnPost:
+		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " also commented on"
+
+		activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
+		if activityEntityOwnerUserID != "" {
+			activityText += " " + getUserRoute(activityEntityOwnerUserData[activityEntityOwnerUserID]) + "'s"
+		}
 
 		activityText += getEntityText(activity.EntityType, activityEntityData)
 
@@ -259,6 +275,24 @@ func getMultipleUserActivityText(activity entities.Activity) string {
 	return nOtherActivityText
 }
 
+func fetchActivityEntityOwnerUserData(activity entities.Activity) (map[string]interface{}, string) {
+	userData := make(map[string]interface{})
+	userID := activity.EntityOwnerID
+	isSuccess := false
+
+	isSuccess, userData[userID] = externalHelpers.FetchMemberMeta([]string{userID}, activity.ActionOn, activity.CommunityID)
+	if !isSuccess {
+		return nil, ""
+	}
+	if userData[userID] == nil {
+		return nil, ""
+	}
+
+	userData[userID] = userData[userID].(*externalHelpers.MemberMetaResponse).Members[0]
+
+	return userData, userID
+}
+
 func getEntityText(entityType constants.EntityType, activityEntityData interface{}) string {
 	entityTextData := ""
 
@@ -270,6 +304,15 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 		entityTextData = activityEntityData.(requests.CommentResponse).Text
 	}
 
+	// if post text is nil, add attachment type as text
+	if entityType == constants.Post && entityTextData == "" {
+		return " " + getPostAttachmentType(activityEntityData.(requests.PostResponse)) + "."
+	}
+
+	if entityType == constants.Post && entityTextData != "" {
+		return " post \"" + entityTextData + "\""
+	}
+
 	if entityTextData == "" {
 		return entityTextData + "."
 	}
@@ -277,6 +320,17 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	activityText := " \"" + entityTextData + "\""
 
 	return activityText
+}
+
+func getPostAttachmentType(postResponse requests.PostResponse) string {
+	if len(postResponse.Attachments) == 0 {
+		return ""
+	}
+
+	intAttachmentType := postResponse.Attachments[0].AttachmentType
+	enumAttachmentType := enums.NewAttachmentTypeFromInt(intAttachmentType)
+
+	return enumAttachmentType.ToString()
 }
 
 // Internal Method to fetch activity using activity_id
@@ -322,14 +376,48 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.LikeOnComment,
 		constants.CommentOnComment,
 		constants.TaggedInPost,
-		constants.TaggedInPostComment:
+		constants.TaggedInPostComment,
+		constants.AlsoCommentOnPost:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
+
+		handlers.activityHelper.PushActivitytoCache(activityID)
+
 		return activityID, err
 
 	}
 
 	return nil, nil
+}
+
+func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post, headers map[string]string) {
+	postCommentActivity, err := fetchActivity(handlers.activityHelper, activityID.(primitive.ObjectID).Hex())
+	if err != nil {
+		return
+	}
+
+	latestCommentUser := postCommentActivity.ActionBy[len(postCommentActivity.ActionBy)-1]
+	previousCommentUsers := utils.RemoveAllOccurenceStringList(postCommentActivity.ActionBy, latestCommentUser)
+
+	// if previousCommentUsers = [], no need to create activity
+	if len(previousCommentUsers) == 0 {
+		return
+	}
+
+	for _, previousCommentUser := range previousCommentUsers {
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{latestCommentUser}, previousCommentUser, constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     postData.ID.Hex(),
+		}, false, false)
+
+		if err != nil {
+			return
+		}
+
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+	}
 }
 
 // DeleteActivity | delete activity records with filter
@@ -552,7 +640,7 @@ func (handlers *FeedHandlers) UserActivityMarkRead(c *gin.Context) {
 	}
 
 	// update comment data
-	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true)
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

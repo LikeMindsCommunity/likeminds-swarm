@@ -12,12 +12,12 @@ import (
 // Internal Method to send notification on Removal of Create Comment Permission for a user
 func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
 	subTitle := constants.CommentPermissionRemovedSubTitle
-	route := activity.CTA
+	route := "route://home" // placeholder route
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -27,7 +27,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 // Internal Method to send notification on Addition of Create Comment Permission for a user
 func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
@@ -42,12 +42,12 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 // Internal Method to send notification on Removal of Create Post Permission for a user
 func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
 	subTitle := constants.PostPermissionRemovedSubTitle
-	route := activity.CTA
+	route := "route://home" // placeholder route
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -57,7 +57,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 // Internal Method to send notification on Addition of Create Post Permission for a user
 func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity,
 	platform_code string, version_code string) {
-	receivers := activity.ActionBy[len(activity.ActionBy)-1]
+	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
@@ -222,8 +222,10 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 			return
 		}
 
+		latestCommentUserID := activity.ActionBy[len(activity.ActionBy)-1]
+
 		// Fetch member details
-		success, member_data := externalHelpers.FetchMemberMeta(activity.ActionBy, activity.ActionOn, activity.CommunityID)
+		success, member_data := externalHelpers.FetchMemberMeta([](string){latestCommentUserID, activity.EntityOwnerID}, activity.ActionOn, activity.CommunityID)
 		if !success || len(member_data.Members) == 0 {
 			return
 		}
@@ -238,7 +240,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 				postOwner = member.Name
 			}
 
-			if member.UserUniqueId == activity.ActionOn {
+			if member.UserUniqueId == latestCommentUserID {
 				commentOwner = member.Name
 			}
 		}
@@ -251,12 +253,14 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		subCategory := constants.AlsoCommentSubCategory
 		subTitle := ""
 
-		if len(activity.ActionOn) == 1 {
+		postCommentUsersCount := len(activity.ActionBy)
+
+		if postCommentUsersCount == 1 {
 			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelOne, commentOwner, postOwner)
-		} else if len(activity.ActionOn) == 2 {
+		} else if postCommentUsersCount == 2 {
 			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, postOwner)
-		} else if len(activity.ActionOn) > 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionOn)-1, postOwner)
+		} else if postCommentUsersCount > 2 {
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, postOwner)
 		}
 
 		// send notification
@@ -295,11 +299,13 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 		return
 	}
 
-	if commentCount == 1 {
+	postCommentUsersCount := len(activity.ActionBy)
+
+	if postCommentUsersCount == 1 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name)
-	} else if commentCount == 2 {
+	} else if postCommentUsersCount == 2 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name)
-	} else if commentCount > 2 {
+	} else if postCommentUsersCount > 2 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1)
 	}
 
@@ -338,11 +344,13 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 		return
 	}
 
-	if commentCount == 1 {
+	commentReplyUserCount := len(activity.ActionBy)
+
+	if commentReplyUserCount == 1 {
 		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelOne, member.Name)
-	} else if commentCount == 2 {
+	} else if commentReplyUserCount == 2 {
 		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelTwo, member.Name)
-	} else if commentCount > 2 {
+	} else if commentReplyUserCount > 2 {
 		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelThree, member.Name, commentCount-1)
 	}
 

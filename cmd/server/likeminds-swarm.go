@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-redis/redis/v7"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-contrib/cors"
@@ -22,16 +24,20 @@ import (
 )
 
 var (
-	router *gin.Engine
+	redisClient *redis.Client
+	router      *gin.Engine
 )
 
 // Internal Method to initiate the server
 func main() {
-	var AppVersion string = "1.3.0"
+	var AppVersion string = "1.4.0"
 
 	initGin()
+	redisClient = cache.InitRedis()
 	db := database.InitiateDB()
 	es := searchElastic.InitiateES()
+
+	cacheHelper := cache.NewCacheHelper(redisClient)
 
 	router.Use(cors.New(enableCors()))
 	router.Use(LoggingMiddleware())
@@ -55,7 +61,7 @@ func main() {
 	likeHelper := helpers.NewLikeHelper(likeRepository)
 	commentHelper := helpers.NewCommentHelper(commentRepository)
 	saveHelper := helpers.NewSaveHelper(saveRepository)
-	activityHelper := helpers.NewActivityHelper(activityRepository)
+	activityHelper := helpers.NewActivityHelper(activityRepository, cacheHelper)
 	topicHelper := helpers.NewTopicHelper(topicRepository)
 	widgetHepler := helpers.NewWidgetHelper(widgetRepository)
 	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
@@ -65,7 +71,7 @@ func main() {
 
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper,
-		topicHelper, widgetHepler, pollVotesHelper, esHelper)
+		topicHelper, widgetHepler, pollVotesHelper, esHelper, cacheHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)

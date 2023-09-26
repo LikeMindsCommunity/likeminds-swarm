@@ -1226,12 +1226,19 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
+	// remove activity for post comments
+	handlers.removePostCommentActivityData(postData.ID)
+
 	// remove activity for the post
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.Post,
 		"entity_id":   postData.ID,
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
+
+	// delete and fill cache data
+	handlers.activityHelper.WarmupUserActivityFeedCache(postData.CommunityId, postData.UserId)
+	handlers.activityHelper.WarmupUniversalFeedCache(postData.CommunityId)
 
 	// if deleted by CM, create delete activity
 	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != postData.UserId {
@@ -1250,6 +1257,34 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 	})
+}
+
+func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.ObjectID) {
+	commentsFilter := gin.H{
+		"post_id": postID,
+	}
+
+	// fetch comments using helper method
+	comments, err := handlers.commentHelper.FindCommentHelper(commentsFilter, nil)
+	if err != nil {
+		return
+	}
+
+	postCommentIds := [](primitive.ObjectID){}
+
+	for _, comment := range comments {
+		postCommentIds = append(postCommentIds, comment.ID)
+	}
+
+	// remove activity for the comment
+	deleteActivityFilter := gin.H{
+		"entity_type": constants.Comment,
+		"entity_id": gin.H{
+			"$in": postCommentIds,
+		},
+	}
+
+	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
 }
 
 // Exposed Method to pin a Post
@@ -1290,6 +1325,8 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
+
+	handlers.updatePinnedPostCache(postData)
 
 	// update post data in elastic search
 	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
@@ -1505,4 +1542,35 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
+}
+
+// updatePinnedPostCache | update pinned post data in cache storage
+func (handlers *FeedHandlers) updatePinnedPostCache(postData *entities.Post) {
+	if postData.IsPinned {
+		handlers.addPostToCommunityPinnedPostCache(postData)
+	}
+	handlers.removePostFromCommunityPinnedPostsCache(postData.CommunityId, postData.ID.Hex())
+}
+
+// addPostToCommunityPinnedPostCache | add post to cache storage
+func (handlers *FeedHandlers) addPostToCommunityPinnedPostCache(postData *entities.Post) {
+	communityPostPinnedKey := fmt.Sprintf("community_{}_pinned_posts", postData.CommunityId)
+	postDataBytes, err := json.Marshal(postData)
+	if err != nil {
+		return
+	}
+	postDataString := string(postDataBytes)
+
+	cachePostKey := fmt.Sprintf("post_{}", postData.ID.Hex())
+
+	handlers.cacheHelper.LPush(communityPostPinnedKey, postData.ID.Hex(), -1)
+	handlers.cacheHelper.Set(cachePostKey, postDataString, 0)
+}
+
+// removePostFromCommunityPinnedPostsCache | add post to cache storage
+func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityID int, postID string) {
+	communityPostPinnedKey := fmt.Sprintf("community_{}_pinned_posts", communityID)
+
+	handlers.cacheHelper.LRem(communityPostPinnedKey, 0, postID)
+	handlers.cacheHelper.Del(fmt.Sprintf("post_{}", postID))
 }

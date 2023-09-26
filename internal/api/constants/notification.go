@@ -33,7 +33,7 @@ const (
 
 const (
 	CommentPermissionRemovedSubTitle = "Your permission to add comments and replies to the posts has been removed."
-	CommentPermissionAddedSubTitle   = "You now have the permission to add come comments on the posts. Start engaging now."
+	CommentPermissionAddedSubTitle   = "You now have the permission to add comments on the posts. Start engaging now."
 	PostPermissionRemovedSubTitle    = "Your permission to create posts in the community has been removed."
 	PostPermissionAddedSubTitle      = "You now have the permission to create posts in the community. Start posting now."
 	ModerationPostDeleteSubTitle     = "Your post has been deleted as it violates community guidelines. Reason: %s"
@@ -42,9 +42,9 @@ const (
 	PostTagSubTitle                  = "%s tagged you in a post."
 	CommentTagSubTitle               = "%s tagged you in a comment."
 	ReplyTagSubTitle                 = "%s tagged you in a reply."
-	AlsoCommentSubTitleLevelOne      = "%s also commented on the %s's post."
-	AlsoCommentSubTitleLevelTwo      = "%s and 1 other also commented on the %s's post."
-	AlsoCommentSubTitleLevelThree    = "%s and %d others also commented on the %s's post."
+	AlsoCommentSubTitleLevelOne      = "%s also commented on %s's post."
+	AlsoCommentSubTitleLevelTwo      = "%s and 1 other also commented on %s's post."
+	AlsoCommentSubTitleLevelThree    = "%s and %d others also commented on %s's post."
 	PostCommentSubTitleLevelOne      = "%s commented on your post."
 	PostCommentSubTitleLevelTwo      = "%s and 1 other commented on your post."
 	PostCommentSubTitleLevelThree    = "%s and %d others commented on your post."
