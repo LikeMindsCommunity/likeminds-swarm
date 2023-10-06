@@ -11,13 +11,17 @@ import (
 )
 
 // Internal Method to send notification on Removal of Create Comment Permission for a user
-func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity,
+func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.CommentPermissionRemovedSubTitle
+	subTitle := fmt.Sprintf(constants.CommentPermissionRemovedSubTitle, postMetatadataValue)
 	route := "route://home" // placeholder route
 
 	// send notification
@@ -26,13 +30,17 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 }
 
 // Internal Method to send notification on Addition of Create Comment Permission for a user
-func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity,
+func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.CommentPermissionAddedSubTitle
+	subTitle := fmt.Sprintf(constants.CommentPermissionAddedSubTitle, postMetatadataValue)
 	route := activity.CTA
 
 	// send notification
@@ -41,13 +49,17 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 }
 
 // Internal Method to send notification on Removal of Create Post Permission for a user
-func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity,
+func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.PostPermissionRemovedSubTitle
+	subTitle := fmt.Sprintf(constants.PostPermissionRemovedSubTitle, postMetatadataValue)
 	route := "route://home" // placeholder route
 
 	// send notification
@@ -56,13 +68,17 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 }
 
 // Internal Method to send notification on Addition of Create Post Permission for a user
-func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity,
+func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.PostPermissionAddedSubTitle
+	subTitle := fmt.Sprintf(constants.PostPermissionAddedSubTitle, postMetatadataValue)
 	route := activity.CTA
 
 	// send notification
@@ -567,15 +583,15 @@ func SendNotification(activityID primitive.ObjectID, handlers FeedHandlers, plat
 		sendDeleteActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreatePostPermitAdded:
-		sendCreatePostPermissionAddedActionNotification(activity, platformCode, versionCode)
+		sendCreatePostPermissionAddedActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreatePostPermitRemoved:
-		sendCreatePostPermissionRemovedActionNotification(activity, platformCode, versionCode)
+		sendCreatePostPermissionRemovedActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreateCommentPermitAdded:
-		sendCreateCommentPermissionAddedActionNotification(activity, platformCode, versionCode)
+		sendCreateCommentPermissionAddedActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreateCommentPermitRemoved:
-		sendCreateCommentPermissionRemovedActionNotification(activity, platformCode, versionCode)
+		sendCreateCommentPermissionRemovedActionNotification(activity, handlers, platformCode, versionCode)
 	}
 }
