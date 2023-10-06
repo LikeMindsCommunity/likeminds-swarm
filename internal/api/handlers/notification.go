@@ -6,6 +6,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -78,12 +79,15 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 		return
 	}
 
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	route := activity.CTA
 	category := constants.FeedCategory
 	subCategory := constants.ModerationPostDeleteSubCategory
-	title := constants.PostDeletedTitle
-	subTitle := fmt.Sprintf(constants.ModerationPostDeleteSubTitle, post_data.DeleteReason)
+	title := fmt.Sprintf(constants.PostDeletedTitle, utils.CapitalizeFirstLetter(postMetatadataValue))
+	subTitle := fmt.Sprintf(constants.ModerationPostDeleteSubTitle, postMetatadataValue, post_data.DeleteReason)
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -146,13 +150,16 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 
 	member := memberData.Members[0]
 
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UserUniqueId, activity.CommunityID)
+
 	// notification params
 	receivers := activity.ActionOn
 	title := constants.TagTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subCategory := constants.PostTagSubCategory
-	subTitle := fmt.Sprintf(constants.PostTagSubTitle, member.Name)
+	subTitle := fmt.Sprintf(constants.PostTagSubTitle, member.Name, postMetatadataValue)
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -245,6 +252,9 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 			}
 		}
 
+		// Fetch community configurations
+		postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
+
 		// notification params
 		receivers := activity.ActionOn
 		title := constants.CommentTitle
@@ -256,11 +266,11 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		postCommentUsersCount := len(activity.ActionBy)
 
 		if postCommentUsersCount == 1 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelOne, commentOwner, postOwner)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelOne, commentOwner, postOwner, postMetatadataValue)
 		} else if postCommentUsersCount == 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, postOwner)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, postOwner, postMetatadataValue)
 		} else if postCommentUsersCount > 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, postOwner)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, postOwner, postMetatadataValue)
 		}
 
 		// send notification
@@ -279,6 +289,9 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	member := member_data.Members[0]
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
@@ -302,11 +315,11 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	postCommentUsersCount := len(activity.ActionBy)
 
 	if postCommentUsersCount == 1 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name, postMetatadataValue)
 	} else if postCommentUsersCount == 2 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name, postMetatadataValue)
 	} else if postCommentUsersCount > 2 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1, postMetatadataValue)
 	}
 
 	// send notification
@@ -404,6 +417,9 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 
 	member := member_data.Members[0]
 
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
+
 	// notification params
 	receivers := activity.ActionOn
 	title := constants.LikeTitle
@@ -413,11 +429,11 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	subCategory := constants.PostLikedSubCategory
 
 	if likesCount == 1 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name, postMetatadataValue)
 	} else if likesCount == 2 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name, postMetatadataValue)
 	} else if likesCount > 2 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1, postMetatadataValue)
 	}
 
 	// send notification
