@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
@@ -595,7 +596,7 @@ func getWidgetDataFromPosts(handlers *FeedHandlers, response interface{}, commun
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, post entities.Post,
-	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) requests.PostResponse {
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper) requests.PostResponse {
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 
@@ -620,7 +621,7 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 		constants.PostEntityType, userId)
 	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), userId)
 	response.MenuItems = getEntityMenuItems(constants.PostEntityType, isCm,
-		userId == post.UserId, post.IsPinned, versionCode, platformCode)
+		userId == post.UserId, post.IsPinned, versionCode, platformCode, userId, post.CommunityId, cacheHelper)
 
 	if post.IsDeleted {
 		response.DeleteReason = post.DeleteReason
@@ -644,12 +645,12 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 // Internal Method to parse multiple post for response
 func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, posts []entities.Post, userId string,
-	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) []requests.PostResponse {
+	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper) []requests.PostResponse {
 	response := []requests.PostResponse{}
 
 	for _, post := range posts {
 		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, topicHelper,
-			post, userId, isCm, versionCode, platformCode, apiRevampV1Check))
+			post, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper))
 	}
 
 	return response
@@ -735,9 +736,9 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 
 	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, *postData, memberId, isCm, versionCode, platformCode,
-		apiRevampV1Check)
+		apiRevampV1Check, handlers.cacheHelper)
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentResults, memberId, isCm, versionCode, platformCode, apiRevampV1Check)
+		commentResults, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
 	fetchPostResponse := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
 		postResponse, repliesResponse)
 
@@ -772,7 +773,7 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 	// parse post response data for each post
 	for _, post := range postsLists {
 		postResponse[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			handlers.topicHelper, post, userId, isCm, versionCode, platformCode, apiRevampV1Check)
+			handlers.topicHelper, post, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
 	}
 
 	return postResponse, nil
@@ -1391,7 +1392,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 
 	createdPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, postResults, userId, isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check,
+		handlers.cacheHelper)
 
 	response := parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse, postsCount)
 
@@ -1431,7 +1433,7 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 
 	postResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, postList, userId, isCm, versionCode, platformCode,
-		apiRevampV1Check)
+		apiRevampV1Check, handlers.cacheHelper)
 
 	return postResponse
 }
