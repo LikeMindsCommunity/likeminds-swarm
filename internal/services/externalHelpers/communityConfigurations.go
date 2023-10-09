@@ -10,7 +10,7 @@ import (
 )
 
 type CommunityConfirgurationResponse struct {
-	CSuccess                bool                     `json:"success"`
+	Success                 bool                     `json:"success"`
 	CommunityConfigurations []CommunityConfiguration `json:"community_configurations"`
 }
 
