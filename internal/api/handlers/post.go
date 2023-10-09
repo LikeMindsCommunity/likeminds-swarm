@@ -805,11 +805,11 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// check if data is migration data
-	var isMigrationData bool = false
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
 	if createPostRequest.CreatedAt > 0 &&
 		float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		isMigrationData = true
+		useCustomCreationTimestamp = true
 	}
 
 	UserIsCM := createPostRequest.User_is_cm
@@ -897,7 +897,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		log.Error(err.Error())
 	}
 
-	if !isMigrationData {
+	if !useCustomCreationTimestamp {
 		// Get tagged members from request
 		taggedMembers := createPostRequest.UUIDs
 

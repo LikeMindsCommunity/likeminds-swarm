@@ -143,11 +143,11 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	var likePostRequest requests.LikeRequest
 	c.ShouldBindJSON(&likePostRequest)
 
-	// check if data is migration data
-	var isMigrationData bool = false
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
 	if likePostRequest.CreatedAt > 0 &&
 		float64(likePostRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		isMigrationData = true
+		useCustomCreationTimestamp = true
 	}
 
 	// fetch post using helper method
@@ -174,7 +174,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			return
 		}
 
-		if !isMigrationData {
+		if !useCustomCreationTimestamp {
 			createUserPostLikeActivity(handlers, post_data, c, headers)
 		}
 
@@ -195,7 +195,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			return
 		}
 
-		if !isMigrationData {
+		if !useCustomCreationTimestamp {
 			if !like_data.IsDeleted {
 				deleteUserPostLikeActivity(handlers, post_data, c, headers)
 			} else {
@@ -341,11 +341,11 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	var likeCommentRequest requests.LikeRequest
 	c.ShouldBindJSON(&likeCommentRequest)
 
-	// check if data is migration data
-	var isMigrationData bool = false
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
 	if likeCommentRequest.CreatedAt > 0 &&
 		float64(likeCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		isMigrationData = true
+		useCustomCreationTimestamp = true
 	}
 
 	//fetch post using helper method
@@ -379,7 +379,7 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 			return
 		}
 
-		if !isMigrationData {
+		if !useCustomCreationTimestamp {
 			createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
 		}
 
@@ -400,7 +400,7 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 			return
 		}
 
-		if !isMigrationData {
+		if !useCustomCreationTimestamp {
 			if !like_data.IsDeleted {
 				deleteUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
 			} else {

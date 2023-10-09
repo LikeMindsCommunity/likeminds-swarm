@@ -509,11 +509,11 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
-	// check if data is migration data
-	var isMigrationData bool = false
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
 	if createCommentRequest.CreatedAt > 0 &&
 		float64(createCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		isMigrationData = true
+		useCustomCreationTimestamp = true
 	}
 
 	// strip text and check if it is empty
@@ -543,7 +543,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	var isCreatorTagged bool = false
 
-	if !isMigrationData {
+	if !useCustomCreationTimestamp {
 		for _, member := range taggedMembers {
 			if member == postData.UserId {
 				isCreatorTagged = true
@@ -720,11 +720,11 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		return
 	}
 
-	// check if data is migration data
-	var isMigrationData bool = false
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
 	if createCommentRequest.CreatedAt > 0 &&
 		float64(createCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		isMigrationData = true
+		useCustomCreationTimestamp = true
 	}
 
 	// fetch post data
@@ -777,7 +777,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	var isCreatorTagged bool = false
 
-	if !isMigrationData {
+	if !useCustomCreationTimestamp {
 		for _, member := range taggedMembers {
 			if member == commentData.UserId {
 				isCreatorTagged = true
