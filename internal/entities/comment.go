@@ -25,8 +25,14 @@ type Comment struct {
 }
 
 // Exposed Method to Create a New Comment
-func NewComment(text string, postId primitive.ObjectID, communityId int, level int, userId string, tempId *string) Comment {
+func NewComment(text string, postId primitive.ObjectID, communityId int, level int, userId string,
+	tempId *string, CreatedAt int) Comment {
 	createdAt := time.Now()
+
+	if CreatedAt > 0 {
+		createdAt = time.Unix(0, int64(CreatedAt)*int64(time.Millisecond))
+	}
+
 	return Comment{
 		Text:        text,
 		TempID:      tempId,

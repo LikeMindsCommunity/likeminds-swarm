@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -138,6 +139,17 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		return
 	}
 
+	// validation of request body
+	var likePostRequest requests.LikeRequest
+	c.ShouldBindJSON(&likePostRequest)
+
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
+	if likePostRequest.CreatedAt > 0 &&
+		float64(likePostRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
+		useCustomCreationTimestamp = true
+	}
+
 	// fetch post using helper method
 	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
@@ -156,13 +168,15 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	if len(like_results) == 0 {
 		// create like using the helper method
 		_, err := handlers.likeHelper.CreateLikeHelper(constants.PostEntityType, post_data.ID,
-			headers[utils.HeadersMemberId])
+			headers[utils.HeadersMemberId], likePostRequest.CreatedAt)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
-		createUserPostLikeActivity(handlers, post_data, c, headers)
+		if !useCustomCreationTimestamp {
+			createUserPostLikeActivity(handlers, post_data, c, headers)
+		}
 
 	} else {
 		like_data := like_results[0]
@@ -181,10 +195,12 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			return
 		}
 
-		if !like_data.IsDeleted {
-			deleteUserPostLikeActivity(handlers, post_data, c, headers)
-		} else {
-			createUserPostLikeActivity(handlers, post_data, c, headers)
+		if !useCustomCreationTimestamp {
+			if !like_data.IsDeleted {
+				deleteUserPostLikeActivity(handlers, post_data, c, headers)
+			} else {
+				createUserPostLikeActivity(handlers, post_data, c, headers)
+			}
 		}
 	}
 
@@ -321,6 +337,17 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 		return
 	}
 
+	// validation of request body
+	var likeCommentRequest requests.LikeRequest
+	c.ShouldBindJSON(&likeCommentRequest)
+
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
+	if likeCommentRequest.CreatedAt > 0 &&
+		float64(likeCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
+		useCustomCreationTimestamp = true
+	}
+
 	//fetch post using helper method
 	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
 	if err != nil {
@@ -346,13 +373,15 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	if len(like_results) == 0 {
 		// create like using the helper method
 		_, err := handlers.likeHelper.CreateLikeHelper(constants.CommentEntityType, comment_data.ID,
-			headers[utils.HeadersMemberId])
+			headers[utils.HeadersMemberId], likeCommentRequest.CreatedAt)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
-		createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+		if !useCustomCreationTimestamp {
+			createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+		}
 
 	} else {
 		like_data := like_results[0]
@@ -371,10 +400,12 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 			return
 		}
 
-		if !like_data.IsDeleted {
-			deleteUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
-		} else {
-			createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+		if !useCustomCreationTimestamp {
+			if !like_data.IsDeleted {
+				deleteUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+			} else {
+				createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+			}
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -508,6 +509,13 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
+	if createCommentRequest.CreatedAt > 0 &&
+		float64(createCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
+		useCustomCreationTimestamp = true
+	}
+
 	// strip text and check if it is empty
 	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
 
@@ -525,7 +533,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// create comment using the helper method
 	commentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
-		constants.CommentBaseLevel, headers[utils.HeadersMemberId], createCommentRequest.TempID)
+		constants.CommentBaseLevel, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -535,42 +543,44 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	var isCreatorTagged bool = false
 
-	for _, member := range taggedMembers {
-		if member == postData.UserId {
-			isCreatorTagged = true
+	if !useCustomCreationTimestamp {
+		for _, member := range taggedMembers {
+			if member == postData.UserId {
+				isCreatorTagged = true
+			}
+
+			// create tag activity
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     postId,
+				"comment_id":  commentId.(primitive.ObjectID).Hex(),
+			}, false, false)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			if activityID != nil {
+				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			}
+
 		}
 
-		// create tag activity
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
-			"entity_type": constants.CommentEntityType,
-			"post_id":     postId,
-			"comment_id":  commentId.(primitive.ObjectID).Hex(),
-		}, false, false)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
+		if !isCreatorTagged {
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CommentOnPost, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     postId,
+				"comment_id":  commentId.(primitive.ObjectID).Hex(),
+			}, false, false)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
 
-		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
-		}
-
-	}
-
-	if !isCreatorTagged {
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CommentOnPost, gin.H{
-			"entity_type": constants.CommentEntityType,
-			"post_id":     postId,
-			"comment_id":  commentId.(primitive.ObjectID).Hex(),
-		}, false, false)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
-
-		if activityID != nil {
-			handlers.CreateAlsoCommentedActivity(activityID, postData, headers)
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			if activityID != nil {
+				handlers.CreateAlsoCommentedActivity(activityID, postData, headers)
+				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			}
 		}
 	}
 
@@ -710,6 +720,13 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		return
 	}
 
+	// check if custom creation timestamp is used
+	var useCustomCreationTimestamp bool = false
+	if createCommentRequest.CreatedAt > 0 &&
+		float64(createCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
+		useCustomCreationTimestamp = true
+	}
+
 	// fetch post data
 	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
@@ -732,7 +749,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	// create comment using the helper method
 	newCommentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
-		commentData.Level+1, headers[utils.HeadersMemberId], createCommentRequest.TempID)
+		commentData.Level+1, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -760,42 +777,45 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	var isCreatorTagged bool = false
 
-	for _, member := range taggedMembers {
-		if member == commentData.UserId {
-			isCreatorTagged = true
+	if !useCustomCreationTimestamp {
+		for _, member := range taggedMembers {
+			if member == commentData.UserId {
+				isCreatorTagged = true
+			}
+
+			// create tag activity
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     postId,
+				"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
+			}, false, false)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			if activityID != nil {
+				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			}
+
 		}
 
-		// create tag activity
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
-			"entity_type": constants.CommentEntityType,
-			"post_id":     postId,
-			"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
-		}, false, false)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
+		if !isCreatorTagged {
+			// create comment activity
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CommentOnComment, gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     postId,
+				"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
+			}, false, false)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
 
-		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
-		}
+			if activityID != nil {
+				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			}
 
-	}
-
-	if !isCreatorTagged {
-		// create comment activity
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CommentOnComment, gin.H{
-			"entity_type": constants.CommentEntityType,
-			"post_id":     postId,
-			"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
-		}, false, false)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
-
-		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 		}
 
 	}

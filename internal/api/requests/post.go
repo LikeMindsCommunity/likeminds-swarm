@@ -56,6 +56,7 @@ type CreatePostRequest struct {
 	UUIDs             []string     `json:"uuids"`
 	On_behalf_of_uuid string       `json:"on_behalf_of_uuid,omitempty"`
 	User_is_cm        bool         `json:"user_is_cm,omitempty"`
+	CreatedAt         int          `json:"created_at"`
 }
 
 // Request Structure for Edit Post
