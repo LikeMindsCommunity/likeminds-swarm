@@ -11,8 +11,8 @@ import (
 )
 
 // Exposed Helper Method to Create a Like
-func (helper *likeHelper) CreateLikeHelper(entityType string, entityId primitive.ObjectID, likedBy string) (interface{}, error) {
-	like := entities.NewLike(entityType, entityId, likedBy)
+func (helper *likeHelper) CreateLikeHelper(entityType string, entityId primitive.ObjectID, likedBy string, createdAt int) (interface{}, error) {
+	like := entities.NewLike(entityType, entityId, likedBy, createdAt)
 	likeId, err := helper.likeRepository.Create(&like)
 
 	return likeId, err

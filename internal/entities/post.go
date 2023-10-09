@@ -29,9 +29,14 @@ type Post struct {
 
 // Exposed Method to Create a New Post
 func NewPost(text string, heading string, communityId int, userId string, attachments []Attachment,
-	chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string) Post {
+	chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string,
+	CreatedAt int) Post {
 
 	createdAt := time.Now()
+
+	if CreatedAt > 0 {
+		createdAt = time.Unix(0, int64(CreatedAt)*int64(time.Millisecond))
+	}
 
 	// create post entity
 	postEntity := Post{

@@ -2,6 +2,11 @@ package requests
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
+// Request Structure for Like Post
+type LikeRequest struct {
+	CreatedAt int `json:"created_at"`
+}
+
 // Response Structure for Likes
 type LikeResponse struct {
 	ID        primitive.ObjectID `json:"_id"`
