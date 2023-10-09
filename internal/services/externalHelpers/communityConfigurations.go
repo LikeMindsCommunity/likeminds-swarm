@@ -36,7 +36,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	cacheCommunityConfigurationsKey := fmt.Sprintf(cache.CommunityConfigurationsKey, communityId)
 	communityConfigurationsCacheValue := cacheHelper.Get(cacheCommunityConfigurationsKey)
 
-	if communityConfigurationsCacheValue.Val() != "" {
+	if communityConfigurationsCacheValue.Val() != "" && communityConfigurationsCacheValue.Val() != "null" {
 		err := json.Unmarshal([]byte(communityConfigurationsCacheValue.Val()), &communityConfigurationResponse.CommunityConfigurations)
 
 		if err != nil {

@@ -20,10 +20,16 @@ import (
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	apiRevampV1Check bool, uuid string) ([]interface{}, interface{}, interface{}, interface{}, error) {
 
+	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
+
 	response := []interface{}{}
 	userDatas := make(map[string]interface{})
 	topicDatas := map[string]interface{}{}
 	widgetDatas := map[string]interface{}{}
+
+	if len(activities) > 0 {
+		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, uuid, activities[0].CommunityID)
+	}
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
@@ -34,7 +40,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityText, err := getActivityText(activityUserData, activityEntityData, activity)
+		activityText, err := getActivityText(activityUserData, activityEntityData, activity, postMetatadataValue)
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -135,28 +141,28 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 	return nil, nil
 }
 
-func getActivityText(activityUserData map[string]interface{}, activityEntityData interface{}, activity entities.Activity) (string, error) {
+func getActivityText(activityUserData map[string]interface{}, activityEntityData interface{}, activity entities.Activity, postFeedMetadatValue string) (string, error) {
 	activityText := ""
 
 	switch activity.Action {
 	case constants.CreatePostPermitAdded:
-		activityText += "You now have the permission to create posts in the community. Start posting now."
+		activityText += fmt.Sprintf("You now have the permission to create %ss in the community. Start posting now.", postFeedMetadatValue)
 		return activityText, nil
 
 	case constants.CreatePostPermitRemoved:
-		activityText += "Your permission to create posts in the community has been removed."
+		activityText += fmt.Sprintf("Your permission to create %ss in the community has been removed.", postFeedMetadatValue)
 		return activityText, nil
 
 	case constants.CreateCommentPermitAdded:
-		activityText += "You now have the permission to add comments on the posts. Start engaging now."
+		activityText += fmt.Sprintf("You now have the permission to add comments on the %ss. Start engaging now.", postFeedMetadatValue)
 		return activityText, nil
 
 	case constants.CreateCommentPermitRemoved:
-		activityText += "Your permission to add comments and replies to the posts has been removed."
+		activityText += fmt.Sprintf("Your permission to add comments and replies to the %ss has been removed.", postFeedMetadatValue)
 		return activityText, nil
 
 	case constants.CMDeletedPost:
-		activityText += "Your post has been deleted as it violates community guidelines. Reason: "
+		activityText += fmt.Sprintf("Your %s has been deleted as it violates community guidelines. Reason: ", postFeedMetadatValue)
 		activityText += activityEntityData.(requests.PostResponse).DeleteReason + "."
 		return activityText, nil
 
@@ -172,7 +178,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " liked your"
 
-		activityText += getEntityText(activity.EntityType, activityEntityData)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
 
@@ -183,7 +189,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " commented on your"
 
-		activityText += getEntityText(activity.EntityType, activityEntityData)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
 
@@ -194,7 +200,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " liked your comment"
 
-		activityText += getEntityText(activity.EntityType, activityEntityData)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
 
@@ -205,7 +211,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " replied on your comment"
 
-		activityText += getEntityText(activity.EntityType, activityEntityData)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
 
@@ -215,7 +221,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " tagged you in their"
 
-		activityText += getEntityText(activity.EntityType, activityEntityData)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
 
@@ -225,7 +231,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 
 		activityText += " tagged you in their comment"
 
-		activityText += getEntityText(activity.EntityType, activityEntityData)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
 
@@ -241,7 +247,7 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 			activityText += " " + getUserRoute(activityEntityOwnerUserData[activityEntityOwnerUserID]) + "'s"
 		}
 
-		activityText += getEntityText(activity.EntityType, activityEntityData)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
 	}
@@ -293,7 +299,7 @@ func fetchActivityEntityOwnerUserData(activity entities.Activity) (map[string]in
 	return userData, userID
 }
 
-func getEntityText(entityType constants.EntityType, activityEntityData interface{}) string {
+func getEntityText(entityType constants.EntityType, activityEntityData interface{}, postFeedMetadatValue string) string {
 	entityTextData := ""
 
 	switch entityType {
@@ -310,7 +316,7 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	}
 
 	if entityType == constants.Post && entityTextData != "" {
-		return " post \"" + entityTextData + "\""
+		return fmt.Sprintf(" %s \"", postFeedMetadatValue) + entityTextData + "\""
 	}
 
 	if entityTextData == "" {
