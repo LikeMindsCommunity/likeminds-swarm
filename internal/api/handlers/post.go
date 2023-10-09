@@ -805,6 +805,13 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// check if data is migration data
+	var isMigrationData bool = false
+	if createPostRequest.CreatedAt > 0 &&
+		float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
+		isMigrationData = true
+	}
+
 	UserIsCM := createPostRequest.User_is_cm
 
 	// strip text to check if it is empty
@@ -855,7 +862,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// create post using the helper method
 	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading,
 		communityId, postUserId, createPostRequest.Attachments, createPostRequest.ChatroomID,
-		createPostRequest.TempID, topicIDs, OriginalAuthorUUID)
+		createPostRequest.TempID, topicIDs, OriginalAuthorUUID, createPostRequest.CreatedAt)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -890,25 +897,27 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		log.Error(err.Error())
 	}
 
-	// Get tagged members from request
-	taggedMembers := createPostRequest.UUIDs
+	if !isMigrationData {
+		// Get tagged members from request
+		taggedMembers := createPostRequest.UUIDs
 
-	for _, member := range taggedMembers {
-		// create tag activity
-		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post, postId.(primitive.ObjectID), postUserId,
-			constants.TaggedInPost, gin.H{
-				"entity_type": constants.PostEntityType,
-				"post_id":     postId.(primitive.ObjectID).Hex(),
-			}, false, false)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
+		for _, member := range taggedMembers {
+			// create tag activity
+			activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post, postId.(primitive.ObjectID), postUserId,
+				constants.TaggedInPost, gin.H{
+					"entity_type": constants.PostEntityType,
+					"post_id":     postId.(primitive.ObjectID).Hex(),
+				}, false, false)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			if activityID != nil {
+				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			}
+
 		}
-
-		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
-		}
-
 	}
 
 	// filter options

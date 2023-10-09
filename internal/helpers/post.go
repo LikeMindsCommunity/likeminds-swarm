@@ -36,7 +36,7 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 
 // Exposed Helper Method to Create Post
 func (helper *postHelper) CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
-	chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string) (interface{}, error) {
+	chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string, CreatedAt int) (interface{}, error) {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -45,7 +45,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 		tempId = nil
 	}
 
-	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId, topicIds, OriginalAuthorUUID)
+	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId, topicIds, OriginalAuthorUUID, CreatedAt)
 	postId, err := helper.postRepository.Create(&post)
 
 	return postId, err

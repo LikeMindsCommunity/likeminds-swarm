@@ -18,8 +18,13 @@ type Like struct {
 }
 
 // Exposed Method to Create a New Like
-func NewLike(entityType string, entityId primitive.ObjectID, likedBy string) Like {
+func NewLike(entityType string, entityId primitive.ObjectID, likedBy string, CreatedAt int) Like {
 	createdAt := time.Now()
+
+	if CreatedAt > 0 {
+		createdAt = time.Unix(0, int64(CreatedAt)*int64(time.Millisecond))
+	}
+
 	return Like{
 		EntityType: entityType,
 		EntityId:   entityId,
