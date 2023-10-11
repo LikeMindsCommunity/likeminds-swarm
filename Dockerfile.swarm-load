@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . ./
 
-ADD https://beta-likeminds-media.s3.ap-south-1.amazonaws.com/environment/load-testing/swarm-load-testing-dot-env ./cmd/server/config/.env
+ADD https://beta-likeminds-media.s3.ap-south-1.amazonaws.com/environment/load-test/swarm-load-test-dot-env ./cmd/server/config/.env
 
 RUN go build -o ./cmd/server/likeminds-swarm cmd/server/likeminds-swarm.go
 
