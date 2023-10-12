@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 type CommunityConfirgurationResponse struct {
@@ -70,7 +71,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	}
 
 	// Save data to cache
-	fmt.Println("Saving in cache")
+	logging.Info(fmt.Sprintf("Saving the community configurations in cache for %d", communityId))
 	cacheCommunityConfigurationsBytesValue, _ := json.Marshal(communityConfigurationResponse.CommunityConfigurations)
 	cacheHelper.Set(cacheCommunityConfigurationsKey, cacheCommunityConfigurationsBytesValue, 6*time.Hour)
 
