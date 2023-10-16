@@ -28,9 +28,22 @@ const DefaultCommunityId = -1
 const SdkAuthenticateEndPoint = "/api/sdk/authenticate"
 const SendNotificationEndPoint = "/api/external_service_apis/send_notifications"
 const FetchMembersMetaEndPoint = "/api/community/fetch_members_meta"
+const FetchCommunityConfigurations = "/api/community/configurations"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
 
 const ContentTypeHeader = "application/json"
 const SwarmServiceMemberIdHeader = "swarm-service"
+
+const (
+	PostCommunityConfigurationKey = "post"
+)
+
+const (
+	FeedMetadataCommunityConfigurationType = "feed_metadata"
+)
+
+const (
+	DefaultFeedMetadataPostVariableValue = "post"
+)

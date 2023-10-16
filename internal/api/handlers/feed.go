@@ -116,7 +116,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
 			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check)
+			apiRevampV1Check, handlers.cacheHelper)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -133,7 +133,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
 		universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check)
+		apiRevampV1Check, handlers.cacheHelper)
 
 	response = append(response, unpinnedPostResponse...)
 
@@ -518,7 +518,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
 			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check)
+			apiRevampV1Check, handlers.cacheHelper)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -535,7 +535,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
 		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check)
+		apiRevampV1Check, handlers.cacheHelper)
 
 	response = append(response, unpinnedPostResponse...)
 
