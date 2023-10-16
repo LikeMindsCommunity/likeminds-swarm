@@ -33,6 +33,9 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 
 	for _, activity := range activities {
 		activityUserData, activityUserUID := getActivityUserData(activity)
+		if activityUserData == nil {
+			continue
+		}
 
 		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
 			apiRevampV1Check)
@@ -106,13 +109,14 @@ func getActivityUserData(activity entities.Activity) (map[string]interface{}, st
 	activityUserData := map[string]interface{}{}
 	isSuccess := false
 
-	isSuccess, activityUserData[activityUserUID] = externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
-	activityUserData[activityUserUID] = activityUserData[activityUserUID].(*externalHelpers.MemberMetaResponse).Members[0]
-	if isSuccess {
-		return activityUserData, activityUserUID
+	isSuccess, member_data := externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
+	if !isSuccess || len(member_data.Members) == 0 {
+		return nil, ""
 	}
 
-	return nil, ""
+	activityUserData[activityUserUID] = member_data.Members[0]
+
+	return activityUserData, activityUserUID
 }
 
 func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int,
