@@ -9,11 +9,11 @@ const (
 )
 
 const (
-	DeletePostMenuItemTitle = "Delete Post"
-	PinPostMenuItemTitle    = "Pin This Post"
-	UnpinPostMenuItemTitle  = "Unpin This Post"
+	DeletePostMenuItemTitle = "Delete %s"
+	PinPostMenuItemTitle    = "Pin This %s"
+	UnpinPostMenuItemTitle  = "Unpin This %s"
 	ReportPostMenuItemTitle = "Report"
-	EditPostMenuItemTitle   = "Edit Post"
+	EditPostMenuItemTitle   = "Edit %s"
 )
 
 const (

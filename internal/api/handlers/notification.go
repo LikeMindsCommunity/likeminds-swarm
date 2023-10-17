@@ -6,17 +6,22 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Internal Method to send notification on Removal of Create Comment Permission for a user
-func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity,
+func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.CommentPermissionRemovedSubTitle
+	subTitle := fmt.Sprintf(constants.CommentPermissionRemovedSubTitle, postMetatadataValue)
 	route := "route://home" // placeholder route
 
 	// send notification
@@ -25,13 +30,17 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 }
 
 // Internal Method to send notification on Addition of Create Comment Permission for a user
-func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity,
+func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.CommentPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.CommentPermissionAddedSubTitle
+	subTitle := fmt.Sprintf(constants.CommentPermissionAddedSubTitle, postMetatadataValue)
 	route := activity.CTA
 
 	// send notification
@@ -40,13 +49,17 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 }
 
 // Internal Method to send notification on Removal of Create Post Permission for a user
-func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity,
+func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.PostPermissionRemovedSubTitle
+	subTitle := fmt.Sprintf(constants.PostPermissionRemovedSubTitle, postMetatadataValue)
 	route := "route://home" // placeholder route
 
 	// send notification
@@ -55,13 +68,17 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 }
 
 // Internal Method to send notification on Addition of Create Post Permission for a user
-func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity,
+func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
 	subCategory := constants.PostPermissionAddedSubCategory
 	title := constants.PermissionUpdatedTitle
-	subTitle := constants.PostPermissionAddedSubTitle
+	subTitle := fmt.Sprintf(constants.PostPermissionAddedSubTitle, postMetatadataValue)
 	route := activity.CTA
 
 	// send notification
@@ -78,12 +95,15 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 		return
 	}
 
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	route := activity.CTA
 	category := constants.FeedCategory
 	subCategory := constants.ModerationPostDeleteSubCategory
-	title := constants.PostDeletedTitle
-	subTitle := fmt.Sprintf(constants.ModerationPostDeleteSubTitle, post_data.DeleteReason)
+	title := fmt.Sprintf(constants.PostDeletedTitle, utils.CapitalizeFirstLetter(postMetatadataValue))
+	subTitle := fmt.Sprintf(constants.ModerationPostDeleteSubTitle, postMetatadataValue, post_data.DeleteReason)
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -146,13 +166,16 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 
 	member := memberData.Members[0]
 
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UserUniqueId, activity.CommunityID)
+
 	// notification params
 	receivers := activity.ActionOn
 	title := constants.TagTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subCategory := constants.PostTagSubCategory
-	subTitle := fmt.Sprintf(constants.PostTagSubTitle, member.Name)
+	subTitle := fmt.Sprintf(constants.PostTagSubTitle, member.Name, postMetatadataValue)
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
@@ -245,6 +268,9 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 			}
 		}
 
+		// Fetch community configurations
+		postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
+
 		// notification params
 		receivers := activity.ActionOn
 		title := constants.CommentTitle
@@ -256,11 +282,11 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		postCommentUsersCount := len(activity.ActionBy)
 
 		if postCommentUsersCount == 1 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelOne, commentOwner, postOwner)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelOne, commentOwner, postOwner, postMetatadataValue)
 		} else if postCommentUsersCount == 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, postOwner)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, postOwner, postMetatadataValue)
 		} else if postCommentUsersCount > 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, postOwner)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, postOwner, postMetatadataValue)
 		}
 
 		// send notification
@@ -279,6 +305,9 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	}
 
 	member := member_data.Members[0]
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
@@ -302,11 +331,11 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	postCommentUsersCount := len(activity.ActionBy)
 
 	if postCommentUsersCount == 1 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name, postMetatadataValue)
 	} else if postCommentUsersCount == 2 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name, postMetatadataValue)
 	} else if postCommentUsersCount > 2 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1, postMetatadataValue)
 	}
 
 	// send notification
@@ -404,6 +433,9 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 
 	member := member_data.Members[0]
 
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
+
 	// notification params
 	receivers := activity.ActionOn
 	title := constants.LikeTitle
@@ -413,11 +445,11 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	subCategory := constants.PostLikedSubCategory
 
 	if likesCount == 1 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name, postMetatadataValue)
 	} else if likesCount == 2 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name, postMetatadataValue)
 	} else if likesCount > 2 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1, postMetatadataValue)
 	}
 
 	// send notification
@@ -551,15 +583,15 @@ func SendNotification(activityID primitive.ObjectID, handlers FeedHandlers, plat
 		sendDeleteActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreatePostPermitAdded:
-		sendCreatePostPermissionAddedActionNotification(activity, platformCode, versionCode)
+		sendCreatePostPermissionAddedActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreatePostPermitRemoved:
-		sendCreatePostPermissionRemovedActionNotification(activity, platformCode, versionCode)
+		sendCreatePostPermissionRemovedActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreateCommentPermitAdded:
-		sendCreateCommentPermissionAddedActionNotification(activity, platformCode, versionCode)
+		sendCreateCommentPermissionAddedActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.CreateCommentPermitRemoved:
-		sendCreateCommentPermissionRemovedActionNotification(activity, platformCode, versionCode)
+		sendCreateCommentPermissionRemovedActionNotification(activity, handlers, platformCode, versionCode)
 	}
 }
