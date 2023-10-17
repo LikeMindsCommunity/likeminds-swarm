@@ -47,3 +47,7 @@ const (
 const (
 	DefaultFeedMetadataPostVariableValue = "post"
 )
+
+const (
+	CommunityConfigurationsCacheTTLInHours = 6
+)

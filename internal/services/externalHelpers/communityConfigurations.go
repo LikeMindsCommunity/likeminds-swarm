@@ -73,7 +73,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	// Save data to cache
 	logging.Info(fmt.Sprintf("Saving the community configurations in cache for %d", communityId))
 	cacheCommunityConfigurationsBytesValue, _ := json.Marshal(communityConfigurationResponse.CommunityConfigurations)
-	cacheHelper.Set(cacheCommunityConfigurationsKey, cacheCommunityConfigurationsBytesValue, 6*time.Hour)
+	cacheHelper.Set(cacheCommunityConfigurationsKey, cacheCommunityConfigurationsBytesValue, CommunityConfigurationsCacheTTLInHours*time.Hour)
 
 	return &communityConfigurationResponse, nil
 }
