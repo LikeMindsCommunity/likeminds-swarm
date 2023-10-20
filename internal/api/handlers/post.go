@@ -301,7 +301,7 @@ func validateAndUpdateCustomWidgetAttachment(c *gin.Context, handlers *FeedHandl
 	widgetId := attachment.AttachmentMeta.EntityID
 	widgetMeta := attachment.AttachmentMeta.WidgetMeta
 
-	if widgetId == "" && widgetMeta == nil {
+	if widgetId == "" && (len(widgetMeta) == 0) {
 		utils.GeneralAPIValidationError(c, "please send entity_id or widget_meta in attachment meta")
 		return false
 	}
