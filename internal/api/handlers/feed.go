@@ -31,6 +31,9 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Parse topic Ids string array
 	topicIds := parseStringArrayParam(universalFeedRequest.TopicIds)
 
+	// Parse widget ids string array
+	widgetIds := parseStringArrayParam(universalFeedRequest.WidgetIds)
+
 	// fetch pagination query params
 	page, _, err := fetchPaginationParams(c)
 	if err != nil {
@@ -89,6 +92,22 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		unpinnedPostFilterData["topic_ids"] = gin.H{
 			"$in": topicObjectIds,
 		}
+	}
+
+	// Add widget id filter if widget_ids param exists
+	if len(widgetIds) > 0 {
+		widgetObjectIds := helpers.ConvertIdsToObjectIds(widgetIds)
+
+		widgetQuery := gin.H{
+			"$elemMatch": gin.H{
+				"attachment_meta.entity_id": gin.H{
+					"$in": widgetObjectIds,
+				},
+			},
+		}
+
+		pinnedPostFilterData["attachments"] = widgetQuery
+		unpinnedPostFilterData["attachments"] = widgetQuery
 	}
 
 	// filter options
