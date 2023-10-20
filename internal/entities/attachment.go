@@ -63,6 +63,7 @@ func NewAttachmentMeta(name string, url string, format string, size int, duratio
 		Size:                 size,
 		Duration:             duration,
 		PageCount:            pageCount,
+		OgTags:               &ogTags,
 		ThumbnailUrl:         thumbnailUrl,
 		CoverImageUrl:        coverImageUrl,
 		Title:                title,
@@ -77,10 +78,6 @@ func NewAttachmentMeta(name string, url string, format string, size int, duratio
 
 	if entityId != primitive.NilObjectID {
 		attachmentMeta.EntityID = entityId
-	}
-
-	if ogTags != (OGTags{}) {
-		attachmentMeta.OgTags = &ogTags
 	}
 
 	return attachmentMeta
