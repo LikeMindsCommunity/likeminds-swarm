@@ -25,7 +25,6 @@ type AttachmentMeta struct {
 	ThumbnailUrl         string                 `json:"thumbnail_url,omitempty"`
 	OgTags               OGTags                 `json:"og_tags,omitempty"`
 	EntityID             string                 `json:"entity_id,omitempty"`
-	WidgetMeta           map[string]interface{} `json:"widget_meta,omitempty"`
 	CoverImageUrl        string                 `json:"cover_image_url,omitempty"`
 	Title                string                 `json:"title,omitempty"`
 	Body                 string                 `json:"body,omitempty"`
@@ -36,6 +35,7 @@ type AttachmentMeta struct {
 	MultipleSelectNumber int                    `json:"multiple_select_number,omitempty"`
 	IsAnonymous          bool                   `json:"is_anonymous,omitempty"`
 	AllowAddOption       bool                   `json:"allow_add_option,omitempty"`
+	WidgetMeta           map[string]interface{} `json:"widget_meta,omitempty"`
 }
 
 // Attachment Structure

@@ -171,10 +171,11 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			updatedAttachments = append(updatedAttachments, updatedAttachment)
 
 		} else if attachment.AttachmentType == enums.CustomWidget {
+			entityId := attachment.AttachmentMeta.EntityID
 			widgetMeta := attachment.AttachmentMeta.WidgetMeta
 
-			// If widget meta is present, create widget
-			if widgetMeta != nil {
+			// If entity id is null and widget meta is present, create a new widget and attach it to post
+			if entityId == "" && widgetMeta != nil {
 
 				// create widget from given metadata
 				widgetData, ok := createWidget(c, handlers, false, postId, constants.PostEntityType, widgetMeta, nil, communityId)
@@ -183,15 +184,14 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 				}
 
 				// update attachment with widget id
-				updatedAttachment := requests.Attachment{
+				attachment = requests.Attachment{
 					AttachmentType: attachment.AttachmentType,
 					AttachmentMeta: requests.AttachmentMeta{
 						EntityID: widgetData.ID.Hex(),
 					},
 				}
-
-				updatedAttachments = append(updatedAttachments, updatedAttachment)
 			}
+			updatedAttachments = append(updatedAttachments, attachment)
 		} else { // Else do nothing
 			updatedAttachments = append(updatedAttachments, attachment)
 		}
