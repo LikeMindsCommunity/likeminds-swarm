@@ -314,13 +314,6 @@ func validateAndUpdateCustomWidgetAttachment(c *gin.Context, handlers *FeedHandl
 			return false
 		}
 
-		// If widget meta is present along with widget id, update widget
-		if widgetMeta != nil {
-			_, ok := editWidget(c, handlers, widgetId, false, widgetMeta, nil, communityId)
-			if !ok {
-				return false
-			}
-		}
 	}
 
 	return true
