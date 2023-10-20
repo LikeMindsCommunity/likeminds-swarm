@@ -177,7 +177,7 @@ func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, commun
 	return response
 }
 
-// Internal Method to fetch topics using topic_ids and community_id
+// Internal Method to fetch widgets using widgetIds and communityId
 func fetchWidgetsByIDs(helper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) ([]entities.Widget, error) {
 	// widget filter data
 	widgetFilterData := gin.H{

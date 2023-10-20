@@ -170,8 +170,29 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 
 			updatedAttachments = append(updatedAttachments, updatedAttachment)
 
-			// Else do nothing
-		} else {
+		} else if attachment.AttachmentType == enums.CustomWidget {
+			entityId := attachment.AttachmentMeta.EntityID
+			widgetMeta := attachment.AttachmentMeta.WidgetMeta
+
+			// If entity id is null and widget meta is present, create a new widget and attach it to post
+			if entityId == "" && widgetMeta != nil {
+
+				// create widget from given metadata
+				widgetData, ok := createWidget(c, handlers, false, postId, constants.PostEntityType, widgetMeta, nil, communityId)
+				if !ok {
+					return nil, false
+				}
+
+				// update attachment with widget id
+				attachment = requests.Attachment{
+					AttachmentType: attachment.AttachmentType,
+					AttachmentMeta: requests.AttachmentMeta{
+						EntityID: widgetData.ID.Hex(),
+					},
+				}
+			}
+			updatedAttachments = append(updatedAttachments, attachment)
+		} else { // Else do nothing
 			updatedAttachments = append(updatedAttachments, attachment)
 		}
 	}
@@ -273,13 +294,36 @@ func validateLinkAttachment(attachment requests.Attachment) (string, bool) {
 	return "", true
 }
 
-// Internal Method to validate custom attachment
-func validateCustomAttachment(attachment requests.Attachment) (string, bool) {
-	if attachment.AttachmentMeta.EntityID == "" {
-		return "send entity_id in attachment_meta for custom widget", false
+// Internal Method to validate custom attachment with context
+func validateAndUpdateCustomWidgetAttachment(c *gin.Context, handlers *FeedHandlers, attachment requests.Attachment,
+	communityId int) bool {
+
+	widgetId := attachment.AttachmentMeta.EntityID
+	widgetMeta := attachment.AttachmentMeta.WidgetMeta
+
+	if widgetId == "" && widgetMeta == nil {
+		utils.GeneralAPIValidationError(c, "please send entity_id or widget_meta in attachment meta")
+		return false
 	}
 
-	return "", true
+	// If widget id is present, validate if widget exists
+	if widgetId != "" {
+		_, err := fetchWidgetByID(handlers.widgetHelper, widgetId, false, communityId)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return false
+		}
+
+		// If widget meta is present along with widget id, update widget
+		if widgetMeta != nil {
+			_, ok := editWidget(c, handlers, widgetId, false, widgetMeta, nil, communityId)
+			if !ok {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 // Internal Method to validate poll attachment
@@ -332,7 +376,7 @@ func validateArticleAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal method to validate attachments for post
-func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Attachment, apiRevampV1check bool,
+func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, communityId int, attachments []requests.Attachment, apiRevampV1check bool,
 	isEditRequest bool) bool {
 
 	// Api revamp check to validate and update attachments
@@ -405,9 +449,8 @@ func validateAndUpdatePostAttachments(c *gin.Context, attachments []requests.Att
 			}
 
 		case enums.CustomWidget:
-			errorMessage, ok := validateCustomAttachment(element)
+			ok := validateAndUpdateCustomWidgetAttachment(c, handlers, element, communityId)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
 
@@ -824,7 +867,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// validation of attachments
-	success := validateAndUpdatePostAttachments(c, createPostRequest.Attachments, apiRevampV1Check, false)
+	success := validateAndUpdatePostAttachments(c, handlers, communityId, createPostRequest.Attachments, apiRevampV1Check, false)
 	if !success {
 		return
 	}
@@ -1092,7 +1135,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validateAndUpdatePostAttachments(c, editPostRequest.Attachments, apiRevampV1Check, true)
+	success := validateAndUpdatePostAttachments(c, handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true)
 	if !success {
 		return
 	}

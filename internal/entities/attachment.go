@@ -55,16 +55,16 @@ func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachme
 func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, thumbnailUrl string,
 	ogTags OGTags, entityId primitive.ObjectID, coverImageUrl string, title string, body string, expiryTime int64, pollType string,
 	multipleSelectState string, multipleSelectNumber int, isAnonymous bool, allowAddOption bool) AttachmentMeta {
-	return AttachmentMeta{
+
+	attachmentMeta := AttachmentMeta{
 		Name:                 name,
 		Url:                  url,
 		Format:               format,
 		Size:                 size,
 		Duration:             duration,
 		PageCount:            pageCount,
-		ThumbnailUrl:         thumbnailUrl,
 		OgTags:               &ogTags,
-		EntityID:             entityId,
+		ThumbnailUrl:         thumbnailUrl,
 		CoverImageUrl:        coverImageUrl,
 		Title:                title,
 		Body:                 body,
@@ -75,6 +75,12 @@ func NewAttachmentMeta(name string, url string, format string, size int, duratio
 		IsAnonymous:          isAnonymous,
 		AllowAddOption:       allowAddOption,
 	}
+
+	if entityId != primitive.NilObjectID {
+		attachmentMeta.EntityID = entityId
+	}
+
+	return attachmentMeta
 }
 
 // Exposed Method to Create New Og Tags
