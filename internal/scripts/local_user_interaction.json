@@ -1,0 +1,218 @@
+{
+  "f63b544f-51ce-4ce5-8a00-7a1454e7134d": [
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "3f4e8282-9f86-41e9-993c-19f051943c4e",
+      "user_id": 87596,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "0b810568-1eec-4c46-ac8d-6056cea2f6e5",
+      "user_id": 87601,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "dd3346ba-8afb-4562-bfbd-a5f877341a0a",
+      "user_id": 87597,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "384656f1-c342-4873-acda-91d1937ffc1f",
+      "user_id": 87598,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "a3899529-0a6b-4ffa-960a-03c9f950a6c8",
+      "user_id": 87605,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "68c249e7-ee65-409a-bd89-e980927aa2b2",
+      "user_id": 87599,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "e0274b97-a24f-4fa3-9c36-16e98cbc5397",
+      "user_id": 87603,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "208ade90-4ca6-4fa3-8003-8ddb4ec63c43",
+      "user_id": 87600,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "e456e71e-d1d3-4032-9af5-cd45fa993829",
+      "user_id": 87604,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "f63b544f-51ce-4ce5-8a00-7a1454e7134d",
+      "community_id": 50453,
+      "lm_uuid": "2020dae3-66b8-4d37-9432-d4a9487fef0d",
+      "user_id": 87602,
+      "chat_interaction": false,
+      "feed_interaction": false
+    }
+  ],
+  "shubh-api-3": [
+    {
+      "client_uuid": "shubh-api-3",
+      "community_id": 50442,
+      "lm_uuid": "9b56515c-c198-479a-8e3f-b727a04d50c6",
+      "user_id": 87033,
+      "chat_interaction": true,
+      "feed_interaction": true
+    },
+    {
+      "client_uuid": "shubh-api-3",
+      "community_id": 50442,
+      "lm_uuid": "42899d40-dbaf-410a-8a15-28b6f05343c8",
+      "user_id": 87041,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-3",
+      "community_id": 50442,
+      "lm_uuid": "265b4f12-83df-46d7-adfd-00b47f87ca5e",
+      "user_id": 87241,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-3",
+      "community_id": 50442,
+      "lm_uuid": "7b125f69-7c0c-4488-9cfd-e1f340d7c4f5",
+      "user_id": 87490,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-3",
+      "community_id": 50442,
+      "lm_uuid": "77751493-8a24-4eae-a376-38c649cf8094",
+      "user_id": 87589,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-3",
+      "community_id": 50442,
+      "lm_uuid": "2576b524-65d6-4396-8cb6-b12f7e5dfbfb",
+      "user_id": 87590,
+      "chat_interaction": false,
+      "feed_interaction": false
+    }
+  ],
+  "shubh-api-4": [
+    {
+      "client_uuid": "shubh-api-4",
+      "community_id": 50442,
+      "lm_uuid": "891577f4-b27a-4faa-9c33-61afb8ad1231",
+      "user_id": 86939,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-4",
+      "community_id": 50442,
+      "lm_uuid": "362c3ba2-63ea-49d4-a2cc-1b70c04fbba8",
+      "user_id": 86940,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-4",
+      "community_id": 50442,
+      "lm_uuid": "249286cc-c684-4f13-92a2-2bf0025af3fe",
+      "user_id": 86941,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-4",
+      "community_id": 50442,
+      "lm_uuid": "467be2df-f39f-4dc5-aa3a-78b87bf802cb",
+      "user_id": 86970,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-4",
+      "community_id": 50442,
+      "lm_uuid": "05a4923a-6bdf-48df-8d76-5e0afa6ea82c",
+      "user_id": 86985,
+      "chat_interaction": false,
+      "feed_interaction": false
+    }
+  ],
+  "shubh-api-5": [
+    {
+      "client_uuid": "shubh-api-5",
+      "community_id": 50442,
+      "lm_uuid": "aa02f8f1-f72f-47ca-a8dc-735014402fde",
+      "user_id": 86928,
+      "chat_interaction": true,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-5",
+      "community_id": 50442,
+      "lm_uuid": "378f7a03-eec2-4cff-97f5-7656929840e4",
+      "user_id": 86929,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-5",
+      "community_id": 50442,
+      "lm_uuid": "1a0c1733-d66d-4c45-affc-a78202d0df46",
+      "user_id": 86930,
+      "chat_interaction": true,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-5",
+      "community_id": 50442,
+      "lm_uuid": "5f6da565-e3cc-43a0-9074-94d3bff27412",
+      "user_id": 86931,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "shubh-api-5",
+      "community_id": 50442,
+      "lm_uuid": "a065586d-5f05-47f4-9834-b2e21967279b",
+      "user_id": 86932,
+      "chat_interaction": false,
+      "feed_interaction": false
+    }
+  ]
+}

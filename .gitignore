@@ -1,3 +1,8 @@
+.vscode
+.DS_Store
+__debug_bin
+likeminds-swarm.go
+
 # Binaries for programs and plugins
 *.exe
 *.exe~

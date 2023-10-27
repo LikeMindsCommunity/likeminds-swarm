@@ -12,6 +12,7 @@ func RunScripts(handlers *handlers.FeedHandlers) {
 	// indexPostData(handlers)
 	// indexTopicData(handlers)
 	// addCommunityIdToComments(handlers)
+	parseJsonAndGetUserInteraction(handlers)
 }
 
 func indexPostData(handlers *handlers.FeedHandlers) {
@@ -37,4 +38,13 @@ func addCommunityIdToComments(handlers *handlers.FeedHandlers) {
 		return
 	}
 	log.Info("Scripts: addCommunityIdToAllComments completed successfully")
+}
+
+func parseJsonAndGetUserInteraction(handlers *handlers.FeedHandlers) {
+	err := handlers.ParseJsonAndGetUserInteraction()
+	if err != nil {
+		log.Error(fmt.Sprintf("Scripts: Error running parseJsonAndGetUserInteraction: %s", err.Error()))
+		return
+	}
+	log.Info("Scripts: parseJsonAndGetUserInteraction completed successfully")
 }

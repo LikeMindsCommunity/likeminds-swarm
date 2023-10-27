@@ -1,0 +1,72 @@
+{
+  "5DImotj3jrVLzTp0t0LKdncdSC13": [
+    {
+      "client_uuid": "5DImotj3jrVLzTp0t0LKdncdSC13",
+      "community_id": 50529,
+      "lm_uuid": "41ac24b5-05a7-42d8-a5a0-bd22f5bd512b",
+      "user_id": 562549,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "5DImotj3jrVLzTp0t0LKdncdSC13",
+      "community_id": 50529,
+      "lm_uuid": "26f8d776-72d9-478c-a7e7-0161123214af",
+      "user_id": 562550, 
+      "chat_interaction": false,
+      "feed_interaction": true
+    }
+  ],
+  "NzSx6MH1EZhAlZRABaHlsJqw7YE2": [
+    {
+      "client_uuid": "NzSx6MH1EZhAlZRABaHlsJqw7YE2",
+      "community_id": 50529,
+      "lm_uuid": "d6eef9d0-f144-4e6f-87de-bd51f4a3f214",
+      "user_id": 562538,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "NzSx6MH1EZhAlZRABaHlsJqw7YE2",
+      "community_id": 50529,
+      "lm_uuid": "081ed83e-2024-4927-b44a-fa8b9b57e0e7",
+      "user_id": 562539,
+      "chat_interaction": false,
+      "feed_interaction": false
+    }
+  ],
+  "yTsM1qaX6OTRQPlAw1wtE4DPCBx1": [
+    {
+      "client_uuid": "yTsM1qaX6OTRQPlAw1wtE4DPCBx1",
+      "community_id": 50529,
+      "lm_uuid": "ee06af3a-3664-4a99-926c-2c5fa5cb2f70",
+      "user_id": 562557,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "yTsM1qaX6OTRQPlAw1wtE4DPCBx1",
+      "community_id": 50529,
+      "lm_uuid": "786c7bee-eda3-404d-84fd-737ea4c36f55",
+      "user_id": 562556,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "yTsM1qaX6OTRQPlAw1wtE4DPCBx1",
+      "community_id": 50529,
+      "lm_uuid": "98bdcf5d-a785-4563-a5d5-afe29120b32c",
+      "user_id": 562559,
+      "chat_interaction": false,
+      "feed_interaction": false
+    },
+    {
+      "client_uuid": "yTsM1qaX6OTRQPlAw1wtE4DPCBx1",
+      "community_id": 50529,
+      "lm_uuid": "198d46cd-4c95-43c4-8b31-20d60dc3a82f",
+      "user_id": 562558, 
+      "chat_interaction": false,
+      "feed_interaction": true
+    }
+  ]
+}
