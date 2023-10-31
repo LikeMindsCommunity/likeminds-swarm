@@ -387,3 +387,44 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, response)
 }
+
+// Exposed Method to Delete a Widget
+func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
+
+	// fetch headers and url params
+	widgetId := c.Param("widget_id")
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// fetch widget using widget_id
+	widget, err := fetchWidgetByID(handlers.widgetHelper, widgetId, false, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// delete widget using helper method
+	err = handlers.widgetHelper.DeleteWidgetByIdHelper(widget.ID)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// delete widget data from elastic search
+	err = handlers.esHelper.DeleteDocument(c, widget.ID.Hex(), constants.WidgetIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// reponse data
+	response := gin.H{
+		"success": true,
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
+}
