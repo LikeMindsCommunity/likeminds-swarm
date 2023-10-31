@@ -308,9 +308,26 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 		return
 	}
 
-	// dsl query to search topics
-	widgetQuery := GetWidgetFilterQuery(page, pageSize, communityId, fetchWidgetRequest.SearchKey,
-		fetchWidgetRequest.SearchValue)
+	widgetQuery := ""
+
+	if fetchWidgetRequest.WidgetIds != "" {
+
+		// if widgetIds are sent, fetch widgets by widgetIds
+		widgetQuery = GetWidgetByIdsFilterQuery(communityId, fetchWidgetRequest.WidgetIds)
+
+	} else if fetchWidgetRequest.ParentEntityId != "" && fetchWidgetRequest.ParentEntityType != "" {
+
+		// if parentEntityId and parentEntityType are sent, fetch widgets by parentEntityId and parentEntityType
+		widgetQuery = GetWidgetsByParentEntityFilterQuery(communityId, fetchWidgetRequest.ParentEntityId,
+			fetchWidgetRequest.ParentEntityType)
+
+	} else if fetchWidgetRequest.SearchKey != "" && fetchWidgetRequest.SearchValue != "" {
+
+		// if searchKey and searchValue are sent, fetch widgets by searchKey and searchValue
+		widgetQuery = GetWidgetFilterQuery(page, pageSize, communityId, fetchWidgetRequest.SearchKey,
+			fetchWidgetRequest.SearchValue)
+
+	}
 
 	// Check for JSON errors
 	isValid := json.Valid([]byte(widgetQuery)) // returns bool
@@ -319,14 +336,14 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 		return
 	}
 
-	response := handlers.esHelper.ExecuteQuery(widgetQuery, constants.WidgetIndexName)
-
-	finalResponse := processWidgetSearchData(handlers, response, communityId, headers[utils.HeadersMemberId])
+	// Execute ES query
+	esResponse := handlers.esHelper.ExecuteQuery(widgetQuery, constants.WidgetIndexName)
+	parsedWidgets := processWidgetSearchData(handlers, esResponse, communityId, headers[utils.HeadersMemberId])
 
 	// reponse data
 	finalParsedResponse := gin.H{
 		"success": true,
-		"widgets": finalResponse,
+		"widgets": parsedWidgets,
 	}
 
 	// return final response
