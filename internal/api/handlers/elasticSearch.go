@@ -287,7 +287,7 @@ func GetWidgetFilterQuery(page int, pageSize int, communityId int, searchKey str
 	}`, from, pageSize, communityQuery, searchQuery)
 }
 
-// Exposed ES query to create widger search query to fetch widgets by ids
+// Exposed query to fetch widgets by ids
 func GetWidgetByIdsFilterQuery(communityId int, widgetIds string) string {
 
 	searchQuery := fmt.Sprintf(`
@@ -314,7 +314,7 @@ func GetWidgetByIdsFilterQuery(communityId int, widgetIds string) string {
 	return searchQuery
 }
 
-// Exposed ES query to fetch widgets using parent entity id and type
+// Exposed query to fetch widgets using parent entity id and type
 func GetWidgetsByParentEntityFilterQuery(communityId int, parentEntityId string, parentEntityType string) string {
 
 	searchQuery := fmt.Sprintf(`
