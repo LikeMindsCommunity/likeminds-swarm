@@ -20,6 +20,7 @@ type FetchWidgetRequest struct {
 	SearchValue      string `form:"search_value"`
 	ParentEntityId   string `form:"parent_entity_id"`
 	ParentEntityType string `form:"parent_entity_type"`
+	WidgetIds        string `form:"widget_ids"`
 }
 
 // Response Structure for Custom Widget

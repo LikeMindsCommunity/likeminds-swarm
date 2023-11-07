@@ -1,0 +1,8 @@
+package enums
+
+// Enums for Widget - ParentEntityType
+const (
+	WidgetParentEntityTypePost    string = "post"
+	WidgetParentEntityTypeMessage string = "message"
+	WidgetParentEntityTypeUser    string = "user"
+)
