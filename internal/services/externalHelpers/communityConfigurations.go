@@ -29,7 +29,7 @@ func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityCon
 	return CommunityConfiguration{}, nil
 }
 
-// Exposed Method to get Community ID from API Key
+// Exposed Method to fetch community configurations from cache and if not found then from API
 func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communityId int) (*CommunityConfirgurationResponse, error) {
 	var communityConfigurationResponse CommunityConfirgurationResponse
 

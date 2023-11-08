@@ -11,17 +11,22 @@ func (repository *widgetRepository) Create(document interface{}) (interface{}, e
 	return _createDocumentInDB(repository.db, WidgetCollection, document)
 }
 
-// Exposed Helper Method to Find Topics
+// Exposed Helper Method to Find Widget
 func (repository *widgetRepository) Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error) {
 	return _findDocumentsInDB(repository.db, WidgetCollection, filter, filterOpts)
 }
 
-// Exposed Helper Method to Update Topics
+// Exposed Helper Method to Update Widget
 func (repository *widgetRepository) Update(filter map[string]interface{}, update map[string]interface{}) error {
 	return _updateDocumentsInDB(repository.db, WidgetCollection, filter, update)
 }
 
-// Exposed Helper Method to Fetch Topics Count
+// Exposed Helper Method to Delete Widget
+func (repository *widgetRepository) Delete(filter map[string]interface{}) error {
+	return _deleteDocumentInDB(repository.db, WidgetCollection, filter)
+}
+
+// Exposed Helper Method to Fetch Widget Count
 func (repository *widgetRepository) Count(filter map[string]interface{}) (int64, error) {
 	return _countDocumentsInDB(repository.db, WidgetCollection, filter)
 }

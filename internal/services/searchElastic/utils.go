@@ -191,6 +191,41 @@ func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface
 	return nil
 }
 
+// Exposed method to index a document in ElasticSearch (create if not exists, update if exists)
+func (esHelper *esHelper) IndexDocument(ctx context.Context, document interface{}, documentId string, index string) error {
+
+	err := esHelper.CreateIndex(index)
+	if err != nil {
+		return err
+	}
+
+	body, err := json.Marshal(document)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): index: marshall: %w", err)
+	}
+
+	req := esapi.IndexRequest{
+		Index:      index,
+		DocumentID: documentId,
+		Body:       bytes.NewReader(body),
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	defer cancel()
+
+	res, err := req.Do(ctx, esHelper.esClient)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): index: request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return fmt.Errorf("Search(Elastic): index: response: %s", res.String())
+	}
+
+	return nil
+}
+
 // Exposed method to delete an existing document in ElasticSearch
 func (esHelper *esHelper) DeleteDocument(ctx context.Context, documentId string, index string) error {
 

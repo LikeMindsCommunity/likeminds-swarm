@@ -13,6 +13,7 @@ type SDKClientInfo struct {
 	UserUniqueID string `json:"user_unique_id"`
 	UUID         string `json:"uuid"`
 	Community    int    `json:"community"`
+	WidgetId     string `json:"widget_id"`
 }
 
 // Structure for Member Meta Object

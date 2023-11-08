@@ -286,3 +286,58 @@ func GetWidgetFilterQuery(page int, pageSize int, communityId int, searchKey str
 		}
 	}`, from, pageSize, communityQuery, searchQuery)
 }
+
+// Exposed query to fetch widgets by ids
+func GetWidgetByIdsFilterQuery(communityId int, widgetIds string) string {
+
+	searchQuery := fmt.Sprintf(`
+	{
+		"sort": [
+			{"updated_at": {"order": "desc"}}
+		],
+		"query": {
+			"bool": {
+				"must": [
+					{
+						"match": {"community_id": {"query": %d}}
+					},
+					{
+						"terms": {
+							"id" : %s
+						}
+					}
+				]
+			}
+		}
+	}`, communityId, widgetIds)
+
+	return searchQuery
+}
+
+// Exposed query to fetch widgets using parent entity id and type
+func GetWidgetsByParentEntityFilterQuery(communityId int, parentEntityId string, parentEntityType string) string {
+
+	searchQuery := fmt.Sprintf(`
+	{
+		"sort": [
+			{"updated_at": {"order": "desc"}}
+		],
+		"query": {
+			"bool": {
+				"must": [
+					{
+						"match": {"community_id": {"query": %d}}
+					},
+					{
+						"match": {"parent_entity_id": {"query": "%s"}}
+					},
+					{
+						"match": {"parent_entity_type": {"query": "%s"}}
+					}
+				]
+			}
+		}
+	}`, communityId, parentEntityId, parentEntityType)
+
+	return searchQuery
+}
