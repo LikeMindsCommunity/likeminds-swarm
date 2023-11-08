@@ -84,8 +84,8 @@ func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, created
 			return nil, false
 		}
 
-		// update Widget data in elastic search
-		err = handlers.esHelper.UpdateDocument(c, ParseWidgetIndexData(widget), widget.ID.Hex(),
+		// Index updated widget data in elastic search
+		err = handlers.esHelper.IndexDocument(c, ParseWidgetIndexData(widget), widget.ID.Hex(),
 			constants.WidgetIndexName)
 		if err != nil {
 			fmt.Println(err.Error())
