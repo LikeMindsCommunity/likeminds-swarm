@@ -107,40 +107,72 @@ func InitiateDB() *mongo.Database {
 		indexData := []bson.M{
 			{
 				"collectionName": "post",
-				"fields": bson.D{{"community_id", 1},{"is_pinned", 1},{"is_deleted", 1},
-					{"created_at", 1},},
+				"fields": bson.D{{"community_id", 1},
+						 {"is_pinned", 1},
+						 {"is_deleted", 1},
+						 {"created_at", 1},
+				},
 			},
+			
 			{
 				"collectionName": "like",
-				"fields": bson.D{{"entity_id", 1},{"entity_type",1},{"is_deleted", 1},
-					{"created_at", 1},},
+				"fields": bson.D{{"entity_id", 1},
+						 {"entity_type",1},
+						 {"is_deleted", 1},
+						 {"created_at", 1},
+				},
 			},
+			
 			{
 				"collectionName": "save",
-				"fields": bson.D{{"entity_type", 1},{"community_id",1},{"saved_by", 1},
-					{"entity_id", 1},},
+				"fields": bson.D{{"entity_type", 1},
+						 {"community_id",1},
+						 {"saved_by", 1},
+						 {"entity_id", 1},
+				},
 			},
+			
 			{
 				"collectionName": "topic",
-				"fields": bson.D{{"community_id", 1},{"name",1},{"is_enabled", 1},},
+				"fields": bson.D{{"community_id", 1},
+						 {"name",1},
+						 {"is_enabled", 1},
+				},
 			},
+			
 			{
 				"collectionName": "pollVotes",
-				"fields": bson.D{{"poll_id", 1},{"community_id",1},},
+				"fields": bson.D{{"poll_id", 1},
+						 {"community_id",1},
+				},
 			},
+			
 			{
 				"collectionName": "customWidget",
-				"fields": bson.D{{"community_id", 1},{"parent_entity_id",1},},
+				"fields": bson.D{{"community_id", 1},
+						 {"parent_entity_id",1},
+				},
 			},
+			
 			{
 				"collectionName": "comment",
-				"fields": bson.D{{"post_id", 1},{"level",1},{"user_id",1},
-					{"is_deleted",1},{"created_at",1},},
+				"fields": bson.D{{"post_id", 1},
+						 {"level",1},
+						 {"user_id",1},
+						 {"is_deleted",1},
+						 {"created_at",1},
+				},
 			},
+			
 			{
 				"collectionName": "activity",
-				"fields": bson.D{{"community_id", 1},{"action_by",1},{"action_on",1},{"entity_id",1},
-					{"entity_type",1},{"entity_owner_id",1},},
+				"fields": bson.D{{"community_id", 1},
+						 {"action_by",1},
+						 {"action_on",1},
+						 {"entity_id",1},
+					 	 {"entity_type",1},
+						 {"entity_owner_id",1},
+				},
 			},
 		}
 
