@@ -179,7 +179,8 @@ func InitiateDB() *mongo.Database {
 		for _, indexValue := range indexData {
 			err = createIndex(client, db_name, indexValue["collectionName"].(string), indexValue["fields"].(bson.D))
 			if err != nil {
-				fmt.Println(err)
+				log.Panic(err)
+				panic(err)
 			}
 		}
 
