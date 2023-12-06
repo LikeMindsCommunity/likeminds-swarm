@@ -18,10 +18,11 @@ import (
 )
 
 // Function to create indexes
-func createIndex(client *mongo.Client, dbName, collectionName string, indexFields bson.M) error {
+func createIndex(client *mongo.Client, dbName, collectionName string, indexFields bson.D) error {
 	collection := client.Database(dbName).Collection(collectionName)
 	indexModel := mongo.IndexModel{
-		Keys: indexFields,
+		Keys:    indexFields,
+		Options: options.Index(),
 	}
 
 	_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
@@ -31,7 +32,6 @@ func createIndex(client *mongo.Client, dbName, collectionName string, indexField
 
 	return nil
 }
-
 
 // Internal Method to get TLS Configuration for Database Connection
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
@@ -107,109 +107,45 @@ func InitiateDB() *mongo.Database {
 		indexData := []bson.M{
 			{
 				"collectionName": "post",
-				"fields":         bson.M{"community_id": 1},
-			},
-			{
-				"collectionName": "post",
-				"fields":         bson.M{"is_pinned": 1},
-			},
-			{
-				"collectionName": "post",
-				"fields":         bson.M{"is_deleted": 1},
-			},
-			{
-				"collectionName": "post",
-				"fields":         bson.M{"created_at": 1},
+				"fields": bson.D{{"community_id", 1},{"is_pinned", 1},{"is_deleted", 1},
+					{"created_at", 1},},
 			},
 			{
 				"collectionName": "like",
-				"fields":         bson.M{"created_at": 1},
-			},{
-				"collectionName": "like",
-				"fields":         bson.M{"entity_id": 1},
-			},{
-				"collectionName": "like",
-				"fields":         bson.M{"is_deleted": 1},
+				"fields": bson.D{{"entity_id", 1},{"entity_type",1},{"is_deleted", 1},
+					{"created_at", 1},},
 			},
 			{
 				"collectionName": "save",
-				"fields":         bson.M{"entity_type": 1},
-			},{
-				"collectionName": "save",
-				"fields":         bson.M{"community_id": 1},
-			},{
-				"collectionName": "save",
-				"fields":         bson.M{"saved_by": 1},
-			},{
-				"collectionName": "save",
-				"fields":         bson.M{"entity_id": 1},
-			},{
-				"collectionName": "save",
-				"fields":         bson.M{"saved_by": 1},
-			},{
-				"collectionName": "topic",
-				"fields":         bson.M{"community_id": 1},
-			},{
-				"collectionName": "topic",
-				"fields":         bson.M{"name": 1},
+				"fields": bson.D{{"entity_type", 1},{"community_id",1},{"saved_by", 1},
+					{"entity_id", 1},},
 			},
 			{
 				"collectionName": "topic",
-				"fields":         bson.M{"is_enabled": 1},
+				"fields": bson.D{{"community_id", 1},{"name",1},{"is_enabled", 1},},
 			},
 			{
 				"collectionName": "pollVotes",
-				"fields":         bson.M{"poll_id": 1},
-			},{
-				"collectionName": "pollVotes",
-				"fields":         bson.M{"community_id": 1},
+				"fields": bson.D{{"poll_id", 1},{"community_id",1},},
 			},
 			{
 				"collectionName": "customWidget",
-				"fields":         bson.M{"community_id": 1},
-			},{
-				"collectionName": "customWidget",
-				"fields":         bson.M{"parent_entity_id": 1},
+				"fields": bson.D{{"community_id", 1},{"parent_entity_id",1},},
 			},
 			{
 				"collectionName": "comment",
-				"fields":         bson.M{"post_id": 1},
-			},{
-				"collectionName": "comment",
-				"fields":         bson.M{"level": 1},
-			},{
-				"collectionName": "comment",
-				"fields":         bson.M{"user_id": 1},
-			},{
-				"collectionName": "comment",
-				"fields":         bson.M{"is_deleted": 1},
-			},{
-				"collectionName": "comment",
-				"fields":         bson.M{"created_at": 1},
+				"fields": bson.D{{"post_id", 1},{"level",1},{"user_id",1},
+					{"is_deleted",1},{"created_at",1},},
 			},
 			{
 				"collectionName": "activity",
-				"fields":         bson.M{"community_id": 1},
-			},{
-				"collectionName": "activity",
-				"fields":         bson.M{"action_by": 1},
-			},{
-				"collectionName": "activity",
-				"fields":         bson.M{"action_on": 1},
-			},{
-				"collectionName": "activity",
-				"fields":         bson.M{"entity_id": 1},
-			},{
-				"collectionName": "activity",
-				"fields":         bson.M{"entity_type": 1},
-			},{
-				"collectionName": "activity",
-				"fields":         bson.M{"entity_owner_id": 1},
+				"fields": bson.D{{"community_id", 1},{"action_by",1},{"action_on",1},{"entity_id",1},
+					{"entity_type",1},{"entity_owner_id",1},},
 			},
 		}
 
 		for _, indexValue := range indexData {
-			err = createIndex(client, db_name, indexValue["collectionName"].(string), indexValue["fields"].(bson.M))
+			err = createIndex(client, db_name, indexValue["collectionName"].(string), indexValue["fields"].(bson.D))
 			if err != nil {
 				fmt.Println(err)
 			}
