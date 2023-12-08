@@ -551,14 +551,9 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
-	userID := c.Param("user_id")
+	userID := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-
-	if userID != headers[utils.HeadersMemberId] {
-		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
-		return
-	}
 
 	// validation of api_key
 	communityID := externalHelpers.GetCommunityId(c)
