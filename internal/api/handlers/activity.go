@@ -689,3 +689,18 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, gin.H{"success": true, "count": activityUnreadCount})
 }
+
+// FetchUserProfileActivity | method to Fetch User Profile Activity from uuid
+func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
+
+	// fetch url params and headers
+	headers := utils.GetHeaders(c)
+	userID := c.Param("user_id")
+
+	// validation of api_key
+	communityID := externalHelpers.GetCommunityId(c)
+	if communityID == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+}

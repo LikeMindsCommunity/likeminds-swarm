@@ -12,6 +12,7 @@ type Activity struct {
 	ID            primitive.ObjectID       `json:"_id" bson:"_id,omitempty"`
 	CommunityID   int                      `json:"community_id" bson:"community_id"`
 	ActionBy      []string                 `json:"action_by" bson:"action_by"`
+	ActionByDate  map[string]time.Time     `json:"action_by_date" bson:"action_by_date"`
 	ActionOn      string                   `json:"action_on" bson:"action_on"`
 	EntityType    constants.EntityType     `json:"entity_type" bson:"entity_type"`
 	EntityID      primitive.ObjectID       `json:"entity_id" bson:"entity_id"`
@@ -25,11 +26,15 @@ type Activity struct {
 }
 
 // NewActivity | Constructor method to create activity instance
-func NewActivity(CommunityID int, ActionBy []string, ActionOn string, EntityType constants.EntityType, EntityID primitive.ObjectID, EntityOwnerID string, Action constants.ActivityAction, CTA string, IsRead bool, IsDeleted bool) Activity {
+func NewActivity(CommunityID int, ActionBy []string, ActionOn string, EntityType constants.EntityType, EntityID primitive.ObjectID,
+	EntityOwnerID string, Action constants.ActivityAction, CTA string, IsRead bool, IsDeleted bool,
+	ActionByDate map[string]time.Time) Activity {
+
 	TimeNow := time.Now()
 	return Activity{
 		CommunityID:   CommunityID,
 		ActionBy:      ActionBy,
+		ActionByDate:  ActionByDate,
 		ActionOn:      ActionOn,
 		EntityType:    EntityType,
 		EntityID:      EntityID,

@@ -46,7 +46,12 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 		return existingActivity[0].ID, nil
 	}
 
-	activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
+	actionByDate := map[string]time.Time{
+		actionBy[0]: time.Now(),
+	}
+
+	activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted,
+		actionByDate)
 	activityID, err := helper.activityRepository.Create(&activity)
 
 	return activityID, err
