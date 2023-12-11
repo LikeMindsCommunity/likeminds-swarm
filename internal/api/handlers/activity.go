@@ -366,7 +366,8 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 
 // CreateActivity | method to create an activity record
 func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
-	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool) (interface{}, error) {
+	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{},
+	isRead bool, isDeleted bool, actionByEntityId string) (interface{}, error) {
 
 	if len(actionBy) > 0 && actionBy[0] == actionOn {
 		return nil, nil
@@ -389,7 +390,8 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.TaggedInPostComment,
 		constants.AlsoCommentOnPost:
 
-		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted)
+		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
+			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId)
 
 		handlers.activityHelper.PushActivitytoCache(activityID)
 
@@ -414,12 +416,17 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 		return
 	}
 
-	for _, previousCommentUser := range previousCommentUsers {
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{latestCommentUser}, previousCommentUser, constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, gin.H{
-			"entity_type": constants.PostEntityType,
-			"post_id":     postData.ID.Hex(),
-		}, false, false)
+	// cta data for also commented activity
+	ctaData := gin.H{
+		"entity_type": constants.CommentEntityType,
+		"post_id":     postData.ID.Hex(),
+	}
 
+	for _, previousCommentUser := range previousCommentUsers {
+
+		// create also commented activity
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{latestCommentUser}, previousCommentUser,
+			constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, ctaData, false, false, "")
 		if err != nil {
 			return
 		}
@@ -530,7 +537,8 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	// create activity using the helper method
-	activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id, constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false)
+	activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id,
+		constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false, "")
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -702,5 +710,46 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 	if communityID == externalHelpers.DefaultCommunityId {
 		return
 	}
+
+	// activity filter data
+	activityFilterData := gin.H{
+		"action":       "",
+		"action_on":    userID,
+		"community_id": communityID,
+		"is_deleted":   false,
+	}
+
+	activitySortKey := "updated_at"
+
+	// filter options
+	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey, OrderTypeDescending)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch activity using helper method
+	activityResults, err := handlers.activityHelper.FindActivityHelper(activityFilterData, activityFilterOptions)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// parse user activity response
+	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserActivity(*handlers, activityResults,
+		true, headers[utils.HeadersMemberId])
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// 	// return final response
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"activities": activityResponse,
+		"users":      userDatas,
+		"topics":     topicDatas,
+		"widgets":    widgetDatas,
+	})
 
 }

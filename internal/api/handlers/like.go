@@ -210,16 +210,17 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	})
 }
 
-func createUserPostLikeActivity(
-	handlers *FeedHandlers,
-	postData *entities.Post,
-	c *gin.Context,
-	headers map[string]string) {
-	// create post like activity
-	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.LikeOnPost, gin.H{
+func createUserPostLikeActivity(handlers *FeedHandlers, postData *entities.Post, c *gin.Context, headers map[string]string) {
+
+	ctaData := gin.H{
 		"entity_type": constants.PostEntityType,
 		"post_id":     postData.ID.Hex(),
-	}, false, false)
+	}
+
+	// create post like activity
+	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
+		postData.UserId, constants.Post, postData.ID, postData.UserId, constants.LikeOnPost, ctaData,
+		false, false, "")
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -415,18 +416,18 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	})
 }
 
-func createUserCommentLikeActivity(handlers *FeedHandlers,
-	postData *entities.Post,
-	commentData *entities.Comment,
-	c *gin.Context,
-	headers map[string]string) {
-	// create comment like activity
-	// create like activity
-	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.LikeOnComment, gin.H{
+func createUserCommentLikeActivity(handlers *FeedHandlers, postData *entities.Post, commentData *entities.Comment, c *gin.Context, headers map[string]string) {
+
+	ctaData := gin.H{
 		"entity_type": constants.CommentEntityType,
 		"post_id":     postData.ID.Hex(),
 		"comment_id":  commentData.ID.Hex(),
-	}, false, false)
+	}
+
+	// create comment like activity
+	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
+		commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.LikeOnComment, ctaData,
+		false, false, "")
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

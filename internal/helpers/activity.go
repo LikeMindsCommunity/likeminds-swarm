@@ -16,7 +16,11 @@ import (
 )
 
 // CreateActivityHelper | create activity entry
-func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, cta string, isRead bool, isDeleted bool) (interface{}, error) {
+func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
+	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, cta string, isRead bool, isDeleted bool,
+	actionByEntityId string) (interface{}, error) {
+
+	// filter to find existing activity
 	activityFilter := gin.H{
 		"community_id": communityID,
 		"action_on":    actionOn,
@@ -29,6 +33,7 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 		return nil, err
 	}
 
+	// If activity exist, update activity
 	if len(existingActivity) > 0 {
 
 		//remove user from action_by list, if exist from previous actions
@@ -44,17 +49,23 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData, false, true)
 
 		return existingActivity[0].ID, nil
+
+	} else { // If activity does not exist, create new activity
+
+		// Add action_by's metadata to activity
+		actionByMetadata := map[string]entities.ActionByMetadata{
+			actionBy[0]: {
+				CreatedAt: time.Now(),
+				Id:        actionByEntityId,
+			},
+		}
+
+		activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted,
+			actionByMetadata)
+		activityID, err := helper.activityRepository.Create(&activity)
+
+		return activityID, err
 	}
-
-	actionByDate := map[string]time.Time{
-		actionBy[0]: time.Now(),
-	}
-
-	activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted,
-		actionByDate)
-	activityID, err := helper.activityRepository.Create(&activity)
-
-	return activityID, err
 }
 
 // Exposed Helper Method to Find Activity
