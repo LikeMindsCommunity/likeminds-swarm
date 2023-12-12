@@ -947,7 +947,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		for _, member := range taggedMembers {
 			// create tag activity
 			activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post,
-				postId.(primitive.ObjectID), postUserId, constants.TaggedInPost, ctaData, false, false, "")
+				postId.(primitive.ObjectID), postUserId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -1293,7 +1293,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != postData.UserId {
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
 			postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CMDeletedPost, gin.H{},
-			false, false, "")
+			false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return

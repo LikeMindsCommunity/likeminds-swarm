@@ -561,7 +561,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			// create tag activity
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member,
 				constants.Comment, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
-				false, false, "")
+				false, false, primitive.NilObjectID)
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -576,7 +576,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		if !isCreatorTagged {
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
 				postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CommentOnPost, ctaData,
-				false, false, "")
+				false, false, commentId.(primitive.ObjectID))
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -799,7 +799,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			// create tag activity
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member,
 				constants.Comment, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
-				false, false, "")
+				false, false, primitive.NilObjectID)
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -815,7 +815,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			// create comment activity
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
 				commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CommentOnComment, ctaData,
-				false, false, "")
+				false, false, newCommentId.(primitive.ObjectID))
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -922,7 +922,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != commentData.UserId {
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
 			commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CMDeletedComment,
-			gin.H{}, false, false, "")
+			gin.H{}, false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -940,11 +940,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	})
 }
 
-func deleteUserPostCommentActivity(
-	handlers *FeedHandlers,
-	postData *entities.Post,
-	c *gin.Context,
-	headers map[string]string) {
+func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Post, c *gin.Context, headers map[string]string) {
 
 	activityFilterData := gin.H{
 		"community_id": postData.CommunityId,
@@ -965,10 +961,15 @@ func deleteUserPostCommentActivity(
 	// remove uuid from like action list
 	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
 
+	// delete user's actionBy metadata
+	actionByMetadata := activity[0].ActionByMetadata
+	delete(actionByMetadata, headers[utils.HeadersMemberId])
+
 	// activity update data
 	activityUpdateData := gin.H{
 		"$set": gin.H{
-			"action_by": actionBy,
+			"action_by":          actionBy,
+			"action_by_metadata": actionByMetadata,
 		},
 	}
 

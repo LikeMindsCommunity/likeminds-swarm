@@ -18,7 +18,7 @@ import (
 // CreateActivityHelper | create activity entry
 func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
 	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, cta string, isRead bool, isDeleted bool,
-	actionByEntityId string) (interface{}, error) {
+	actionByEntityId primitive.ObjectID) (interface{}, error) {
 
 	// filter to find existing activity
 	activityFilter := gin.H{
@@ -38,12 +38,20 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 
 		//remove user from action_by list, if exist from previous actions
 		existingActionBy := utils.RemoveAllOccurenceStringList(existingActivity[0].ActionBy, actionBy[0])
-
 		updatedActionBy := append(existingActionBy, actionBy...)
+
+		// Add action_by's metadata to activity
+		updatedActionByMetadata := existingActivity[0].ActionByMetadata
+		updatedActionByMetadata[actionBy[0]] = entities.ActionByMetadata{
+			CreatedAt: time.Now(),
+			EntityId:  actionByEntityId,
+		}
+
 		updateData := gin.H{
 			"$set": gin.H{
-				"action_by":  updatedActionBy,
-				"is_deleted": false,
+				"action_by":          updatedActionBy,
+				"action_by_metadata": updatedActionByMetadata,
+				"is_deleted":         false,
 			},
 		}
 		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData, false, true)
@@ -56,7 +64,7 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 		actionByMetadata := map[string]entities.ActionByMetadata{
 			actionBy[0]: {
 				CreatedAt: time.Now(),
-				Id:        actionByEntityId,
+				EntityId:  actionByEntityId,
 			},
 		}
 

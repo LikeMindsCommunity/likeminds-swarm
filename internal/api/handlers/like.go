@@ -220,7 +220,7 @@ func createUserPostLikeActivity(handlers *FeedHandlers, postData *entities.Post,
 	// create post like activity
 	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
 		postData.UserId, constants.Post, postData.ID, postData.UserId, constants.LikeOnPost, ctaData,
-		false, false, "")
+		false, false, primitive.NilObjectID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -231,11 +231,7 @@ func createUserPostLikeActivity(handlers *FeedHandlers, postData *entities.Post,
 	}
 }
 
-func deleteUserPostLikeActivity(
-	handlers *FeedHandlers,
-	postData *entities.Post,
-	c *gin.Context,
-	headers map[string]string) {
+func deleteUserPostLikeActivity(handlers *FeedHandlers, postData *entities.Post, c *gin.Context, headers map[string]string) {
 
 	activityFilterData := gin.H{
 		"community_id": postData.CommunityId,
@@ -257,10 +253,15 @@ func deleteUserPostLikeActivity(
 	// remove uuid from like action list
 	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
 
+	// remove action by metadata
+	actionByMetadata := activity[0].ActionByMetadata
+	delete(actionByMetadata, headers[utils.HeadersMemberId])
+
 	// activity update data
 	activityUpdateData := gin.H{
 		"$set": gin.H{
-			"action_by": actionBy,
+			"action_by":          actionBy,
+			"action_by_metadata": actionByMetadata,
 		},
 	}
 
@@ -427,7 +428,7 @@ func createUserCommentLikeActivity(handlers *FeedHandlers, postData *entities.Po
 	// create comment like activity
 	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
 		commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.LikeOnComment, ctaData,
-		false, false, "")
+		false, false, primitive.NilObjectID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -438,10 +439,7 @@ func createUserCommentLikeActivity(handlers *FeedHandlers, postData *entities.Po
 	}
 }
 
-func deleteUserCommentLikeActivity(handlers *FeedHandlers,
-	postData *entities.Post,
-	commentData *entities.Comment,
-	c *gin.Context,
+func deleteUserCommentLikeActivity(handlers *FeedHandlers, postData *entities.Post, commentData *entities.Comment, c *gin.Context,
 	headers map[string]string) {
 
 	activityFilterData := gin.H{
@@ -464,10 +462,15 @@ func deleteUserCommentLikeActivity(handlers *FeedHandlers,
 	// remove uuid from like action list
 	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
 
+	// remove user's action by metadata
+	actionByMetadata := activity[0].ActionByMetadata
+	delete(actionByMetadata, headers[utils.HeadersMemberId])
+
 	// activity update data
 	activityUpdateData := gin.H{
 		"$set": gin.H{
-			"action_by": actionBy,
+			"action_by":          actionBy,
+			"action_by_metadata": actionByMetadata,
 		},
 	}
 

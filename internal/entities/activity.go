@@ -8,8 +8,8 @@ import (
 )
 
 type ActionByMetadata struct {
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	Id        string    `json:"id" bson:"id"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	EntityId  primitive.ObjectID `json:"entity_id" bson:"entity_id"`
 }
 
 // Activity | Schema for activity

@@ -367,7 +367,7 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 // CreateActivity | method to create an activity record
 func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
 	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{},
-	isRead bool, isDeleted bool, actionByEntityId string) (interface{}, error) {
+	isRead bool, isDeleted bool, actionByEntityId primitive.ObjectID) (interface{}, error) {
 
 	if len(actionBy) > 0 && actionBy[0] == actionOn {
 		return nil, nil
@@ -426,7 +426,7 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 
 		// create also commented activity
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{latestCommentUser}, previousCommentUser,
-			constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, ctaData, false, false, "")
+			constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, ctaData, false, false, primitive.NilObjectID)
 		if err != nil {
 			return
 		}
@@ -538,7 +538,7 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 
 	// create activity using the helper method
 	activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id,
-		constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false, "")
+		constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false, primitive.NilObjectID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
