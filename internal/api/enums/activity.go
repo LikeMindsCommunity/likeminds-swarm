@@ -50,8 +50,16 @@ const (
 	AlsoCommentedOnPost        ActivityAction = "also_commented_on_post_you_commented"
 )
 
+// User Activity Actions | defines enum for user activity on profile actions
+const (
+	UserLikeOnPost       ActivityAction = "like_on_post"
+	UserLikeOnComment    ActivityAction = "like_on_comment"
+	UserCommentOnPost    ActivityAction = "comment_on_post"
+	UserCommentOnComment ActivityAction = "comment_on_comment"
+)
+
 // constructor method to creates ActivityAction from int
-func NewActivityActionFromInt(activity_action int) ActivityAction {
+func NewActivityActionFromInt(activity_action int, userProfileActivity bool) ActivityAction {
 	switch activity_action {
 	case int(constants.CreatePostPermitAdded):
 		return CreatePostPermitAdded
@@ -66,13 +74,29 @@ func NewActivityActionFromInt(activity_action int) ActivityAction {
 	case int(constants.CMDeletedComment):
 		return CMDeletedComment
 	case int(constants.LikeOnPost):
-		return LikeOnPost
+		if userProfileActivity {
+			return UserLikeOnPost
+		} else {
+			return LikeOnPost
+		}
 	case int(constants.CommentOnPost):
-		return CommentOnPost
+		if userProfileActivity {
+			return UserCommentOnPost
+		} else {
+			return CommentOnPost
+		}
 	case int(constants.LikeOnComment):
-		return LikeOnComment
+		if userProfileActivity {
+			return UserLikeOnComment
+		} else {
+			return LikeOnComment
+		}
 	case int(constants.CommentOnComment):
-		return CommentOnComment
+		if userProfileActivity {
+			return UserCommentOnComment
+		} else {
+			return CommentOnComment
+		}
 	case int(constants.TaggedInPost):
 		return TaggedYouOnPost
 	case int(constants.TaggedInPostComment):

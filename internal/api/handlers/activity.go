@@ -18,7 +18,7 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool, uuid string) ([]interface{}, interface{}, interface{}, interface{}, error) {
+	apiRevampV1Check bool, userId string) ([]interface{}, interface{}, interface{}, interface{}, error) {
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
 
@@ -28,7 +28,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	widgetDatas := map[string]interface{}{}
 
 	if len(activities) > 0 {
-		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, uuid, activities[0].CommunityID)
+		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, userId, activities[0].CommunityID)
 	}
 
 	for _, activity := range activities {
@@ -38,7 +38,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		}
 
 		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
-			apiRevampV1Check)
+			apiRevampV1Check, userId, "")
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -69,7 +69,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			response = append(response, requests.UserActivityResponseV1{
 				UserActivityResponse: userActivity,
 				EntityType:           enums.NewEntityTypeFromInt(int(activity.EntityType)),
-				Action:               enums.NewActivityActionFromInt(int(activity.Action)),
+				Action:               enums.NewActivityActionFromInt(int(activity.Action), false),
 			})
 
 		} else {
@@ -89,7 +89,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 				activity.CommunityID)
 
 			widgetIds := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
-			widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, uuid)
+			widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, userId)
 
 			for topicId, topicData := range topicsData {
 				topicDatas[topicId] = topicData
@@ -99,6 +99,127 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 				widgetDatas[widgetId] = widgetData
 			}
 		}
+	}
+
+	return response, userDatas, topicDatas, widgetDatas, nil
+}
+
+// Internal method to parse user profile activity list for uuid
+func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activity, apiRevampV1Check bool,
+	uuid string, userId string) ([]interface{}, interface{}, interface{}, interface{}, error) {
+
+	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
+
+	response := []interface{}{}
+	userDatas := map[string]externalHelpers.MemberMeta{}
+	topicDatas := map[string]interface{}{}
+	widgetDatas := map[string]interface{}{}
+
+	if len(activities) > 0 {
+		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, userId, activities[0].CommunityID)
+	}
+
+	userIds := [](string){uuid}
+
+	for _, activity := range activities {
+		// Append actionOn in userIds
+		userIds = append(userIds, activity.ActionOn)
+	}
+
+	// Fetch Members Meta
+	success, userDatas := externalHelpers.FetchMemberMetaMap(userIds, userId, activities[0].CommunityID)
+	if !success {
+		return response, userDatas, topicDatas, widgetDatas, fmt.Errorf("error while fetching user meta")
+	}
+
+	for _, activity := range activities {
+
+		actionByMetadata := activity.ActionByMetadata[uuid]
+
+		// Update activity data
+		activity.ActionBy = []string{uuid}
+		activity.CreatedAt = actionByMetadata.CreatedAt
+		activity.UpdatedAt = actionByMetadata.CreatedAt
+
+		activityEntityData, postData, err := interface{}(nil), interface{}(nil), error(nil)
+
+		// if activity is comment on post, fetch comment data along with its post data
+		if activity.Action == constants.CommentOnPost {
+
+			activityEntityData, err = getEntityData(handler, constants.Comment, actionByMetadata.EntityId, activity.CommunityID,
+				apiRevampV1Check, userId, activity.EntityID.Hex())
+			if err != nil {
+				continue
+			}
+
+			postData = activityEntityData.(requests.FetchCommentResponse).Post
+
+			// Update activity data
+			activity.CTA = fmt.Sprintf(utils.CommentDetailRoute, activity.EntityID.Hex(), actionByMetadata.EntityId.Hex())
+			activity.EntityID = actionByMetadata.EntityId
+			activity.EntityType = constants.Comment
+			activity.EntityOwnerID = uuid
+
+		} else { // If activity is not comment on post, fetch entity data
+			activityEntityData, err = getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
+				apiRevampV1Check, userId, "")
+			if err != nil {
+				continue
+			}
+
+			postData = activityEntityData
+		}
+
+		activityText := getUserProfileActivityText(uuid, userId, activity.Action, userDatas, postMetatadataValue)
+
+		// Make user activity response
+		activityResponse := requests.UserActivityResponse{
+			ID:                 activity.ID,
+			ActionBy:           activity.ActionBy,
+			ActionOn:           activity.ActionOn,
+			EntityID:           activity.EntityID,
+			EntityOwnerID:      activity.EntityOwnerID,
+			UUID:               activity.EntityOwnerID,
+			CTA:                activity.CTA,
+			IsRead:             activity.IsRead,
+			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
+			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
+			ActivityEntityData: activityEntityData,
+			ActivityText:       activityText,
+		}
+
+		if apiRevampV1Check {
+
+			// API Revamp V1 Response
+			response = append(response, requests.UserActivityResponseV1{
+				UserActivityResponse: activityResponse,
+				EntityType:           enums.NewEntityTypeFromInt(int(activity.EntityType)),
+				Action:               enums.NewActivityActionFromInt(int(activity.Action), true),
+			})
+
+		} else {
+
+			// Old User Activity Response
+			response = append(response, requests.UserActivityResponseOld{
+				UserActivityResponse: activityResponse,
+				EntityType:           activity.EntityType,
+				Action:               activity.Action,
+			})
+		}
+
+		topicsData, _ := parseTopicsResponse(handler.topicHelper, postData.(requests.PostResponse).Topics, activity.CommunityID)
+
+		widgetIds := getWidgetIdsFromAttachments(postData.(requests.PostResponse).Attachments)
+		widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, userId)
+
+		for topicId, topicData := range topicsData {
+			topicDatas[topicId] = topicData
+		}
+
+		for widgetId, widgetData := range widgetsData {
+			widgetDatas[widgetId] = widgetData
+		}
+
 	}
 
 	return response, userDatas, topicDatas, widgetDatas, nil
@@ -120,7 +241,7 @@ func getActivityUserData(activity entities.Activity) (map[string]interface{}, st
 }
 
 func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int,
-	apiRevampV1Check bool) (interface{}, error) {
+	apiRevampV1Check bool, userId string, postIdForComment string) (interface{}, error) {
 
 	switch entityType {
 	case constants.Post:
@@ -133,13 +254,27 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 		return postData[entityID.Hex()], nil
 
 	case constants.Comment:
-		commentData, err := fetchMultipleCommentsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "",
-			apiRevampV1Check)
-		if err != nil {
-			return nil, err
-		}
 
-		return commentData[entityID.Hex()].CommentResponse, nil
+		// If postIdForComment is not empty, fetch post data along with comment data
+		if postIdForComment != "" {
+			commentData, err := fetchCommentData(&handler, entityID.Hex(), postIdForComment, nil, userId, false,
+				"", "", apiRevampV1Check, true)
+			if err != nil {
+				return nil, err
+			}
+
+			return commentData, nil
+
+		} else {
+
+			commentData, err := fetchMultipleCommentsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "",
+				apiRevampV1Check)
+			if err != nil {
+				return nil, err
+			}
+
+			return commentData[entityID.Hex()].CommentResponse, nil
+		}
 	}
 
 	return nil, nil
@@ -257,6 +392,30 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 	}
 
 	return activityText, nil
+}
+
+// Internal Method to fetch user profile activity text
+func getUserProfileActivityText(uuid string, userId string, action constants.ActivityAction,
+	userDatas map[string]externalHelpers.MemberMeta, postFeedMetadatValue string) string {
+
+	userText := ""
+	if uuid == userId {
+		userText = "You"
+	} else {
+		userText = userDatas[uuid].Name
+	}
+
+	switch action {
+	case constants.CommentOnPost:
+		return (userText + " commented on this " + postFeedMetadatValue)
+
+	case constants.LikeOnPost:
+		return (userText + " liked this " + postFeedMetadatValue)
+
+	default:
+		return ""
+	}
+
 }
 
 func getUserRoute(activityByUserData interface{}) string {
@@ -705,21 +864,32 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userID := c.Param("user_id")
 
+	// api revamp v1 check
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
 	// validation of api_key
 	communityID := externalHelpers.GetCommunityId(c)
 	if communityID == externalHelpers.DefaultCommunityId {
 		return
 	}
 
+	// Filter all activities where userId is present in action_by_metadata
+	actionByMetaUserKey := fmt.Sprintf("action_by_metadata.%s", userID)
+
 	// activity filter data
 	activityFilterData := gin.H{
-		"action":       "",
-		"action_on":    userID,
+		"action": gin.H{
+			"$in": []int{6, 7},
+		},
+		actionByMetaUserKey: gin.H{
+			"$exists": true,
+		},
 		"community_id": communityID,
 		"is_deleted":   false,
 	}
 
-	activitySortKey := "updated_at"
+	// Sort on created at present in action by metadata
+	activitySortKey := fmt.Sprintf(actionByMetaUserKey + ".created_at")
 
 	// filter options
 	activityFilterOptions, err := generatePageFilterOptions(c, activitySortKey, OrderTypeDescending)
@@ -736,8 +906,8 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 	}
 
 	// parse user activity response
-	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserActivity(*handlers, activityResults,
-		true, headers[utils.HeadersMemberId])
+	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserProfileActivity(*handlers, activityResults, apiRevampV1Check,
+		userID, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

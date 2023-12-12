@@ -292,6 +292,50 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	return response
 }
 
+// Internal Method to fetch comment data with postId
+func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
+	memberId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, getPostData bool) (interface{}, error) {
+
+	// fetch comment data
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	if err != nil {
+		return nil, err
+	}
+
+	commentFilterData := gin.H{
+		"_id": gin.H{
+			"$in": commentData.Replies,
+		},
+		"is_deleted": false,
+		"post_id":    postId,
+	}
+
+	// fetch comment replies using helper method
+	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
+		versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
+		commentData, repliesResponse, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+
+	// fetch post data if getPostData is true
+	if getPostData {
+		postData, err := fetchPost(handlers.postHelper, postId, commentData.CommunityId)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse post response and append to Comment's post_data
+		parsePostResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
+			*postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+		fetchCommentResponse.Post = parsePostResponse
+	}
+	return fetchCommentResponse, nil
+}
+
 // Exposed Method to fetch comment by comment_id
 func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	// fetch headers and url params
@@ -404,37 +448,6 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
-	memberId string, isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool) (interface{}, error) {
-	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
-	if err != nil {
-		return nil, err
-	}
-
-	commentFilterData := gin.H{
-		"_id": gin.H{
-			"$in": commentData.Replies,
-		},
-		"is_deleted": false,
-		"post_id":    postId,
-	}
-
-	// fetch comment using helper method
-	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
-		versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
-	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentData, repliesResponse, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
-
-	return fetchCommentResponse, nil
-}
-
 // Exposed method to fetch comment by comment_id and post_id
 func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch headers and url params
@@ -477,7 +490,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -603,7 +616,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -687,7 +700,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -843,7 +856,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, newCommentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions,
-		headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check, false)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
