@@ -106,14 +106,14 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 
 // Internal method to parse user profile activity list for uuid
 func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activity, apiRevampV1Check bool,
-	uuid string, userId string) ([]interface{}, interface{}, interface{}, interface{}, error) {
+	uuid string, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]requests.TopicResponse,
+	map[string]requests.WidgetResponse, error) {
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
 
-	response := []interface{}{}
-	userDatas := map[string]externalHelpers.MemberMeta{}
-	topicDatas := map[string]interface{}{}
-	widgetDatas := map[string]interface{}{}
+	activitiesResponse := []interface{}{}
+	topicIds := []primitive.ObjectID{}
+	widgetIds := []primitive.ObjectID{}
 
 	if len(activities) > 0 {
 		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, userId, activities[0].CommunityID)
@@ -126,10 +126,10 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 		userIds = append(userIds, activity.ActionOn)
 	}
 
-	// Fetch Members Meta
+	// Fetch Members Meta map
 	success, userDatas := externalHelpers.FetchMemberMetaMap(userIds, userId, activities[0].CommunityID)
 	if !success {
-		return response, userDatas, topicDatas, widgetDatas, fmt.Errorf("error while fetching user meta")
+		return nil, nil, nil, nil, fmt.Errorf("error while fetching user meta")
 	}
 
 	for _, activity := range activities {
@@ -143,7 +143,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 
 		activityEntityData, postData, err := interface{}(nil), interface{}(nil), error(nil)
 
-		// if activity is comment on post, fetch comment data along with its post data
+		// if action is comment on post, fetch comment data along with its post data
 		if activity.Action == constants.CommentOnPost {
 
 			activityEntityData, err = getEntityData(handler, constants.Comment, actionByMetadata.EntityId, activity.CommunityID,
@@ -160,7 +160,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 			activity.EntityType = constants.Comment
 			activity.EntityOwnerID = uuid
 
-		} else { // If activity is not comment on post, fetch entity data
+		} else {
 			activityEntityData, err = getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
 				apiRevampV1Check, userId, "")
 			if err != nil {
@@ -190,8 +190,8 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 
 		if apiRevampV1Check {
 
-			// API Revamp V1 Response
-			response = append(response, requests.UserActivityResponseV1{
+			// API Revamp V1 activitiesResponse
+			activitiesResponse = append(activitiesResponse, requests.UserActivityResponseV1{
 				UserActivityResponse: activityResponse,
 				EntityType:           enums.NewEntityTypeFromInt(int(activity.EntityType)),
 				Action:               enums.NewActivityActionFromInt(int(activity.Action), true),
@@ -199,30 +199,38 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 
 		} else {
 
-			// Old User Activity Response
-			response = append(response, requests.UserActivityResponseOld{
+			// Old User Activity activitiesResponse
+			activitiesResponse = append(activitiesResponse, requests.UserActivityResponseOld{
 				UserActivityResponse: activityResponse,
 				EntityType:           activity.EntityType,
 				Action:               activity.Action,
 			})
 		}
 
-		topicsData, _ := parseTopicsResponse(handler.topicHelper, postData.(requests.PostResponse).Topics, activity.CommunityID)
+		if postData != nil {
 
-		widgetIds := getWidgetIdsFromAttachments(postData.(requests.PostResponse).Attachments)
-		widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, userId)
+			// Parse topicIds from postData
+			if postData.(requests.PostResponse).Topics != nil {
+				ids := postData.(requests.PostResponse).Topics
+				topicIds = append(topicIds, ids...)
+			}
 
-		for topicId, topicData := range topicsData {
-			topicDatas[topicId] = topicData
-		}
-
-		for widgetId, widgetData := range widgetsData {
-			widgetDatas[widgetId] = widgetData
+			// Parse widgetIds from postData
+			if postData.(requests.PostResponse).Attachments != nil {
+				ids := getWidgetIdsFromAttachments(postData.(requests.PostResponse).Attachments)
+				widgetIds = append(widgetIds, ids...)
+			}
 		}
 
 	}
 
-	return response, userDatas, topicDatas, widgetDatas, nil
+	// Parse topicsData from topicIds
+	topicsData, _ := parseTopicsResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
+
+	// Parse widgetsData from widgetIds
+	widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, userId)
+
+	return activitiesResponse, userDatas, topicsData, widgetsData, nil
 }
 
 func getActivityUserData(activity entities.Activity) (map[string]interface{}, string) {
@@ -857,12 +865,12 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "count": activityUnreadCount})
 }
 
-// FetchUserProfileActivity | method to Fetch User Profile Activity from uuid
+// FetchUserProfileActivity | method to Fetch User Profile Activity for uuid
 func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
-	userID := c.Param("user_id")
+	uuid := c.Param("user_id")
 
 	// api revamp v1 check
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
@@ -873,13 +881,13 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 		return
 	}
 
-	// Filter all activities where userId is present in action_by_metadata
-	actionByMetaUserKey := fmt.Sprintf("action_by_metadata.%s", userID)
+	// Filter all activities where uuid is present in action_by_metadata
+	actionByMetaUserKey := fmt.Sprintf("action_by_metadata.%s", uuid)
 
 	// activity filter data
 	activityFilterData := gin.H{
 		"action": gin.H{
-			"$in": []int{6, 7},
+			"$in": []int{6, 7}, // Only fetch LikeOnPost and CommentOnPost activities
 		},
 		actionByMetaUserKey: gin.H{
 			"$exists": true,
@@ -888,7 +896,7 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 		"is_deleted":   false,
 	}
 
-	// Sort on created at present in action by metadata
+	// Sort on created_at present in action_by_metadata
 	activitySortKey := fmt.Sprintf(actionByMetaUserKey + ".created_at")
 
 	// filter options
@@ -907,7 +915,7 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 
 	// parse user activity response
 	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserProfileActivity(*handlers, activityResults, apiRevampV1Check,
-		userID, headers[utils.HeadersMemberId])
+		uuid, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
