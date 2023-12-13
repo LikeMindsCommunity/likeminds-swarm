@@ -109,17 +109,20 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	uuid string, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]requests.TopicResponse,
 	map[string]requests.WidgetResponse, error) {
 
-	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
+	activitiesResponse, userDatas, topicsData, widgetsData := []interface{}{}, map[string]externalHelpers.MemberMeta{},
+		map[string]requests.TopicResponse{}, map[string]requests.WidgetResponse{}
 
-	activitiesResponse := []interface{}{}
-	topicIds := []primitive.ObjectID{}
-	widgetIds := []primitive.ObjectID{}
-
-	if len(activities) > 0 {
-		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, userId, activities[0].CommunityID)
+	if len(activities) == 0 {
+		return activitiesResponse, userDatas, topicsData, widgetsData, nil
 	}
 
+	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
+
+	postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, userId, activities[0].CommunityID)
+
 	userIds := [](string){uuid}
+	topicIds := []primitive.ObjectID{}
+	widgetIds := []primitive.ObjectID{}
 
 	for _, activity := range activities {
 		// Append actionOn in userIds
@@ -225,10 +228,10 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	}
 
 	// Parse topicsData from topicIds
-	topicsData, _ := parseTopicsResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
+	topicsData, _ = parseTopicsResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
 
 	// Parse widgetsData from widgetIds
-	widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, userId)
+	widgetsData, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, userId)
 
 	return activitiesResponse, userDatas, topicsData, widgetsData, nil
 }
