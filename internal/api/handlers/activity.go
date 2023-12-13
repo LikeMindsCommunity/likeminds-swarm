@@ -18,7 +18,7 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool, userId string) ([]interface{}, interface{}, interface{}, interface{}, error) {
+	apiRevampV1Check bool, uuid string) ([]interface{}, interface{}, interface{}, interface{}, error) {
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
 
@@ -28,7 +28,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	widgetDatas := map[string]interface{}{}
 
 	if len(activities) > 0 {
-		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, userId, activities[0].CommunityID)
+		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, uuid, activities[0].CommunityID)
 	}
 
 	for _, activity := range activities {
@@ -38,7 +38,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		}
 
 		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
-			apiRevampV1Check, userId, "")
+			apiRevampV1Check, uuid, "")
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -89,7 +89,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 				activity.CommunityID)
 
 			widgetIds := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
-			widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, userId)
+			widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, uuid)
 
 			for topicId, topicData := range topicsData {
 				topicDatas[topicId] = topicData
