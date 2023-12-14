@@ -18,22 +18,42 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool, uuid string) ([]interface{}, interface{}, interface{}, interface{}, error) {
+	apiRevampV1Check bool, uuid string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]requests.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
 
 	response := []interface{}{}
-	userDatas := make(map[string]interface{})
-	topicDatas := map[string]interface{}{}
-	widgetDatas := map[string]interface{}{}
+	userDatas := map[string]externalHelpers.MemberMeta{}
+	topicDatas := map[string]requests.TopicResponse{}
+	widgetDatas := map[string]requests.WidgetResponse{}
 
-	if len(activities) > 0 {
-		postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, uuid, activities[0].CommunityID)
+	if len(activities) == 0 {
+		return response, userDatas, topicDatas, widgetDatas, nil
+	}
+
+	postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, uuid, activities[0].CommunityID)
+
+	userIds := [](string){}
+	topicIds := []primitive.ObjectID{}
+	widgetIds := []primitive.ObjectID{}
+
+	for _, activity := range activities {
+
+		// Append last user from actionBy
+		userIds = append(userIds, activity.ActionBy[len(activity.ActionBy)-1])
+	}
+
+	// Fetch Members Meta map
+	success, userDatas := externalHelpers.FetchMemberMetaMap(userIds, uuid, activities[0].CommunityID)
+	if !success {
+		return nil, nil, nil, nil, fmt.Errorf("error while fetching user meta")
 	}
 
 	for _, activity := range activities {
-		activityUserData, activityUserUID := getActivityUserData(activity)
-		if activityUserData == nil {
+
+		activityUserUID := activity.ActionBy[len(activity.ActionBy)-1]
+		activityUserData, exists := userDatas[activityUserUID]
+		if !exists {
 			continue
 		}
 
@@ -82,24 +102,27 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			})
 		}
 
-		userDatas[activityUserUID] = activityUserData[activityUserUID]
-
+		// Parse topicIds and widgetIds from post
 		if activity.EntityType == constants.Post {
-			topicsData, _ := parseTopicsResponse(handler.topicHelper, activityEntityData.(requests.PostResponse).Topics,
-				activity.CommunityID)
-
-			widgetIds := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
-			widgetsData, _ := parseWidgetsResponse(&handler, widgetIds, activity.CommunityID, uuid)
-
-			for topicId, topicData := range topicsData {
-				topicDatas[topicId] = topicData
+			// Parse topicIds from postData
+			if activityEntityData.(requests.PostResponse).Topics != nil {
+				ids := activityEntityData.(requests.PostResponse).Topics
+				topicIds = append(topicIds, ids...)
 			}
 
-			for widgetId, widgetData := range widgetsData {
-				widgetDatas[widgetId] = widgetData
+			// Parse widgetIds from postData
+			if activityEntityData.(requests.PostResponse).Attachments != nil {
+				ids := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
+				widgetIds = append(widgetIds, ids...)
 			}
 		}
 	}
+
+	// Parse topicsData from topicIds
+	topicDatas, _ = parseTopicsResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
+
+	// Parse widgetsData from widgetIds
+	widgetDatas, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, uuid)
 
 	return response, userDatas, topicDatas, widgetDatas, nil
 }
@@ -291,7 +314,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 	return nil, nil
 }
 
-func getActivityText(activityUserData map[string]interface{}, activityEntityData interface{}, activity entities.Activity, postFeedMetadatValue string) (string, error) {
+func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEntityData interface{}, activity entities.Activity, postFeedMetadatValue string) (string, error) {
 	activityText := ""
 
 	switch activity.Action {
@@ -322,7 +345,6 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.LikeOnPost:
-		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
@@ -333,7 +355,6 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.CommentOnPost:
-		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
@@ -344,7 +365,6 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.LikeOnComment:
-		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
@@ -355,7 +375,6 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.CommentOnComment:
-		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
@@ -366,7 +385,6 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.TaggedInPost:
-		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 
 		activityText += " tagged you in their"
@@ -376,7 +394,6 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.TaggedInPostComment:
-		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 
 		activityText += " tagged you in their comment"
@@ -386,7 +403,6 @@ func getActivityText(activityUserData map[string]interface{}, activityEntityData
 		return activityText, nil
 
 	case constants.AlsoCommentOnPost:
-		activityByUserData := activityUserData[activity.ActionBy[len(activity.ActionBy)-1]]
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
