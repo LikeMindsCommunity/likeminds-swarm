@@ -170,8 +170,8 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 		activityEntityData, postData, err := interface{}(nil), interface{}(nil), error(nil)
 
 		// if action is comment on post, fetch comment data along with its post data
-		if activity.Action == constants.CommentOnPost {
-
+		switch activity.Action {
+		case constants.CommentOnPost:
 			activityEntityData, err = getEntityData(handler, constants.Comment, actionByMetadata.EntityId, activity.CommunityID,
 				apiRevampV1Check, userId, activity.EntityID.Hex())
 			if err != nil {
@@ -186,7 +186,8 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 			activity.EntityType = constants.Comment
 			activity.EntityOwnerID = uuid
 
-		} else {
+		// Fetch entity data for other activities
+		default:
 			activityEntityData, err = getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
 				apiRevampV1Check, userId, "")
 			if err != nil {

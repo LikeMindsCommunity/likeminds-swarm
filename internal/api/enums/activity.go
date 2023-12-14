@@ -48,10 +48,8 @@ const (
 	TaggedYouOnPost            ActivityAction = "tagged_you_on_post"
 	TaggedYouOnComment         ActivityAction = "tagged_you_on_comment_post"
 	AlsoCommentedOnPost        ActivityAction = "also_commented_on_post_you_commented"
-)
 
-// User Activity Actions | defines enum for user activity on profile actions
-const (
+	// User Profile Activity Actions
 	UserLikeOnPost       ActivityAction = "like_on_post"
 	UserLikeOnComment    ActivityAction = "like_on_comment"
 	UserCommentOnPost    ActivityAction = "comment_on_post"
