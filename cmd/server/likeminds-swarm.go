@@ -55,6 +55,7 @@ func main() {
 	topicRepository := repositories.NewTopicRepository(db)
 	widgetRepository := repositories.NewWidgetRepository(db)
 	pollVotesRepository := repositories.NewPollVotesRepository(db)
+	connectionFeedRepository := repositories.NewConnectionFeedRepository(db)
 
 	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)
@@ -65,13 +66,14 @@ func main() {
 	topicHelper := helpers.NewTopicHelper(topicRepository)
 	widgetHepler := helpers.NewWidgetHelper(widgetRepository)
 	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
+	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
 
 	// Dependency injection of elasticSearch Helper
 	esHelper := searchElastic.NewESHelper(es)
 
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper,
-		topicHelper, widgetHepler, pollVotesHelper, esHelper, cacheHelper)
+		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)

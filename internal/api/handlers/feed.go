@@ -12,7 +12,43 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// Internal Method to get Universal Feed Post Filter
+func getUniversalFeedPostFilter(communityId int, isPinned bool) gin.H {
+	return gin.H{
+		"is_pinned":    isPinned,
+		"is_deleted":   false,
+		"community_id": communityId,
+		"$and": []gin.H{
+			{
+				"$or": []gin.H{
+					{
+						"chatroom_id": gin.H{
+							"$exists": false,
+						},
+					},
+					{
+						"chatroom_id": 0,
+					},
+				},
+			},
+			{
+				"$or": []gin.H{
+					{
+						"visibility": gin.H{
+							"$exists": false,
+						},
+					},
+					{
+						"visibility": constants.PUBLIC_VISIBILITY,
+					},
+				},
+			},
+		},
+	}
+}
 
 // Exposed Method to fetch the Universal Feed for a User
 func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
@@ -48,38 +84,10 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// pinned posts filter data
-	pinnedPostFilterData := gin.H{
-		"is_pinned":    true,
-		"is_deleted":   false,
-		"community_id": communityId,
-		"$or": []gin.H{
-			{
-				"chatroom_id": gin.H{
-					"$exists": false,
-				},
-			},
-			{
-				"chatroom_id": 0,
-			},
-		},
-	}
+	pinnedPostFilterData := getUniversalFeedPostFilter(communityId, true)
 
 	// unpinned posts filter data
-	unpinnedPostFilterData := gin.H{
-		"is_pinned":    false,
-		"is_deleted":   false,
-		"community_id": communityId,
-		"$or": []gin.H{
-			{
-				"chatroom_id": gin.H{
-					"$exists": false,
-				},
-			},
-			{
-				"chatroom_id": 0,
-			},
-		},
-	}
+	unpinnedPostFilterData := getUniversalFeedPostFilter(communityId, false)
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
@@ -444,6 +452,30 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	c.JSON(http.StatusOK, parseExploreFeedResponse(chatroomIds, postData))
 }
 
+// Internal Method to get Group Feed Post Filter
+func getGroupFeedPostFilter(communityId int, isPinned bool, feedroomId int) gin.H {
+	return gin.H{
+		"is_pinned":    isPinned,
+		"is_deleted":   false,
+		"community_id": communityId,
+		"chatroom_id":  feedroomId,
+		"$and": []gin.H{
+			{
+				"$or": []gin.H{
+					{
+						"visibility": gin.H{
+							"$exists": false,
+						},
+					},
+					{
+						"visibility": constants.PUBLIC_VISIBILITY,
+					},
+				},
+			},
+		},
+	}
+}
+
 // Exposed Method to fetch the Group Feed
 func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	// fetch url params and headers
@@ -484,20 +516,10 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	// pinned posts filter data
-	pinnedPostFilterData := gin.H{
-		"is_pinned":    true,
-		"is_deleted":   false,
-		"community_id": communityId,
-		"chatroom_id":  feedroomId,
-	}
+	pinnedPostFilterData := getGroupFeedPostFilter(communityId, true, feedroomId)
 
 	// unpinned posts filter data
-	unpinnedPostFilterData := gin.H{
-		"is_pinned":    false,
-		"is_deleted":   false,
-		"community_id": communityId,
-		"chatroom_id":  feedroomId,
-	}
+	unpinnedPostFilterData := getGroupFeedPostFilter(communityId, false, feedroomId)
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
@@ -598,4 +620,122 @@ func (handlers *FeedHandlers) deleteCommunityUniversalFeedCacheData(communityID 
 
 	handlers.cacheHelper.DelMultiple(cachePostKeys)
 	handlers.cacheHelper.Del(cacheCommunityUniversalFeedPostsKey)
+}
+
+// Internal Method to get Collection Feed Items Filter
+func getConnectionFeedItemFilter(communityId int, userId string) gin.H {
+	return gin.H{
+		"user_id":      userId,
+		"community_id": communityId,
+	}
+}
+
+// Internal Method to get Connection Feed Post Filter
+func getConnectionFeedPostFilter(communityId int, postIds []primitive.ObjectID) gin.H {
+	return gin.H{
+		"is_deleted":   false,
+		"community_id": communityId,
+		"post_id": gin.H{
+			"$in": postIds,
+		},
+	}
+}
+
+// Exposed Method to Fetch Connection Feed for a User
+func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
+	// fetch headers
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var connectionFeedRequest requests.FetchConnectionFeedRequest
+	if err := c.ShouldBindJSON(&connectionFeedRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// get feed buffer data for the user
+	userConnectionFeedData, cacheKeyExists := getConnectionFeedBufferDataFromCache(handlers, userId, communityId)
+	if !cacheKeyExists {
+		// warm up connection list
+		updateConnectionFeedBuffer(handlers, userId, communityId, "", false)
+	} else {
+		// convert post ids to object Ids
+		postIds := []string{}
+		for postId := range userConnectionFeedData {
+			postIds = append(postIds, postId)
+		}
+
+		updatedPostIds := helpers.ConvertIdsToObjectIds(postIds)
+
+		// Create record in DB and update data in cache
+		for _, postId := range updatedPostIds {
+			_, err := handlers.connectionFeedHelper.CreateConnectionFeedHelper(postId, userId, communityId)
+			if err == nil {
+				updateConnectionFeedBuffer(handlers, userId, communityId, postId.Hex(), false)
+			}
+		}
+	}
+
+	// connection feed filter data
+	connectionFeedFilterData := getConnectionFeedItemFilter(communityId, userId)
+
+	// fetch connection feed data using helper method
+	connectionFeedResults, err := handlers.connectionFeedHelper.FindConnectionFeedHelper(connectionFeedFilterData, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	connectionFeedPostIds := []primitive.ObjectID{}
+
+	for _, connectionFeedItem := range connectionFeedResults {
+		connectionFeedPostIds = append(connectionFeedPostIds, connectionFeedItem.PostId)
+	}
+
+	// connection feed post filter data
+	connectionFeedPostFilterData := getConnectionFeedPostFilter(communityId, connectionFeedPostIds)
+
+	// connection feed post filter options
+	connectionFeedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
+
+	// fetch connection feed post using helper method
+	connectionFeedPostResults, err := handlers.postHelper.FindPostHelper(connectionFeedPostFilterData,
+		connectionFeedPostFilterOptions)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// parse connection feed posts
+	connectionFeedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, handlers.topicHelper, connectionFeedPostResults, headers[utils.HeadersMemberId],
+		connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check, handlers.cacheHelper)
+
+	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, connectionFeedPostResponse, -1)
+
+	// reponse data
+	finalParsedResponse := gin.H{
+		"posts":   finalResponse.Posts,
+		"success": finalResponse.Success,
+	}
+
+	if finalResponse.TotalCount > 0 {
+		finalParsedResponse["total_count"] = finalResponse.TotalCount
+	}
+
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+
+	// return final response
+	c.JSON(http.StatusOK, finalParsedResponse)
 }
