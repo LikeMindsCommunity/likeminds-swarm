@@ -11,10 +11,27 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
+
+// Function to create indexes
+func createIndex(client *mongo.Client, dbName, collectionName string, indexFields bson.D) error {
+	collection := client.Database(dbName).Collection(collectionName)
+	indexModel := mongo.IndexModel{
+		Keys:    indexFields,
+		Options: options.Index(),
+	}
+
+	_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // Internal Method to get TLS Configuration for Database Connection
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
@@ -86,6 +103,86 @@ func InitiateDB() *mongo.Database {
 		log.Info("Database(Mongo): Successfully connected and pinged.")
 
 		dbInstance = client.Database(db_name)
+
+		indexData := []bson.M{
+			{
+				"collectionName": "post",
+				"fields": bson.D{{"community_id", 1},
+						 {"is_pinned", 1},
+						 {"is_deleted", 1},
+						 {"created_at", 1},
+				},
+			},
+			
+			{
+				"collectionName": "like",
+				"fields": bson.D{{"entity_id", 1},
+						 {"entity_type",1},
+						 {"is_deleted", 1},
+						 {"created_at", 1},
+				},
+			},
+			
+			{
+				"collectionName": "save",
+				"fields": bson.D{{"entity_type", 1},
+						 {"community_id",1},
+						 {"saved_by", 1},
+						 {"entity_id", 1},
+				},
+			},
+			
+			{
+				"collectionName": "topic",
+				"fields": bson.D{{"community_id", 1},
+						 {"name",1},
+						 {"is_enabled", 1},
+				},
+			},
+			
+			{
+				"collectionName": "pollVotes",
+				"fields": bson.D{{"poll_id", 1},
+						 {"community_id",1},
+				},
+			},
+			
+			{
+				"collectionName": "customWidget",
+				"fields": bson.D{{"community_id", 1},
+						 {"parent_entity_id",1},
+				},
+			},
+			
+			{
+				"collectionName": "comment",
+				"fields": bson.D{{"post_id", 1},
+						 {"level",1},
+						 {"user_id",1},
+						 {"is_deleted",1},
+						 {"created_at",1},
+				},
+			},
+			
+			{
+				"collectionName": "activity",
+				"fields": bson.D{{"community_id", 1},
+						 {"action_by",1},
+						 {"action_on",1},
+						 {"entity_id",1},
+					 	 {"entity_type",1},
+						 {"entity_owner_id",1},
+				},
+			},
+		}
+
+		for _, indexValue := range indexData {
+			err = createIndex(client, db_name, indexValue["collectionName"].(string), indexValue["fields"].(bson.D))
+			if err != nil {
+				log.Error(err)
+			}
+		}
+
 	}
 
 	return dbInstance
