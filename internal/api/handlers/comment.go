@@ -292,6 +292,50 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	return response
 }
 
+// Internal Method to fetch comment data with postId
+func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
+	memberId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, getPostData bool) (interface{}, error) {
+
+	// fetch comment data
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	if err != nil {
+		return nil, err
+	}
+
+	commentFilterData := gin.H{
+		"_id": gin.H{
+			"$in": commentData.Replies,
+		},
+		"is_deleted": false,
+		"post_id":    postId,
+	}
+
+	// fetch comment replies using helper method
+	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
+		versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
+		commentData, repliesResponse, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+
+	// fetch post data if getPostData is true
+	if getPostData {
+		postData, err := fetchPost(handlers.postHelper, postId, commentData.CommunityId)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse post response and append to Comment's post_data
+		parsePostResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
+			*postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+		fetchCommentResponse.Post = &parsePostResponse
+	}
+	return fetchCommentResponse, nil
+}
+
 // Exposed Method to fetch comment by comment_id
 func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	// fetch headers and url params
@@ -404,37 +448,6 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
-	memberId string, isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool) (interface{}, error) {
-	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
-	if err != nil {
-		return nil, err
-	}
-
-	commentFilterData := gin.H{
-		"_id": gin.H{
-			"$in": commentData.Replies,
-		},
-		"is_deleted": false,
-		"post_id":    postId,
-	}
-
-	// fetch comment using helper method
-	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
-		versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
-	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentData, repliesResponse, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
-
-	return fetchCommentResponse, nil
-}
-
 // Exposed method to fetch comment by comment_id and post_id
 func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	// fetch headers and url params
@@ -477,7 +490,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -545,17 +558,23 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	var isCreatorTagged bool = false
 
 	if !useCustomCreationTimestamp {
+
+		// cta data for activity
+		ctaData := gin.H{
+			"entity_type": constants.CommentEntityType,
+			"post_id":     postId,
+			"comment_id":  commentId.(primitive.ObjectID).Hex(),
+		}
+
 		for _, member := range taggedMembers {
 			if member == postData.UserId {
 				isCreatorTagged = true
 			}
 
 			// create tag activity
-			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
-				"entity_type": constants.CommentEntityType,
-				"post_id":     postId,
-				"comment_id":  commentId.(primitive.ObjectID).Hex(),
-			}, false, false)
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member,
+				constants.Comment, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
+				false, false, primitive.NilObjectID)
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -568,11 +587,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 
 		if !isCreatorTagged {
-			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CommentOnPost, gin.H{
-				"entity_type": constants.CommentEntityType,
-				"post_id":     postId,
-				"comment_id":  commentId.(primitive.ObjectID).Hex(),
-			}, false, false)
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
+				postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CommentOnPost, ctaData,
+				false, false, commentId.(primitive.ObjectID))
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -599,7 +616,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -683,7 +700,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -779,17 +796,23 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	var isCreatorTagged bool = false
 
 	if !useCustomCreationTimestamp {
+
+		// cta data for activity
+		ctaData := gin.H{
+			"entity_type": constants.CommentEntityType,
+			"post_id":     postId,
+			"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
+		}
+
 		for _, member := range taggedMembers {
 			if member == commentData.UserId {
 				isCreatorTagged = true
 			}
 
 			// create tag activity
-			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member, constants.Comment, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, gin.H{
-				"entity_type": constants.CommentEntityType,
-				"post_id":     postId,
-				"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
-			}, false, false)
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member,
+				constants.Comment, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
+				false, false, primitive.NilObjectID)
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -803,11 +826,9 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 		if !isCreatorTagged {
 			// create comment activity
-			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CommentOnComment, gin.H{
-				"entity_type": constants.CommentEntityType,
-				"post_id":     postId,
-				"comment_id":  newCommentId.(primitive.ObjectID).Hex(),
-			}, false, false)
+			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
+				commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CommentOnComment, ctaData,
+				false, false, newCommentId.(primitive.ObjectID))
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -835,7 +856,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, newCommentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions,
-		headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
+		apiRevampV1Check, false)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -912,7 +934,9 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 
 	// create delete activity if deleted by CM
 	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != commentData.UserId {
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CMDeletedComment, gin.H{}, false, false)
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
+			commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CMDeletedComment,
+			gin.H{}, false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -930,11 +954,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	})
 }
 
-func deleteUserPostCommentActivity(
-	handlers *FeedHandlers,
-	postData *entities.Post,
-	c *gin.Context,
-	headers map[string]string) {
+func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Post, c *gin.Context, headers map[string]string) {
 
 	activityFilterData := gin.H{
 		"community_id": postData.CommunityId,
@@ -952,13 +972,55 @@ func deleteUserPostCommentActivity(
 		return
 	}
 
-	// remove uuid from like action list
-	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+	actionBy := activity[0].ActionBy
+	actionByMetadata := activity[0].ActionByMetadata
+	if actionByMetadata == nil {
+		actionByMetadata = map[string]entities.ActionByMetadata{}
+	}
+
+	// fetch all the comments on the post
+	commentFilterData := gin.H{
+		"user_id":    headers[utils.HeadersMemberId],
+		"post_id":    postData.ID,
+		"is_deleted": false,
+	}
+
+	sortOptions := gin.H{
+		"$sort": gin.H{
+			"created_at": -1,
+		},
+	}
+
+	comments, err := handlers.commentHelper.FindCommentHelper(commentFilterData, sortOptions)
+	if err != nil {
+		return
+	}
+
+	// if user still has comments on the post, do not delete activity
+	if len(comments) > 0 {
+
+		// update action_by_metadata
+		commentData := comments[0]
+
+		actionByMetadata[headers[utils.HeadersMemberId]] = entities.ActionByMetadata{
+			EntityId:  commentData.ID,
+			CreatedAt: commentData.CreatedAt,
+		}
+
+	} else {
+
+		// remove uuid from like action list
+		actionBy = utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+
+		// remove user's data from action_by_metadata
+		delete(actionByMetadata, headers[utils.HeadersMemberId])
+	}
 
 	// activity update data
 	activityUpdateData := gin.H{
 		"$set": gin.H{
-			"action_by": actionBy,
+			"action_by":          actionBy,
+			"action_by_metadata": actionByMetadata,
 		},
 	}
 

@@ -50,7 +50,7 @@ type CommentResponse struct {
 // Response Structure for Fetch Comment
 type FetchCommentResponse struct {
 	CommentResponse
-	Post          interface{}       `json:"post_data,omitempty"`
+	Post          *PostResponse     `json:"post_data,omitempty"`
 	ParentComment *CommentResponse  `json:"parent_comment,omitempty"`
 	Replies       []CommentResponse `json:"replies"`
 }

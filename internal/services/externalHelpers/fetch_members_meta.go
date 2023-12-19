@@ -35,19 +35,19 @@ type MemberMetaResponse struct {
 	Members []MemberMeta `json:"members"`
 }
 
-// FetchMemberMeta | fetch member meta for sent ids
-func FetchMemberMeta(member_ids []string, user_id string, community_id int) (bool, *MemberMetaResponse) {
+// FetchMemberMeta | fetch member meta for sent id
+func FetchMemberMeta(memberIds []string, userId string, communityId int) (bool, *MemberMetaResponse) {
 	headers := gin.H{
 		"Content-Type": "application/json",
-		"x-member-id":  user_id,
+		"x-member-id":  userId,
 	}
 
-	paramMemberIds, _ := json.Marshal(member_ids)
+	paramMemberIds, _ := json.Marshal(memberIds)
 
 	//Params to be sent in the api/community_member/fetch_access request
 	params := map[string]string{
 		ParamMemberIds:   fmt.Sprintf("%v", string(paramMemberIds)),
-		ParamCommunityId: fmt.Sprintf("%d", community_id),
+		ParamCommunityId: fmt.Sprintf("%d", communityId),
 	}
 
 	//Send Request
@@ -63,4 +63,23 @@ func FetchMemberMeta(member_ids []string, user_id string, community_id int) (boo
 	}
 
 	return true, &membersMetaResponse
+}
+
+// FetchMemberMetaMap | fetch member meta for sent ids and return map
+func FetchMemberMetaMap(member_ids []string, userId string, communityId int) (bool, map[string]MemberMeta) {
+
+	memberMetaMap := map[string]MemberMeta{}
+
+	//Fetch Member Meta
+	success, memberMetaResponse := FetchMemberMeta(member_ids, userId, communityId)
+	if !success {
+		return false, memberMetaMap
+	}
+
+	//Create Member Meta Map
+	for _, memberMeta := range memberMetaResponse.Members {
+		memberMetaMap[memberMeta.UserUniqueId] = memberMeta
+	}
+
+	return true, memberMetaMap
 }

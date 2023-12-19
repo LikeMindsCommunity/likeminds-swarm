@@ -30,7 +30,7 @@ var (
 
 // Internal Method to initiate the server
 func main() {
-	var AppVersion string = "1.8.1"
+	var AppVersion string = "1.9.0"
 
 	initGin()
 	redisClient = cache.InitRedis()
