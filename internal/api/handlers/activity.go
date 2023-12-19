@@ -870,6 +870,7 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 
 	// activity filter data
 	activityFilterData := gin.H{
+		"is_deleted":   false,
 		"community_id": communityID,
 		"action_on":    userID,
 		"is_read":      false,
