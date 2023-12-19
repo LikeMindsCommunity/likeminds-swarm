@@ -63,6 +63,20 @@ func (helper *topicHelper) UpdateTopicByIdHelper(topic_id primitive.ObjectID, up
 	return err
 }
 
+func (helper *topicHelper) DeleteTopicsHelper(topic_ids []primitive.ObjectID) error {
+	// create a filter to delete topic instances with topic_ids
+	filter := gin.H{
+		"_id": gin.H{
+			"$in": topic_ids,
+		},
+	}
+
+	// Delete the documents from the collection
+	err := helper.topicRepository.DeleteMany(filter)
+
+	return err
+}
+
 // Exposed Helper Method to Fetch Topics Count
 func (helper *topicHelper) CountTopicHelper(filter map[string]interface{}) (int64, error) {
 	// Parse the object IDs

@@ -26,3 +26,8 @@ type FetchTopicRequest struct {
 	SearchType string `form:"search_type"`
 	IsEnabled  string `form:"is_enabled"`
 }
+
+// Request Structure for Delete Topics
+type DeleteTopicsRequest struct {
+	TopicIds []string `json:"topic_ids"`
+}

@@ -12,4 +12,5 @@ func TopicRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	topicGroup.POST("/", handler.CreateTopic)
 	topicGroup.GET("/", handler.FetchTopics)
 	topicGroup.PUT("/:topic_id", handler.EditTopic)
+	topicGroup.DELETE("/", handler.DeleteTopics)
 }

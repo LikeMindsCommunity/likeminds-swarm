@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -278,6 +279,57 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		"success": true,
 		"topic":   topicResponse,
 	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
+}
+
+// Exposed Method to Delete Topics
+func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var deleteTopicsRequest requests.DeleteTopicsRequest
+
+	// convert topic_ids to object ids
+	topicIDs := helpers.ConvertIdsToObjectIds(deleteTopicsRequest.TopicIds)
+
+	// send error if no topic ids are sent in the body
+	if len(topicIDs) <= 0 {
+		utils.GeneralAPIValidationError(c, "topic_ids can't be empty!")
+		return
+	}
+
+	// fetch all the topics by topic ids sent in request
+	topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Validation of Topics
+	if len(topics) != len(topicIDs) {
+		utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
+		return
+	}
+
+	// delete the topics from db
+	err = handlers.topicHelper.DeleteTopicsHelper(topicIDs)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// reponse data
+	response := gin.H{
+		"success": true,
+	}
+
+	// todo: delete from es and other things
 
 	// return final response
 	c.JSON(http.StatusOK, response)

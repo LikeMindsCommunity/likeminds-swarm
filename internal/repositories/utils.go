@@ -59,6 +59,14 @@ func _deleteDocumentInDB(db *mongo.Database, collectionName string, filter map[s
 	return err
 }
 
+// Internal Method to Delete many documents in MongoDB
+func _deleteManyDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}) error {
+	coll := db.Collection(collectionName)
+	_, err := coll.DeleteMany(context.TODO(), filter)
+
+	return err
+}
+
 // Internal Method to Fetch Documents Count
 func _countDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}) (int64, error) {
 	coll := db.Collection(collectionName)

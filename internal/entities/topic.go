@@ -14,6 +14,7 @@ type Topic struct {
 	CommunityId int                `json:"community_id" bson:"community_id"`
 	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
+	IsDeleted   bool               `json:"is_deleted" bson:"is_deleted"`
 }
 
 // Exposed Method to Create a New Topic Instance
@@ -25,5 +26,6 @@ func NewTopic(name string, isEnabled bool, communityId int) Topic {
 		CommunityId: communityId,
 		CreatedAt:   createdAt,
 		UpdatedAt:   createdAt,
+		IsDeleted:   false,
 	}
 }

@@ -26,6 +26,11 @@ func (repository *topicRepository) Count(filter map[string]interface{}) (int64, 
 	return _countDocumentsInDB(repository.db, TopicCollection, filter)
 }
 
+// Exposed Helper Method to Delete Many topics
+func (repository *topicRepository) DeleteMany(filter map[string]interface{}) error {
+	return _deleteManyDocumentsInDB(repository.db, TopicCollection, filter)
+}
+
 // Structure for Save Repository
 type topicRepository struct {
 	db *mongo.Database
