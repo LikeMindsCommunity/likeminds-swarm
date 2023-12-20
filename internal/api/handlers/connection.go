@@ -9,6 +9,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -16,7 +17,7 @@ import (
 
 // Internal Method to create cache key name for user connection
 func getUserConnectionCacheKeyName(userId string, communityId int) string {
-	return fmt.Sprintf(constants.USER_CONNECTION_CACHE_KEY_NAME, userId, utils.ConvertNumberToString(communityId))
+	return fmt.Sprintf(cache.UserConnnectionCacheKey, userId, utils.ConvertNumberToString(communityId))
 }
 
 // Internal Method to get User connection data from cache
@@ -82,7 +83,7 @@ func warmUpConnectionList(handlers *FeedHandlers, userId string, communityId int
 
 	getConnections := true
 	page := 1
-	pageSize := 20
+	pageSize := 50
 
 	for getConnections {
 		success, userConnections := externalHelpers.FetchUserConnectionsByPage(userId, communityId, page, pageSize)

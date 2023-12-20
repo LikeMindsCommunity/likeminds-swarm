@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v7"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -14,7 +14,7 @@ import (
 
 // Internal Method to create cache key name for connection feed buffer
 func getConnectionFeedBufferCacheKeyName(userId string, communityId int) string {
-	return fmt.Sprintf(constants.CONNECTION_FEED_BUFFER_CACHE_KEY_NAME, userId, utils.ConvertNumberToString(communityId))
+	return fmt.Sprintf(cache.ConnectionFeedBufferCacheKey, userId, utils.ConvertNumberToString(communityId))
 }
 
 // Internal Method to get User Connection Feed Buffer data from cache
