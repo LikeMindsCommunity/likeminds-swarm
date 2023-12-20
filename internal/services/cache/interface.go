@@ -10,6 +10,7 @@ import (
 type Helper interface {
 	Set(key string, object interface{}, expiration time.Duration) *redis.StatusCmd
 	Get(key string) *redis.StringCmd
+	GetWithKeyExists(key string) (string, bool, error)
 	DelMultiple(keys []string) []*redis.IntCmd
 	Del(key string) *redis.IntCmd
 	LPush(key string, object string, listMaxLength int) *redis.IntCmd

@@ -18,9 +18,9 @@ type Connection struct {
 
 // Structure for Connection Response
 type ConnectionResponse struct {
-	Success     bool         `json:"success"`
-	Connections []Connection `json:"connections"`
-	Users       []MemberMeta `json:"users"`
+	Success     bool                  `json:"success"`
+	Connections []Connection          `json:"connections"`
+	Users       map[string]MemberMeta `json:"users"`
 }
 
 // FetchUserConnections | fetch user connections for a give page and page size
