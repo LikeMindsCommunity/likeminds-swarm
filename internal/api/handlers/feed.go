@@ -657,7 +657,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 
 	// validation of request body
 	var connectionFeedRequest requests.FetchConnectionFeedRequest
-	if err := c.ShouldBindJSON(&connectionFeedRequest); err != nil {
+	if err := c.BindQuery(&connectionFeedRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
