@@ -55,5 +55,9 @@ func FetchUserConnectionsByPage(userId string, communityId int, page int, pageSi
 		return false, nil
 	}
 
-	return true, &connectionResponse
+	if !connectionResponse.Success {
+		log.Error(fmt.Sprintf("FetchUserConnectionsByPage() - Error from Caravan Service, %s", connectionResponse.ErrorMessage))
+	}
+
+	return connectionResponse.Success, &connectionResponse
 }

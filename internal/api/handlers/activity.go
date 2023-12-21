@@ -178,7 +178,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 				continue
 			}
 
-			postData = activityEntityData.(requests.FetchCommentResponse).Post
+			postData = *activityEntityData.(requests.FetchCommentResponse).Post
 
 			// Update activity data
 			activity.CTA = fmt.Sprintf(utils.CommentDetailRoute, activity.EntityID.Hex(), actionByMetadata.EntityId.Hex())
@@ -870,6 +870,7 @@ func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
 
 	// activity filter data
 	activityFilterData := gin.H{
+		"is_deleted":   false,
 		"community_id": communityID,
 		"action_on":    userID,
 		"is_read":      false,

@@ -24,8 +24,6 @@ func getConnectionFeedBufferDataFromCache(handlers *FeedHandlers, userId string,
 	// Getting data from cache for user
 	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
 
-	log.Info("getConnectionFeedBufferDataFromCache() - cache Read")
-
 	val, keyExists, err := handlers.cacheHelper.GetWithKeyExists(userConnectionFeedCacheKeyName)
 	if err != nil {
 		log.Error(fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while conversion of data from cache, %s: %s", userConnectionFeedCacheKeyName, err.Error()))
@@ -47,7 +45,6 @@ func getConnectionFeedBufferDataFromCache(handlers *FeedHandlers, userId string,
 func setConnectionFeedBufferDataInCache(handlers *FeedHandlers, userId string, communityId int, connectionFeedBufferData interface{}) {
 	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
 	marshalledData, _ := json.Marshal(connectionFeedBufferData)
-	log.Info("setConnectionFeedBufferDataInCache() - cache Write")
 	set := handlers.cacheHelper.Set(userConnectionFeedCacheKeyName, marshalledData, 24*time.Hour)
 	if set.Err() != nil {
 		log.Error(fmt.Sprintf("setConnectionFeedBufferDataInCache() - Error while setting data in cache, %s: %s", userConnectionFeedCacheKeyName, set.Err()))

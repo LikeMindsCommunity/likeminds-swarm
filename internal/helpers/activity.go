@@ -42,6 +42,10 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 
 		// Add action_by's metadata to activity
 		updatedActionByMetadata := existingActivity[0].ActionByMetadata
+		if updatedActionByMetadata == nil {
+			updatedActionByMetadata = map[string]entities.ActionByMetadata{}
+		}
+
 		updatedActionByMetadata[actionBy[0]] = entities.ActionByMetadata{
 			CreatedAt: time.Now(),
 			EntityId:  actionByEntityId,
