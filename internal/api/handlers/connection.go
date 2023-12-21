@@ -26,7 +26,6 @@ func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, commu
 
 	// Getting data from cache for user
 	userCacheKeyName := getUserConnectionCacheKeyName(userId, communityId)
-	// get := handlers.cacheHelper.Get(userCacheKeyName)
 
 	val, keyExists, err := handlers.cacheHelper.GetWithKeyExists(userCacheKeyName)
 	if err != nil {
@@ -37,6 +36,7 @@ func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, commu
 	if keyExists {
 		err = json.Unmarshal([]byte(val), &userConnectionData)
 		if err != nil {
+			log.Error(fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data conversion, %s: %s", userCacheKeyName, err.Error()))
 			return userConnectionData, keyExists
 		}
 	}
