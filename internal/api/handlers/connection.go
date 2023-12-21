@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v7"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
@@ -23,20 +23,21 @@ func getUserConnectionCacheKeyName(userId string, communityId int) string {
 // Internal Method to get User connection data from cache
 func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, communityId int) (map[string]bool, bool) {
 	userConnectionData := map[string]bool{}
-	keyExists := false
 
 	// Getting data from cache for user
 	userCacheKeyName := getUserConnectionCacheKeyName(userId, communityId)
-	get := handlers.cacheHelper.Get(userCacheKeyName)
 
-	// If key exists in cache for the User
-	if get.Err() == nil || get.Err() == redis.Nil {
-		keyExists = true
+	val, keyExists, err := handlers.cacheHelper.GetWithKeyExists(userCacheKeyName)
+	if err != nil {
+		log.Error(fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data from cache, %s: %s", userCacheKeyName, err.Error()))
+		return userConnectionData, keyExists
+	}
 
-		// Convert the data
-		err := get.Scan(userConnectionData)
+	if keyExists {
+		err = json.Unmarshal([]byte(val), &userConnectionData)
 		if err != nil {
-			log.Error(fmt.Sprintf("getUserConnectionDataFromCache() - Error while conversion of data from cache, %s: %s", userCacheKeyName, err.Error()))
+			log.Error(fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data conversion, %s: %s", userCacheKeyName, err.Error()))
+			return userConnectionData, keyExists
 		}
 	}
 
@@ -46,7 +47,8 @@ func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, commu
 // Internal Method to set User connection data in cache
 func setUserConnectionDataInCache(handlers *FeedHandlers, userId string, communityId int, connectionData interface{}) {
 	userCacheKeyName := getUserConnectionCacheKeyName(userId, communityId)
-	set := handlers.cacheHelper.Set(userCacheKeyName, connectionData, 24*time.Hour)
+	marshalledData, _ := json.Marshal(connectionData)
+	set := handlers.cacheHelper.Set(userCacheKeyName, marshalledData, 24*time.Hour)
 	if set.Err() != nil {
 		log.Error(fmt.Sprintf("setUserConnectionDataInCache() - Error while setting data in cache, %s: %s", userCacheKeyName, set.Err()))
 	}

@@ -18,9 +18,10 @@ type Connection struct {
 
 // Structure for Connection Response
 type ConnectionResponse struct {
-	Success     bool         `json:"success"`
-	Connections []Connection `json:"connections"`
-	Users       []MemberMeta `json:"users"`
+	Success      bool                  `json:"success"`
+	Connections  []Connection          `json:"connections"`
+	Users        map[string]MemberMeta `json:"users"`
+	ErrorMessage string                `json:"error_message"`
 }
 
 // FetchUserConnections | fetch user connections for a give page and page size
@@ -50,8 +51,13 @@ func FetchUserConnectionsByPage(userId string, communityId int, page int, pageSi
 	var connectionResponse ConnectionResponse
 	if err := json.Unmarshal(respBytes, &connectionResponse); err != nil {
 		//Internal unmarshal error
+		log.Error(fmt.Sprintf("FetchUserConnectionsByPage() - Error while unmarshilling data, %s", err.Error()))
 		return false, nil
 	}
 
-	return true, &connectionResponse
+	if !connectionResponse.Success {
+		log.Error(fmt.Sprintf("FetchUserConnectionsByPage() - Error from Caravan Service, %s", connectionResponse.ErrorMessage))
+	}
+
+	return connectionResponse.Success, &connectionResponse
 }

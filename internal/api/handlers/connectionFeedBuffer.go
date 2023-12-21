@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v7"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -20,20 +20,21 @@ func getConnectionFeedBufferCacheKeyName(userId string, communityId int) string 
 // Internal Method to get User Connection Feed Buffer data from cache
 func getConnectionFeedBufferDataFromCache(handlers *FeedHandlers, userId string, communityId int) (map[string]bool, bool) {
 	connectionFeedBufferData := map[string]bool{}
-	keyExists := false
 
 	// Getting data from cache for user
 	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
-	get := handlers.cacheHelper.Get(userConnectionFeedCacheKeyName)
+
+	val, keyExists, err := handlers.cacheHelper.GetWithKeyExists(userConnectionFeedCacheKeyName)
+	if err != nil {
+		log.Error(fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while conversion of data from cache, %s: %s", userConnectionFeedCacheKeyName, err.Error()))
+	}
 
 	// If key exists in cache for the User
-	if get.Err() == nil || get.Err() == redis.Nil {
-		keyExists = true
-
-		// Convert the data
-		err := get.Scan(connectionFeedBufferData)
+	if keyExists {
+		err = json.Unmarshal([]byte(val), &connectionFeedBufferData)
 		if err != nil {
-			log.Error(fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while conversion of data from cache, %s: %s", userConnectionFeedCacheKeyName, err.Error()))
+			log.Error(fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while getting data conversion, %s: %s", userConnectionFeedCacheKeyName, err.Error()))
+			return connectionFeedBufferData, keyExists
 		}
 	}
 
@@ -43,7 +44,8 @@ func getConnectionFeedBufferDataFromCache(handlers *FeedHandlers, userId string,
 // Internal Method to set User Connection Feed Buffer data in cache
 func setConnectionFeedBufferDataInCache(handlers *FeedHandlers, userId string, communityId int, connectionFeedBufferData interface{}) {
 	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
-	set := handlers.cacheHelper.Set(userConnectionFeedCacheKeyName, connectionFeedBufferData, 24*time.Hour)
+	marshalledData, _ := json.Marshal(connectionFeedBufferData)
+	set := handlers.cacheHelper.Set(userConnectionFeedCacheKeyName, marshalledData, 24*time.Hour)
 	if set.Err() != nil {
 		log.Error(fmt.Sprintf("setConnectionFeedBufferDataInCache() - Error while setting data in cache, %s: %s", userConnectionFeedCacheKeyName, set.Err()))
 	}

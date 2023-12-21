@@ -34,7 +34,7 @@ type DeleteUserDataRequest struct {
 	UserIds  []string `json:"user_ids"`
 }
 
-// Request Structure for Follow Feed
+// Request Queries for Follow Feed
 type FetchConnectionFeedRequest struct {
 	IsCm bool `form:"user_is_cm"`
 }
