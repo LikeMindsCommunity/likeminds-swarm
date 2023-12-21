@@ -35,6 +35,7 @@ type AttachmentMeta struct {
 	MultipleSelectNumber int                    `json:"multiple_select_number,omitempty"`
 	IsAnonymous          bool                   `json:"is_anonymous,omitempty"`
 	AllowAddOption       bool                   `json:"allow_add_option,omitempty"`
+	PostID               string                 `json:"post_id,omitempty"`
 	WidgetMeta           map[string]interface{} `json:"widget_meta,omitempty"`
 }
 
@@ -57,6 +58,7 @@ type CreatePostRequest struct {
 	UUIDs             []string     `json:"uuids"`
 	On_behalf_of_uuid string       `json:"on_behalf_of_uuid,omitempty"`
 	User_is_cm        bool         `json:"user_is_cm,omitempty"`
+	IsRepost          bool         `json:"is_repost"`
 	CreatedAt         int          `json:"created_at"`
 }
 

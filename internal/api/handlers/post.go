@@ -89,6 +89,11 @@ func processMetaBeforeWidgetEdition(attachment requests.Attachment, metaData map
 	return updatedMetaData
 }
 
+// updateOriginalPostWidgetForRepost | updates original post repost widget data for a new repost
+func updateOriginalPostWidgetForRepost() {
+
+}
+
 // Internal Method to process attachments for widgets
 func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
 	postId string, communityId int, uuid string) ([]requests.Attachment, bool) {
@@ -246,6 +251,37 @@ func parsePostAttachments(attachments []entities.Attachment, versionCode string,
 	return parsedAttachments
 }
 
+// validateRepostAttachment | validates attachments for a repost
+func validateRepostAttachment(attachment requests.Attachment) (string, bool) {
+	switch attachment.AttachmentType {
+	case enums.PostWidget:
+		errorMessage, ok := validatePostAttachment(attachment)
+		if !ok {
+			return errorMessage, false
+		}
+	case enums.ImageWidget:
+	case enums.VideoWidget:
+	case enums.DocumentWidget:
+	case enums.LinkWidget:
+	case enums.CustomWidget:
+	case enums.PollWidget:
+	case enums.ArticleWidget:
+	default:
+		return "invalid attachment_type in attachment", false
+	}
+
+	return "unknow attachment_type in attachment", false
+}
+
+// validatePostAttachment | validates post as an attachment for another post
+func validatePostAttachment(attachment requests.Attachment) (string, bool) {
+	if attachment.AttachmentMeta.PostID == "" {
+		return "send post_id in attachment_meta for post", false
+	}
+
+	return "", true
+}
+
 // Internal Method to validate image attachment
 func validateImageAttachment(attachment requests.Attachment) (string, bool) {
 	if attachment.AttachmentMeta.Url == "" {
@@ -370,7 +406,7 @@ func validateArticleAttachment(attachment requests.Attachment) (string, bool) {
 
 // Internal method to validate attachments for post
 func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, communityId int, attachments []requests.Attachment, apiRevampV1check bool,
-	isEditRequest bool) bool {
+	isEditRequest bool, isRepost bool) bool {
 
 	// Api revamp check to validate and update attachments
 	if apiRevampV1check {
@@ -382,6 +418,12 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 
 				// Check if attachment type is valid
 				if !attachments[i].Type.IsValid() {
+					utils.GeneralAPIValidationError(c, "Invalid attachment type: "+attachments[i].Type.ToString())
+					return false
+				}
+
+				// Check if attachment type is valid for repost
+				if isRepost && !attachments[i].Type.IsValidRepostAttachment() {
 					utils.GeneralAPIValidationError(c, "Invalid attachment type: "+attachments[i].Type.ToString())
 					return false
 				}
@@ -412,6 +454,15 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 
 	// validate attachment_meta
 	for _, element := range attachments {
+
+		if isRepost {
+			errorMessage, ok := validateRepostAttachment(element)
+			if !ok {
+				utils.GeneralAPIValidationError(c, errorMessage)
+				return false
+			}
+		}
+
 		switch element.AttachmentType {
 		case enums.ImageWidget:
 			errorMessage, ok := validateImageAttachment(element)
@@ -860,7 +911,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// validation of attachments
-	success := validateAndUpdatePostAttachments(c, handlers, communityId, createPostRequest.Attachments, apiRevampV1Check, false)
+	success := validateAndUpdatePostAttachments(c, handlers, communityId, createPostRequest.Attachments, apiRevampV1Check, false, createPostRequest.IsRepost)
 	if !success {
 		return
 	}

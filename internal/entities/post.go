@@ -20,6 +20,7 @@ type Post struct {
 	Attachments        []Attachment         `json:"attachments" bson:"attachments"`
 	IsDeleted          bool                 `json:"is_deleted" bson:"is_deleted"`
 	IsEdited           bool                 `json:"is_edited" bson:"is_edited"`
+	IsRepost           bool                 `json:"is_repost" bson:"is_repost"`
 	DeletedBy          string               `json:"deleted_by" bson:"deleted_by,omitempty"`
 	OriginalAuthorUUID string               `json:"original_author_uuid" bson:"original_author_uuid,omitempty"`
 	DeleteReason       string               `json:"delete_reason" bson:"delete_reason,omitempty"`
