@@ -23,15 +23,14 @@ type Post struct {
 	DeletedBy          string               `json:"deleted_by" bson:"deleted_by,omitempty"`
 	OriginalAuthorUUID string               `json:"original_author_uuid" bson:"original_author_uuid,omitempty"`
 	DeleteReason       string               `json:"delete_reason" bson:"delete_reason,omitempty"`
-	Visibility         string               `json:"visibility" bson:"visibility,omitempty"`
 	CreatedAt          time.Time            `json:"created_at" bson:"created_at"`
 	UpdatedAt          time.Time            `json:"updated_at" bson:"updated_at"`
 }
 
 // Exposed Method to Create a New Post
 func NewPost(text string, heading string, communityId int, userId string, attachments []Attachment,
-	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, CreatedAt int) Post {
+	chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string,
+	CreatedAt int) Post {
 
 	createdAt := time.Now()
 
@@ -52,14 +51,13 @@ func NewPost(text string, heading string, communityId int, userId string, attach
 		Attachments: attachments,
 		IsDeleted:   false,
 		IsEdited:    false,
-		Visibility:  visibility,
 		CreatedAt:   createdAt,
 		UpdatedAt:   createdAt,
 	}
 
-	// if originalAuthorUUID is not empty, set it
-	if originalAuthorUUID != "" {
-		postEntity.OriginalAuthorUUID = originalAuthorUUID
+	// if OriginalAuthorUUID is not empty, set it
+	if OriginalAuthorUUID != "" {
+		postEntity.OriginalAuthorUUID = OriginalAuthorUUID
 	}
 
 	return postEntity

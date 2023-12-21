@@ -28,18 +28,6 @@ func (cacheHelper *cacheHelper) Get(key string) *redis.StringCmd {
 	return stringCMD
 }
 
-// Get | get the key object value from cache storage
-func (cacheHelper *cacheHelper) GetWithKeyExists(key string) (string, bool, error) {
-
-	val, err := cacheHelper.redisClient.Get(key).Result()
-	if err == redis.Nil {
-		return "", false, nil
-	} else if err != nil {
-		return "", false, err
-	}
-	return val, true, err
-}
-
 // DeleteMultiple | delete muktiple keys in the list from cache storage
 func (cacheHelper *cacheHelper) DelMultiple(keys []string) []*redis.IntCmd {
 	intCMDs := [](*redis.IntCmd){}

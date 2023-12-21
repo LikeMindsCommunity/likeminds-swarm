@@ -12,5 +12,4 @@ func FeedRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	feedGroup.GET("/universal", handler.FetchUniversalFeed)
 	feedGroup.GET("/explore", handler.FetchExploreFeed)
 	feedGroup.GET("/group", handler.FetchGroupFeed)
-	feedGroup.GET("/connection", handler.FetchConnectionFeed)
 }

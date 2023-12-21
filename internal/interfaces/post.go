@@ -21,10 +21,10 @@ type PostRepository interface {
 // Interface for Post Helper
 type PostHelper interface {
 	CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
-		chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string, visibility string,
+		chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string,
 		CreatedAt int) (interface{}, error)
 	EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
-		topicIds []primitive.ObjectID, visibility string, markIsEdited bool) error
+		topicIds []primitive.ObjectID, markIsEdited bool) error
 	FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error)
 	UpdatePostByIdHelper(postId primitive.ObjectID, update map[string]interface{}) error
 	CountPostHelper(filter map[string]interface{}) (int64, error)
