@@ -50,6 +50,7 @@ func FetchUserConnectionsByPage(userId string, communityId int, page int, pageSi
 	var connectionResponse ConnectionResponse
 	if err := json.Unmarshal(respBytes, &connectionResponse); err != nil {
 		//Internal unmarshal error
+		log.Error(fmt.Sprintf("FetchUserConnectionsByPage() - Error while unmarshilling data, %s", err.Error()))
 		return false, nil
 	}
 
