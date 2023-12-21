@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -42,7 +43,7 @@ func getUniversalFeedPostFilter(communityId int, isPinned bool) gin.H {
 						},
 					},
 					{
-						"visibility": constants.PUBLIC_VISIBILITY,
+						"visibility": enums.PublicVisibility,
 					},
 				},
 			},
@@ -468,7 +469,7 @@ func getGroupFeedPostFilter(communityId int, isPinned bool, feedroomId int) gin.
 						},
 					},
 					{
-						"visibility": constants.PUBLIC_VISIBILITY,
+						"visibility": enums.PublicVisibility,
 					},
 				},
 			},

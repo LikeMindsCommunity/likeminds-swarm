@@ -898,10 +898,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// check the visibility of the post
 	if createPostRequest.Visibility == "" {
-		createPostRequest.Visibility = constants.PUBLIC_VISIBILITY
+		createPostRequest.Visibility = enums.PublicVisibility
 	}
 
-	if createPostRequest.Visibility != constants.PRIVATE_VISIBILITY && createPostRequest.Visibility != constants.PUBLIC_VISIBILITY {
+	if createPostRequest.Visibility != enums.PrivateVisibility && createPostRequest.Visibility != enums.PublicVisibility {
 		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
 		return
 	}
@@ -1195,10 +1195,10 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// check the visibility of the post
 	if editPostRequest.Visibility == "" {
-		editPostRequest.Visibility = constants.PUBLIC_VISIBILITY
+		editPostRequest.Visibility = enums.PublicVisibility
 	}
 
-	if editPostRequest.Visibility != constants.PRIVATE_VISIBILITY && editPostRequest.Visibility != constants.PUBLIC_VISIBILITY {
+	if editPostRequest.Visibility != enums.PrivateVisibility && editPostRequest.Visibility != enums.PublicVisibility {
 		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
 		return
 	}

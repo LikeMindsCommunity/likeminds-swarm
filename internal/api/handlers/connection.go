@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -23,20 +23,23 @@ func getUserConnectionCacheKeyName(userId string, communityId int) string {
 // Internal Method to get User connection data from cache
 func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, communityId int) (map[string]bool, bool) {
 	userConnectionData := map[string]bool{}
+	var errorMessage string
 
 	// Getting data from cache for user
 	userCacheKeyName := getUserConnectionCacheKeyName(userId, communityId)
 
 	val, keyExists, err := handlers.cacheHelper.GetWithKeyExists(userCacheKeyName)
 	if err != nil {
-		log.Error(fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data from cache, %s: %s", userCacheKeyName, err.Error()))
+		errorMessage = fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data from cache, %s: %s", userCacheKeyName, err.Error())
+		log.Error(errorMessage)
 		return userConnectionData, keyExists
 	}
 
 	if keyExists {
 		err = json.Unmarshal([]byte(val), &userConnectionData)
 		if err != nil {
-			log.Error(fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data conversion, %s: %s", userCacheKeyName, err.Error()))
+			errorMessage = fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data conversion, %s: %s", userCacheKeyName, err.Error())
+			log.Error(errorMessage)
 			return userConnectionData, keyExists
 		}
 	}
@@ -50,7 +53,8 @@ func setUserConnectionDataInCache(handlers *FeedHandlers, userId string, communi
 	marshalledData, _ := json.Marshal(connectionData)
 	set := handlers.cacheHelper.Set(userCacheKeyName, marshalledData, 24*time.Hour)
 	if set.Err() != nil {
-		log.Error(fmt.Sprintf("setUserConnectionDataInCache() - Error while setting data in cache, %s: %s", userCacheKeyName, set.Err()))
+		errorMessage := fmt.Sprintf("setUserConnectionDataInCache() - Error while setting data in cache, %s: %s", userCacheKeyName, set.Err())
+		log.Error(errorMessage)
 	}
 }
 
@@ -146,7 +150,7 @@ func (handlers *FeedHandlers) UpdateConnection(c *gin.Context) {
 		return
 	}
 
-	if updateConnectionRequest.Status == constants.CONNECTION_CONNECTED {
+	if updateConnectionRequest.Status == enums.ConnectionConnected {
 		updateConnectionList(handlers, headers[utils.HeadersMemberId], communityId, userId, true)
 	} else {
 		updateConnectionList(handlers, headers[utils.HeadersMemberId], communityId, userId, false)

@@ -20,20 +20,23 @@ func getConnectionFeedBufferCacheKeyName(userId string, communityId int) string 
 // Internal Method to get User Connection Feed Buffer data from cache
 func getConnectionFeedBufferDataFromCache(handlers *FeedHandlers, userId string, communityId int) (map[string]bool, bool) {
 	connectionFeedBufferData := map[string]bool{}
+	var errorMessage string
 
 	// Getting data from cache for user
 	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
 
 	val, keyExists, err := handlers.cacheHelper.GetWithKeyExists(userConnectionFeedCacheKeyName)
 	if err != nil {
-		log.Error(fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while conversion of data from cache, %s: %s", userConnectionFeedCacheKeyName, err.Error()))
+		errorMessage = fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while conversion of data from cache, %s: %s", userConnectionFeedCacheKeyName, err.Error())
+		log.Error(errorMessage)
 	}
 
 	// If key exists in cache for the User
 	if keyExists {
 		err = json.Unmarshal([]byte(val), &connectionFeedBufferData)
 		if err != nil {
-			log.Error(fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while getting data conversion, %s: %s", userConnectionFeedCacheKeyName, err.Error()))
+			errorMessage = fmt.Sprintf("getConnectionFeedBufferDataFromCache() - Error while getting data conversion, %s: %s", userConnectionFeedCacheKeyName, err.Error())
+			log.Error(errorMessage)
 			return connectionFeedBufferData, keyExists
 		}
 	}
@@ -47,7 +50,8 @@ func setConnectionFeedBufferDataInCache(handlers *FeedHandlers, userId string, c
 	marshalledData, _ := json.Marshal(connectionFeedBufferData)
 	set := handlers.cacheHelper.Set(userConnectionFeedCacheKeyName, marshalledData, 24*time.Hour)
 	if set.Err() != nil {
-		log.Error(fmt.Sprintf("setConnectionFeedBufferDataInCache() - Error while setting data in cache, %s: %s", userConnectionFeedCacheKeyName, set.Err()))
+		errorMessage := fmt.Sprintf("setConnectionFeedBufferDataInCache() - Error while setting data in cache, %s: %s", userConnectionFeedCacheKeyName, set.Err())
+		log.Error(errorMessage)
 	}
 }
 
@@ -71,6 +75,7 @@ func removePostInConnectionFeedBufferInCache(handlers *FeedHandlers, userId stri
 
 // Internal Method to warm up Connection Feed Buffer list for a user
 func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, communityId int) {
+	var errorMessage string
 	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
 	handlers.cacheHelper.Del(userConnectionFeedCacheKeyName)
 
@@ -86,7 +91,8 @@ func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, community
 
 	userConnectionFeedResults, err := handlers.connectionFeedHelper.FindConnectionFeedHelper(userConnectionFeedFilter, gin.H{})
 	if err != nil {
-		log.Error(fmt.Sprintf("warmUpConnectionFeedBuffer() - Error while fetching connection feed data from DB, %s", err.Error()))
+		errorMessage = fmt.Sprintf("warmUpConnectionFeedBuffer() - Error while fetching connection feed data from DB, %s", err.Error())
+		log.Error(errorMessage)
 		return
 	}
 
@@ -118,7 +124,8 @@ func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, community
 	// fetch user posts using helper method
 	userPostResults, err := handlers.postHelper.FindPostHelper(userPostsFilter, userPostFilterOptions)
 	if err != nil {
-		log.Error(fmt.Sprintf("warmUpConnectionFeedBuffer() - Error while fetching post data from DB, %s", err.Error()))
+		errorMessage = fmt.Sprintf("warmUpConnectionFeedBuffer() - Error while fetching post data from DB, %s", err.Error())
+		log.Error(errorMessage)
 		return
 	}
 
