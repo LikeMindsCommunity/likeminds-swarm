@@ -92,6 +92,8 @@ func warmUpConnectionList(handlers *FeedHandlers, userId string, communityId int
 	for getConnections {
 		success, userConnections := externalHelpers.FetchUserConnectionsByPage(userId, communityId, page, pageSize)
 
+		log.Info(fmt.Sprintf("warmUpConnectionList() - Info about data from caravan service, %t: %v", success, userConnections))
+
 		if success {
 			if len(userConnections.Connections) > 0 {
 				for _, userConnection := range userConnections.Connections {
