@@ -635,7 +635,7 @@ func getConnectionFeedPostFilter(communityId int, postIds []primitive.ObjectID) 
 	return gin.H{
 		"is_deleted":   false,
 		"community_id": communityId,
-		"post_id": gin.H{
+		"_id": gin.H{
 			"$in": postIds,
 		},
 	}
