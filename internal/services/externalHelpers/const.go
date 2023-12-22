@@ -29,9 +29,12 @@ const SdkAuthenticateEndPoint = "/api/sdk/authenticate"
 const SendNotificationEndPoint = "/api/external_service_apis/send_notifications"
 const FetchMembersMetaEndPoint = "/api/community/fetch_members_meta"
 const FetchCommunityConfigurations = "/api/community/configurations"
+const FetchUserConnectionsEndPoint = "/api/community_member/%s/connection"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
+const ParamPage = "page"
+const ParamPageSize = "page_size"
 
 const ContentTypeHeader = "application/json"
 const SwarmServiceMemberIdHeader = "swarm-service"
