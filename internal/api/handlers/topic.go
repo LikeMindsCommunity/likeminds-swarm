@@ -294,6 +294,10 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 
 	// validation of request body
 	var deleteTopicsRequest requests.DeleteTopicsRequest
+	if err := c.ShouldBindJSON(&deleteTopicsRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
 
 	// convert topic_ids to object ids
 	topicIDs := helpers.ConvertIdsToObjectIds(deleteTopicsRequest.TopicIds)
@@ -324,12 +328,22 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		return
 	}
 
+	topicidsString := utils.ParseStringArrayToString(deleteTopicsRequest.TopicIds)
+
+	// query to get topics to be deleted
+	getTopicsToBeDeletedQuery := GetTopicsByIdQuery(topicidsString)
+
+	// delete topics from elastic search
+	err = handlers.esHelper.DeleteByQuery(c, getTopicsToBeDeletedQuery, constants.TopicIndexName)
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	// reponse data
 	response := gin.H{
 		"success": true,
 	}
-
-	// todo: delete from es and other things
 
 	// return final response
 	c.JSON(http.StatusOK, response)

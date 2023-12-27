@@ -255,6 +255,35 @@ func (esHelper *esHelper) DeleteDocument(ctx context.Context, documentId string,
 	return nil
 }
 
+// Exposed method to delete existing documents by query in ElasticSearch
+func (esHelper *esHelper) DeleteByQuery(ctx context.Context, query string, index string) error {
+
+	err := esHelper.CreateIndex(index)
+	if err != nil {
+		return err
+	}
+
+	req := esapi.DeleteByQueryRequest{
+		Index: []string{index},
+		Body:  strings.NewReader(query),
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	defer cancel()
+
+	res, err := req.Do(ctx, esHelper.esClient)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): delete by query: request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return fmt.Errorf("Search(Elastic): delete by query: response: %s", res.String())
+	}
+
+	return nil
+}
+
 // Structure for ElasticSearch Helper
 type esHelper struct {
 	esClient *elasticsearch.Client

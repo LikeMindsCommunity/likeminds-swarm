@@ -232,6 +232,18 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 	}`, from, pageSize, communityQuery, isEnabledQuery, searchQuery)
 }
 
+// Exposed method to get topics by their ids
+func GetTopicsByIdQuery(topicIds string) string {
+	return fmt.Sprintf(`
+	{
+		"query": {
+			"terms": {
+				"_id": %s
+			}
+		}
+	}`, topicIds)
+}
+
 func ParseWidgetIndexData(Widget *entities.Widget) searchElastic.WidgetIndex {
 	return searchElastic.WidgetIndex{
 		Id:               Widget.ID.Hex(),
