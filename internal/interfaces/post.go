@@ -14,6 +14,7 @@ type PostRepository interface {
 	Create(document interface{}) (interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
+	UpdateMany(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 	Aggregate(query []map[string]interface{}) ([]gin.H, error)
 }
@@ -29,4 +30,5 @@ type PostHelper interface {
 	UpdatePostByIdHelper(postId primitive.ObjectID, update map[string]interface{}) error
 	CountPostHelper(filter map[string]interface{}) (int64, error)
 	AggregatePostHelper(query []map[string]interface{}) ([]gin.H, error)
+	DeleteTopicsFromPosts(filter map[string]interface{}, update map[string]interface{}) error
 }

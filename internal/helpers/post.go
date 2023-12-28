@@ -121,6 +121,10 @@ func (helper *postHelper) UpdatePostByIdHelper(postId primitive.ObjectID, update
 	return err
 }
 
+func (helper *postHelper) DeleteTopicsFromPosts(filter map[string]interface{}, update map[string]interface{}) error {
+	return helper.postRepository.UpdateMany(filter, update)
+}
+
 // Exposed Helper Method to Fetch Post Count
 func (helper *postHelper) CountPostHelper(filter map[string]interface{}) (int64, error) {
 	err := convertHexIdsToObjectIds(filter, []string{"_id"})

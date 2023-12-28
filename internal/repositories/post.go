@@ -22,6 +22,11 @@ func (repository *postRepository) Update(filter map[string]interface{}, update m
 	return _updateDocumentsInDB(repository.db, PostCollection, filter, update)
 }
 
+// Exposed Repository Method to Update All filter Posts
+func (repository *postRepository) UpdateMany(filter map[string]interface{}, update map[string]interface{}) error {
+	return _updateAllDocumentsInDB(repository.db, PostCollection, filter, update)
+}
+
 // Exposed Helper Method to Fetch Post Count
 func (repository *postRepository) Count(filter map[string]interface{}) (int64, error) {
 	return _countDocumentsInDB(repository.db, PostCollection, filter)

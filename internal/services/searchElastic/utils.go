@@ -191,6 +191,35 @@ func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface
 	return nil
 }
 
+// Exposed method to update existing documents by query in ElasticSearch
+func (esHelper *esHelper) UpdateByQuery(ctx context.Context, query string, index string) error {
+
+	err := esHelper.CreateIndex(index)
+	if err != nil {
+		return err
+	}
+
+	req := esapi.UpdateByQueryRequest{
+		Index: []string{index},
+		Body:  strings.NewReader(query),
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	defer cancel()
+
+	res, err := req.Do(ctx, esHelper.esClient)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): update: request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return fmt.Errorf("Search(Elastic): update: response: %s", res.String())
+	}
+
+	return nil
+}
+
 // Exposed method to index a document in ElasticSearch (create if not exists, update if exists)
 func (esHelper *esHelper) IndexDocument(ctx context.Context, document interface{}, documentId string, index string) error {
 

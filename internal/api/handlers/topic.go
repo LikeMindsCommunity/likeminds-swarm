@@ -15,6 +15,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -339,6 +340,69 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
+	// Create a filter to find posts to be updated
+	var filter primitive.M
+	filter = bson.M{
+		"topic_ids": bson.M{
+			"$in": topicIDs,
+		},
+	}
+
+	// find posts based on the filter
+	postResults, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+
+	// extract postIds from the postResults
+	var postIDs []primitive.ObjectID
+	var postIDsString []string
+	for _, post := range postResults {
+		postIDs = append(postIDs, post.ID)
+		postIDsString = append(postIDsString, post.ID.String())
+	}
+
+	// update the filter to update posts by postIds
+	filter = bson.M{
+		"_id": bson.M{
+			"$in": postIDs,
+		},
+	}
+
+	// Create an update to pull the specified topic IDs from the array
+	update := bson.M{
+		"$pull": bson.M{
+			"topic_ids": bson.M{
+				"$in": topicIDs,
+			},
+		},
+	}
+
+	// deletes the topics from posts based on the passed filter and update query
+	handlers.postHelper.DeleteTopicsFromPosts(filter, update)
+
+	// fetch the update posts and update in ES
+	updatedPosts, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+
+	for _, postData := range updatedPosts {
+		// update post data in elastic search
+		err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+
+	// query := fmt.Sprintf(`{
+	// 	“query”: {
+	// 		"terms": {
+	// 			"_id": %s
+	// 		}
+	// 	},
+	// 	“script”: {
+	// 		“source”: “ctx._source[‘Status’] = %s”,
+	// 		“lang”: “painless”
+	// 	}
+	// }`, postIDsString, )
+
+	// handlers.esHelper.UpdateByQuery(c, query, constants.PostIndexName)
 
 	// reponse data
 	response := gin.H{
