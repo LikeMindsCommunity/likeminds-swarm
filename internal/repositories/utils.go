@@ -27,6 +27,14 @@ func _createDocumentInDB(db *mongo.Database, collectionName string, document int
 	return result.InsertedID, err
 }
 
+// Internal Method to Insert multiple documents in MongoDB
+func _createManyDocumentsInDB(db *mongo.Database, collectionName string, documents []interface{}) ([]interface{}, error) {
+	coll := db.Collection(collectionName)
+	result, err := coll.InsertMany(context.TODO(), documents)
+
+	return result.InsertedIDs, err
+}
+
 // Internal Method to Find a document in MongoDB
 func _findDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error) {
 	coll := db.Collection(collectionName)

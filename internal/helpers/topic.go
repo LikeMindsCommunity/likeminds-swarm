@@ -21,6 +21,20 @@ func (helper *topicHelper) CreateTopicHelper(name string, is_enabled bool, commu
 	return topicId, err
 }
 
+// Exposed Helper Method to Create Topic Instances
+func (helper *topicHelper) CreateManyTopicsHelper(names []string, is_enabled bool, community_id int) ([]interface{}, error) {
+	// Create new topic documents
+	var topics []interface{}
+	for _, name := range names {
+		topics = append(topics, entities.NewTopic(name, is_enabled, community_id))
+	}
+
+	// Insert the documents in the collection
+	topicIds, err := helper.topicRepository.CreateMany(topics)
+
+	return topicIds, err
+}
+
 // Exposed Helper Method to Find Topics
 func (helper *topicHelper) FindTopicHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Topic, error) {
 	fOpts := mergeFilterOptions(filterOptions)

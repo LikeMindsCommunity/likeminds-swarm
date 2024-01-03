@@ -92,3 +92,15 @@ func AreValidURLs(urlStrings []string) string {
 
 	return ""
 }
+
+// Helper method to convert document Ids to ObjectIds
+func ConvertDocumentIdsToObjectIds(ids []interface{}) []primitive.ObjectID {
+
+	objectIds := make([]primitive.ObjectID, len(ids))
+
+	for i, id := range ids {
+		objectIds[i] = id.(primitive.ObjectID)
+	}
+
+	return objectIds
+}

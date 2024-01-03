@@ -4,7 +4,8 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 
 // Request Structure for Create Topic
 type CreateTopicRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name  string   `json:"name"`
+	Names []string `json:"names"`
 }
 
 // Request Structure for Edit Topic
@@ -25,6 +26,7 @@ type FetchTopicRequest struct {
 	Search     string `form:"search"`
 	SearchType string `form:"search_type"`
 	IsEnabled  string `form:"is_enabled"`
+	MinPosts   int    `json:"min_posts"`
 }
 
 // Request Structure for Delete Topics

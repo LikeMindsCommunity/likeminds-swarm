@@ -94,41 +94,128 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	// strip text to check if it is empty
 	createTopicRequest.Name = strings.Trim(createTopicRequest.Name, " ")
 
-	if createTopicRequest.Name == "" {
-		utils.GeneralAPIValidationError(c, "Can't Create Topic With Empty Name")
+	// throw error if both Name and Names key are present
+	if createTopicRequest.Name != "" && len(createTopicRequest.Names) > 0 {
+		utils.GeneralAPIValidationError(c, "Send topic names in either name or names key")
 		return
 	}
 
-	// create topic using the helper method
-	topicId, err := handlers.topicHelper.CreateTopicHelper(createTopicRequest.Name, true, communityId)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+	// throw error if both Name and Names key are present
+	if createTopicRequest.Name == "" && len(createTopicRequest.Names) == 0 {
+		utils.GeneralAPIValidationError(c, "Send topic name(s) to create new topic(s)")
 		return
 	}
 
-	topicData, err := fetchTopicByID(handlers.topicHelper, topicId.(primitive.ObjectID).Hex(), communityId)
+	// parses the topic names from request and creates corresponding list
+	topicsList, lowerCaseTopicsList, err := parseTopicNames(createTopicRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// insert topic data in elastic search
-	err = handlers.esHelper.InsertDocument(c, ParseTopicIndexData(topicData), topicData.ID.Hex(),
-		constants.TopicIndexName)
+	// filter to find existing topics with same name
+	filter := gin.H{
+		"$expr": bson.M{
+			"$in": bson.A{
+				bson.M{
+					"$toLower": "$name",
+				},
+				lowerCaseTopicsList,
+			},
+		},
+	}
+
+	// find the existing topics with same name as in the request
+	existingTopics, err := handlers.topicHelper.FindTopicHelper(filter, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// send error if the topic already exists
+	if len(existingTopics) > 0 {
+		utils.GeneralAPIValidationError(c, fmt.Sprintf(`Topic %q already exists.`, existingTopics[0].Name))
+		return
+	}
+
+	// create topics using the helper method
+	topicIds, err := handlers.topicHelper.CreateManyTopicsHelper(topicsList, true, communityId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// convert topic_ids to object ids
+	objectTopicIds := helpers.ConvertDocumentIdsToObjectIds(topicIds)
+
+	// fetch newly created topic objects from db using IDs
+	topicsData, err := fetchTopicsByIDs(handlers.topicHelper, objectTopicIds, communityId, false)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	topicsIndexData := make(map[string]interface{})
+	var topicsResponse []requests.TopicResponse
+
+	// parse the topics data for ES indexing and API response
+	for _, topicData := range topicsData {
+		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(&topicData)
+		topicsResponse = append(topicsResponse, parseTopicResponse(&topicData))
+	}
+
+	// insert topics data in elastic search
+	err = handlers.esHelper.InsertManyDocuments(c, topicsIndexData, constants.TopicIndexName)
 	if err != nil {
 		log.Error(err.Error())
 	}
 
-	topicResponse := parseTopicResponse(topicData)
-
 	// reponse data
 	response := gin.H{
 		"success": true,
-		"topic":   topicResponse,
+		"topics":  topicsResponse,
 	}
 
 	// return final response
 	c.JSON(http.StatusOK, response)
+}
+
+func parseTopicNames(createTopicRequest requests.CreateTopicRequest) ([]string, []string, error) {
+
+	var topicsList []string
+	var lowerCaseTopicsList []string
+
+	// append all the topic names in topicsList and lowerCaseTopicsList
+	if createTopicRequest.Name != "" {
+
+		topicsList = append(topicsList, createTopicRequest.Name)
+	} else if len(createTopicRequest.Names) > 0 {
+
+		// strip each name in the names array and check if there are any duplicate topic in the array
+		seen := map[string]bool{}
+
+		for i, name := range createTopicRequest.Names {
+
+			createTopicRequest.Names[i] = strings.Trim(name, " ")
+
+			if createTopicRequest.Names[i] == "" {
+				return nil, nil, fmt.Errorf("Can't Create Topic With Empty Name")
+			}
+
+			lowerCaseTopicName := strings.ToLower(createTopicRequest.Names[i])
+
+			if seen[lowerCaseTopicName] {
+				// Duplicate found
+				return nil, nil, fmt.Errorf("Can't create duplicate topics")
+			}
+
+			lowerCaseTopicsList = append(lowerCaseTopicsList, lowerCaseTopicName)
+			seen[lowerCaseTopicName] = true
+		}
+
+		topicsList = createTopicRequest.Names
+	}
+	return topicsList, lowerCaseTopicsList, nil
 }
 
 func processTopicSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.TopicResponse {
@@ -180,6 +267,13 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		return
 	}
 
+	// fetch min_posts query param
+	minPosts, err := fetchMinPostsParam(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
 	filterIsEnabled := false
 	isEnabled := false
 	if fetchTopicRequest.IsEnabled != "" {
@@ -192,7 +286,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 
 	// dsl query to search topics
 	topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType,
-		fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled)
+		fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts)
 	response := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
 
 	finalResponse := processTopicSearchData(handlers, response)
@@ -389,6 +483,8 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 			log.Error(err.Error())
 		}
 	}
+
+	// TODO: try to implement UpdateByQuery instead of the loop
 
 	// query := fmt.Sprintf(`{
 	// 	“query”: {

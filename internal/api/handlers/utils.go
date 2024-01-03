@@ -57,22 +57,12 @@ func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.
 // Internal Method to get pagination params in an API
 func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	// fetch and validate query params
-	ParamPage := c.DefaultQuery("page", "0")
-	ParamPageSize := c.DefaultQuery("page_size", "0")
-	if ParamPage == "" {
-		ParamPage = "0"
-	}
-
-	if ParamPageSize == "" {
-		ParamPageSize = "0"
-	}
-
-	page, err := strconv.Atoi(ParamPage)
+	page, err := fetchIntParam(c, "page")
 	if err != nil {
 		return 0, 0, err
 	}
 
-	page_size, err := strconv.Atoi(ParamPageSize)
+	page_size, err := fetchIntParam(c, "page_size")
 	if err != nil {
 		return 0, 0, err
 	}
@@ -90,6 +80,36 @@ func fetchPaginationParams(c *gin.Context) (int, int, error) {
 	}
 
 	return page, page_size, nil
+}
+
+// Internal Method to fetch min posts from param
+func fetchMinPostsParam(c *gin.Context) (int, error) {
+	// fetch and validate query params
+	minPosts, err := fetchIntParam(c, "min_posts")
+	if err != nil {
+		return 0, err
+	}
+
+	if minPosts <= 0 {
+		minPosts = 0
+	}
+
+	return minPosts, nil
+}
+
+// Internal Method to fetch params and parse to int
+func fetchIntParam(c *gin.Context, paramName string) (int, error) {
+	ParamString := c.DefaultQuery(paramName, "0")
+	if ParamString == "" {
+		ParamString = "0"
+	}
+
+	param, err := strconv.Atoi(ParamString)
+	if err != nil {
+		return 0, err
+	}
+
+	return param, nil
 }
 
 // Internal method to add sorting options to a map
