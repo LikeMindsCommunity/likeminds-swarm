@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/coralogix/go-coralogix-sdk v1.0.3
-	github.com/elastic/go-elasticsearch/v7 v7.17.0
+	github.com/elastic/go-elasticsearch/v7 v7.10.0
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-redis/redis/v7 v7.4.1
