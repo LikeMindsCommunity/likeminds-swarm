@@ -78,7 +78,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	return &communityConfigurationResponse, nil
 }
 
-func GetDefaultOrDbCommunityConfiguration(cacheHelper cache.Helper, userId string, communityId int) string {
+func GetFeedPostVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
 	var postFeedMetadataValues string = DefaultFeedMetadataPostVariableValue
 
 	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)

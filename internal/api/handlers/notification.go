@@ -15,7 +15,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -34,7 +34,7 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -53,7 +53,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -72,7 +72,7 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -96,7 +96,7 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 	}
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	route := activity.CTA
@@ -167,7 +167,7 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 	member := memberData.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UserUniqueId, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UserUniqueId, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
@@ -269,7 +269,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		}
 
 		// Fetch community configurations
-		postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
+		postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
 
 		// notification params
 		receivers := activity.ActionOn
@@ -307,7 +307,7 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	member := member_data.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
@@ -434,7 +434,7 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	member := member_data.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
