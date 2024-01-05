@@ -8,10 +8,11 @@ import (
 
 // Error Messages
 const (
-	NotAuthorizedError    = "You are not authorized to perform this operation."
-	InvalidRequestError   = "Invalid request."
-	InvalidPostIDError    = "Invalid post_id sent."
-	InvalidCommentIDError = "Invalid comment_id sent."
+	NotAuthorizedError      = "You are not authorized to perform this operation."
+	InvalidRequestError     = "Invalid request."
+	InvalidPostIDError      = "Invalid post_id sent."
+	InvalidCommentIDError   = "Invalid comment_id sent."
+	NsfwContentInImageError = "This post could not be submitted as %v image/s seems to contain NSFW content."
 )
 
 // Exposed Method to send General Validation Error in API Response
@@ -32,11 +33,23 @@ func GeneralAPIError(c *gin.Context, errorMessage string, statusCode int) {
 	})
 }
 
+// Exposed method to send custom error in API Response
+func CustomAPIErrorWithMeta(c *gin.Context, statusCode int, errorMessage string, errorMeta gin.H) {
+
+	errorResponse := gin.H{
+		"success":       false,
+		"error_message": errorMessage,
+		"error_meta":    errorMeta,
+	}
+
+	c.JSON(statusCode, errorResponse)
+}
+
 // Exposed Method to send successfull API Response
-func GenereateSuccessResponse(c *gin.Context, dataResponse map[string]interface{}) {
+func GenereateSuccessResponse(c *gin.Context, dataResponse gin.H) {
 
 	if dataResponse == nil {
-		dataResponse = map[string]interface{}{}
+		dataResponse = gin.H{}
 	}
 
 	// set success flag

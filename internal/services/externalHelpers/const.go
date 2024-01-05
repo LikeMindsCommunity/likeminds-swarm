@@ -44,7 +44,8 @@ const (
 )
 
 const (
-	FeedMetadataCommunityConfigurationType = "feed_metadata"
+	FeedMetadataCommunityConfigurationType  = "feed_metadata"
+	NSFWFilteringCommunityConfigurationType = "nsfw_filtering"
 )
 
 const (

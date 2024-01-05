@@ -865,6 +865,43 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// If attachments are present, check for NSFW content from images if enabled
+	if len(createPostRequest.Attachments) > 0 {
+		enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(handlers.cacheHelper, postUserId, communityId)
+		if enabled && configuration.InferdoApiKey != "" {
+
+			nsfwImageIndices := []int{}
+
+			for index, attachment := range createPostRequest.Attachments {
+				if attachment.AttachmentType == enums.ImageWidget {
+					nsfwScore, err := externalHelpers.GetNsfwScoreForImage(handlers.cacheHelper, postUserId, communityId,
+						attachment.AttachmentMeta.Url, configuration.InferdoApiKey)
+					if err != nil || nsfwScore < 0 {
+						continue
+					}
+
+					if nsfwScore > configuration.CutoffScore {
+						nsfwImageIndices = append(nsfwImageIndices, index)
+					}
+				}
+			}
+
+			if len(nsfwImageIndices) > 0 {
+
+				errorMeta := gin.H{
+					"title":              "NSFW content detected in images",
+					"type":               "nsfw_content_in_image",
+					"cta":                "<<route://dialog/nsfw_content>>",
+					"nsfw_image_indices": nsfwImageIndices,
+				}
+
+				utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, fmt.Sprintf(utils.NsfwContentInImageError,
+					nsfwImageIndices), errorMeta)
+				return
+			}
+		}
+	}
+
 	// convert topic_ids to object ids
 	topicIDs := helpers.ConvertIdsToObjectIds(createPostRequest.TopicIds)
 

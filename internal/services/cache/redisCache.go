@@ -62,6 +62,13 @@ func (cacheHelper *cacheHelper) LRem(key string, count int64, element interface{
 	return intCMD
 }
 
+// IncrWithExpiry | increment the key and set expiry - returns the incremented value and if the key exists
+func (cacheHelper *cacheHelper) IncrWithExpiry(key string, expiration time.Duration) int64 {
+	count, _ := cacheHelper.redisClient.Incr(key).Result()
+	cacheHelper.redisClient.Expire(key, expiration)
+	return count
+}
+
 // Structure for ElasticSearch Helper
 type cacheHelper struct {
 	redisClient *redis.Client
