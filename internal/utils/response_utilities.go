@@ -31,3 +31,17 @@ func GeneralAPIError(c *gin.Context, errorMessage string, statusCode int) {
 		"error_message": errorMessage,
 	})
 }
+
+// Exposed Method to send successfull API Response
+func GenereateSuccessResponse(c *gin.Context, dataResponse map[string]interface{}) {
+
+	if dataResponse == nil {
+		dataResponse = map[string]interface{}{}
+	}
+
+	// set success flag
+	dataResponse["success"] = true
+
+	// return final response
+	c.JSON(http.StatusOK, dataResponse)
+}
