@@ -470,6 +470,46 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 	return true
 }
 
+// Internal Method to validate post images for NSFW content
+func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
+	attachments []requests.Attachment) ([]int, gin.H) {
+
+	// Check if NSFW Filtering is enabled for the community
+	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
+	if enabled && configuration.InferdoApiKey != "" {
+
+		nsfwImageIndices := []int{}
+
+		for index, attachment := range attachments {
+			if attachment.AttachmentType == enums.ImageWidget {
+				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId,
+					attachment.AttachmentMeta.Url, configuration.InferdoApiKey)
+				if err != nil || nsfwScore < 0 {
+					continue
+				}
+
+				if nsfwScore > configuration.CutoffScore {
+					nsfwImageIndices = append(nsfwImageIndices, index)
+				}
+			}
+		}
+
+		if len(nsfwImageIndices) > 0 {
+
+			errorMeta := gin.H{
+				"title":              "NSFW content detected in images",
+				"type":               "nsfw_content_in_image",
+				"cta":                "<<route://dialog/nsfw_content>>",
+				"nsfw_image_indices": nsfwImageIndices,
+			}
+
+			return nsfwImageIndices, errorMeta
+		}
+	}
+
+	return []int{}, nil
+}
+
 // Internal Method to parse response for fetch multiple posts api
 func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse, posts_count int64) requests.FetchUserMultiplePostResponse {
 	response := requests.FetchUserMultiplePostResponse{}
@@ -865,40 +905,13 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// If attachments are present, check for NSFW content from images if enabled
+	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(createPostRequest.Attachments) > 0 {
-		enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(handlers.cacheHelper, postUserId, communityId)
-		if enabled && configuration.InferdoApiKey != "" {
-
-			nsfwImageIndices := []int{}
-
-			for index, attachment := range createPostRequest.Attachments {
-				if attachment.AttachmentType == enums.ImageWidget {
-					nsfwScore, err := externalHelpers.GetNsfwScoreForImage(handlers.cacheHelper, postUserId, communityId,
-						attachment.AttachmentMeta.Url, configuration.InferdoApiKey)
-					if err != nil || nsfwScore < 0 {
-						continue
-					}
-
-					if nsfwScore > configuration.CutoffScore {
-						nsfwImageIndices = append(nsfwImageIndices, index)
-					}
-				}
-			}
-
-			if len(nsfwImageIndices) > 0 {
-
-				errorMeta := gin.H{
-					"title":              "NSFW content detected in images",
-					"type":               "nsfw_content_in_image",
-					"cta":                "<<route://dialog/nsfw_content>>",
-					"nsfw_image_indices": nsfwImageIndices,
-				}
-
-				utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, fmt.Sprintf(utils.NsfwContentInImageError,
-					nsfwImageIndices), errorMeta)
-				return
-			}
+		indices, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, createPostRequest.Attachments)
+		if errorMeta != nil {
+			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, fmt.Sprintf(utils.NsfwContentInImageError, indices),
+				errorMeta)
+			return
 		}
 	}
 
@@ -1193,6 +1206,17 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	success := validateAndUpdatePostAttachments(c, handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true)
 	if !success {
 		return
+	}
+
+	// If attachments are present, check for NSFW content from images if enabled
+	if len(editPostRequest.Attachments) > 0 {
+		indices, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId],
+			communityId, editPostRequest.Attachments)
+		if errorMeta != nil {
+			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, fmt.Sprintf(utils.NsfwContentInImageError, indices),
+				errorMeta)
+			return
+		}
 	}
 
 	// strip text and check if it is empty
