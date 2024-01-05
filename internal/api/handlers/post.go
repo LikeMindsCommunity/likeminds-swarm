@@ -90,8 +90,14 @@ func processMetaBeforeWidgetEdition(attachment requests.Attachment, metaData map
 }
 
 // updateOriginalPostWidgetForRepost | updates original post repost widget data for a new repost
-func updateOriginalPostWidgetForRepost() {
-
+func updateOriginalPostWidgetForRepost(originalPostID string, repostID interface{}) {
+	//respostIDString := repostID.(string)
+	//get original post widget data
+	// check repost widget exist
+	// if no, create widget data
+	// if yes, update widget data
+	// save widget
+	// save post
 }
 
 // Internal Method to process attachments for widgets
@@ -956,6 +962,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// updateOriginalPostWidgetForRepost(createPostRequest.Attachments[0].AttachmentMeta.PostID, postId)
+
 	// process attachments for widgets
 	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, createPostRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId, postUserId)
@@ -1179,7 +1187,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validateAndUpdatePostAttachments(c, handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true)
+	success := validateAndUpdatePostAttachments(c, handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true, editPostRequest.IsRepost)
 	if !success {
 		return
 	}

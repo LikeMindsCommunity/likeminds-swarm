@@ -69,6 +69,7 @@ type EditPostRequest struct {
 	TopicIds    []string     `json:"topic_ids,omitempty"`
 	Attachments []Attachment `json:"attachments"`
 	UserIsCm    bool         `json:"user_is_cm"`
+	IsRepost    bool         `json:"is_repost"`
 }
 
 // Request Structure for Delete Post
