@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
@@ -472,29 +473,28 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 
 // Internal Method to validate post images for NSFW content
 func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
-	attachments []requests.Attachment) ([]int, gin.H) {
+	attachments []requests.Attachment) ([]int, string, gin.H) {
 
 	// Check if NSFW Filtering is enabled for the community
 	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
 	if enabled && configuration.InferdoApiKey != "" {
 
-		nsfwImageIndices := []int{}
-
-		for index, attachment := range attachments {
-			if attachment.AttachmentType == enums.ImageWidget {
-				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId,
-					attachment.AttachmentMeta.Url, configuration.InferdoApiKey)
-				if err != nil || nsfwScore < 0 {
-					continue
-				}
-
-				if nsfwScore > configuration.CutoffScore {
-					nsfwImageIndices = append(nsfwImageIndices, index)
-				}
-			}
-		}
-
+		nsfwImageIndices := getNsfwImageIndicesFromImageAttachmentsParrallely(cacheHelper, userId, communityId, configuration, attachments)
 		if len(nsfwImageIndices) > 0 {
+
+			indicesString := ""
+
+			// For all the indices get its ordinal number and append it to the error message
+			for index := range nsfwImageIndices {
+
+				if index == len(nsfwImageIndices)-1 {
+					indicesString += "and "
+				}
+
+				indicesString += utils.GetOrdinal(index+1) + " "
+			}
+
+			errorMessage := fmt.Sprintf(utils.NsfwContentInImageError, indicesString)
 
 			errorMeta := gin.H{
 				"title":              "NSFW content detected in images",
@@ -503,11 +503,55 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 				"nsfw_image_indices": nsfwImageIndices,
 			}
 
-			return nsfwImageIndices, errorMeta
+			return nsfwImageIndices, errorMessage, errorMeta
 		}
 	}
 
-	return []int{}, nil
+	return []int{}, "", nil
+}
+
+func getNsfwImageIndicesFromImageAttachmentsParrallely(cacheHelper cache.Helper, userId string, communityId int,
+	configuration *externalHelpers.NSFWConfigurations, attachments []requests.Attachment) []int {
+
+	nsfwImageIndices := []int{}
+
+	// Make a channel to receive NSFW scores
+	wg, ch := sync.WaitGroup{}, make(chan int, len(attachments))
+
+	for index, attachment := range attachments {
+		if attachment.AttachmentType == enums.ImageWidget {
+
+			wg.Add(1)
+
+			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
+			go func(index int, attachment requests.Attachment) {
+
+				// Decrement the counter when the goroutine completes.
+				defer wg.Done()
+
+				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId, attachment.AttachmentMeta.Url, configuration.InferdoApiKey)
+
+				// Send the index on the channel if NSFW score is greater than cutoff score
+				if err == nil && nsfwScore > configuration.CutoffScore {
+					ch <- index
+				}
+
+			}(index, attachment)
+
+		}
+	}
+
+	// wait for all goroutines to complete
+	wg.Wait()
+	close(ch)
+
+	// read from channel and append to nsfwImageIndices
+	for index := range ch {
+		nsfwImageIndices = append(nsfwImageIndices, index)
+	}
+
+	return nsfwImageIndices
+
 }
 
 // Internal Method to parse response for fetch multiple posts api
@@ -907,10 +951,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(createPostRequest.Attachments) > 0 {
-		indices, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, createPostRequest.Attachments)
+		_, errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, createPostRequest.Attachments)
 		if errorMeta != nil {
-			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, fmt.Sprintf(utils.NsfwContentInImageError, indices),
-				errorMeta)
+
+			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
 			return
 		}
 	}
@@ -1210,11 +1254,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// If attachments are present, check for NSFW content from images if enabled
 	if len(editPostRequest.Attachments) > 0 {
-		indices, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId],
-			communityId, editPostRequest.Attachments)
+		_, errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId, editPostRequest.Attachments)
 		if errorMeta != nil {
-			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, fmt.Sprintf(utils.NsfwContentInImageError, indices),
-				errorMeta)
+			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
 			return
 		}
 	}

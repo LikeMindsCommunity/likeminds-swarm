@@ -18,18 +18,20 @@ type InferdoNsfwApiResponse struct {
 func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId int,
 	imageUrl string, inferdoApiKey string) (float64, error) {
 
-	inferdoNsfwEndpoint := "https://api.inferdo.com/v1/nsfw"
+	inferdoNsfwEndpoint := "https://nsfw-image-classification1.p.rapidapi.com/img/nsfw"
 
 	headers := map[string]interface{}{
 		"X-RapidAPI-Key":  inferdoApiKey,
-		"X-RapidAPI-Host": "api.inferdo.com",
+		"X-RapidAPI-Host": "nsfw-image-classification1.p.rapidapi.com",
 	}
 
 	body := map[string]string{
-		"image_url": imageUrl,
+		"url": imageUrl,
 	}
 
 	resp, statusCode, err := SendPostRequestToExternalService(inferdoNsfwEndpoint, headers, body)
+
+	fmt.Println("Inferdo API response: ", string(resp))
 	if err != nil || statusCode != 200 {
 
 		parsedResponse := string(resp)
@@ -43,8 +45,10 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 			statusCode, parsedResponse))
 
 		// Increment key in redis cache with expiry of 1 day
-		count := cacheHelper.IncrWithExpiry(cache.InferdoApiFailsCountKey, 24*time.Hour)
-		if count == 10 {
+		count, err := cacheHelper.IncrWithExpiry(cache.InferdoApiFailsCountKey, 24*time.Hour)
+		if err != nil {
+			logging.Error(fmt.Sprintf("NSFW Filtering | Error while incrementing inferdo api fails count: %s", err.Error()))
+		} else if count == 10 {
 			//Send mail to team if count is 10
 			sendMailToTeam(userId, communityId, "Inferdo API Error", fmt.Sprintf("Inferdo API Error: %s", parsedResponse))
 		}
@@ -52,18 +56,18 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 		return -1, err
 	}
 
-	var inr InferdoNsfwApiResponse
-	err = json.Unmarshal(resp, &inr)
+	var response InferdoNsfwApiResponse
+	err = json.Unmarshal(resp, &response)
 	if err != nil {
 		logging.Error(fmt.Sprintf("NSFW Filtering | Error while unmarshalling inferdo api response: %s", err.Error()))
 		return -1, err
 	}
 
-	if inr.NsfwScore == nil {
+	if response.NsfwScore == nil {
 		return -1, fmt.Errorf("error while getting nsfw score from inferdo api")
 	}
 
-	return *inr.NsfwScore, nil
+	return *response.NsfwScore, nil
 }
 
 func sendMailToTeam(userId string, communityId int, subject string, body string) {

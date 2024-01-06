@@ -12,7 +12,7 @@ const (
 	InvalidRequestError     = "Invalid request."
 	InvalidPostIDError      = "Invalid post_id sent."
 	InvalidCommentIDError   = "Invalid comment_id sent."
-	NsfwContentInImageError = "This post could not be submitted as %v image/s seems to contain NSFW content."
+	NsfwContentInImageError = "This post could not be submitted as %simage/s seems to contain NSFW content."
 )
 
 // Exposed Method to send General Validation Error in API Response
