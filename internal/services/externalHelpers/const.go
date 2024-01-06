@@ -30,6 +30,7 @@ const SendNotificationEndPoint = "/api/external_service_apis/send_notifications"
 const FetchMembersMetaEndPoint = "/api/community/fetch_members_meta"
 const FetchCommunityConfigurations = "/api/community/configurations"
 const FetchUserConnectionsEndPoint = "/api/community_member/%s/connection"
+const SendMailEndpoint = "/api/external_service_apis/send_mail"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"

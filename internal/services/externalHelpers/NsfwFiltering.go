@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
@@ -20,12 +21,12 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 
 	inferdoNsfwEndpoint := InferdoNsfwApiEndpoint
 
-	headers := map[string]interface{}{
+	headers := gin.H{
 		"X-RapidAPI-Key":  inferdoApiKey,
 		"X-RapidAPI-Host": InferdoApiHeaderHost,
 	}
 
-	body := map[string]string{
+	body := gin.H{
 		"url": imageUrl,
 	}
 
@@ -44,8 +45,9 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 		if err != nil {
 			logging.Error(fmt.Sprintf("NSFW Filtering | Error while incrementing inferdo api fails count: %s", err.Error()))
 		} else if count == 10 {
-			//Send mail to team if count is 10
-			sendMailToTeam(userId, communityId, "Inferdo API Error", fmt.Sprintf("Inferdo API Error: %s", parsedResponse))
+
+			//Send mail to team notifying about inferdo api errors
+			sendMailtoTeamForInferdoAPIErrors(userId, communityId, parsedResponse)
 		}
 
 		return -1, err
@@ -65,15 +67,16 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 	return *response.NsfwScore, nil
 }
 
-func sendMailToTeam(userId string, communityId int, subject string, body string) {
+func sendMailtoTeamForInferdoAPIErrors(userId string, communityId int, errorResponse string) {
 
-	// team mails
-	teamMails := []string{
-		"product@likeminds.community",
-		"backend@likeminds.community",
-	}
+	// Get community name
+	// communityName, err := GetCommunityName(userId, communityId)
 
-	// send mail using external service api
-	fmt.Printf("Sending mail to team: %s", teamMails)
-	return
+	mails := []string{"abc"}
+	subject := "Multiple Inferdo API Errors for community: "
+	body := fmt.Sprintf("Inferdo API Error: %s", errorResponse)
+
+	// Send mail using caravan service
+	SendMail(userId, mails, subject, body)
+
 }
