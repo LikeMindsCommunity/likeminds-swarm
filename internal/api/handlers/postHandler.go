@@ -479,7 +479,7 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
 	if enabled && configuration.InferdoApiKey != "" {
 
-		nsfwImageIndices := getNsfwImageIndicesFromImageAttachmentsParrallely(cacheHelper, userId, communityId, configuration, attachments)
+		nsfwImageIndices := getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper, userId, communityId, configuration, attachments)
 		if len(nsfwImageIndices) > 0 {
 
 			indicesString := ""
@@ -487,7 +487,7 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 			// For all the indices get its ordinal number and append it to the error message
 			for index := range nsfwImageIndices {
 
-				if index == len(nsfwImageIndices)-1 {
+				if index != 0 && index == len(nsfwImageIndices)-1 {
 					indicesString += "and "
 				}
 
@@ -510,7 +510,7 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 	return []int{}, "", nil
 }
 
-func getNsfwImageIndicesFromImageAttachmentsParrallely(cacheHelper cache.Helper, userId string, communityId int,
+func getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
 	configuration *externalHelpers.NSFWConfigurations, attachments []requests.Attachment) []int {
 
 	nsfwImageIndices := []int{}

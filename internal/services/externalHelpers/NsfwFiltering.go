@@ -18,11 +18,11 @@ type InferdoNsfwApiResponse struct {
 func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId int,
 	imageUrl string, inferdoApiKey string) (float64, error) {
 
-	inferdoNsfwEndpoint := "https://nsfw-image-classification1.p.rapidapi.com/img/nsfw"
+	inferdoNsfwEndpoint := InferdoNsfwApiEndpoint
 
 	headers := map[string]interface{}{
 		"X-RapidAPI-Key":  inferdoApiKey,
-		"X-RapidAPI-Host": "nsfw-image-classification1.p.rapidapi.com",
+		"X-RapidAPI-Host": InferdoApiHeaderHost,
 	}
 
 	body := map[string]string{
@@ -31,14 +31,9 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 
 	resp, statusCode, err := SendPostRequestToExternalService(inferdoNsfwEndpoint, headers, body)
 
-	fmt.Println("Inferdo API response: ", string(resp))
 	if err != nil || statusCode != 200 {
 
 		parsedResponse := string(resp)
-
-		// if resp != nil {
-		// 	err = json.Unmarshal(resp, &parsedResponse)
-		// }
 
 		// Log error
 		logging.Error(fmt.Sprintf("NSFW Filtering | Error while sending request to Inferdo api: statusCode: %d %s",

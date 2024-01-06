@@ -55,3 +55,9 @@ const (
 const (
 	CommunityConfigurationsCacheTTLInHours = 6
 )
+
+// Inferdo API related constants
+const (
+	InferdoApiHeaderHost   = "nsfw-image-classification1.p.rapidapi.com"
+	InferdoNsfwApiEndpoint = "https://nsfw-image-classification1.p.rapidapi.com/img/nsfw"
+)
