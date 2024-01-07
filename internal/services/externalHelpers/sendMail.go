@@ -14,7 +14,7 @@ func SendMail(userId string, mail_recipients []string, subject string, body stri
 	}
 
 	headers := gin.H{
-		"x-member-di": userId,
+		"x-member-id": userId,
 	}
 
 	requestBody := gin.H{
@@ -30,7 +30,7 @@ func SendMail(userId string, mail_recipients []string, subject string, body stri
 	}
 
 	if statusCode != 200 {
-		logging.Error(fmt.Sprintf("Error while sending mail | statusCode: %d %s", statusCode, string(respBytes)))
+		logging.Error(fmt.Sprintf("Error while sending mail | statusCode: %d , Response:  %s", statusCode, string(respBytes)))
 	} else {
 		logging.Info(fmt.Sprintf("Mail sent by user: %s to mails: %v with subject: %s", userId, mail_recipients, subject))
 	}

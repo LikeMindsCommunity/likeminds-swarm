@@ -35,19 +35,20 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 	if err != nil || statusCode != 200 {
 
 		parsedResponse := string(resp)
+		inferdoFailureCacheKey := fmt.Sprintf(cache.InferdoApiFailsCountKey, communityId)
 
 		// Log error
 		logging.Error(fmt.Sprintf("NSFW Filtering | Error while sending request to Inferdo api: statusCode: %d %s",
 			statusCode, parsedResponse))
 
 		// Increment key in redis cache with expiry of 1 day
-		count, err := cacheHelper.IncrWithExpiry(cache.InferdoApiFailsCountKey, 24*time.Hour)
+		count, err := cacheHelper.IncrWithExpiry(inferdoFailureCacheKey, 24*time.Hour)
 		if err != nil {
 			logging.Error(fmt.Sprintf("NSFW Filtering | Error while incrementing inferdo api fails count: %s", err.Error()))
 		} else if count == 10 {
 
-			//Send mail to team notifying about inferdo api errors
-			sendMailtoTeamForInferdoAPIErrors(userId, communityId, parsedResponse)
+			// Send mail to team notifying about inferdo api errors [In background]
+			go sendMailtoTeamForInferdoAPIErrors(userId, communityId, parsedResponse)
 		}
 
 		return -1, err
@@ -72,7 +73,7 @@ func sendMailtoTeamForInferdoAPIErrors(userId string, communityId int, errorResp
 	// Get community name
 	// communityName, err := GetCommunityName(userId, communityId)
 
-	mails := []string{"abc"}
+	mails := []string{"shubh.gupta@likeminds.community"}
 	subject := "Multiple Inferdo API Errors for community: "
 	body := fmt.Sprintf("Inferdo API Error: %s", errorResponse)
 

@@ -521,6 +521,7 @@ func getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper cache.Helper,
 	for index, attachment := range attachments {
 		if attachment.AttachmentType == enums.ImageWidget {
 
+			// Increment the WaitGroup counter.
 			wg.Add(1)
 
 			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
@@ -1252,7 +1253,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
-	// If attachments are present, check for NSFW content from images if enabled
+	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(editPostRequest.Attachments) > 0 {
 		_, errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId, editPostRequest.Attachments)
 		if errorMeta != nil {
