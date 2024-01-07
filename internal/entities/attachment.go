@@ -33,6 +33,7 @@ type AttachmentMeta struct {
 	MultipleSelectNumber int                `json:"multiple_select_number,omitempty" bson:"multiple_select_number,omitempty"`
 	IsAnonymous          bool               `json:"is_anonymous,omitempty" bson:"is_anonymous,omitempty"`
 	AllowAddOption       bool               `json:"allow_add_option,omitempty" bson:"allow_add_option,omitempty"`
+	NsfwScore            float64            `json:"nsfw_score,omitempty" bson:"nsfw_score,omitempty"`
 }
 
 // Structure for Attachment
