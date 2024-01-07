@@ -471,16 +471,18 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 	return true
 }
 
-// Internal Method to validate post images for NSFW content
+// Internal Method to validate/update post images for NSFW score and return error meta
 func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
-	attachments []requests.Attachment) ([]int, string, gin.H) {
+	attachments *[]requests.Attachment, updateScore bool) (string, gin.H) {
 
 	// Check if NSFW Filtering is enabled for the community
 	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
 	if enabled && configuration.InferdoApiKey != "" {
 
-		nsfwImageIndices := getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper, userId, communityId, configuration, attachments)
-		if len(nsfwImageIndices) > 0 {
+		nsfwImageIndices := getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper, userId, communityId,
+			configuration, attachments, updateScore)
+
+		if len(nsfwImageIndices) > 0 && !updateScore {
 
 			indicesString := ""
 
@@ -503,29 +505,29 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 				"nsfw_image_indices": nsfwImageIndices,
 			}
 
-			return nsfwImageIndices, errorMessage, errorMeta
+			return errorMessage, errorMeta
 		}
 	}
 
-	return []int{}, "", nil
+	return "", nil
 }
 
 func getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
-	configuration *externalHelpers.NSFWConfigurations, attachments []requests.Attachment) []int {
+	configuration *externalHelpers.NSFWConfigurations, attachments *[]requests.Attachment, updateScore bool) []int {
 
 	nsfwImageIndices := []int{}
 
 	// Make a channel to receive NSFW scores
-	wg, ch := sync.WaitGroup{}, make(chan int, len(attachments))
+	wg, ch := sync.WaitGroup{}, make(chan int, len(*attachments))
 
-	for index, attachment := range attachments {
+	for index, attachment := range *attachments {
 		if attachment.AttachmentType == enums.ImageWidget {
 
 			// Increment the WaitGroup counter.
 			wg.Add(1)
 
 			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
-			go func(index int, attachment requests.Attachment) {
+			go func(index int, attachment *requests.Attachment) {
 
 				// Decrement the counter when the goroutine completes.
 				defer wg.Done()
@@ -535,9 +537,13 @@ func getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper cache.Helper,
 				// Send the index on the channel if NSFW score is greater than cutoff score
 				if err == nil && nsfwScore > configuration.CutoffScore {
 					ch <- index
+
+					if updateScore {
+						attachment.AttachmentMeta.NsfwScore = nsfwScore
+					}
 				}
 
-			}(index, attachment)
+			}(index, &attachment)
 
 		}
 	}
@@ -952,7 +958,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(createPostRequest.Attachments) > 0 {
-		_, errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, createPostRequest.Attachments)
+		errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId,
+			&createPostRequest.Attachments, false)
 		if errorMeta != nil {
 
 			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
@@ -1255,7 +1262,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(editPostRequest.Attachments) > 0 {
-		_, errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId, editPostRequest.Attachments)
+		errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId,
+			&editPostRequest.Attachments, false)
 		if errorMeta != nil {
 			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
 			return

@@ -55,7 +55,7 @@ func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachme
 // Exposed Method to Create New Attachment Meta
 func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, thumbnailUrl string,
 	ogTags OGTags, entityId primitive.ObjectID, coverImageUrl string, title string, body string, expiryTime int64, pollType string,
-	multipleSelectState string, multipleSelectNumber int, isAnonymous bool, allowAddOption bool) AttachmentMeta {
+	multipleSelectState string, multipleSelectNumber int, isAnonymous bool, allowAddOption bool, nsfwScore float64) AttachmentMeta {
 
 	attachmentMeta := AttachmentMeta{
 		Name:                 name,
@@ -79,6 +79,10 @@ func NewAttachmentMeta(name string, url string, format string, size int, duratio
 
 	if entityId != primitive.NilObjectID {
 		attachmentMeta.EntityID = entityId
+	}
+
+	if nsfwScore != 0.0 {
+		attachmentMeta.NsfwScore = nsfwScore
 	}
 
 	return attachmentMeta

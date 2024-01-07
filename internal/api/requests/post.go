@@ -36,6 +36,7 @@ type AttachmentMeta struct {
 	IsAnonymous          bool                   `json:"is_anonymous,omitempty"`
 	AllowAddOption       bool                   `json:"allow_add_option,omitempty"`
 	WidgetMeta           map[string]interface{} `json:"widget_meta,omitempty"`
+	NsfwScore            float64                `json:"-,omitempty"` // field to be updated only internally
 }
 
 // Attachment Structure
