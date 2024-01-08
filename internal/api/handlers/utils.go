@@ -47,6 +47,7 @@ func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.
 		likeHelper:           likeHelper,
 		commentHelper:        commentHelper,
 		postHelper:           postHelper,
+		pendingPostHelper:    pendingPostHelper,
 		saveHelper:           saveHelper,
 		activityHelper:       activityHelper,
 		topicHelper:          topicHelper,

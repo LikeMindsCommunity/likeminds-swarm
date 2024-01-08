@@ -473,16 +473,40 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 
 // Internal Method to validate/update post images for NSFW score and return error meta
 func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
-	attachments *[]requests.Attachment, updateScore bool) (string, gin.H) {
+	attachments *[]requests.Attachment, onlyUpdateScore bool) (string, gin.H) {
 
-	// Check if NSFW Filtering is enabled for the community
+	// Check if NSFW Filtering is enabled and API Key is present
 	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
+
 	if enabled && configuration.InferdoApiKey != "" {
 
-		nsfwImageIndices := getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper, userId, communityId,
-			configuration, attachments, updateScore)
+		nsfwImageScores := getNsfwScoresFromImageAttachmentsInParallel(cacheHelper, userId, communityId,
+			configuration.InferdoApiKey, *attachments)
 
-		if len(nsfwImageIndices) > 0 && !updateScore {
+		// Update NSFW score in attachment meta
+		if onlyUpdateScore {
+
+			for index, score := range nsfwImageScores {
+
+				if score > configuration.CutoffScore {
+					(*attachments)[index].AttachmentMeta.NsfwScore = score
+				}
+			}
+
+			return "", nil
+		}
+
+		nsfwImageIndices := []int{}
+
+		// Get the indices of images with NSFW score greater than cutoff score
+		for index, score := range nsfwImageScores {
+			if score > configuration.CutoffScore {
+				nsfwImageIndices = append(nsfwImageIndices, index)
+			}
+		}
+
+		// If NSFW images are present, return error message with custom meta
+		if len(nsfwImageIndices) > 0 {
 
 			indicesString := ""
 
@@ -512,53 +536,43 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 	return "", nil
 }
 
-func getNsfwImageIndicesFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
-	configuration *externalHelpers.NSFWConfigurations, attachments *[]requests.Attachment, updateScore bool) []int {
+// Internal method to fetch NSFW score for images in parallel
+func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
+	inferdoApiKey string, attachments []requests.Attachment) []float64 {
 
-	nsfwImageIndices := []int{}
+	nsfwScores := make([]float64, len(attachments))
 
 	// Make a channel to receive NSFW scores
-	wg, ch := sync.WaitGroup{}, make(chan int, len(*attachments))
+	wg := sync.WaitGroup{}
 
-	for index, attachment := range *attachments {
+	for index, attachment := range attachments {
 		if attachment.AttachmentType == enums.ImageWidget {
 
 			// Increment the WaitGroup counter.
 			wg.Add(1)
 
 			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
-			go func(index int, attachment *requests.Attachment) {
+			go func(index int, attachment requests.Attachment) {
 
 				// Decrement the counter when the goroutine completes.
 				defer wg.Done()
 
-				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId, attachment.AttachmentMeta.Url, configuration.InferdoApiKey)
+				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId, attachment.AttachmentMeta.Url, inferdoApiKey)
 
-				// Send the index on the channel if NSFW score is greater than cutoff score
-				if err == nil && nsfwScore > configuration.CutoffScore {
-					ch <- index
-
-					if updateScore {
-						attachment.AttachmentMeta.NsfwScore = nsfwScore
-					}
+				// if no error and score is greater than 0.0, update the score in the array
+				if err == nil && nsfwScore > 0.0 {
+					nsfwScores[index] = nsfwScore
 				}
 
-			}(index, &attachment)
+			}(index, attachment)
 
 		}
 	}
 
 	// wait for all goroutines to complete
 	wg.Wait()
-	close(ch)
 
-	// read from channel and append to nsfwImageIndices
-	for index := range ch {
-		nsfwImageIndices = append(nsfwImageIndices, index)
-	}
-
-	return nsfwImageIndices
-
+	return nsfwScores
 }
 
 // Internal Method to parse response for fetch multiple posts api

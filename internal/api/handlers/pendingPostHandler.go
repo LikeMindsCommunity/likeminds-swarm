@@ -85,7 +85,8 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// Create pending post
 	pendingPostId, err := handlers.pendingPostHelper.CreatePendingPostHelper(cppr.Text, cppr.Heading, communityId,
-		postUserId, cppr.Attachments, cppr.ChatroomID, cppr.TempID, topicIDs, "", cppr.Visibility, 0, "under_review")
+		postUserId, cppr.Attachments, cppr.ChatroomID, cppr.TempID, topicIDs, "", cppr.Visibility, cppr.CreatedAt,
+		enums.UnderReview)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -100,13 +101,18 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// update post data using helper method for widgets
 	err = handlers.pendingPostHelper.EditPendingPostHelper(pendingPostId.(primitive.ObjectID), cppr.Text,
-		cppr.Heading, updatedAttachments, topicIDs, cppr.Visibility, false, "under_review")
+		cppr.Heading, updatedAttachments, topicIDs, cppr.Visibility, false, enums.UnderReview)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	// Call caravan API to create a review report for the pending post
+	err = externalHelpers.SendPendingPostForReview(postUserId, communityId, pendingPostId.(primitive.ObjectID).Hex())
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// Response
 	response := gin.H{

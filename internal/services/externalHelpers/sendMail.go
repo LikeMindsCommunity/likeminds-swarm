@@ -2,6 +2,7 @@ package externalHelpers
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -29,7 +30,7 @@ func SendMail(userId string, mail_recipients []string, subject string, body stri
 		return
 	}
 
-	if statusCode != 200 {
+	if statusCode != http.StatusOK {
 		logging.Error(fmt.Sprintf("Error while sending mail | statusCode: %d , Response:  %s", statusCode, string(respBytes)))
 	} else {
 		logging.Info(fmt.Sprintf("Mail sent by user: %s to mails: %v with subject: %s", userId, mail_recipients, subject))

@@ -27,4 +27,5 @@ func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup.PUT("/:post_id/comment/:comment_id/like", handler.LikeComment)
 	postGroup.GET("/search", handler.SearchPost)
 	postGroup.GET("/search/user/:user_id", handler.SearchUserCreatedPost)
+	postGroup.POST(("/pending"), handler.CreatePendingPostForReview)
 }
