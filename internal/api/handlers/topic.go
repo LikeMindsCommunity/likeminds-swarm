@@ -111,8 +111,7 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	}
 
 	// insert topic data in elastic search
-	err = handlers.esHelper.InsertDocument(c, ParseTopicIndexData(topicData), topicData.ID.Hex(),
-		constants.TopicIndexName)
+	err = handlers.esHelper.InsertDocument(ParseTopicIndexData(topicData), topicData.ID.Hex(), constants.TopicIndexName)
 	if err != nil {
 		log.Error(err.Error())
 	}

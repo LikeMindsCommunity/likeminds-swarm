@@ -122,7 +122,7 @@ func (esHelper *esHelper) DeleteIndex(index string) error {
 }
 
 // Exposed method to insert a new document in ElasticSearch
-func (esHelper *esHelper) InsertDocument(ctx context.Context, document interface{}, documentId string, index string) error {
+func (esHelper *esHelper) InsertDocument(document interface{}, documentId string, index string) error {
 
 	err := esHelper.CreateIndex(index)
 	if err != nil {
@@ -140,7 +140,7 @@ func (esHelper *esHelper) InsertDocument(ctx context.Context, document interface
 		Body:       bytes.NewReader(body),
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
 	defer cancel()
 
 	res, err := req.Do(ctx, esHelper.esClient)
@@ -192,7 +192,7 @@ func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface
 }
 
 // Exposed method to index a document in ElasticSearch (create if not exists, update if exists)
-func (esHelper *esHelper) IndexDocument(ctx context.Context, document interface{}, documentId string, index string) error {
+func (esHelper *esHelper) IndexDocument(document interface{}, documentId string, index string) error {
 
 	err := esHelper.CreateIndex(index)
 	if err != nil {
@@ -210,7 +210,7 @@ func (esHelper *esHelper) IndexDocument(ctx context.Context, document interface{
 		Body:       bytes.NewReader(body),
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
 	defer cancel()
 
 	res, err := req.Do(ctx, esHelper.esClient)

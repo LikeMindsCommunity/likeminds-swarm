@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -36,7 +35,7 @@ func (handlers *FeedHandlers) IndexAllPostData() error {
 
 	for _, postData := range postResults {
 		// insert post data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
+		err = handlers.esHelper.InsertDocument(ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -66,7 +65,7 @@ func (handlers *FeedHandlers) IndexAllTopicData() error {
 
 	for _, topicData := range topicResults {
 		// insert topic data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParseTopicIndexData(&topicData), topicData.ID.Hex(), constants.TopicIndexName)
+		err = handlers.esHelper.InsertDocument(ParseTopicIndexData(&topicData), topicData.ID.Hex(), constants.TopicIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}

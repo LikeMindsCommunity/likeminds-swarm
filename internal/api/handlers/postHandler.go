@@ -51,13 +51,13 @@ func processPollCustomAttachmentData(metaData map[string]interface{}) map[string
 
 // Internal Method to process meta data before widget creation
 func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData map[string]interface{},
-	lmMeta map[string]interface{}, uuid string) (map[string]interface{}, map[string]interface{}, bool) {
+	lmMeta map[string]interface{}, uuid string) (map[string]interface{}, map[string]interface{}, error) {
 	switch attachment.AttachmentType {
 	case enums.PollWidget:
 		// create poll options
 		pollOptionObjects, err := createPollOptionObjects(attachment.AttachmentMeta.Options, uuid)
 		if err != nil {
-			return metaData, lmMeta, false
+			return metaData, lmMeta, err
 		}
 
 		lmMeta["options"] = pollOptionObjects
@@ -69,7 +69,7 @@ func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData ma
 		}
 	}
 
-	return metaData, lmMeta, true
+	return metaData, lmMeta, nil
 }
 
 // Internal Method to process meta data before widget edition
@@ -91,9 +91,9 @@ func processMetaBeforeWidgetEdition(attachment requests.Attachment, metaData map
 }
 
 // Internal Method to process attachments for widgets
-func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
-	postId string, communityId int, uuid string) ([]requests.Attachment, bool) {
-	// process attachments for custom widgets
+func processAttachmentsForWidgets(handlers *FeedHandlers, attachments []requests.Attachment, postId string,
+	communityId int, uuid string) ([]requests.Attachment, error) {
+
 	updatedAttachments := []requests.Attachment{}
 
 	for _, attachment := range attachments {
@@ -126,16 +126,16 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			if attachment.AttachmentMeta.EntityID != "" {
 				widgetData, err := fetchWidgetByID(handlers.widgetHelper, attachment.AttachmentMeta.EntityID, true, communityId)
 				if err != nil {
-					return nil, false
+					return nil, err
 				}
 
 				// process meta data before widget edition
 				updatedMetaData := processMetaBeforeWidgetEdition(attachment, metaData, widgetData.MetaData)
 
 				// update widget from given metadata
-				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, updatedMetaData, nil, communityId)
-				if !ok {
-					return nil, false
+				_, err = editWidget(handlers, attachment.AttachmentMeta.EntityID, true, updatedMetaData, nil, communityId)
+				if err != nil {
+					return nil, err
 				}
 
 				entityId = attachment.AttachmentMeta.EntityID
@@ -146,15 +146,15 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 				lmMeta := map[string]interface{}{}
 
 				// process meta data before widget creation
-				metaData, lmMeta, ok := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, uuid)
-				if !ok {
-					return nil, false
+				metaData, lmMeta, err := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, uuid)
+				if err != nil {
+					return nil, err
 				}
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, lmMeta, communityId)
-				if !ok {
-					return nil, false
+				widgetData, err := createWidget(handlers, true, postId, constants.PostEntityType, metaData, lmMeta, communityId)
+				if err != nil {
+					return nil, err
 				}
 
 				entityId = widgetData.ID.Hex()
@@ -179,9 +179,9 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			if entityId == "" && widgetMeta != nil {
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, false, postId, constants.PostEntityType, widgetMeta, nil, communityId)
-				if !ok {
-					return nil, false
+				widgetData, err := createWidget(handlers, false, postId, constants.PostEntityType, widgetMeta, nil, communityId)
+				if err != nil {
+					return nil, err
 				}
 
 				// update attachment with widget id
@@ -198,7 +198,7 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 		}
 	}
 
-	return updatedAttachments, true
+	return updatedAttachments, nil
 }
 
 // Internal Method to parse Post Attachments
@@ -1025,9 +1025,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, createPostRequest.Attachments,
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, createPostRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId, postUserId)
-	if !ok {
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
@@ -1058,7 +1059,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
+	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
 	if err != nil {
 		log.Error(err.Error())
@@ -1306,9 +1307,10 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId,
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, editPostRequest.Attachments, postId, communityId,
 		headers[utils.HeadersMemberId])
-	if !ok {
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
