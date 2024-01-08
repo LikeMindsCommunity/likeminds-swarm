@@ -296,28 +296,28 @@ func validateLinkAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal Method to validate custom attachment with context
-func validateAndUpdateCustomWidgetAttachment(c *gin.Context, handlers *FeedHandlers, attachment requests.Attachment,
-	communityId int) bool {
+func validateAndUpdateCustomWidgetAttachment(handlers *FeedHandlers, attachment requests.Attachment,
+	communityId int) error {
 
 	widgetId := attachment.AttachmentMeta.EntityID
 	widgetMeta := attachment.AttachmentMeta.WidgetMeta
 
 	if widgetId == "" && (len(widgetMeta) == 0) {
-		utils.GeneralAPIValidationError(c, "please send entity_id or widget_meta in attachment meta")
-		return false
+		// utils.GeneralAPIValidationError(c, "please send entity_id or widget_meta in attachment meta")
+		return fmt.Errorf("please send entity_id or widget_meta in attachment meta")
 	}
 
 	// If widget id is present, validate if widget exists
 	if widgetId != "" {
 		_, err := fetchWidgetByID(handlers.widgetHelper, widgetId, false, communityId)
 		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return false
+			// utils.GeneralAPIValidationError(c, err.Error())
+			return err
 		}
 
 	}
 
-	return true
+	return nil
 }
 
 // Internal Method to validate poll attachment
@@ -370,8 +370,8 @@ func validateArticleAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal method to validate attachments for post
-func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, communityId int, attachments []requests.Attachment, apiRevampV1check bool,
-	isEditRequest bool) bool {
+func validateAndUpdatePostAttachments(handlers *FeedHandlers, communityId int, attachments []requests.Attachment,
+	apiRevampV1check bool, isEditRequest bool) error {
 
 	// Api revamp check to validate and update attachments
 	if apiRevampV1check {
@@ -383,8 +383,7 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 
 				// Check if attachment type is valid
 				if !attachments[i].Type.IsValid() {
-					utils.GeneralAPIValidationError(c, "Invalid attachment type: "+attachments[i].Type.ToString())
-					return false
+					return fmt.Errorf("Invalid attachment type: " + attachments[i].Type.ToString())
 				}
 
 				// Update attachment_type from type
@@ -403,9 +402,8 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 			}
 
 			err := helpers.AreValidURLs(urlArray)
-			if err != "" {
-				utils.GeneralAPIValidationError(c, err)
-				return false
+			if err != nil {
+				return err
 			}
 		}
 
@@ -417,58 +415,51 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 		case enums.ImageWidget:
 			errorMessage, ok := validateImageAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.VideoWidget:
 			errorMessage, ok := validateVideoAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.DocumentWidget:
 			errorMessage, ok := validateDocumentAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.LinkWidget:
 			errorMessage, ok := validateLinkAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.CustomWidget:
-			ok := validateAndUpdateCustomWidgetAttachment(c, handlers, element, communityId)
-			if !ok {
-				return false
+			err := validateAndUpdateCustomWidgetAttachment(handlers, element, communityId)
+			if err != nil {
+				return err
 			}
 
 		case enums.PollWidget:
 			errorMessage, ok := validatePollAttachment(element, isEditRequest)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.ArticleWidget:
 			errorMessage, ok := validateArticleAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		default:
-			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
-			return false
+			return fmt.Errorf("send valid attachment_type in attachment")
 		}
 	}
 
-	return true
+	return nil
 }
 
 // Internal Method to validate/update post images for NSFW score and return error meta
@@ -965,8 +956,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// validation of attachments
-	success := validateAndUpdatePostAttachments(c, handlers, communityId, createPostRequest.Attachments, apiRevampV1Check, false)
-	if !success {
+	err := validateAndUpdatePostAttachments(handlers, communityId, createPostRequest.Attachments, apiRevampV1Check, false)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
@@ -1269,8 +1261,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validateAndUpdatePostAttachments(c, handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true)
-	if !success {
+	err = validateAndUpdatePostAttachments(handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
