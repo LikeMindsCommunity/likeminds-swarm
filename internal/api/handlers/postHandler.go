@@ -912,16 +912,71 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 
 }
 
+// Internal method to create post after validation of request
+func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+	postRequest requests.CreatePostRequest) (*entities.Post, error) {
+
+	// create post using the helper method
+	postId, err := handlers.postHelper.CreatePostHelper(postRequest.Text, postRequest.Heading,
+		communityId, userId, postRequest.Attachments, postRequest.ChatroomID,
+		postRequest.TempID, postRequest.ParsedTopicIds, postRequest.OriginalAuthor, postRequest.Visibility,
+		postRequest.CreatedAt)
+	if err != nil {
+		// utils.GeneralAPIInternalError(c, err.Error())
+		return nil, err
+	}
+
+	// process attachments for widgets
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.Attachments,
+		postId.(primitive.ObjectID).Hex(), communityId, userId)
+	if err != nil {
+		// utils.GeneralAPIInternalError(c, err.Error())
+		return nil, err
+	}
+
+	// update post data using helper method
+	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), postRequest.Text,
+		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false)
+	if err != nil {
+		// utils.GeneralAPIInternalError(c, err.Error())
+		return nil, err
+	}
+
+	// update post in connection buffer lists
+	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
+	if len(userConnectionData) == 0 {
+		updateConnectionList(handlers, userId, communityId, "", false)
+	}
+
+	userConnectionData, _ = getUserConnectionDataFromCache(handlers, userId, communityId)
+	for connectionData := range userConnectionData {
+		updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
+	}
+
+	// fetch post data using new post_id
+	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
+	if err != nil {
+		// utils.GeneralAPIValidationError(c, err.Error())
+		return nil, err
+	}
+
+	// insert post data in elastic search
+	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
+		constants.PostIndexName)
+	if err != nil {
+		log.Error(err.Error())
+	}
+
+	// return post data
+	return postData, nil
+}
+
 // Exposed Method to create a Post
 func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
+
 	// fetch headers
 	headers := utils.GetHeaders(c)
-
-	// Post owner user_id
-	postUserId := headers[utils.HeadersMemberId]
-
-	// Set OriginalAuthorUUID to empty string for new posts
-	OriginalAuthorUUID := ""
+	userId := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -964,7 +1019,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(createPostRequest.Attachments) > 0 {
-		errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId,
+		errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, userId, communityId,
 			&createPostRequest.Attachments, false)
 		if errorMeta != nil {
 
@@ -989,6 +1044,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
 			return
 		}
+
+		// update parsed topic ids in request struct
+		createPostRequest.ParsedTopicIds = topicIDs
 	}
 
 	// if on_behalf_of_uuid is not empty
@@ -999,9 +1057,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			return
 		}
 
-		// update postUserId and OriginalAuthorUUID
-		OriginalAuthorUUID = postUserId
-		postUserId = createPostRequest.On_behalf_of_uuid
+		// update UserId and OriginalAuthorUUID
+		createPostRequest.OriginalAuthor = userId
+		userId = createPostRequest.On_behalf_of_uuid
 	}
 
 	// check the visibility of the post
@@ -1014,57 +1072,14 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// create post using the helper method
-	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading,
-		communityId, postUserId, createPostRequest.Attachments, createPostRequest.ChatroomID,
-		createPostRequest.TempID, topicIDs, OriginalAuthorUUID, createPostRequest.Visibility,
-		createPostRequest.CreatedAt)
+	// create post using internal method
+	postData, err := createPostAfterValidation(handlers, userId, communityId, createPostRequest)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, createPostRequest.Attachments,
-		postId.(primitive.ObjectID).Hex(), communityId, postUserId)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), createPostRequest.Text,
-		createPostRequest.Heading, updatedAttachments, topicIDs, createPostRequest.Visibility, false)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// update post in connection buffer lists
-	userConnectionData, _ := getUserConnectionDataFromCache(handlers, postUserId, communityId)
-	if len(userConnectionData) == 0 {
-		updateConnectionList(handlers, postUserId, communityId, "", false)
-	}
-
-	userConnectionData, _ = getUserConnectionDataFromCache(handlers, postUserId, communityId)
-	for connectionData := range userConnectionData {
-		updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
-	}
-
-	// fetch post data using new post_id
-	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
-		constants.PostIndexName)
-	if err != nil {
-		log.Error(err.Error())
-	}
-
+	// Create tagging activity and send notification
 	if !useCustomCreationTimestamp {
 		// Get tagged members from request
 		taggedMembers := createPostRequest.UUIDs
@@ -1072,13 +1087,13 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		// cta data for activity
 		ctaData := gin.H{
 			"entity_type": constants.PostEntityType,
-			"post_id":     postId.(primitive.ObjectID).Hex(),
+			"post_id":     postData.ID.Hex(),
 		}
 
 		for _, member := range taggedMembers {
 			// create tag activity
-			activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post,
-				postId.(primitive.ObjectID), postUserId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
+			activityID, err := handlers.CreateActivity(communityId, []string{userId}, member, constants.Post,
+				postData.ID, userId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -1091,7 +1106,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		}
 	}
 
-	// filter options
+	// filter options for pagination
 	filterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -1104,7 +1119,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetchPostData, err := fetchPostData(handlers, postId.(primitive.ObjectID).Hex(), communityId,
+	fetchPostData, err := fetchPostData(handlers, postData.ID.Hex(), communityId,
 		filterOptions, headers[utils.HeadersMemberId], UserIsCM, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err == nil {

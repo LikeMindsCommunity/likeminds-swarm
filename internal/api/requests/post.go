@@ -49,17 +49,19 @@ type Attachment struct {
 
 // Request Structure for Create Post
 type CreatePostRequest struct {
-	Text              string       `json:"text"`
-	Heading           string       `json:"heading"`
-	TempID            *string      `json:"temp_id"`
-	TopicIds          []string     `json:"topic_ids"`
-	Attachments       []Attachment `json:"attachments"`
-	ChatroomID        int          `json:"feedroom_id"`
-	UUIDs             []string     `json:"uuids"`
-	On_behalf_of_uuid string       `json:"on_behalf_of_uuid,omitempty"`
-	Visibility        string       `json:"visibility"`
-	User_is_cm        bool         `json:"user_is_cm,omitempty"`
-	CreatedAt         int          `json:"created_at"`
+	Text              string               `json:"text"`
+	Heading           string               `json:"heading"`
+	TempID            *string              `json:"temp_id"`
+	TopicIds          []string             `json:"topic_ids"`
+	Attachments       []Attachment         `json:"attachments"`
+	ChatroomID        int                  `json:"feedroom_id"`
+	UUIDs             []string             `json:"uuids"`
+	On_behalf_of_uuid string               `json:"on_behalf_of_uuid,omitempty"`
+	Visibility        string               `json:"visibility"`
+	User_is_cm        bool                 `json:"user_is_cm,omitempty"`
+	CreatedAt         int                  `json:"created_at"`
+	ParsedTopicIds    []primitive.ObjectID `json:"-"` // field to be updated internally
+	OriginalAuthor    string               `json:"-"` // field to be updated internally
 }
 
 // Request Structure for Edit Post
