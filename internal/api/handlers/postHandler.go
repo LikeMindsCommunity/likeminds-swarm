@@ -511,7 +511,7 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 			indicesString := ""
 
 			// For all the indices get its ordinal number and append it to the error message
-			for index := range nsfwImageIndices {
+			for _, index := range nsfwImageIndices {
 
 				if index != 0 && index == len(nsfwImageIndices)-1 {
 					indicesString += "and "

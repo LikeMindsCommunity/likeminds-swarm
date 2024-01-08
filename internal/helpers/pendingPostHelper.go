@@ -38,13 +38,14 @@ func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, tex
 
 	updateBody := gin.H{
 		"$set": gin.H{
-			"text":        text,
-			"heading":     heading,
-			"attachments": postAttachments,
-			"topic_ids":   topicIds,
-			"visibility":  visibility,
-			"updated_at":  time.Now(),
-			"post_type":   postType,
+			"post_data._id":         id,
+			"post_data.text":        text,
+			"post_data.heading":     heading,
+			"post_data.attachments": postAttachments,
+			"post_data.topic_ids":   topicIds,
+			"post_data.visibility":  visibility,
+			"post_type":             postType,
+			"updated_at":            time.Now(),
 		},
 	}
 

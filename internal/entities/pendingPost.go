@@ -1,11 +1,17 @@
 package entities
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 // Structure for Pending Post
 type PendingPost struct {
-	Post
-	PostType string `json:"post_type" bson:"post_type"`
+	PostData  Post      `json:"post_data" bson:"post_data"`
+	PostType  string    `json:"post_type" bson:"post_type"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 // Exposed Method to Create a New Pending Post
@@ -17,8 +23,10 @@ func NewPendingPost(text string, heading string, communityId int, userId string,
 
 	// create pending post entity
 	pendingPostEntity := PendingPost{
-		Post:     post,
-		PostType: postType,
+		PostData:  post,
+		PostType:  postType,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	return pendingPostEntity
