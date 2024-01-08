@@ -8,10 +8,11 @@ import (
 
 // Structure for Pending Post
 type PendingPost struct {
-	PostData  Post      `json:"post_data" bson:"post_data"`
-	PostType  string    `json:"post_type" bson:"post_type"`
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+	ID        primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	PostData  Post               `json:"post_data" bson:"post_data"`
+	PostType  string             `json:"post_type" bson:"post_type"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // Exposed Method to Create a New Pending Post

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -15,10 +16,7 @@ import (
 // Exposed method to create a pending post for review (similar to Create post method)
 func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
-	// fetch headers
 	headers := utils.GetHeaders(c)
-
-	// Post owner user_id
 	postUserId := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
@@ -45,8 +43,9 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	// validation of attachments
-	success := validateAndUpdatePostAttachments(c, handlers, communityId, cppr.Attachments, apiRevampV1Check, false)
-	if !success {
+	err := validateAndUpdatePostAttachments(handlers, communityId, cppr.Attachments, apiRevampV1Check, false)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
@@ -93,9 +92,9 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, cppr.Attachments,
-		pendingPostId.(primitive.ObjectID).Hex(), communityId, postUserId)
-	if !ok {
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, cppr.Attachments, pendingPostId.(primitive.ObjectID).Hex(), communityId, postUserId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
@@ -120,4 +119,79 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	utils.GenereateSuccessResponse(c, response)
+}
+
+// Exposed method to approve/reject a pending post under review
+func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
+
+	// headers := utils.GetHeaders(c)
+	// userID := headers[utils.HeadersMemberId]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var arpr requests.ApproveRejectPendingPostRequest
+	if err := c.ShouldBindJSON(&arpr); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// validation of status
+	if arpr.Status != enums.Accepted && arpr.Status != enums.Rejected {
+		utils.GeneralAPIValidationError(c, "Invalid status sent")
+		return
+	}
+
+	// Fetch pending post documents
+	filterData := gin.H{
+		"_id": gin.H{
+			"$in": helpers.ConvertIdsToObjectIds(arpr.PendingPostIds),
+		},
+		"community_id": communityId,
+	}
+
+	pendingPostsData, err := handlers.pendingPostHelper.FindPendingPostHelper(filterData, nil)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	for _, pendingPostData := range pendingPostsData {
+
+		// If status is approved, call Create post API internally
+		if arpr.Status == enums.Accepted {
+
+			err := approvePendingPostAndCallCreatePost(handlers, pendingPostData)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+		}
+
+		updateBody := gin.H{
+			"status": arpr.Status,
+		}
+
+		// Update status of pending post
+		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostData.ID, updateBody)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+	}
+
+}
+
+func approvePendingPostAndCallCreatePost(handlers *FeedHandlers, pendingPostData entities.PendingPost) error {
+
+	// Call Create post API internally
+
+	// Delete all the widgets for the pending post
+
+	return nil
 }
