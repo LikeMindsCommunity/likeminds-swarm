@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -124,8 +123,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 // Exposed method to approve/reject a pending post under review
 func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
-	// headers := utils.GetHeaders(c)
-	// userID := headers[utils.HeadersMemberId]
+	pendingPostId := c.Param("pending_post_id")
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -141,17 +139,16 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	}
 
 	// validation of status
-	if arpr.Status != enums.Accepted && arpr.Status != enums.Rejected {
+	if arpr.Status != enums.Approved && arpr.Status != enums.Rejected {
 		utils.GeneralAPIValidationError(c, "Invalid status sent")
 		return
 	}
 
-	// Fetch pending post documents
+	// Get pending post data
 	filterData := gin.H{
-		"_id": gin.H{
-			"$in": helpers.ConvertIdsToObjectIds(arpr.PendingPostIds),
-		},
+		"_id":          pendingPostId,
 		"community_id": communityId,
+		"status":       enums.UnderReview,
 	}
 
 	pendingPostsData, err := handlers.pendingPostHelper.FindPendingPostHelper(filterData, nil)
@@ -160,38 +157,25 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 		return
 	}
 
-	for _, pendingPostData := range pendingPostsData {
-
-		// If status is approved, call Create post API internally
-		if arpr.Status == enums.Accepted {
-
-			err := approvePendingPostAndCallCreatePost(handlers, pendingPostData)
-			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
-			}
-		}
-
-		updateBody := gin.H{
-			"status": arpr.Status,
-		}
-
-		// Update status of pending post
-		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostData.ID, updateBody)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
-
+	if len(pendingPostsData) == 0 {
+		utils.GeneralAPIValidationError(c, "Invalid pending post id sent")
+		return
 	}
 
-}
+	pendingPostData := pendingPostsData[0]
 
-func approvePendingPostAndCallCreatePost(handlers *FeedHandlers, pendingPostData entities.PendingPost) error {
+	updateBody := gin.H{
+		"status": arpr.Status,
+	}
 
-	// Call Create post API internally
+	// Update status of pending post
+	err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostData.ID, updateBody)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
-	// Delete all the widgets for the pending post
+	// Generate success response
+	utils.GenereateSuccessResponse(c, nil)
 
-	return nil
 }
