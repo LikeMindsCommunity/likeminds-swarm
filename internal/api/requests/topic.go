@@ -4,7 +4,6 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 
 // Request Structure for Create Topic
 type CreateTopicRequest struct {
-	Name  string   `json:"name"`
 	Names []string `json:"names"`
 }
 
@@ -19,6 +18,14 @@ type TopicResponse struct {
 	ID        primitive.ObjectID `json:"_id"`
 	Name      string             `json:"name"`
 	IsEnabled bool               `json:"is_enabled"`
+}
+
+// Response Structure for Fetch Topic Response
+type FetchTopicResponse struct {
+	ID            primitive.ObjectID `json:"_id"`
+	Name          string             `json:"name"`
+	IsEnabled     bool               `json:"is_enabled"`
+	NumberOfPosts int                `json:"number_of_posts"`
 }
 
 // Request Structure for Fetch Topic

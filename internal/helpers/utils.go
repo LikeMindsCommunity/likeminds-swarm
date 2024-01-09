@@ -3,6 +3,7 @@ package helpers
 import (
 	"net/url"
 
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -103,4 +104,16 @@ func ConvertDocumentIdsToObjectIds(ids []interface{}) []primitive.ObjectID {
 	}
 
 	return objectIds
+}
+
+// Helper method to convert array of Object IDs to string format
+func ConvertObjectIdsToString(objectIds []primitive.ObjectID) string {
+
+	topicIds := make([]string, len(objectIds))
+
+	for i, objectId := range objectIds {
+		topicIds[i] = objectId.Hex()
+	}
+
+	return utils.ParseStringArrayToString(topicIds)
 }

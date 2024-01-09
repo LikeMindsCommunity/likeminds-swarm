@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
@@ -164,8 +166,8 @@ func GetSelfPostFilterQuery(page int, page_size int, search_type string, search 
 	`, from, page_size, communityQuery, searchQuery, userQuery)
 }
 
-func ParseTopicIndexData(Topic *entities.Topic) searchElastic.TopicIndex {
-	return searchElastic.TopicIndex{
+func ParseTopicIndexData(Topic *entities.Topic, numberOfPosts *int) searchElastic.TopicIndex {
+	topicIndex := searchElastic.TopicIndex{
 		Id:          Topic.ID.Hex(),
 		Name:        Topic.Name,
 		IsEnabled:   Topic.IsEnabled,
@@ -173,10 +175,15 @@ func ParseTopicIndexData(Topic *entities.Topic) searchElastic.TopicIndex {
 		CreatedAt:   Topic.CreatedAt,
 		UpdatedAt:   Topic.UpdatedAt,
 	}
+
+	if numberOfPosts != nil {
+		topicIndex.NumberOfPosts = numberOfPosts
+	}
+	return topicIndex
 }
 
 // Exposed method to create topic search query
-func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool, isEnabled bool) string {
+func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool, isEnabled bool, minPosts int) string {
 	from := pageSize * (page - 1)
 
 	communityQuery := ""
@@ -213,6 +220,14 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		}`, searchType, search)
 	}
 
+	minPostsQuery := fmt.Sprintf(`, {
+		"range": {
+			"number_of_posts": {
+				"gte": %d
+			}
+		}
+	}`, minPosts)
+
 	return fmt.Sprintf(`
 	{
 		"from": %d,
@@ -226,15 +241,16 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 					%s
 					%s
 					%s
+					%s
 				]
 			}
 		}
-	}`, from, pageSize, communityQuery, isEnabledQuery, searchQuery)
+	}`, from, pageSize, communityQuery, isEnabledQuery, searchQuery, minPostsQuery)
 }
 
 // Exposed method to get topics by their ids
 func GetTopicsByIdQuery(topicIds string) string {
-	return fmt.Sprintf(`
+	query := fmt.Sprintf(`
 	{
 		"query": {
 			"terms": {
@@ -242,6 +258,9 @@ func GetTopicsByIdQuery(topicIds string) string {
 			}
 		}
 	}`, topicIds)
+
+	fmt.Println(query)
+	return query
 }
 
 func ParseWidgetIndexData(Widget *entities.Widget) searchElastic.WidgetIndex {
@@ -352,4 +371,37 @@ func GetWidgetsByParentEntityFilterQuery(communityId int, parentEntityId string,
 	}`, communityId, parentEntityId, parentEntityType)
 
 	return searchQuery
+}
+
+// Exposed query to increment/decrement the count of posts in topics
+func UpdatePostCountInTopicsQuery(topicIds []primitive.ObjectID, increment bool) string {
+	stringTopicIds := helpers.ConvertObjectIdsToString(topicIds)
+	updatePostScript := ""
+	if increment {
+		updatePostScript = fmt.Sprintf(`
+			"source": "ctx._source.number_of_posts += 1",
+			"lang":   "painless"
+		`)
+	} else {
+		updatePostScript = fmt.Sprintf(`
+			"source": "ctx._source.number_of_posts -= 1",
+			"lang":   "painless"
+		`)
+	}
+
+	return fmt.Sprintf(`
+	{
+		"query": {
+			"bool": {
+				"must": {
+					"terms": {
+						"_id": %s
+					}
+				}
+			}
+		},
+		"script" : {
+			%s
+		}
+	}`, stringTopicIds, updatePostScript)
 }

@@ -76,7 +76,7 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 	return topicResults, nil
 }
 
-// Exposed Method to Create a Topic
+// Exposed Method to Create Topics
 func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -91,18 +91,9 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 		return
 	}
 
-	// strip text to check if it is empty
-	createTopicRequest.Name = strings.Trim(createTopicRequest.Name, " ")
-
 	// throw error if both Name and Names key are present
-	if createTopicRequest.Name != "" && len(createTopicRequest.Names) > 0 {
-		utils.GeneralAPIValidationError(c, "Send topic names in either name or names key")
-		return
-	}
-
-	// throw error if both Name and Names key are present
-	if createTopicRequest.Name == "" && len(createTopicRequest.Names) == 0 {
-		utils.GeneralAPIValidationError(c, "Send topic name(s) to create new topic(s)")
+	if len(createTopicRequest.Names) == 0 {
+		utils.GeneralAPIValidationError(c, "Send topic names to create new topics")
 		return
 	}
 
@@ -158,9 +149,11 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	topicsIndexData := make(map[string]interface{})
 	var topicsResponse []requests.TopicResponse
 
+	postsCount := 0
+
 	// parse the topics data for ES indexing and API response
 	for _, topicData := range topicsData {
-		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(&topicData)
+		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(&topicData, &postsCount)
 		topicsResponse = append(topicsResponse, parseTopicResponse(&topicData))
 	}
 
@@ -186,62 +179,50 @@ func parseTopicNames(createTopicRequest requests.CreateTopicRequest) ([]string, 
 	var lowerCaseTopicsList []string
 
 	// append all the topic names in topicsList and lowerCaseTopicsList
-	if createTopicRequest.Name != "" {
 
-		topicsList = append(topicsList, createTopicRequest.Name)
-	} else if len(createTopicRequest.Names) > 0 {
+	// strip each name in the names array and check if there are any duplicate topic in the array
+	seen := map[string]bool{}
 
-		// strip each name in the names array and check if there are any duplicate topic in the array
-		seen := map[string]bool{}
+	for i, name := range createTopicRequest.Names {
 
-		for i, name := range createTopicRequest.Names {
+		createTopicRequest.Names[i] = strings.Trim(name, " ")
 
-			createTopicRequest.Names[i] = strings.Trim(name, " ")
-
-			if createTopicRequest.Names[i] == "" {
-				return nil, nil, fmt.Errorf("Can't Create Topic With Empty Name")
-			}
-
-			lowerCaseTopicName := strings.ToLower(createTopicRequest.Names[i])
-
-			if seen[lowerCaseTopicName] {
-				// Duplicate found
-				return nil, nil, fmt.Errorf("Can't create duplicate topics")
-			}
-
-			lowerCaseTopicsList = append(lowerCaseTopicsList, lowerCaseTopicName)
-			seen[lowerCaseTopicName] = true
+		if createTopicRequest.Names[i] == "" {
+			return nil, nil, fmt.Errorf("Can't Create Topic With Empty Name")
 		}
 
-		topicsList = createTopicRequest.Names
+		lowerCaseTopicName := strings.ToLower(createTopicRequest.Names[i])
+
+		if seen[lowerCaseTopicName] {
+			// Duplicate found
+			return nil, nil, fmt.Errorf("Can't create duplicate topics")
+		}
+
+		lowerCaseTopicsList = append(lowerCaseTopicsList, lowerCaseTopicName)
+		seen[lowerCaseTopicName] = true
 	}
+
+	topicsList = createTopicRequest.Names
 	return topicsList, lowerCaseTopicsList, nil
 }
 
-func processTopicSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.TopicResponse {
+func processTopicSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.FetchTopicResponse {
 	topicDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
-	var topicList []entities.Topic
+	var fetchTopicsResponse []requests.FetchTopicResponse
 
 	for _, data := range topicDetails {
 		topicData := data.(map[string]interface{})["_source"].(map[string]interface{})
 		topicData["_id"] = topicData["id"]
 
-		// convert the data to topic entity
-		var topic entities.Topic
+		// convert the data to fetch topic response
+		var topic requests.FetchTopicResponse
 		b, _ := json.Marshal(topicData)
 		json.Unmarshal(b, &topic)
 
-		topicList = append(topicList, topic)
+		fetchTopicsResponse = append(fetchTopicsResponse, topic)
 	}
 
-	topicsResponse := []requests.TopicResponse{}
-
-	// Parse all fetched topics Data
-	for _, topic := range topicList {
-		topicsResponse = append(topicsResponse, parseTopicResponse(&topic))
-	}
-
-	return topicsResponse
+	return fetchTopicsResponse
 }
 
 // Exposed Method to Fetch Topics for a Community
@@ -360,7 +341,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		}
 
 		// update topic data in elastic search
-		err = handlers.esHelper.UpdateDocument(c, ParseTopicIndexData(topic), topic.ID.Hex(), constants.TopicIndexName)
+		err = handlers.esHelper.UpdateDocument(c, ParseTopicIndexData(topic, nil), topic.ID.Hex(), constants.TopicIndexName)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
@@ -473,34 +454,18 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	// deletes the topics from posts based on the passed filter and update query
 	handlers.postHelper.DeleteTopicsFromPosts(filter, update)
 
-	// fetch the update posts and update in ES
+	// fetch the updated posts and update in ES
 	updatedPosts, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
 
 	for _, postData := range updatedPosts {
 		// update post data in elastic search
-		err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
+		err = handlers.esHelper.IndexDocument(c, ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
 	}
 
-	// TODO: try to implement UpdateByQuery instead of the loop
-
-	// query := fmt.Sprintf(`{
-	// 	“query”: {
-	// 		"terms": {
-	// 			"_id": %s
-	// 		}
-	// 	},
-	// 	“script”: {
-	// 		“source”: “ctx._source[‘Status’] = %s”,
-	// 		“lang”: “painless”
-	// 	}
-	// }`, postIDsString, )
-
-	// handlers.esHelper.UpdateByQuery(c, query, constants.PostIndexName)
-
-	// reponse data
+	// response data
 	response := gin.H{
 		"success": true,
 	}

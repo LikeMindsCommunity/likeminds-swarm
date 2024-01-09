@@ -3,6 +3,8 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // RemoveAllOccurenceStringList | removes all occurences of item in string list
@@ -34,4 +36,19 @@ func ParseStringArrayToString(array []string) string {
 	str := fmt.Sprintf("%v", string(temp_params))
 
 	return str
+}
+
+// returns the elements in `a` that aren't in `b`.
+func GetDifferenceBetweenArray(a []primitive.ObjectID, b []primitive.ObjectID) []primitive.ObjectID {
+	mb := make(map[primitive.ObjectID]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []primitive.ObjectID
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
 }
