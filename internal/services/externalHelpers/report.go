@@ -12,9 +12,10 @@ import (
 func pushReport(userId string, communityId int, postBody gin.H) error {
 
 	headers := gin.H{
-		"x-member-id":    userId,
-		"x-community-id": fmt.Sprint(communityId),
+		"x-member-id": userId,
 	}
+
+	postBody["community_id"] = fmt.Sprint(communityId)
 
 	// Send request
 	respBytes, statusCode, err := GetRequestResponse(CaravanService, PushReportEndpoint, POSTRequestRawBody, headers,
@@ -36,9 +37,9 @@ func pushReport(userId string, communityId int, postBody gin.H) error {
 func SendPendingPostForReview(userId string, communityId int, pendingPostId string) error {
 
 	postBody := gin.H{
-		"entity_id":       pendingPostId,
-		"entity_type":     enums.EntityTypePendingPost,
-		"entity_owner_id": userId,
+		"entity_id":    pendingPostId,
+		"entity_type":  enums.EntityTypePendingPost,
+		"accused_uuid": userId,
 	}
 
 	return pushReport(userId, communityId, postBody)

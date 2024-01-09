@@ -4,13 +4,49 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// Internal Method to fetch multiple posts data using post_ids
+func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []string, communityId int, userId string,
+	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) (map[string]requests.PostResponse, error) {
+
+	// convert post_ids to object ids
+	pendingPostObjectIds := helpers.ConvertIdsToObjectIds(pendingPostIds)
+
+	// filter options to fetch posts from db
+	filterOptions := gin.H{
+		"_id": gin.H{
+			"$in": pendingPostObjectIds,
+		},
+		"community_id": communityId,
+	}
+
+	// fetch posts using helper method
+	pendingPostLists, err := handlers.pendingPostHelper.FindPendingPostHelper(filterOptions, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Make key value pair of post_id -> PostResponse
+	postResponse := map[string]requests.PostResponse{}
+
+	// parse post data for response data for each pending post
+	for _, pendingPost := range pendingPostLists {
+		postResponse[pendingPost.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+			handlers.topicHelper, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+	}
+
+	return postResponse, nil
+
+}
 
 // Exposed method to create a pending post for review (similar to Create post method)
 func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
@@ -91,7 +127,8 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, cppr.Attachments, pendingPostId.(primitive.ObjectID).Hex(), communityId, postUserId)
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PendingPostEntityType,
+		cppr.Attachments, pendingPostId.(primitive.ObjectID).Hex(), communityId, postUserId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -168,6 +205,21 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 		"status": arpr.Status,
 	}
 
+	// // If status is approved, call Create post API internally
+	if arpr.Status == enums.Approved {
+
+		err := approvePendingPostAndCallCreatePost(handlers, pendingPostData)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		// Send Approval notification to the user who created the post
+	} else {
+
+		// Send Rejection notification to the user who created the post
+	}
+
 	// Update status of pending post
 	err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostData.ID, updateBody)
 	if err != nil {
@@ -178,4 +230,15 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	// Generate success response
 	utils.GenereateSuccessResponse(c, nil)
 
+}
+
+func approvePendingPostAndCallCreatePost(handlers *FeedHandlers, pendingPostData entities.PendingPost) error {
+
+	// Call Create post API internally
+
+	//
+
+	// Delete all the widgets for the pending post
+
+	return nil
 }

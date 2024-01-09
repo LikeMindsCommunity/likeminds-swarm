@@ -65,6 +65,11 @@ func (helper pendingPostHelper) FindPendingPostHelper(filter map[string]interfac
 
 	fOpts := mergeFilterOptions(filterOptions)
 
+	err := convertHexIdsToObjectIds(filter, []string{"_id"})
+	if err != nil {
+		return nil, err
+	}
+
 	cursor, err := helper.pendingPostRepository.Find(filter, &fOpts)
 	if err != nil {
 		return nil, err

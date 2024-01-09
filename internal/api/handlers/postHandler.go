@@ -91,8 +91,8 @@ func processMetaBeforeWidgetEdition(attachment requests.Attachment, metaData map
 }
 
 // Internal Method to process attachments for widgets
-func processAttachmentsForWidgets(handlers *FeedHandlers, attachments []requests.Attachment, postId string,
-	communityId int, uuid string) ([]requests.Attachment, error) {
+func processAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType string, attachments []requests.Attachment,
+	postId string, communityId int, uuid string) ([]requests.Attachment, error) {
 
 	updatedAttachments := []requests.Attachment{}
 
@@ -152,7 +152,7 @@ func processAttachmentsForWidgets(handlers *FeedHandlers, attachments []requests
 				}
 
 				// create widget from given metadata
-				widgetData, err := createWidget(handlers, true, postId, constants.PostEntityType, metaData, lmMeta, communityId)
+				widgetData, err := createWidget(handlers, true, postId, parentEntityType, metaData, lmMeta, communityId)
 				if err != nil {
 					return nil, err
 				}
@@ -179,7 +179,7 @@ func processAttachmentsForWidgets(handlers *FeedHandlers, attachments []requests
 			if entityId == "" && widgetMeta != nil {
 
 				// create widget from given metadata
-				widgetData, err := createWidget(handlers, false, postId, constants.PostEntityType, widgetMeta, nil, communityId)
+				widgetData, err := createWidget(handlers, false, postId, parentEntityType, widgetMeta, nil, communityId)
 				if err != nil {
 					return nil, err
 				}
@@ -927,7 +927,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.Attachments,
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PostEntityType, postRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId, userId)
 	if err != nil {
 		// utils.GeneralAPIInternalError(c, err.Error())
@@ -1148,7 +1148,8 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	// Get Query Params
 	paramPostIds := c.Query("post_ids")
-	paramIsCm, _ := strconv.ParseBool(c.Query("user_is_cm"))
+	paramPendingPostIds := c.Query("pending_post_ids")
+	paramIsCm, err := strconv.ParseBool(c.Query("user_is_cm"))
 
 	// If user is not cm, return error
 	if !paramIsCm {
@@ -1157,19 +1158,53 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	// Unmarshal post_ids
-	var postIds []string
-	err := json.Unmarshal([]byte(paramPostIds), &postIds)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
+	postIds, pendingPostIds := []string{}, []string{}
+
+	if paramPostIds != "" {
+		err := json.Unmarshal([]byte(paramPostIds), &postIds)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
 	}
 
-	// fetch multiple posts data using internal method
-	postsResponse, err := fetchMultiplePostsData(handlers, postIds, communityId, headers[utils.HeadersMemberId],
-		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+	if paramPendingPostIds != "" {
+		err := json.Unmarshal([]byte(paramPendingPostIds), &pendingPostIds)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+	}
+
+	postsResponse := map[string]requests.PostResponse{}
+
+	if len(postIds) > 0 {
+		// fetch multiple posts data using internal method
+		postsResponse, err = fetchMultiplePostsData(handlers, postIds, communityId, headers[utils.HeadersMemberId],
+			true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+	}
+
+	// If pending_post_ids are present, fetch posts data from pending posts
+	if len(paramPendingPostIds) > 0 {
+
+		// Fetch posts data from pending posts using internal method
+		pendingPostData, err := fetchMultiplePendingPostsData(handlers, pendingPostIds, communityId, headers[utils.HeadersMemberId],
+			true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		// Merge posts data from pending posts with posts data from posts
+		for key, value := range pendingPostData {
+			postsResponse[key] = value
+		}
+
 	}
 
 	// reponse data
@@ -1322,8 +1357,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, editPostRequest.Attachments, postId, communityId,
-		headers[utils.HeadersMemberId])
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PostEntityType, editPostRequest.Attachments,
+		postId, communityId, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
