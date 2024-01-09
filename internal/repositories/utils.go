@@ -9,14 +9,15 @@ import (
 )
 
 const (
-	PostCollection      string = "post"
-	LikeCollection      string = "like"
-	CommentCollection   string = "comment"
-	ActivityCollection  string = "activity"
-	SaveCollection      string = "save"
-	TopicCollection     string = "topic"
-	WidgetCollection    string = "customWidget"
-	PollVotesCollection string = "pollVotes"
+	PostCollection           string = "post"
+	LikeCollection           string = "like"
+	CommentCollection        string = "comment"
+	ActivityCollection       string = "activity"
+	SaveCollection           string = "save"
+	TopicCollection          string = "topic"
+	WidgetCollection         string = "customWidget"
+	PollVotesCollection      string = "pollVotes"
+	ConnectionFeedCollection string = "connectionFeed"
 )
 
 // Internal Method to Insert a document in MongoDB

@@ -331,7 +331,7 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 		// Parse post response and append to Comment's post_data
 		parsePostResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
 			*postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
-		fetchCommentResponse.Post = parsePostResponse
+		fetchCommentResponse.Post = &parsePostResponse
 	}
 	return fetchCommentResponse, nil
 }
@@ -972,12 +972,49 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 		return
 	}
 
-	// remove uuid from like action list
-	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
-
-	// delete user's actionBy metadata
+	actionBy := activity[0].ActionBy
 	actionByMetadata := activity[0].ActionByMetadata
-	delete(actionByMetadata, headers[utils.HeadersMemberId])
+	if actionByMetadata == nil {
+		actionByMetadata = map[string]entities.ActionByMetadata{}
+	}
+
+	// fetch all the comments on the post
+	commentFilterData := gin.H{
+		"user_id":    headers[utils.HeadersMemberId],
+		"post_id":    postData.ID,
+		"is_deleted": false,
+	}
+
+	sortOptions := gin.H{
+		"$sort": gin.H{
+			"created_at": -1,
+		},
+	}
+
+	comments, err := handlers.commentHelper.FindCommentHelper(commentFilterData, sortOptions)
+	if err != nil {
+		return
+	}
+
+	// if user still has comments on the post, do not delete activity
+	if len(comments) > 0 {
+
+		// update action_by_metadata
+		commentData := comments[0]
+
+		actionByMetadata[headers[utils.HeadersMemberId]] = entities.ActionByMetadata{
+			EntityId:  commentData.ID,
+			CreatedAt: commentData.CreatedAt,
+		}
+
+	} else {
+
+		// remove uuid from like action list
+		actionBy = utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+
+		// remove user's data from action_by_metadata
+		delete(actionByMetadata, headers[utils.HeadersMemberId])
+	}
 
 	// activity update data
 	activityUpdateData := gin.H{
