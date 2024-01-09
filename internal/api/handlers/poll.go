@@ -125,7 +125,7 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	lmMeta["options"] = lmMetaOptions
 
 	// update widget from given metadata
-	pollWidget, err = editWidget(handlers, pollId, true, pollWidget.MetaData, lmMeta, communityId)
+	pollWidget, err = editWidget(handlers, pollId, "", "", true, pollWidget.MetaData, lmMeta, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

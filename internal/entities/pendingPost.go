@@ -13,6 +13,7 @@ type PendingPost struct {
 	PostType    string             `json:"post_type" bson:"post_type"`
 	UserId      string             `json:"user_id" bson:"user_id"`
 	CommunityID int                `json:"community_id" bson:"community_id"`
+	IsDeleted   bool               `json:"is_deleted" bson:"is_deleted"`
 	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
 }
@@ -30,6 +31,7 @@ func NewPendingPost(text string, heading string, communityId int, userId string,
 		PostType:    postType,
 		UserId:      userId,
 		CommunityID: communityId,
+		IsDeleted:   false,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -185,7 +187,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	filterData := gin.H{
 		"_id":          pendingPostId,
 		"community_id": communityId,
-		"status":       enums.UnderReview,
+		"post_type":    enums.UnderReview,
 	}
 
 	pendingPostsData, err := handlers.pendingPostHelper.FindPendingPostHelper(filterData, nil)
@@ -202,21 +204,27 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	pendingPostData := pendingPostsData[0]
 
 	updateBody := gin.H{
-		"status": arpr.Status,
+		"$set": gin.H{
+			"status":     arpr.Status,
+			"is_deleted": true,
+		},
 	}
 
-	// // If status is approved, call Create post API internally
+	// If status is approved, call Create post API internally
 	if arpr.Status == enums.Approved {
 
-		err := approvePendingPostAndCallCreatePost(handlers, pendingPostData)
+		err := createPostFromPendingPost(handlers, pendingPostData)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
+		fmt.Print("Post created successfully")
 		// Send Approval notification to the user who created the post
+
 	} else {
 
+		fmt.Print("Post rejected successfully")
 		// Send Rejection notification to the user who created the post
 	}
 
@@ -232,13 +240,71 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 }
 
-func approvePendingPostAndCallCreatePost(handlers *FeedHandlers, pendingPostData entities.PendingPost) error {
+func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost) error {
 
-	// Call Create post API internally
+	// Create attachments
+	requestAttachments := []requests.Attachment{}
 
-	//
+	// marshal attachments
+	bytes, err := json.Marshal(pendingPostData.PostData.Attachments)
+	if err != nil {
+		return err
+	}
 
-	// Delete all the widgets for the pending post
+	// Unmarshall to Request attachments
+	err = json.Unmarshal(bytes, &requestAttachments)
+	if err != nil {
+		return err
+	}
+
+	createPostRequest := requests.CreatePostRequest{
+		Text:           pendingPostData.PostData.Text,
+		Heading:        pendingPostData.PostData.Heading,
+		Attachments:    requestAttachments,
+		ChatroomID:     pendingPostData.PostData.ChatroomId,
+		ParsedTopicIds: pendingPostData.PostData.TopicIds,
+		OriginalAuthor: pendingPostData.PostData.OriginalAuthorUUID,
+		Visibility:     pendingPostData.PostData.Visibility,
+		TempID:         pendingPostData.PostData.TempId,
+	}
+
+	// create post using internal method
+	postData, err := createPostAfterValidation(handlers, pendingPostData.UserId, pendingPostData.CommunityID,
+		createPostRequest)
+	if err != nil {
+		return err
+	}
+
+	// update all the widgets for the newly created post
+	updateWidgetsForNewlyCreatePostFromPendingPost(handlers, postData.ID.Hex(), pendingPostData.CommunityID, pendingPostData.PostData.Attachments)
+
+	return nil
+}
+
+// Internal method to update all the widgets for the newly created post
+func updateWidgetsForNewlyCreatePostFromPendingPost(handlers *FeedHandlers, postId string, communityId int, attachments []entities.Attachment) error {
+
+	for _, attachment := range attachments {
+
+		switch attachment.AttachmentType {
+		case enums.CustomWidget, enums.PollWidget, enums.ArticleWidget:
+
+			createdByLm := true
+
+			if attachment.AttachmentType == enums.CustomWidget {
+				createdByLm = false
+			}
+
+			if attachment.AttachmentMeta.EntityID != primitive.NilObjectID {
+
+				_, err := editWidget(handlers, attachment.AttachmentMeta.EntityID.Hex(), postId, constants.PostEntityType, createdByLm, nil, nil, communityId)
+				if err != nil {
+					fmt.Println("Error in updating widget for post: ", postId, " and widget: ", attachment.AttachmentMeta.EntityID.Hex())
+				}
+			}
+		}
+
+	}
 
 	return nil
 }

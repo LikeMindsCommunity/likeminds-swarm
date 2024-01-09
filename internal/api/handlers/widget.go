@@ -42,8 +42,9 @@ func createWidget(handlers *FeedHandlers, createdByLM bool, parentEntityID strin
 }
 
 // Internal Method to edit an existing widget with index update
-func editWidget(handlers *FeedHandlers, widgetId string, createdByLM bool, metaData map[string]interface{},
-	lmMeta map[string]interface{}, communityId int) (*entities.Widget, error) {
+func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, parentEntityType string,
+	createdByLM bool, metaData map[string]interface{}, lmMeta map[string]interface{}, communityId int) (*entities.Widget, error) {
+
 	// fetch Widget using widget_id
 	widget, err := fetchWidgetByID(handlers.widgetHelper, widgetId, createdByLM, communityId)
 	if err != nil {
@@ -53,6 +54,16 @@ func editWidget(handlers *FeedHandlers, widgetId string, createdByLM bool, metaD
 	// widget update data
 	widgetUpdateData := gin.H{
 		"$set": gin.H{},
+	}
+
+	// Update set object with parentEntityId field, if changed
+	if parentEntityId != "" {
+		widgetUpdateData["$set"].(gin.H)["parent_entity_id"] = parentEntityId
+	}
+
+	// Update set object with parentEntityType field, if changed
+	if parentEntityType != "" {
+		widgetUpdateData["$set"].(gin.H)["parent_entity_type"] = parentEntityType
 	}
 
 	// Update set object with metadata field, if changed
@@ -365,7 +376,7 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	}
 
 	// edit Widget
-	widget, err := editWidget(handlers, widgetId, false, editWidgetRequest.MetaData, nil, communityId)
+	widget, err := editWidget(handlers, widgetId, "", "", false, editWidgetRequest.MetaData, nil, communityId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

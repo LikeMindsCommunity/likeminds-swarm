@@ -133,7 +133,7 @@ func processAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 				updatedMetaData := processMetaBeforeWidgetEdition(attachment, metaData, widgetData.MetaData)
 
 				// update widget from given metadata
-				_, err = editWidget(handlers, attachment.AttachmentMeta.EntityID, true, updatedMetaData, nil, communityId)
+				_, err = editWidget(handlers, attachment.AttachmentMeta.EntityID, "", "", true, updatedMetaData, nil, communityId)
 				if err != nil {
 					return nil, err
 				}
@@ -303,7 +303,6 @@ func validateAndUpdateCustomWidgetAttachment(handlers *FeedHandlers, attachment 
 	widgetMeta := attachment.AttachmentMeta.WidgetMeta
 
 	if widgetId == "" && (len(widgetMeta) == 0) {
-		// utils.GeneralAPIValidationError(c, "please send entity_id or widget_meta in attachment meta")
 		return fmt.Errorf("please send entity_id or widget_meta in attachment meta")
 	}
 
@@ -311,7 +310,6 @@ func validateAndUpdateCustomWidgetAttachment(handlers *FeedHandlers, attachment 
 	if widgetId != "" {
 		_, err := fetchWidgetByID(handlers.widgetHelper, widgetId, false, communityId)
 		if err != nil {
-			// utils.GeneralAPIValidationError(c, err.Error())
 			return err
 		}
 
@@ -922,7 +920,6 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 		postRequest.TempID, postRequest.ParsedTopicIds, postRequest.OriginalAuthor, postRequest.Visibility,
 		postRequest.CreatedAt)
 	if err != nil {
-		// utils.GeneralAPIInternalError(c, err.Error())
 		return nil, err
 	}
 
@@ -930,7 +927,6 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PostEntityType, postRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId, userId)
 	if err != nil {
-		// utils.GeneralAPIInternalError(c, err.Error())
 		return nil, err
 	}
 
@@ -938,7 +934,6 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), postRequest.Text,
 		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false)
 	if err != nil {
-		// utils.GeneralAPIInternalError(c, err.Error())
 		return nil, err
 	}
 
@@ -956,7 +951,6 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	// fetch post data using new post_id
 	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
 	if err != nil {
-		// utils.GeneralAPIValidationError(c, err.Error())
 		return nil, err
 	}
 
