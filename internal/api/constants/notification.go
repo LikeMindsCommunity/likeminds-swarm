@@ -18,17 +18,21 @@ const (
 	CommentReplySubCategory             = "Comment Reply"
 	PostLikedSubCategory                = "Post Liked"
 	CommentLikedSubCategory             = "Comment Liked"
+	PendingPostApprovedSubCategory      = "Pending Post Approved"
+	PendingPostRejectedSubCategory      = "Pending Post Rejected"
 )
 
 const (
-	PermissionUpdatedTitle = "Permission updated"
-	PostDeletedTitle       = "%s deleted"
-	CommentDeletedTitle    = "Comment deleted"
-	ReplyDeletedTitle      = "Reply deleted"
-	LikeTitle              = "New Like!"
-	CommentTitle           = "New Comment!"
-	ReplyTitle             = "New Reply!"
-	TagTitle               = "You are tagged!"
+	PermissionUpdatedTitle   = "Permission updated"
+	PostDeletedTitle         = "%s deleted"
+	CommentDeletedTitle      = "Comment deleted"
+	ReplyDeletedTitle        = "Reply deleted"
+	LikeTitle                = "New Like!"
+	CommentTitle             = "New Comment!"
+	ReplyTitle               = "New Reply!"
+	TagTitle                 = "You are tagged!"
+	PendingPostApprovedTitle = "%s approved!"
+	PendingPostRejectedTitle = "%s rejected!"
 )
 
 const (
@@ -57,4 +61,6 @@ const (
 	CommentLikedSubTitleLevelOne     = "%s liked your comment."
 	CommentLikedSubTitleLevelTwo     = "%s and 1 other liked your comment."
 	CommentLikedSubTitleLevelThree   = "%s and %d others liked your comment."
+	PendingPostApprovedSubTitle      = "Your %s has been approved."
+	PendingPostRejectedSubTitle      = "Your %s has been rejected."
 )

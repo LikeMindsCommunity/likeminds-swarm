@@ -10,6 +10,40 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Internal Method to send notification on Pending post approval
+func sendPendingPostApprovalNotification(handlers FeedHandlers, recieverUUID string, communityId int, postId string) {
+
+	// Fetch post variable value
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, recieverUUID, communityId)
+
+	receivers := recieverUUID
+	category := constants.FeedCategory
+	subCategory := constants.PendingPostApprovedSubCategory
+	title := fmt.Sprintf(constants.PendingPostApprovedTitle, postMetatadataValue)
+	subTitle := fmt.Sprintf(constants.PendingPostApprovedSubTitle, postMetatadataValue)
+	route := fmt.Sprintf(utils.PostDetailRoute, postId)
+
+	// send notification
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, communityId, category, subCategory, "", "")
+}
+
+// Internal Method to send notification on Pending post rejection
+func sendPendingPostRejectionNotification(handlers FeedHandlers, recieverUUID string, communityId int) {
+
+	// Fetch post variable value
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, recieverUUID, communityId)
+
+	receivers := recieverUUID
+	category := constants.FeedCategory
+	subCategory := constants.PendingPostRejectedSubCategory
+	title := fmt.Sprintf(constants.PendingPostRejectedTitle, postMetatadataValue)
+	subTitle := fmt.Sprintf(constants.PendingPostRejectedSubTitle, postMetatadataValue)
+	route := "route://home" // placeholder route
+
+	// send notification
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, communityId, category, subCategory, "", "")
+}
+
 // Internal Method to send notification on Removal of Create Comment Permission for a user
 func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {

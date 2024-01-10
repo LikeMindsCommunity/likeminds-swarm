@@ -213,19 +213,20 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	// If status is approved, call Create post API internally
 	if arpr.Status == enums.Approved {
 
-		err := createPostFromPendingPost(handlers, pendingPostData)
+		postData, err := createPostFromPendingPost(handlers, pendingPostData)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
-		fmt.Print("Post created successfully")
-		// Send Approval notification to the user who created the post
+		// Send Approval notification
+		sendPendingPostApprovalNotification(*handlers, postData.UserId, communityId, postData.ID.Hex())
 
 	} else {
 
-		fmt.Print("Post rejected successfully")
-		// Send Rejection notification to the user who created the post
+		// Send Rejection notification
+		sendPendingPostRejectionNotification(*handlers, pendingPostData.UserId, communityId)
+
 	}
 
 	// Update status of pending post
@@ -240,7 +241,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 }
 
-func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost) error {
+func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost) (*entities.Post, error) {
 
 	// Create attachments
 	requestAttachments := []requests.Attachment{}
@@ -248,13 +249,13 @@ func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.
 	// marshal attachments
 	bytes, err := json.Marshal(pendingPostData.PostData.Attachments)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Unmarshall to Request attachments
 	err = json.Unmarshal(bytes, &requestAttachments)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	createPostRequest := requests.CreatePostRequest{
@@ -272,17 +273,18 @@ func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.
 	postData, err := createPostAfterValidation(handlers, pendingPostData.UserId, pendingPostData.CommunityID,
 		createPostRequest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// update all the widgets for the newly created post
 	updateWidgetsForNewlyCreatePostFromPendingPost(handlers, postData.ID.Hex(), pendingPostData.CommunityID, pendingPostData.PostData.Attachments)
 
-	return nil
+	return postData, nil
 }
 
 // Internal method to update all the widgets for the newly created post
-func updateWidgetsForNewlyCreatePostFromPendingPost(handlers *FeedHandlers, postId string, communityId int, attachments []entities.Attachment) error {
+func updateWidgetsForNewlyCreatePostFromPendingPost(handlers *FeedHandlers, postId string, communityId int,
+	attachments []entities.Attachment) error {
 
 	for _, attachment := range attachments {
 
