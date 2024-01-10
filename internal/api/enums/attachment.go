@@ -10,6 +10,7 @@ const (
 	PollWidget
 	ArticleWidget
 	PostWidget
+	RepostWidget
 )
 
 // AttachmentType represents the type of attachment
@@ -25,6 +26,7 @@ const (
 	PollType     AttachmentType = "poll"
 	ArticleType  AttachmentType = "article"
 	PostType     AttachmentType = "post"
+	RepostType   AttachmentType = "repost"
 )
 
 // Create New Attachment Type from int
@@ -46,8 +48,9 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 		return ArticleType
 	case PostWidget:
 		return PostType
+	case RepostWidget:
+		return RepostType
 	}
-
 	return ""
 }
 
@@ -55,7 +58,7 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 func (at AttachmentType) IsValid() bool {
 	switch at {
 	case ImageType, VideoType, DocumentType, LinkType,
-		CustomType, PollType, ArticleType:
+		CustomType, PollType, ArticleType, RepostType:
 		return true
 	}
 	return false
