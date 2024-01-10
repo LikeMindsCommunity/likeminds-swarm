@@ -1199,6 +1199,35 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	if createPostRequest.IsRepost {
 		updateOriginalPostWidgetForRepost(handlers, originalPostID, postId, postUserId)
+
+		// create activity for repost
+		postFilterData := gin.H{
+			"_id": originalPostID,
+		}
+		postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
+		if err != nil {
+			return
+		}
+
+		originalPost := postResults[0]
+		OriginalPostUserID := originalPost.UserId
+		ctaData := gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     OriginalPostUserID,
+		}
+
+		OriginalPostUserIDObject, err := primitive.ObjectIDFromHex(OriginalPostUserID)
+
+		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, OriginalPostUserID, constants.Post,
+			OriginalPostUserIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		if activityID != nil {
+			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
 	}
 
 	// process attachments for widgets
@@ -1608,6 +1637,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// if repost, remove repost data from original post's repost widget
 	if postData.IsRepost {
 		deleteOriginalPostRepostWidgetData(handlers, postData)
+		deleteUserPostRepostActivity(handlers, postData, c, headers)
 	}
 
 	// delete post data in elastic search
@@ -1699,6 +1729,55 @@ func deleteOriginalPostRepostWidgetData(handlers *FeedHandlers, postData *entiti
 		return
 	}
 
+}
+
+func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entities.Post, c *gin.Context, headers map[string]string) {
+
+	OriginalPostID := repostPostData.Attachments[0].AttachmentMeta.EntityID
+
+	activityFilterData := gin.H{
+		"community_id": repostPostData.CommunityId,
+		"entity_type":  constants.Post,
+		"entity_id":    OriginalPostID,
+		"action":       constants.LikeOnPost,
+	}
+
+	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	if activity == nil {
+		return
+	}
+
+	// remove uuid from repost action list
+	actionBy := utils.RemoveAllOccurenceStringList(activity[0].ActionBy, headers[utils.HeadersMemberId])
+
+	// remove action by metadata
+	actionByMetadata := activity[0].ActionByMetadata
+	delete(actionByMetadata, headers[utils.HeadersMemberId])
+
+	// activity update data
+	activityUpdateData := gin.H{
+		"$set": gin.H{
+			"action_by":          actionBy,
+			"action_by_metadata": actionByMetadata,
+		},
+	}
+
+	// update activity data, exisiting activity timestamp remains same to maintain order
+	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true, true)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// if action by is [], no user repost on post, mark activity as deleted
+	if len(actionBy) == 0 {
+		handlers.activityHelper.DeleteActivityHelper(activityFilterData)
+	}
 }
 
 func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.ObjectID) {
