@@ -94,9 +94,11 @@ type PostResponse struct {
 	Attachments        []entities.Attachment `json:"attachments"`
 	LikesCount         int                   `json:"likes_count"`
 	CommentsCount      int                   `json:"comments_count"`
+	RepostCount        int32                 `json:"repost_count"`
 	IsDeleted          bool                  `json:"is_deleted,omitempty"`
 	IsEdited           bool                  `json:"is_edited"`
 	IsRepost           bool                  `json:"is_repost"`
+	IsRepostedByUser   bool                  `json:"is_reposted_by_user"`
 	OriginalAuthorUUID string                `json:"original_author_uuid,omitempty"`
 	DeletedBy          string                `json:"deleted_by,omitempty"`
 	DeletedByUUID      string                `json:"deleted_by_uuid,omitempty"`
