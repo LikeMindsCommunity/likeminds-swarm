@@ -57,6 +57,7 @@ type CreatePostRequest struct {
 	ChatroomID        int          `json:"feedroom_id"`
 	UUIDs             []string     `json:"uuids"`
 	On_behalf_of_uuid string       `json:"on_behalf_of_uuid,omitempty"`
+	Visibility        string       `json:"visibility"`
 	User_is_cm        bool         `json:"user_is_cm,omitempty"`
 	IsRepost          bool         `json:"is_repost"`
 	CreatedAt         int          `json:"created_at"`
@@ -68,6 +69,7 @@ type EditPostRequest struct {
 	Heading     string       `json:"heading"`
 	TopicIds    []string     `json:"topic_ids,omitempty"`
 	Attachments []Attachment `json:"attachments"`
+	Visibility  string       `json:"visibility"`
 	UserIsCm    bool         `json:"user_is_cm"`
 	IsRepost    bool         `json:"is_repost"`
 }

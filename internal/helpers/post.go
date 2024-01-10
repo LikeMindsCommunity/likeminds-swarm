@@ -41,7 +41,7 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 
 // Exposed Helper Method to Create Post
 func (helper *postHelper) CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
-	chatroomId int, tempId *string, topicIds []primitive.ObjectID, OriginalAuthorUUID string, CreatedAt int) (interface{}, error) {
+	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string, visibility string, createdAt int) (interface{}, error) {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -50,7 +50,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 		tempId = nil
 	}
 
-	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId, topicIds, OriginalAuthorUUID, CreatedAt)
+	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId, topicIds, originalAuthorUUID, visibility, createdAt)
 	postId, err := helper.postRepository.Create(&post)
 
 	return postId, err
@@ -58,7 +58,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 
 // Exposed Helper Method to Edit Post
 func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
-	topicIds []primitive.ObjectID, markIsEdited bool) error {
+	topicIds []primitive.ObjectID, visibility string, markIsEdited bool) error {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -69,6 +69,7 @@ func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string,
 			"heading":     heading,
 			"attachments": postAttachments,
 			"topic_ids":   topicIds,
+			"visibility":  visibility,
 			"updated_at":  time.Now(),
 		},
 	}

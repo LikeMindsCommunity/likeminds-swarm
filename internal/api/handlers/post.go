@@ -953,10 +953,21 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		postUserId = createPostRequest.On_behalf_of_uuid
 	}
 
+	// check the visibility of the post
+	if createPostRequest.Visibility == "" {
+		createPostRequest.Visibility = enums.PublicVisibility
+	}
+
+	if createPostRequest.Visibility != enums.PrivateVisibility && createPostRequest.Visibility != enums.PublicVisibility {
+		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
+		return
+	}
+
 	// create post using the helper method
 	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading,
 		communityId, postUserId, createPostRequest.Attachments, createPostRequest.ChatroomID,
-		createPostRequest.TempID, topicIDs, OriginalAuthorUUID, createPostRequest.CreatedAt)
+		createPostRequest.TempID, topicIDs, OriginalAuthorUUID, createPostRequest.Visibility,
+		createPostRequest.CreatedAt)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -973,10 +984,21 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// update post data using helper method
 	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), createPostRequest.Text,
-		createPostRequest.Heading, updatedAttachments, topicIDs, false)
+		createPostRequest.Heading, updatedAttachments, topicIDs, createPostRequest.Visibility, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	// update post in connection buffer lists
+	userConnectionData, _ := getUserConnectionDataFromCache(handlers, postUserId, communityId)
+	if len(userConnectionData) == 0 {
+		updateConnectionList(handlers, postUserId, communityId, "", false)
+	}
+
+	userConnectionData, _ = getUserConnectionDataFromCache(handlers, postUserId, communityId)
+	for connectionData := range userConnectionData {
+		updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
 	}
 
 	// fetch post data using new post_id
@@ -997,13 +1019,16 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		// Get tagged members from request
 		taggedMembers := createPostRequest.UUIDs
 
+		// cta data for activity
+		ctaData := gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     postId.(primitive.ObjectID).Hex(),
+		}
+
 		for _, member := range taggedMembers {
 			// create tag activity
-			activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post, postId.(primitive.ObjectID), postUserId,
-				constants.TaggedInPost, gin.H{
-					"entity_type": constants.PostEntityType,
-					"post_id":     postId.(primitive.ObjectID).Hex(),
-				}, false, false)
+			activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post,
+				postId.(primitive.ObjectID), postUserId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -1227,9 +1252,19 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
+	// check the visibility of the post
+	if editPostRequest.Visibility == "" {
+		editPostRequest.Visibility = enums.PublicVisibility
+	}
+
+	if editPostRequest.Visibility != enums.PrivateVisibility && editPostRequest.Visibility != enums.PublicVisibility {
+		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
+		return
+	}
+
 	// update post data using helper method
 	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
-		topicIDs, true)
+		topicIDs, editPostRequest.Visibility, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -1347,7 +1382,9 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 	// if deleted by CM, create delete activity
 	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != postData.UserId {
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CMDeletedPost, gin.H{}, false, false)
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
+			postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CMDeletedPost, gin.H{},
+			false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
