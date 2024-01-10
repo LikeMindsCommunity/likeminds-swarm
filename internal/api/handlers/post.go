@@ -100,8 +100,8 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 		return
 	}
 
-	originnalPost := postResults[0]
-	originalPostRepostWidgetData := getReposWidgetDataFromPost(originnalPost)
+	originalPost := postResults[0]
+	originalPostRepostWidgetData := getReposWidgetDataFromPost(originalPost)
 	if originalPostRepostWidgetData.Type == enums.RepostType {
 		//get respost widget id, update respost widget data
 		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
@@ -139,13 +139,13 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 			},
 		}
 
-		// save respost widget in original post attachments
+		// update widget data
 		handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
 
 		return
 	}
 
-	// if not, create widget data
+	// if repost widget does not exists for the post, create repost widget
 	respostWidgetMetaData := gin.H{
 		"reposts": gin.H{
 			repostCreatorUserID: gin.H{
@@ -162,15 +162,15 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 
 	repostAttachmentMeta := &entities.AttachmentMeta{EntityID: repostWidgetID.(primitive.ObjectID)}
 
-	originnalPostAttachments := originnalPost.Attachments
+	originalPostAttachments := originalPost.Attachments
 	repostWidgetAttachmentData := entities.Attachment{9, repostAttachmentMeta, enums.RepostType, nil}
 
-	originnalPostAttachments = append(originnalPostAttachments, repostWidgetAttachmentData)
+	originalPostAttachments = append(originalPostAttachments, repostWidgetAttachmentData)
 
 	originalPostIDPrimitiveObject, err := primitive.ObjectIDFromHex(originalPostID)
 	postUpdateData := gin.H{
 		"$set": gin.H{
-			"attachments": originnalPostAttachments,
+			"attachments": originalPostAttachments,
 		},
 	}
 
@@ -363,10 +363,10 @@ func validateRepostAttachment(attachment requests.Attachment) (string, bool) {
 	case enums.PollWidget:
 	case enums.ArticleWidget:
 	default:
-		return "invalid attachment_type in attachment", false
+		return "invalid attachment_type in attachment for repost", false
 	}
 
-	return "unknown attachment_type in attachment", false
+	return "unknown attachment_type in attachment for repost", false
 }
 
 // validatePostAttachment | validates post as an attachment for another post
