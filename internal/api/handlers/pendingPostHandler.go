@@ -147,6 +147,15 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	// Call caravan API to create a review report for the pending post
 	err = externalHelpers.SendPendingPostForReview(postUserId, communityId, pendingPostId.(primitive.ObjectID).Hex())
 	if err != nil {
+
+		// Delete the pending post if there is an error in sending the report
+		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostId.(primitive.ObjectID),
+			gin.H{"$set": gin.H{"is_deleted": true}})
+		if err != nil {
+			// Log the error
+			fmt.Println("Error in deleting the pending post: ", pendingPostId.(primitive.ObjectID).Hex(), " after error in sending for review: ", err.Error())
+		}
+
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
