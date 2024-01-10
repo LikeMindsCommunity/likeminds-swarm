@@ -71,7 +71,6 @@ type EditPostRequest struct {
 	Attachments []Attachment `json:"attachments"`
 	Visibility  string       `json:"visibility"`
 	UserIsCm    bool         `json:"user_is_cm"`
-	IsRepost    bool         `json:"is_repost"`
 }
 
 // Request Structure for Delete Post
@@ -97,6 +96,7 @@ type PostResponse struct {
 	CommentsCount      int                   `json:"comments_count"`
 	IsDeleted          bool                  `json:"is_deleted,omitempty"`
 	IsEdited           bool                  `json:"is_edited"`
+	IsRepost           bool                  `json:"is_repost"`
 	OriginalAuthorUUID string                `json:"original_author_uuid,omitempty"`
 	DeletedBy          string                `json:"deleted_by,omitempty"`
 	DeletedByUUID      string                `json:"deleted_by_uuid,omitempty"`

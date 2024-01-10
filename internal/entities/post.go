@@ -32,7 +32,7 @@ type Post struct {
 // Exposed Method to Create a New Post
 func NewPost(text string, heading string, communityId int, userId string, attachments []Attachment,
 	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, CreatedAt int) Post {
+	visibility string, isRepost bool, CreatedAt int) Post {
 
 	createdAt := time.Now()
 
@@ -53,6 +53,7 @@ func NewPost(text string, heading string, communityId int, userId string, attach
 		Attachments: attachments,
 		IsDeleted:   false,
 		IsEdited:    false,
+		IsRepost:    isRepost,
 		Visibility:  visibility,
 		CreatedAt:   createdAt,
 		UpdatedAt:   createdAt,
