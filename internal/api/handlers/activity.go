@@ -426,19 +426,14 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 func getUserProfileActivityText(uuid string, userId string, action constants.ActivityAction,
 	userDatas map[string]externalHelpers.MemberMeta, postFeedMetadatValue string) string {
 
-	userText := ""
-	if uuid == userId {
-		userText = "You"
-	} else {
-		userText = userDatas[uuid].Name
-	}
+	userRoute := getUserRoute(userDatas[uuid])
 
 	switch action {
 	case constants.CommentOnPost:
-		return (userText + " commented on this " + postFeedMetadatValue)
+		return (userRoute + " commented on this " + postFeedMetadatValue)
 
 	case constants.LikeOnPost:
-		return (userText + " liked this " + postFeedMetadatValue)
+		return (userRoute + " liked this " + postFeedMetadatValue)
 
 	default:
 		return ""
