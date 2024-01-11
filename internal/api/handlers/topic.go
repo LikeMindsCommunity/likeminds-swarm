@@ -246,15 +246,14 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 	}
 
 	// fetch min_posts query param
-	minPosts, _ := utils.ParseIntFromQueryParam(c.DefaultQuery("min_posts", "0"), 0)
+	minPosts, err := utils.ParseIntFromQueryParam(c.DefaultQuery("min_posts", "0"), 0)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, "Invalid value for min_posts")
+		return
+	}
 
 	if minPosts <= 0 {
 		minPosts = 0
-	}
-
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
 	}
 
 	filterIsEnabled := false
