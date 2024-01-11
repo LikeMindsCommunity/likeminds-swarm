@@ -416,7 +416,11 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
-	deleteTopicsFromPostsAndUpdatePostIndex(handlers, topicIDs, c)
+	err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// response data
 	response := gin.H{
@@ -428,7 +432,7 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 }
 
 // deletes topics from posts and update the post in ES index
-func deleteTopicsFromPostsAndUpdatePostIndex(handlers *FeedHandlers, topicIDs []primitive.ObjectID, c *gin.Context) {
+func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID, c *gin.Context) error {
 	// Create a filter to find posts to be updated
 	filter := bson.M{
 		"topic_ids": bson.M{
@@ -465,9 +469,7 @@ func deleteTopicsFromPostsAndUpdatePostIndex(handlers *FeedHandlers, topicIDs []
 	// deletes the topics from posts based on the passed filter and update query
 	err = handlers.postHelper.UpdateManyPostsHelper(filter, update, true)
 	if err != nil {
-		log.Error(err.Error())
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+		return err
 	}
 
 	// fetch the updated posts and update in ES
@@ -480,4 +482,6 @@ func deleteTopicsFromPostsAndUpdatePostIndex(handlers *FeedHandlers, topicIDs []
 			log.Error(err.Error())
 		}
 	}
+
+	return nil
 }
