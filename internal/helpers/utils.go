@@ -94,8 +94,8 @@ func AreValidURLs(urlStrings []string) string {
 	return ""
 }
 
-// Helper method to convert document Ids to ObjectIds
-func ConvertDocumentIdsToObjectIds(ids []interface{}) []primitive.ObjectID {
+// Helper method to typecase interface Ids to ObjectIds
+func TypecastIdsToObjectIds(ids []interface{}) []primitive.ObjectID {
 
 	objectIds := make([]primitive.ObjectID, len(ids))
 

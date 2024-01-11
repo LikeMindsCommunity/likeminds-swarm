@@ -9,7 +9,7 @@ import (
 func TopicRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	topicGroup := routerGroup.Group("topic")
 
-	topicGroup.POST("/", handler.CreateTopic)
+	topicGroup.POST("/", handler.CreateTopics)
 	topicGroup.GET("/", handler.FetchTopics)
 	topicGroup.PUT("/:topic_id", handler.EditTopic)
 	topicGroup.DELETE("/", handler.DeleteTopics)

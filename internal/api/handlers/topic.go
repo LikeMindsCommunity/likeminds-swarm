@@ -77,7 +77,7 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 }
 
 // Exposed Method to Create Topics
-func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
+func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -85,20 +85,20 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	}
 
 	// validation of request body
-	var createTopicRequest requests.CreateTopicRequest
-	if err := c.ShouldBindJSON(&createTopicRequest); err != nil {
+	var createTopicsRequest requests.CreateTopicsRequest
+	if err := c.ShouldBindJSON(&createTopicsRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// throw error if both Name and Names key are present
-	if len(createTopicRequest.Names) == 0 {
+	// throw error if Names key is empty
+	if len(createTopicsRequest.Names) == 0 {
 		utils.GeneralAPIValidationError(c, "Send topic names to create new topics")
 		return
 	}
 
 	// parses the topic names from request and creates corresponding list
-	topicsList, lowerCaseTopicsList, err := parseTopicNames(createTopicRequest)
+	topicsList, lowerCaseTopicsList, err := parseAndValidateTopicsRequest(createTopicsRequest.Names)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -137,7 +137,7 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	}
 
 	// convert topic_ids to object ids
-	objectTopicIds := helpers.ConvertDocumentIdsToObjectIds(topicIds)
+	objectTopicIds := helpers.TypecastIdsToObjectIds(topicIds)
 
 	// fetch newly created topic objects from db using IDs
 	topicsData, err := fetchTopicsByIDs(handlers.topicHelper, objectTopicIds, communityId, false)
@@ -158,7 +158,7 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	}
 
 	// insert topics data in elastic search
-	err = handlers.esHelper.InsertManyDocuments(c, topicsIndexData, constants.TopicIndexName)
+	err = handlers.esHelper.InsertManyDocuments(topicsIndexData, constants.TopicIndexName)
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -173,25 +173,22 @@ func (handlers *FeedHandlers) CreateTopic(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func parseTopicNames(createTopicRequest requests.CreateTopicRequest) ([]string, []string, error) {
-
-	var topicsList []string
-	var lowerCaseTopicsList []string
-
-	// append all the topic names in topicsList and lowerCaseTopicsList
+// parses and validates the create topics request
+func parseAndValidateTopicsRequest(topicNames []string) ([]string, []string, error) {
+	topicsList, lowerCaseTopicsList := []string{}, []string{}
 
 	// strip each name in the names array and check if there are any duplicate topic in the array
 	seen := map[string]bool{}
 
-	for i, name := range createTopicRequest.Names {
+	for i, name := range topicNames {
 
-		createTopicRequest.Names[i] = strings.Trim(name, " ")
+		topicNames[i] = strings.Trim(name, " ")
 
-		if createTopicRequest.Names[i] == "" {
+		if topicNames[i] == "" {
 			return nil, nil, fmt.Errorf("Can't Create Topic With Empty Name")
 		}
 
-		lowerCaseTopicName := strings.ToLower(createTopicRequest.Names[i])
+		lowerCaseTopicName := strings.ToLower(topicNames[i])
 
 		if seen[lowerCaseTopicName] {
 			// Duplicate found
@@ -202,7 +199,7 @@ func parseTopicNames(createTopicRequest requests.CreateTopicRequest) ([]string, 
 		seen[lowerCaseTopicName] = true
 	}
 
-	topicsList = createTopicRequest.Names
+	topicsList = topicNames
 	return topicsList, lowerCaseTopicsList, nil
 }
 
@@ -249,7 +246,12 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 	}
 
 	// fetch min_posts query param
-	minPosts, err := fetchMinPostsParam(c)
+	minPosts, _ := utils.ParseIntFromQueryParam(c.DefaultQuery("min_posts", "0"), 0)
+
+	if minPosts <= 0 {
+		minPosts = 0
+	}
+
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -410,15 +412,13 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	getTopicsToBeDeletedQuery := GetTopicsByIdQuery(topicidsString)
 
 	// delete topics from elastic search
-	err = handlers.esHelper.DeleteByQuery(c, getTopicsToBeDeletedQuery, constants.TopicIndexName)
-
+	err = handlers.esHelper.DeleteByQuery(getTopicsToBeDeletedQuery, constants.TopicIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
 	// Create a filter to find posts to be updated
-	var filter primitive.M
-	filter = bson.M{
+	filter := bson.M{
 		"topic_ids": bson.M{
 			"$in": topicIDs,
 		},
@@ -428,8 +428,7 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	postResults, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
 
 	// extract postIds from the postResults
-	var postIDs []primitive.ObjectID
-	var postIDsString []string
+	postIDs, postIDsString := []primitive.ObjectID{}, []string{}
 	for _, post := range postResults {
 		postIDs = append(postIDs, post.ID)
 		postIDsString = append(postIDsString, post.ID.String())
@@ -452,7 +451,12 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	}
 
 	// deletes the topics from posts based on the passed filter and update query
-	handlers.postHelper.DeleteTopicsFromPosts(filter, update)
+	err = handlers.postHelper.UpdateManyPostsHelper(filter, update, true)
+	if err != nil {
+		log.Error(err.Error())
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// fetch the updated posts and update in ES
 	updatedPosts, err := handlers.postHelper.FindPostHelper(filter, gin.H{})

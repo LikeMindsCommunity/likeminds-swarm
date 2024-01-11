@@ -2,11 +2,13 @@ package helpers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -86,7 +88,15 @@ func (helper *topicHelper) DeleteTopicsHelper(topic_ids []primitive.ObjectID) er
 	}
 
 	// Delete the documents from the collection
-	err := helper.topicRepository.DeleteMany(filter)
+	deletedCount, err := helper.topicRepository.DeleteMany(filter)
+
+	// log count if all documents were not deleted
+	if deletedCount != int64(len(topic_ids)) {
+		logging.Error(fmt.Sprintf(`
+			Deleted %d out of %d topics using DeleteMany.
+			`, deletedCount, len(topic_ids)),
+		)
+	}
 
 	return err
 }

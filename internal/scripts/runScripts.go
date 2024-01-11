@@ -11,7 +11,7 @@ import (
 
 func RunScripts(handlers *handlers.FeedHandlers) {
 	// indexPostData(handlers)
-	indexTopicData(handlers)
+	// indexTopicData(handlers)
 	// addCommunityIdToComments(handlers)
 }
 

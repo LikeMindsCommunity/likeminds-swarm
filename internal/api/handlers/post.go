@@ -891,8 +891,6 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// convert topic_ids to object ids
 	topicIDs := helpers.ConvertIdsToObjectIds(createPostRequest.TopicIds)
 
-	updatePostCountInTopicQuery := ""
-
 	// fetch all the topics sent in the create post body
 	if len(topicIDs) > 0 {
 		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
@@ -906,9 +904,6 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
 			return
 		}
-
-		// query to increment the count of posts in topics
-		updatePostCountInTopicQuery = UpdatePostCountInTopicsQuery(topicIDs, true)
 	}
 
 	// if on_behalf_of_uuid is not empty
@@ -985,8 +980,12 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// update the post count in topics
-	if updatePostCountInTopicQuery != "" {
-		err = handlers.esHelper.UpdateByQuery(c, updatePostCountInTopicQuery, constants.TopicIndexName)
+	if len(topicIDs) > 0 {
+		// query to increment the count of posts in topics
+		stringTopicIds := helpers.ConvertObjectIdsToString(topicIDs)
+		updatePostCountInTopicQuery := UpdatePostCountInTopicsQuery(stringTopicIds, true)
+
+		err = handlers.esHelper.UpdateByQuery(updatePostCountInTopicQuery, constants.TopicIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -1277,29 +1276,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
-	newTopicIds := helpers.ConvertIdsToObjectIds(editPostRequest.TopicIds)
-
-	// topics added in the post
-	addedTopicIds := utils.GetDifferenceBetweenArray(newTopicIds, existingTopicIds)
-
-	// topics removed from the post
-	removedTopicIds := utils.GetDifferenceBetweenArray(existingTopicIds, newTopicIds)
-
-	// update the count of posts in added topics
-	if len(addedTopicIds) > 0 {
-		err = handlers.esHelper.UpdateByQuery(c, UpdatePostCountInTopicsQuery(addedTopicIds, true), constants.TopicIndexName)
-		if err != nil {
-			log.Error(err.Error())
-		}
-	}
-
-	// update the count of posts in removed topics
-	if len(removedTopicIds) > 0 {
-		err = handlers.esHelper.UpdateByQuery(c, UpdatePostCountInTopicsQuery(removedTopicIds, false), constants.TopicIndexName)
-		if err != nil {
-			log.Error(err.Error())
-		}
-	}
+	updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
 
 	response := gin.H{
 		"success": true,
@@ -1312,6 +1289,35 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, response)
 
+}
+
+// updates the count of post in topics
+func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []string, existingTopicIds []primitive.ObjectID) {
+	updatedTopicIds := helpers.ConvertIdsToObjectIds(editRequestTopicIds)
+
+	// topics added in the post
+	addedTopicIds := utils.GetDifferenceBetweenArray(updatedTopicIds, existingTopicIds)
+
+	// topics removed from the post
+	removedTopicIds := utils.GetDifferenceBetweenArray(existingTopicIds, updatedTopicIds)
+
+	// update the count of posts in added topics
+	if len(addedTopicIds) > 0 {
+		stringTopicIds := helpers.ConvertObjectIdsToString(addedTopicIds)
+		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, true), constants.TopicIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+
+	// update the count of posts in removed topics
+	if len(removedTopicIds) > 0 {
+		stringTopicIds := helpers.ConvertObjectIdsToString(removedTopicIds)
+		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
 }
 
 // Exposed Method to delete a Post
@@ -1399,7 +1405,8 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 	// update the count of posts in topics
 	if len(postData.TopicIds) > 0 {
-		err = handlers.esHelper.UpdateByQuery(c, UpdatePostCountInTopicsQuery(postData.TopicIds, false), constants.TopicIndexName)
+		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}

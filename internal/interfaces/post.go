@@ -30,5 +30,5 @@ type PostHelper interface {
 	UpdatePostByIdHelper(postId primitive.ObjectID, update map[string]interface{}) error
 	CountPostHelper(filter map[string]interface{}) (int64, error)
 	AggregatePostHelper(query []map[string]interface{}) ([]gin.H, error)
-	DeleteTopicsFromPosts(filter map[string]interface{}, update map[string]interface{}) error
+	UpdateManyPostsHelper(filter map[string]interface{}, update map[string]interface{}, shouldUpdateTimestamp bool) error
 }

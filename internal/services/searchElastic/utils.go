@@ -157,7 +157,7 @@ func (esHelper *esHelper) InsertDocument(ctx context.Context, document interface
 }
 
 // Exposed method to insert multiple documents in ElasticSearch
-func (esHelper *esHelper) InsertManyDocuments(ctx context.Context, documents map[string]interface{}, index string) error {
+func (esHelper *esHelper) InsertManyDocuments(documents map[string]interface{}, index string) error {
 	err := esHelper.CreateIndex(index)
 	if err != nil {
 		return err
@@ -169,12 +169,11 @@ func (esHelper *esHelper) InsertManyDocuments(ctx context.Context, documents map
 	}
 
 	req := esapi.BulkRequest{
-		Index:   index,
-		Body:    strings.NewReader(body),
-		Refresh: "true", // Optional: Refresh the index after indexing
+		Index: index,
+		Body:  strings.NewReader(body),
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
 	defer cancel()
 
 	res, err := req.Do(ctx, esHelper.esClient)
@@ -253,7 +252,7 @@ func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface
 }
 
 // Exposed method to update existing documents by query in ElasticSearch
-func (esHelper *esHelper) UpdateByQuery(ctx context.Context, query string, index string) error {
+func (esHelper *esHelper) UpdateByQuery(query string, index string) error {
 
 	err := esHelper.CreateIndex(index)
 	if err != nil {
@@ -265,7 +264,7 @@ func (esHelper *esHelper) UpdateByQuery(ctx context.Context, query string, index
 		Body:  strings.NewReader(query),
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
 	defer cancel()
 
 	res, err := req.Do(ctx, esHelper.esClient)
@@ -346,7 +345,7 @@ func (esHelper *esHelper) DeleteDocument(ctx context.Context, documentId string,
 }
 
 // Exposed method to delete existing documents by query in ElasticSearch
-func (esHelper *esHelper) DeleteByQuery(ctx context.Context, query string, index string) error {
+func (esHelper *esHelper) DeleteByQuery(query string, index string) error {
 
 	err := esHelper.CreateIndex(index)
 	if err != nil {
@@ -358,7 +357,7 @@ func (esHelper *esHelper) DeleteByQuery(ctx context.Context, query string, index
 		Body:  strings.NewReader(query),
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
 	defer cancel()
 
 	res, err := req.Do(ctx, esHelper.esClient)

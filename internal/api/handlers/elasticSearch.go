@@ -4,9 +4,7 @@ import (
 	"fmt"
 
 	"github.com/nateshr/likeminds-swarm/internal/entities"
-	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
@@ -374,8 +372,7 @@ func GetWidgetsByParentEntityFilterQuery(communityId int, parentEntityId string,
 }
 
 // Exposed query to increment/decrement the count of posts in topics
-func UpdatePostCountInTopicsQuery(topicIds []primitive.ObjectID, increment bool) string {
-	stringTopicIds := helpers.ConvertObjectIdsToString(topicIds)
+func UpdatePostCountInTopicsQuery(topicIds string, increment bool) string {
 	updatePostScript := ""
 	if increment {
 		updatePostScript = fmt.Sprintf(`
@@ -403,5 +400,5 @@ func UpdatePostCountInTopicsQuery(topicIds []primitive.ObjectID, increment bool)
 		"script" : {
 			%s
 		}
-	}`, stringTopicIds, updatePostScript)
+	}`, topicIds, updatePostScript)
 }

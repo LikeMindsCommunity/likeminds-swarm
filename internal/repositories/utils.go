@@ -69,11 +69,11 @@ func _deleteDocumentInDB(db *mongo.Database, collectionName string, filter map[s
 }
 
 // Internal Method to Delete many documents in MongoDB
-func _deleteManyDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}) error {
+func _deleteManyDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}) (int64, error) {
 	coll := db.Collection(collectionName)
-	_, err := coll.DeleteMany(context.TODO(), filter)
+	deleteResults, err := coll.DeleteMany(context.TODO(), filter)
 
-	return err
+	return deleteResults.DeletedCount, err
 }
 
 // Internal Method to Fetch Documents Count

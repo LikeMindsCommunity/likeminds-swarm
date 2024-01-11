@@ -14,7 +14,7 @@ type TopicRepository interface {
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
-	DeleteMany(filter map[string]interface{}) error
+	DeleteMany(filter map[string]interface{}) (int64, error)
 }
 
 // Interface for Topic Helper

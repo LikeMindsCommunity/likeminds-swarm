@@ -32,7 +32,7 @@ func (repository *topicRepository) Count(filter map[string]interface{}) (int64, 
 }
 
 // Exposed Helper Method to Delete Many topics
-func (repository *topicRepository) DeleteMany(filter map[string]interface{}) error {
+func (repository *topicRepository) DeleteMany(filter map[string]interface{}) (int64, error) {
 	return _deleteManyDocumentsInDB(repository.db, TopicCollection, filter)
 }
 

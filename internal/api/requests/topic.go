@@ -3,7 +3,7 @@ package requests
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 // Request Structure for Create Topic
-type CreateTopicRequest struct {
+type CreateTopicsRequest struct {
 	Names []string `json:"names"`
 }
 

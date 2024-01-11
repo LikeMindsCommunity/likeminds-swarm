@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
@@ -72,7 +73,8 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 
 			// update the count of posts in topics
 			if len(post.TopicIds) > 0 {
-				err = handlers.esHelper.UpdateByQuery(c, UpdatePostCountInTopicsQuery(post.TopicIds, false), constants.TopicIndexName)
+				stringTopicIds := helpers.ConvertObjectIdsToString(post.TopicIds)
+				err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 				if err != nil {
 					log.Error(err.Error())
 				}
