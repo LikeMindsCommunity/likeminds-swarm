@@ -163,7 +163,6 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 			},
 		},
 		"repost_count": 1,
-		"og_tags":      gin.H{},
 	}
 
 	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, repostID.(primitive.ObjectID).Hex(), "post", respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
@@ -171,7 +170,10 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 		return
 	}
 
-	repostAttachmentMeta := &entities.AttachmentMeta{EntityID: repostWidgetID.(primitive.ObjectID)}
+	repostAttachmentMeta := &entities.AttachmentMeta{
+		OgTags:   &entities.OGTags{},
+		EntityID: repostWidgetID.(primitive.ObjectID),
+	}
 
 	originalPostAttachments := originalPost.Attachments
 	repostWidgetAttachmentData := entities.Attachment{enums.RepostType.ToInt(), repostAttachmentMeta, enums.RepostType, nil}
