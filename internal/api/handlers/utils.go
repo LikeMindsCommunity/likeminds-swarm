@@ -59,12 +59,20 @@ func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.
 
 // Internal Method to get pagination params in an API
 func fetchPaginationParams(c *gin.Context) (int, int, error) {
-	page, err := utils.ParseIntFromQueryParam(c.DefaultQuery("page", "0"), 0)
+	pageString := c.DefaultQuery("page", "0")
+	if pageString == "" {
+		pageString = "0"
+	}
+	page, err := utils.ParseIntFromQueryParam(pageString, 0)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	page_size, err := utils.ParseIntFromQueryParam(c.DefaultQuery("page_size", "0"), 0)
+	pageSizeString := c.DefaultQuery("page_size", "0")
+	if pageSizeString == "" {
+		pageSizeString = "0"
+	}
+	page_size, err := utils.ParseIntFromQueryParam(pageSizeString, 0)
 	if err != nil {
 		return 0, 0, err
 	}
