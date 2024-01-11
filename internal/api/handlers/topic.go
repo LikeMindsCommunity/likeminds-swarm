@@ -203,16 +203,16 @@ func parseAndValidateTopicsRequest(topicNames []string) ([]string, []string, err
 	return topicsList, lowerCaseTopicsList, nil
 }
 
-func processTopicSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.FetchTopicResponse {
+func processTopicSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.FetchTopicsResponse {
 	topicDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
-	var fetchTopicsResponse []requests.FetchTopicResponse
+	fetchTopicsResponse := []requests.FetchTopicsResponse{}
 
 	for _, data := range topicDetails {
 		topicData := data.(map[string]interface{})["_source"].(map[string]interface{})
 		topicData["_id"] = topicData["id"]
 
 		// convert the data to fetch topic response
-		var topic requests.FetchTopicResponse
+		var topic requests.FetchTopicsResponse
 		b, _ := json.Marshal(topicData)
 		json.Unmarshal(b, &topic)
 

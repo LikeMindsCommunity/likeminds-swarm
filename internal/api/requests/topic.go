@@ -20,8 +20,8 @@ type TopicResponse struct {
 	IsEnabled bool               `json:"is_enabled"`
 }
 
-// Response Structure for Fetch Topic Response
-type FetchTopicResponse struct {
+// Response Structure for fetched Indexed Topics Response
+type FetchTopicsResponse struct {
 	ID            primitive.ObjectID `json:"_id"`
 	Name          string             `json:"name"`
 	IsEnabled     bool               `json:"is_enabled"`
