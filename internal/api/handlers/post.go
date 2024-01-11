@@ -108,7 +108,7 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	originalPost := postResults[0]
 
 	originalPostRepostWidgetData := getRepostWidgetDataFromPost(originalPost)
-	if originalPostRepostWidgetData.Type == enums.RepostType {
+	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
 		//get respost widget id, update respost widget data
 		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
 
@@ -376,7 +376,7 @@ func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post
 	var postRepostCount int32 = 0
 
 	postRepostWidgetData := getRepostWidgetDataFromPost(post)
-	if postRepostWidgetData.Type == enums.RepostType {
+	if postRepostWidgetData.AttachmentType == enums.RepostWidget {
 		repostWidgetID := postRepostWidgetData.AttachmentMeta.EntityID
 
 		widgetFilter := gin.H{
@@ -399,7 +399,7 @@ func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post
 
 func getIsRepostedByUser(widgetHelper interfaces.WidgetHelper, userID string, post entities.Post) bool {
 	originalPostRepostWidgetData := getRepostWidgetDataFromPost(post)
-	if originalPostRepostWidgetData.Type == enums.RepostType {
+	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
 		//get repost widget id, update repost widget data
 		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
 
