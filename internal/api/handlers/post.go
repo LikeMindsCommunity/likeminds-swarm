@@ -165,7 +165,7 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 		"repost_count": 1,
 	}
 
-	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, repostID.(primitive.ObjectID).Hex(), "post", respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
+	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, originalPostID, constants.PostEntityType, respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
 	if err != nil {
 		return
 	}
@@ -191,11 +191,24 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	handlers.postHelper.UpdatePostByIdHelper(originalPostIDPrimitiveObject, postUpdateData)
 }
 
+// extract repost type attachment from a post
 func getRepostWidgetDataFromPost(post entities.Post) entities.Attachment {
 	originalPostAttachments := post.Attachments
 
 	for _, attachment := range originalPostAttachments {
-		if attachment.Type == enums.RepostType {
+		if attachment.AttachmentType == enums.RepostWidget {
+			return attachment
+		}
+	}
+	return entities.Attachment{}
+}
+
+// extract post type attachement from a repost
+func getPostAttachmentDataFromPost(post entities.Post) entities.Attachment {
+	postAttachments := post.Attachments
+
+	for _, attachment := range postAttachments {
+		if attachment.AttachmentType == enums.PostWidget {
 			return attachment
 		}
 	}
@@ -1778,53 +1791,69 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 }
 
 func deleteOriginalPostRepostWidgetData(handlers *FeedHandlers, postData *entities.Post) {
-	originalPostRepostWidgetData := getRepostWidgetDataFromPost(*postData)
-	if originalPostRepostWidgetData.Type == enums.RepostType {
-		//get repost widget id, update repost widget data
-		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
+	PostAttachmentData := getPostAttachmentDataFromPost(*postData)
+	if PostAttachmentData.AttachmentType != enums.PostWidget {
+		return
+	}
+	OriginalPostID := PostAttachmentData.AttachmentMeta.EntityID
 
-		widgetFilter := gin.H{
-			"_id": repostWidgetID,
-		}
-		repostWidgets, err := handlers.widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
-		if err != nil {
-			return
-		}
+	postFilter := gin.H{
+		"_id": OriginalPostID,
+	}
 
-		repostWidgetData := repostWidgets[0]
-		repostWidgetMetadata := repostWidgetData.MetaData
-		repostWidgetMetadataReposts := repostWidgetMetadata["reposts"]
-		repostWidgetMetadataRepostsMap, ok := repostWidgetMetadataReposts.(map[string]interface{})
-		if !ok {
-			return
-		}
-
-		delete(repostWidgetMetadataRepostsMap, postData.UserId)
-
-		repostWidgetMetadataRepostCount := repostWidgetMetadata["repost_count"].(int32)
-		repostCount := repostWidgetMetadataRepostCount - 1
-		if repostCount < 0 {
-			repostCount = 0
-		}
-		repostWidgetMetadataRepostCount = repostCount
-
-		respostWidgetMetaData := gin.H{
-			"reposts":      repostWidgetMetadataRepostsMap,
-			"repost_count": repostWidgetMetadataRepostCount,
-		}
-
-		widgetUpdateData := gin.H{
-			"$set": gin.H{
-				"metadata": respostWidgetMetaData,
-			},
-		}
-
-		// update widget data
-		handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
-
+	postDatas, err := handlers.postHelper.FindPostHelper(postFilter, gin.H{})
+	if err != nil || len(postDatas) <= 0 {
 		return
 	}
 
+	originalPostData := postDatas[0]
+	RepostWidgetData := getRepostWidgetDataFromPost(originalPostData)
+	if RepostWidgetData.AttachmentType != enums.RepostWidget {
+		return
+	}
+	//get repost widget id, update repost widget data
+	repostWidgetID := RepostWidgetData.AttachmentMeta.EntityID
+
+	widgetFilter := gin.H{
+		"_id": repostWidgetID,
+	}
+	repostWidgets, err := handlers.widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
+	if err != nil || len(repostWidgets) <= 0 {
+		return
+	}
+
+	repostWidgetData := repostWidgets[0]
+	repostWidgetMetadata := repostWidgetData.MetaData
+	repostWidgetMetadataReposts := repostWidgetMetadata["reposts"]
+	repostWidgetMetadataRepostsMap, ok := repostWidgetMetadataReposts.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	delete(repostWidgetMetadataRepostsMap, postData.UserId)
+
+	repostWidgetMetadataRepostCount := repostWidgetMetadata["repost_count"].(int32)
+	repostCount := repostWidgetMetadataRepostCount - 1
+	if repostCount < 0 {
+		repostCount = 0
+	}
+	repostWidgetMetadataRepostCount = repostCount
+
+	respostWidgetMetaData := gin.H{
+		"reposts":      repostWidgetMetadataRepostsMap,
+		"repost_count": repostWidgetMetadataRepostCount,
+	}
+
+	widgetUpdateData := gin.H{
+		"$set": gin.H{
+			"metadata": respostWidgetMetaData,
+		},
+	}
+
+	// update widget data
+	handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
+
+	return
 }
 
 func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entities.Post, headers map[string]string) error {
@@ -1835,7 +1864,7 @@ func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entiti
 		"community_id": repostPostData.CommunityId,
 		"entity_type":  constants.Post,
 		"entity_id":    OriginalPostID,
-		"action":       constants.LikeOnPost,
+		"action":       constants.RepostOnPost,
 	}
 
 	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
