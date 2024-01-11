@@ -623,6 +623,7 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
+			continue
 		}
 
 		switch element.AttachmentType {
