@@ -114,6 +114,7 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 				lowerCaseTopicsList,
 			},
 		},
+		"community_id": communityId,
 	}
 
 	// find the existing topics with same name as in the request
