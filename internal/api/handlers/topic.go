@@ -416,6 +416,19 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
+	deleteTopicsFromPostsAndUpdatePostIndex(handlers, topicIDs, c)
+
+	// response data
+	response := gin.H{
+		"success": true,
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
+}
+
+// deletes topics from posts and update the post in ES index
+func deleteTopicsFromPostsAndUpdatePostIndex(handlers *FeedHandlers, topicIDs []primitive.ObjectID, c *gin.Context) {
 	// Create a filter to find posts to be updated
 	filter := bson.M{
 		"topic_ids": bson.M{
@@ -467,12 +480,4 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 			log.Error(err.Error())
 		}
 	}
-
-	// response data
-	response := gin.H{
-		"success": true,
-	}
-
-	// return final response
-	c.JSON(http.StatusOK, response)
 }

@@ -4,7 +4,7 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 
 // Request Structure for Create Topic
 type CreateTopicsRequest struct {
-	Names []string `json:"names"`
+	Names []string `json:"names" binding:"required"`
 }
 
 // Request Structure for Edit Topic
@@ -38,5 +38,5 @@ type FetchTopicRequest struct {
 
 // Request Structure for Delete Topics
 type DeleteTopicsRequest struct {
-	TopicIds []string `json:"topic_ids"`
+	TopicIds []string `json:"topic_ids" binding:"required"`
 }
