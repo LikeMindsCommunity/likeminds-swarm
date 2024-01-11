@@ -162,6 +162,7 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 			},
 		},
 		"repost_count": 1,
+		"og_tags":      gin.H{},
 	}
 
 	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, repostID.(primitive.ObjectID).String(), "post", respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
