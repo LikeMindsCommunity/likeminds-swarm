@@ -18,6 +18,7 @@ const (
 	CommentReplySubCategory             = "Comment Reply"
 	PostLikedSubCategory                = "Post Liked"
 	CommentLikedSubCategory             = "Comment Liked"
+	RepostOnPostCategory                = "Post Reposted"
 )
 
 const (
@@ -29,6 +30,7 @@ const (
 	CommentTitle           = "New Comment!"
 	ReplyTitle             = "New Reply!"
 	TagTitle               = "You are tagged!"
+	RepostTitle            = "New Repost!"
 )
 
 const (
@@ -57,4 +59,7 @@ const (
 	CommentLikedSubTitleLevelOne     = "%s liked your comment."
 	CommentLikedSubTitleLevelTwo     = "%s and 1 other liked your comment."
 	CommentLikedSubTitleLevelThree   = "%s and %d others liked your comment."
+	PostRepostedSubTitleLevelOne     = "%s reposted your %s."
+	PostRepostedSubTitleLevelTwo     = "%s and 1 other reposted your %s."
+	PostRepostedSubTitleLevelThree   = "%s and %d others reposted your %s."
 )

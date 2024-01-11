@@ -365,6 +365,16 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 		return activityText, nil
 
+	case constants.RepostOnPost:
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " reposted your"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
+
+		return activityText, nil
+
 	case constants.LikeOnComment:
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
@@ -426,19 +436,14 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 func getUserProfileActivityText(uuid string, userId string, action constants.ActivityAction,
 	userDatas map[string]externalHelpers.MemberMeta, postFeedMetadatValue string) string {
 
-	userText := ""
-	if uuid == userId {
-		userText = "You"
-	} else {
-		userText = userDatas[uuid].Name
-	}
+	userRoute := getUserRoute(userDatas[uuid])
 
 	switch action {
 	case constants.CommentOnPost:
-		return (userText + " commented on this " + postFeedMetadatValue)
+		return (userRoute + " commented on this " + postFeedMetadatValue)
 
 	case constants.LikeOnPost:
-		return (userText + " liked this " + postFeedMetadatValue)
+		return (userRoute + " liked this " + postFeedMetadatValue)
 
 	default:
 		return ""
@@ -575,7 +580,8 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.CommentOnComment,
 		constants.TaggedInPost,
 		constants.TaggedInPostComment,
-		constants.AlsoCommentOnPost:
+		constants.AlsoCommentOnPost,
+		constants.RepostOnPost:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
 			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId)
