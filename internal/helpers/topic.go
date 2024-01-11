@@ -2,11 +2,13 @@ package helpers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -19,6 +21,20 @@ func (helper *topicHelper) CreateTopicHelper(name string, is_enabled bool, commu
 	topicId, err := helper.topicRepository.Create(topic)
 
 	return topicId, err
+}
+
+// Exposed Helper Method to Create Topic Instances
+func (helper *topicHelper) CreateManyTopicsHelper(names []string, is_enabled bool, community_id int) ([]interface{}, error) {
+	// Create new topic documents
+	var topics []interface{}
+	for _, name := range names {
+		topics = append(topics, entities.NewTopic(name, is_enabled, community_id))
+	}
+
+	// Insert the documents in the collection
+	topicIds, err := helper.topicRepository.CreateMany(topics)
+
+	return topicIds, err
 }
 
 // Exposed Helper Method to Find Topics
@@ -59,6 +75,28 @@ func (helper *topicHelper) UpdateTopicByIdHelper(topic_id primitive.ObjectID, up
 
 	// Update the document in the collection
 	err := helper.topicRepository.Update(gin.H{"_id": topic_id}, update)
+
+	return err
+}
+
+func (helper *topicHelper) DeleteTopicsHelper(topic_ids []primitive.ObjectID) error {
+	// create a filter to delete topic instances with topic_ids
+	filter := gin.H{
+		"_id": gin.H{
+			"$in": topic_ids,
+		},
+	}
+
+	// Delete the documents from the collection
+	deletedCount, err := helper.topicRepository.DeleteMany(filter)
+
+	// log count if all documents were not deleted
+	if deletedCount != int64(len(topic_ids)) {
+		logging.Error(fmt.Sprintf(`
+			Deleted %d out of %d topics using DeleteMany.
+			`, deletedCount, len(topic_ids)),
+		)
+	}
 
 	return err
 }
