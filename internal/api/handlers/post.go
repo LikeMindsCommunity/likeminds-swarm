@@ -21,6 +21,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -1098,6 +1099,28 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 
 }
 
+// Internal function to fetch posts with topic id
+func fetchPostsWithTopicID(handlers *FeedHandlers, topicId primitive.ObjectID, communityId int) ([]entities.Post, error) {
+	// filter to find posts with the specified topic_id and is_deleted set to false
+	filter := bson.M{
+		"topic_ids": bson.M{
+			"$elemMatch": bson.M{
+				"$eq": topicId,
+			},
+		},
+		"is_deleted":   false,
+		"community_id": communityId,
+	}
+
+	// find posts based on the filter
+	postResults, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	return postResults, nil
+}
+
 // Exposed Method to create a Post
 func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
@@ -1281,6 +1304,18 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		constants.PostIndexName)
 	if err != nil {
 		log.Error(err.Error())
+	}
+
+	// update the post count in topics
+	if len(topicIDs) > 0 {
+		// query to increment the count of posts in topics
+		stringTopicIds := helpers.ConvertObjectIdsToString(topicIDs)
+		updatePostCountInTopicQuery := UpdatePostCountInTopicsQuery(stringTopicIds, true)
+
+		err = handlers.esHelper.UpdateByQuery(updatePostCountInTopicQuery, constants.TopicIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
 	}
 
 	if !useCustomCreationTimestamp {
@@ -1512,6 +1547,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	topicIDs := postData.TopicIds
+	existingTopicIds := postData.TopicIds
 
 	// fetch all the topics sent in the edit post body
 	if editPostRequest.TopicIds != nil {
@@ -1585,6 +1621,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
+	updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
+
 	response := gin.H{
 		"success": true,
 		"post":    fetchPostData,
@@ -1597,6 +1635,35 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, response)
 
+}
+
+// updates the count of post in topics
+func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []string, existingTopicIds []primitive.ObjectID) {
+	updatedTopicIds := helpers.ConvertIdsToObjectIds(editRequestTopicIds)
+
+	// topics added in the post
+	addedTopicIds := utils.GetDifferenceBetweenArray(updatedTopicIds, existingTopicIds)
+
+	// topics removed from the post
+	removedTopicIds := utils.GetDifferenceBetweenArray(existingTopicIds, updatedTopicIds)
+
+	// update the count of posts in added topics
+	if len(addedTopicIds) > 0 {
+		stringTopicIds := helpers.ConvertObjectIdsToString(addedTopicIds)
+		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, true), constants.TopicIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+
+	// update the count of posts in removed topics
+	if len(removedTopicIds) > 0 {
+		stringTopicIds := helpers.ConvertObjectIdsToString(removedTopicIds)
+		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
 }
 
 // Exposed Method to delete a Post
@@ -1685,6 +1752,15 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 		if activityID != nil {
 			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		}
+	}
+
+	// update the count of posts in topics
+	if len(postData.TopicIds) > 0 {
+		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
+		if err != nil {
+			log.Error(err.Error())
 		}
 	}
 

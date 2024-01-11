@@ -122,6 +122,21 @@ func (helper *postHelper) UpdatePostByIdHelper(postId primitive.ObjectID, update
 	return err
 }
 
+// Exposed Helper Method to Update Multiple Posts
+func (helper *postHelper) UpdateManyPostsHelper(filter map[string]interface{}, update map[string]interface{}, shouldUpdateTimestamp bool) error {
+	if shouldUpdateTimestamp {
+		if _, ok := update["$set"]; ok {
+			update["$set"].(gin.H)["updated_at"] = time.Now()
+		} else {
+			update["$set"] = gin.H{
+				"updated_at": time.Now(),
+			}
+		}
+	}
+
+	return helper.postRepository.UpdateMany(filter, update)
+}
+
 // Exposed Helper Method to Fetch Post Count
 func (helper *postHelper) CountPostHelper(filter map[string]interface{}) (int64, error) {
 	err := convertHexIdsToObjectIds(filter, []string{"_id"})
