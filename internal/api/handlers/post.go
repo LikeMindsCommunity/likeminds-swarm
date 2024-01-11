@@ -688,6 +688,10 @@ func validateRepostPostAttachment(postData *entities.Post, editPostRequest reque
 	// repost's attached post id should not be updated in edit request
 	// repost will have only post type (=8) attachment
 	existingOriginalPostID := postData.Attachments[0].AttachmentMeta.EntityID.Hex()
+
+	if len(editPostRequest.Attachments) <= 0 {
+		return false
+	}
 	editRepostRequestPostID := editPostRequest.Attachments[0].AttachmentMeta.EntityID
 
 	if existingOriginalPostID == editRepostRequestPostID {
@@ -1252,10 +1256,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		OriginalPostUserID := originalPost.UserId
 		ctaData := gin.H{
 			"entity_type": constants.PostEntityType,
-			"post_id":     OriginalPostUserID,
+			"post_id":     originalPostID,
 		}
 
-		OriginalPostUserIDObject, err := primitive.ObjectIDFromHex(OriginalPostUserID)
+		OriginalPostUserIDObject, err := primitive.ObjectIDFromHex(originalPostID)
 
 		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, OriginalPostUserID, constants.Post,
 			OriginalPostUserIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
