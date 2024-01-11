@@ -365,6 +365,16 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 		return activityText, nil
 
+	case constants.RepostOnPost:
+		activityText += getUserRoute(activityByUserData)
+		activityText += getMultipleUserActivityText(activity)
+
+		activityText += " reposted your"
+
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
+
+		return activityText, nil
+
 	case constants.LikeOnComment:
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
@@ -570,7 +580,8 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.CommentOnComment,
 		constants.TaggedInPost,
 		constants.TaggedInPostComment,
-		constants.AlsoCommentOnPost:
+		constants.AlsoCommentOnPost,
+		constants.RepostOnPost:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
 			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId)
