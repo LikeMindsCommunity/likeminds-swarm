@@ -96,6 +96,10 @@ func (at AttachmentType) ToInt() int {
 		return PollWidget
 	case ArticleType:
 		return ArticleWidget
+	case PostType:
+		return PostWidget
+	case RepostType:
+		return RepostWidget
 	}
 	return 0
 }

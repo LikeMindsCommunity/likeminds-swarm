@@ -18,6 +18,7 @@ const (
 	CommentReplySubCategory             = "Comment Reply"
 	PostLikedSubCategory                = "Post Liked"
 	CommentLikedSubCategory             = "Comment Liked"
+	RepostOnPostCategory                = "Post Reposted"
 )
 
 const (
@@ -29,6 +30,7 @@ const (
 	CommentTitle           = "New Comment!"
 	ReplyTitle             = "New Reply!"
 	TagTitle               = "You are tagged!"
+	RepostTitle            = "New Repost!"
 )
 
 const (

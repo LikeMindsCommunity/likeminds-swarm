@@ -549,11 +549,11 @@ func sendRepostPostActionNotification(activity *entities.Activity, handlers Feed
 
 	// notification params
 	receivers := activity.ActionOn
-	title := constants.LikeTitle
+	title := constants.RepostTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
-	subCategory := constants.PostLikedSubCategory
+	subCategory := constants.RepostOnPostCategory
 
 	if repostCount == 1 {
 		subTitle = fmt.Sprintf(constants.PostRepostedSubTitleLevelOne, member.Name, postMetatadataValue)

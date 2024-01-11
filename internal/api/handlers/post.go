@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -100,7 +101,11 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 		return
 	}
 
+	if len(postResults) <= 0 {
+		return
+	}
 	originalPost := postResults[0]
+
 	originalPostRepostWidgetData := getRepostWidgetDataFromPost(originalPost)
 	if originalPostRepostWidgetData.Type == enums.RepostType {
 		//get respost widget id, update respost widget data
@@ -111,6 +116,10 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 		}
 		repostWidgets, err := handlers.widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
 		if err != nil {
+			return
+		}
+
+		if len(repostWidgets) <= 0 {
 			return
 		}
 
@@ -163,7 +172,7 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	repostAttachmentMeta := &entities.AttachmentMeta{EntityID: repostWidgetID.(primitive.ObjectID)}
 
 	originalPostAttachments := originalPost.Attachments
-	repostWidgetAttachmentData := entities.Attachment{9, repostAttachmentMeta, enums.RepostType, nil}
+	repostWidgetAttachmentData := entities.Attachment{enums.RepostType.ToInt(), repostAttachmentMeta, enums.RepostType, nil}
 
 	originalPostAttachments = append(originalPostAttachments, repostWidgetAttachmentData)
 
@@ -358,6 +367,10 @@ func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post
 		}
 		repostWidgets, err := widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
 		if err != nil {
+			return postRepostCount
+		}
+
+		if len(repostWidgets) <= 0 {
 			return postRepostCount
 		}
 
@@ -685,7 +698,7 @@ func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID
 		"_id": originalPostID,
 	}
 	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
-	if err != nil {
+	if (err != nil) || (len(postResults) <= 0) {
 		return false, "original post not found for repost"
 	}
 
@@ -1637,7 +1650,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// if repost, remove repost data from original post's repost widget
 	if postData.IsRepost {
 		deleteOriginalPostRepostWidgetData(handlers, postData)
-		deleteUserPostRepostActivity(handlers, postData, c, headers)
+		deleteUserPostRepostActivity(handlers, postData, headers)
 	}
 
 	// delete post data in elastic search
@@ -1731,7 +1744,7 @@ func deleteOriginalPostRepostWidgetData(handlers *FeedHandlers, postData *entiti
 
 }
 
-func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entities.Post, c *gin.Context, headers map[string]string) {
+func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entities.Post, headers map[string]string) error {
 
 	OriginalPostID := repostPostData.Attachments[0].AttachmentMeta.EntityID
 
@@ -1744,12 +1757,11 @@ func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entiti
 
 	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+		return err
 	}
 
 	if activity == nil {
-		return
+		return errors.New("activity not found")
 	}
 
 	// remove uuid from repost action list
@@ -1770,14 +1782,15 @@ func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entiti
 	// update activity data, exisiting activity timestamp remains same to maintain order
 	err = handlers.activityHelper.UpdateActivityByIDHelper(activity[0].ID, activityUpdateData, true, true)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+		return err
 	}
 
 	// if action by is [], no user repost on post, mark activity as deleted
 	if len(actionBy) == 0 {
 		handlers.activityHelper.DeleteActivityHelper(activityFilterData)
 	}
+
+	return nil
 }
 
 func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.ObjectID) {
