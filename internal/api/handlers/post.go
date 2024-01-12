@@ -925,6 +925,22 @@ func getPostIdsFromReposts(response interface{}) []string {
 		}
 	}
 
+	//extract from multiple posts [string]interface{}
+	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf(make(map[string]interface{})) {
+		if posts, ok := response.(gin.H)["posts"]; ok {
+			postsMap := posts.(map[string]requests.PostResponse)
+			postsList := make([]requests.PostResponse, 0, len(postsMap))
+			for _, post := range postsMap {
+				postsList = append(postsList, post)
+			}
+			for _, post := range postsList {
+				if post.IsRepost {
+					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+				}
+			}
+		}
+	}
+
 	for key := range tempPostIds {
 		uniquePostIds = append(uniquePostIds, key)
 	}
