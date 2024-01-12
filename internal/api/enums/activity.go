@@ -48,6 +48,7 @@ const (
 	TaggedYouOnPost            ActivityAction = "tagged_you_on_post"
 	TaggedYouOnComment         ActivityAction = "tagged_you_on_comment_post"
 	AlsoCommentedOnPost        ActivityAction = "also_commented_on_post_you_commented"
+	RepostOnPost               ActivityAction = "reposted_your_post"
 
 	// User Profile Activity Actions
 	UserLikeOnPost       ActivityAction = "like_on_post"
@@ -101,6 +102,8 @@ func NewActivityActionFromInt(activity_action int, userProfileActivity bool) Act
 		return TaggedYouOnComment
 	case int(constants.AlsoCommentOnPost):
 		return AlsoCommentedOnPost
+	case int(constants.RepostOnPost):
+		return RepostOnPost
 	}
 
 	return ""

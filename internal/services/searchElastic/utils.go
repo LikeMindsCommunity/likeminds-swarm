@@ -156,6 +156,66 @@ func (esHelper *esHelper) InsertDocument(ctx context.Context, document interface
 	return nil
 }
 
+// Exposed method to insert multiple documents in ElasticSearch
+func (esHelper *esHelper) InsertManyDocuments(documents map[string]interface{}, index string) error {
+	err := esHelper.CreateIndex(index)
+	if err != nil {
+		return err
+	}
+
+	body, err := formatBulkRequestBody(documents)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): insert many: marshall: %w", err)
+	}
+
+	req := esapi.BulkRequest{
+		Index: index,
+		Body:  strings.NewReader(body),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
+	defer cancel()
+
+	res, err := req.Do(ctx, esHelper.esClient)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): insert many: request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return fmt.Errorf("Search(Elastic): insert many: response: %s", res.String())
+	}
+
+	fmt.Println(`
+	res: %w
+	`, res.String())
+
+	return nil
+}
+
+// formats documents for bulk request body
+func formatBulkRequestBody(documents map[string]interface{}) (string, error) {
+	var lines []string
+	for id, document := range documents {
+		// append the ID of the document
+		// Use %q for quoting string IDs
+		lines = append(lines, fmt.Sprintf(`{"index":{"_id":%q}}`, id))
+		// Ensure a newline after each document
+		lines = append(lines, "\n")
+
+		jsonBytes, err := json.Marshal(document)
+		if err != nil {
+			return "", err
+		}
+
+		//append the document in json format
+		lines = append(lines, string(jsonBytes))
+		// Ensure a newline after each document
+		lines = append(lines, "\n")
+	}
+	return strings.Join(lines, ""), nil
+}
+
 // Exposed method to update an existing document in ElasticSearch
 func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface{}, documentId string, index string) error {
 
@@ -176,6 +236,35 @@ func (esHelper *esHelper) UpdateDocument(ctx context.Context, document interface
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	defer cancel()
+
+	res, err := req.Do(ctx, esHelper.esClient)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): update: request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return fmt.Errorf("Search(Elastic): update: response: %s", res.String())
+	}
+
+	return nil
+}
+
+// Exposed method to update existing documents by query in ElasticSearch
+func (esHelper *esHelper) UpdateByQuery(query string, index string) error {
+
+	err := esHelper.CreateIndex(index)
+	if err != nil {
+		return err
+	}
+
+	req := esapi.UpdateByQueryRequest{
+		Index: []string{index},
+		Body:  strings.NewReader(query),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
 	defer cancel()
 
 	res, err := req.Do(ctx, esHelper.esClient)
@@ -250,6 +339,35 @@ func (esHelper *esHelper) DeleteDocument(ctx context.Context, documentId string,
 
 	if res.IsError() {
 		return fmt.Errorf("Search(Elastic): delete: response: %s", res.String())
+	}
+
+	return nil
+}
+
+// Exposed method to delete existing documents by query in ElasticSearch
+func (esHelper *esHelper) DeleteByQuery(query string, index string) error {
+
+	err := esHelper.CreateIndex(index)
+	if err != nil {
+		return err
+	}
+
+	req := esapi.DeleteByQueryRequest{
+		Index: []string{index},
+		Body:  strings.NewReader(query),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
+	defer cancel()
+
+	res, err := req.Do(ctx, esHelper.esClient)
+	if err != nil {
+		return fmt.Errorf("Search(Elastic): delete by query: request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return fmt.Errorf("Search(Elastic): delete by query: response: %s", res.String())
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package scripts
 
 import (
 	"fmt"
+	"time"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
@@ -23,11 +24,14 @@ func indexPostData(handlers *handlers.FeedHandlers) {
 }
 
 func indexTopicData(handlers *handlers.FeedHandlers) {
+	fmt.Println("starting function indexTopicData")
+	startTime := time.Now()
 	err := handlers.IndexAllTopicData()
 	if err != nil {
 		log.Error(fmt.Sprintf("Scripts: Error running indexTopicData: %s", err.Error()))
 		return
 	}
+	fmt.Println("function indexTopicData completed in ", time.Since(startTime))
 }
 
 func addCommunityIdToComments(handlers *handlers.FeedHandlers) {

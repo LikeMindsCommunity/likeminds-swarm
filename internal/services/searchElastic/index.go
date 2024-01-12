@@ -16,6 +16,7 @@ type PostIndex struct {
 	ChatroomId         int                  `json:"chatroom_id"`
 	CommunityId        int                  `json:"community_id"`
 	IsPinned           bool                 `json:"is_pinned"`
+	IsRepost           bool                 `json:"is_repost"`
 	UserId             string               `json:"user_id"`
 	OriginalAuthorUUID string               `json:"original_author_uuid,omitempty"`
 	Attachments        interface{}          `json:"attachments"`
@@ -25,12 +26,13 @@ type PostIndex struct {
 
 // Struct for Elasticsearch Topic Index fields
 type TopicIndex struct {
-	Id          string    `json:"id"`
-	Name        string    `json:"name"`
-	IsEnabled   bool      `json:"is_enabled"`
-	CommunityId int       `json:"community_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	Id            string    `json:"id"`
+	Name          string    `json:"name"`
+	IsEnabled     bool      `json:"is_enabled"`
+	CommunityId   int       `json:"community_id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	NumberOfPosts *int      `json:"number_of_posts,omitempty"`
 }
 
 // Struct for Elasticsearch Widget Index fields
