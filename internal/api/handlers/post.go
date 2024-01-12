@@ -827,45 +827,12 @@ func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID
 	return true, ""
 }
 
-func validateRepostPostAttachment(postData *entities.Post, editPostRequest requests.EditPostRequest) bool {
-	// repost's attached post id should not be updated in edit request
-	// repost will have only post type (=8) attachment
-	existingOriginalPostID := postData.Attachments[0].AttachmentMeta.EntityID.Hex()
-
-	if len(editPostRequest.Attachments) <= 0 {
-		return false
-	}
-	editRepostRequestPostID := editPostRequest.Attachments[0].AttachmentMeta.EntityID
-
-	if existingOriginalPostID == editRepostRequestPostID {
-		return true
-	}
-
-	return false
-}
-
-func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID string) (bool, string) {
-	postFilterData := gin.H{
-		"_id": originalPostID,
-	}
-	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
-	if (err != nil) || (len(postResults) <= 0) {
-		return false, "original post not found for repost"
-	}
-
-	if userID == postResults[0].UserId {
-		return false, "can not repost self post"
-	}
-
-	if getIsRepostedByUser(handlers.widgetHelper, userID, postResults[0]) {
-		return false, "can not repost one post multiple times"
-	}
-
-	return true, ""
-}
-
 // Internal Method to parse response for fetch multiple posts api
-func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse, posts_count int64) requests.FetchUserMultiplePostResponse {
+func parseFetchMultiplePostResponse(
+	postHelper interfaces.PostHelper,
+	posts []requests.PostResponse,
+	posts_count int64) requests.FetchUserMultiplePostResponse {
+
 	response := requests.FetchUserMultiplePostResponse{}
 
 	response.Success = true
@@ -1297,7 +1264,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	postId, err := handlers.postHelper.CreatePostHelper(postRequest.Text, postRequest.Heading,
 		communityId, userId, postRequest.Attachments, postRequest.ChatroomID,
 		postRequest.TempID, postRequest.ParsedTopicIds, postRequest.OriginalAuthor, postRequest.Visibility,
-		postRequest.CreatedAt)
+		postRequest.IsRepost, postRequest.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -1384,15 +1351,18 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// validation of attachments
-	err := validateAndUpdatePostAttachments(handlers, communityId, createPostRequest.Attachments, apiRevampV1Check, false)
+	err := validateAndUpdatePostAttachments(handlers, communityId, createPostRequest.Attachments, apiRevampV1Check,
+		false, createPostRequest.IsRepost)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
+	originalPostID := ""
+
 	if createPostRequest.IsRepost {
 		originalPostID = getOriginalPostIDFromRepostRequest(createPostRequest)
-		success, errMessage := validateUserForRepost(handlers, postUserId, originalPostID)
+		success, errMessage := validateUserForRepost(handlers, userId, originalPostID)
 		if !success {
 			utils.GeneralAPIValidationError(c, errMessage)
 			return
@@ -1462,7 +1432,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	if createPostRequest.IsRepost {
-		updateOriginalPostWidgetForRepost(handlers, originalPostID, postId, postUserId)
+		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
 
 		// create activity for repost
 		postFilterData := gin.H{
@@ -1482,7 +1452,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 		OriginalPostIDObject, err := primitive.ObjectIDFromHex(originalPostID)
 
-		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, OriginalPostUserID, constants.Post,
+		activityID, err := handlers.CreateActivity(communityId, []string{userId}, OriginalPostUserID, constants.Post,
 			OriginalPostIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -1739,7 +1709,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	err = validateAndUpdatePostAttachments(handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true)
+	err = validateAndUpdatePostAttachments(handlers, communityId, editPostRequest.Attachments, apiRevampV1Check,
+		true, postData.IsRepost)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

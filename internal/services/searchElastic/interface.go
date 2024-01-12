@@ -12,5 +12,6 @@ type EsHelper interface {
 	UpdateDocument(ctx context.Context, document interface{}, documentId string, index string) error
 	DeleteDocument(ctx context.Context, documentId string, index string) error
 	ExecuteQuery(query string, index string) map[string]interface{}
+	UpdateByQuery(query string, index string) error
 	DeleteByQuery(query string, index string) error
 }

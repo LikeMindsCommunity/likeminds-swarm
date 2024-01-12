@@ -579,7 +579,7 @@ func sendRepostPostActionNotification(activity *entities.Activity, handlers Feed
 	member := member_data.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn

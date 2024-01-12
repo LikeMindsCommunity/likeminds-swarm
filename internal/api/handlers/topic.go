@@ -478,7 +478,7 @@ func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 
 	for _, postData := range updatedPosts {
 		// update post data in elastic search
-		err = handlers.esHelper.IndexDocument(c, ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
+		err = handlers.esHelper.IndexDocument(ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}

@@ -21,9 +21,10 @@ type PendingPost struct {
 // Exposed Method to Create a New Pending Post
 func NewPendingPost(text string, heading string, communityId int, userId string, attachments []Attachment,
 	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, CreatedAt int, postType string) PendingPost {
+	visibility string, isRepost bool, createdAt int, postType string) PendingPost {
 
-	post := NewPost(text, heading, communityId, userId, attachments, chatroomId, tempId, topicIds, originalAuthorUUID, visibility, CreatedAt)
+	post := NewPost(text, heading, communityId, userId, attachments, chatroomId, tempId, topicIds, originalAuthorUUID,
+		visibility, isRepost, createdAt)
 
 	// create pending post entity
 	pendingPostEntity := PendingPost{

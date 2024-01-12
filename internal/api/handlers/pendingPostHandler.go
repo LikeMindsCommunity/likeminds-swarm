@@ -43,7 +43,7 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 	// parse post data for response data for each pending post
 	for _, pendingPost := range pendingPostLists {
 		postResponse[pendingPost.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			handlers.topicHelper, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
+			handlers.topicHelper, handlers.widgetHelper, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
 	}
 
 	return postResponse, nil
@@ -80,7 +80,8 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	// validation of attachments
-	err := validateAndUpdatePostAttachments(handlers, communityId, cppr.Attachments, apiRevampV1Check, false)
+	err := validateAndUpdatePostAttachments(handlers, communityId, cppr.Attachments, apiRevampV1Check,
+		false, false)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -121,7 +122,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// Create pending post
 	pendingPostId, err := handlers.pendingPostHelper.CreatePendingPostHelper(cppr.Text, cppr.Heading, communityId,
-		postUserId, cppr.Attachments, cppr.ChatroomID, cppr.TempID, topicIDs, "", cppr.Visibility, cppr.CreatedAt,
+		postUserId, cppr.Attachments, cppr.ChatroomID, cppr.TempID, topicIDs, "", cppr.Visibility, false, cppr.CreatedAt,
 		enums.UnderReview)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())

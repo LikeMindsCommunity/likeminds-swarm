@@ -22,7 +22,7 @@ type PendingPostRepository interface {
 type PendingPostHelper interface {
 	CreatePendingPostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
 		chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string, visibility string,
-		createdAt int, postType string) (interface{}, error)
+		isRepost bool, createdAt int, postType string) (interface{}, error)
 	EditPendingPostHelper(id primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
 		topicIds []primitive.ObjectID, visibility string, markIsEdited bool, postType string) error
 	FindPendingPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.PendingPost, error)
