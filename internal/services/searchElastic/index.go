@@ -16,6 +16,7 @@ type PostIndex struct {
 	ChatroomId         int                  `json:"chatroom_id"`
 	CommunityId        int                  `json:"community_id"`
 	IsPinned           bool                 `json:"is_pinned"`
+	IsRepost           bool                 `json:"is_repost"`
 	UserId             string               `json:"user_id"`
 	OriginalAuthorUUID string               `json:"original_author_uuid,omitempty"`
 	Attachments        interface{}          `json:"attachments"`
