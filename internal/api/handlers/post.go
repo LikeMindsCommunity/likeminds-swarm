@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -914,10 +915,12 @@ func getPostIdsFromReposts(response interface{}) []string {
 	}
 
 	// extract from multiple posts []
-	if posts, ok := response.(gin.H)["posts"]; ok {
-		for _, post := range posts.([]requests.PostResponse) {
-			if post.IsRepost {
-				tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf([]requests.PostResponse{}) {
+		if posts, ok := response.(gin.H)["posts"]; ok {
+			for _, post := range posts.([]requests.PostResponse) {
+				if post.IsRepost {
+					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+				}
 			}
 		}
 	}
