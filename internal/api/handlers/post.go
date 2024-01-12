@@ -925,8 +925,8 @@ func getPostIdsFromReposts(response interface{}) []string {
 		}
 	}
 
-	//extract from multiple posts [string]interface{}
-	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf(make(map[string]interface{})) {
+	//extract from multiple posts map[string]requests.PostResponse
+	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf(map[string]requests.PostResponse{}) {
 		if posts, ok := response.(gin.H)["posts"]; ok {
 			postsMap := posts.(map[string]requests.PostResponse)
 			postsList := make([]requests.PostResponse, 0, len(postsMap))
