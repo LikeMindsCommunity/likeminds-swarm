@@ -64,8 +64,16 @@ func (handlers *FeedHandlers) IndexAllTopicData() error {
 	}
 
 	for _, topicData := range topicResults {
+		// find posts with topicId
+		postResults, err := fetchPostsWithTopicID(handlers, topicData.ID, topicData.CommunityId)
+		if err != nil {
+			return err
+		}
+
+		postsCount := len(postResults)
+
 		// insert topic data in elastic search
-		err = handlers.esHelper.InsertDocument(ParseTopicIndexData(&topicData), topicData.ID.Hex(), constants.TopicIndexName)
+		err = handlers.esHelper.InsertDocument(ParseTopicIndexData(&topicData, &postsCount), topicData.ID.Hex(), constants.TopicIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}

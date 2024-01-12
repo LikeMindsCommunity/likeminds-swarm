@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -92,4 +93,28 @@ func AreValidURLs(urlStrings []string) error {
 	}
 
 	return nil
+}
+
+// Helper method to typecase interface Ids to ObjectIds
+func TypecastIdsToObjectIds(ids []interface{}) []primitive.ObjectID {
+
+	objectIds := make([]primitive.ObjectID, len(ids))
+
+	for i, id := range ids {
+		objectIds[i] = id.(primitive.ObjectID)
+	}
+
+	return objectIds
+}
+
+// Helper method to convert array of Object IDs to string format
+func ConvertObjectIdsToString(objectIds []primitive.ObjectID) string {
+
+	topicIds := make([]string, len(objectIds))
+
+	for i, objectId := range objectIds {
+		topicIds[i] = objectId.Hex()
+	}
+
+	return utils.ParseStringArrayToString(topicIds)
 }

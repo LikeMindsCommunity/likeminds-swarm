@@ -14,6 +14,7 @@ type PostRepository interface {
 	Create(document interface{}) (interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
+	UpdateMany(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 	Aggregate(query []map[string]interface{}) ([]gin.H, error)
 }
@@ -21,7 +22,7 @@ type PostRepository interface {
 // Interface for Post Helper
 type PostHelper interface {
 	CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
-		chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string, visibility string,
+		chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string, visibility string, isRepost bool,
 		createdAt int) (interface{}, error)
 	EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
 		topicIds []primitive.ObjectID, visibility string, markIsEdited bool) error
@@ -29,4 +30,5 @@ type PostHelper interface {
 	UpdatePostByIdHelper(postId primitive.ObjectID, update map[string]interface{}) error
 	CountPostHelper(filter map[string]interface{}) (int64, error)
 	AggregatePostHelper(query []map[string]interface{}) ([]gin.H, error)
+	UpdateManyPostsHelper(filter map[string]interface{}, update map[string]interface{}, shouldUpdateTimestamp bool) error
 }

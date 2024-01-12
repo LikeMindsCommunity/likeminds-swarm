@@ -41,7 +41,7 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 
 // Exposed Helper Method to Create Post
 func (helper *postHelper) CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
-	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string, visibility string, createdAt int) (interface{}, error) {
+	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string, visibility string, isRepost bool, createdAt int) (interface{}, error) {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -50,7 +50,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 		tempId = nil
 	}
 
-	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId, topicIds, originalAuthorUUID, visibility, createdAt)
+	post := entities.NewPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId, topicIds, originalAuthorUUID, visibility, isRepost, createdAt)
 	postId, err := helper.postRepository.Create(&post)
 
 	return postId, err
@@ -120,6 +120,21 @@ func (helper *postHelper) UpdatePostByIdHelper(postId primitive.ObjectID, update
 	err := helper.postRepository.Update(gin.H{"_id": postId}, update)
 
 	return err
+}
+
+// Exposed Helper Method to Update Multiple Posts
+func (helper *postHelper) UpdateManyPostsHelper(filter map[string]interface{}, update map[string]interface{}, shouldUpdateTimestamp bool) error {
+	if shouldUpdateTimestamp {
+		if _, ok := update["$set"]; ok {
+			update["$set"].(gin.H)["updated_at"] = time.Now()
+		} else {
+			update["$set"] = gin.H{
+				"updated_at": time.Now(),
+			}
+		}
+	}
+
+	return helper.postRepository.UpdateMany(filter, update)
 }
 
 // Exposed Helper Method to Fetch Post Count

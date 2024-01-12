@@ -35,6 +35,7 @@ type AttachmentMeta struct {
 	MultipleSelectNumber int                    `json:"multiple_select_number,omitempty"`
 	IsAnonymous          bool                   `json:"is_anonymous,omitempty"`
 	AllowAddOption       bool                   `json:"allow_add_option,omitempty"`
+	PostID               string                 `json:"post_id,omitempty"`
 	WidgetMeta           map[string]interface{} `json:"widget_meta,omitempty"`
 	NsfwScore            float64                `json:"-,omitempty"` // field to be updated internally
 }
@@ -59,6 +60,7 @@ type CreatePostRequest struct {
 	On_behalf_of_uuid string               `json:"on_behalf_of_uuid,omitempty"`
 	Visibility        string               `json:"visibility"`
 	User_is_cm        bool                 `json:"user_is_cm,omitempty"`
+	IsRepost          bool                 `json:"is_repost"`
 	CreatedAt         int                  `json:"created_at"`
 	ParsedTopicIds    []primitive.ObjectID `json:"-"` // field to be updated internally
 	OriginalAuthor    string               `json:"-"` // field to be updated internally
@@ -95,8 +97,11 @@ type PostResponse struct {
 	Attachments        []entities.Attachment `json:"attachments"`
 	LikesCount         int                   `json:"likes_count"`
 	CommentsCount      int                   `json:"comments_count"`
+	RepostCount        int32                 `json:"repost_count"`
 	IsDeleted          bool                  `json:"is_deleted,omitempty"`
 	IsEdited           bool                  `json:"is_edited"`
+	IsRepost           bool                  `json:"is_repost"`
+	IsRepostedByUser   bool                  `json:"is_reposted_by_user"`
 	OriginalAuthorUUID string                `json:"original_author_uuid,omitempty"`
 	DeletedBy          string                `json:"deleted_by,omitempty"`
 	DeletedByUUID      string                `json:"deleted_by_uuid,omitempty"`

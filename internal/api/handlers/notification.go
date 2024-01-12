@@ -556,6 +556,52 @@ func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandle
 	}
 }
 
+// Internal General Method to send notification on repost action on a post
+func sendRepostPostActionNotification(activity *entities.Activity, handlers FeedHandlers, platformCode string, versionCode string) {
+
+	postData, err := fetchPost(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID)
+	if err != nil {
+		return
+	}
+	repostCount := getPostRepostCount(handlers.widgetHelper, *postData)
+
+	// If repost count is not in fibonacci series
+	if !checkIfFibonacciNumber(int(repostCount)) {
+		return
+	}
+
+	// Fetch members details
+	success, member_data := externalHelpers.FetchMemberMeta([]string{activity.ActionBy[len(activity.ActionBy)-1]}, activity.ActionOn, activity.CommunityID)
+	if !success || len(member_data.Members) == 0 {
+		return
+	}
+
+	member := member_data.Members[0]
+
+	// Fetch community configurations
+	postMetatadataValue := externalHelpers.GetDefaultOrDbCommunityConfiguration(handlers.cacheHelper, member.UUID, activity.CommunityID)
+
+	// notification params
+	receivers := activity.ActionOn
+	title := constants.RepostTitle
+	route := activity.CTA
+	category := constants.FeedCategory
+	subTitle := ""
+	subCategory := constants.RepostOnPostSubCategory
+
+	if repostCount == 1 {
+		subTitle = fmt.Sprintf(constants.PostRepostedSubTitleLevelOne, member.Name, postMetatadataValue)
+	} else if repostCount == 2 {
+		subTitle = fmt.Sprintf(constants.PostRepostedSubTitleLevelTwo, member.Name, postMetatadataValue)
+	} else if repostCount > 2 {
+		subTitle = fmt.Sprintf(constants.PostRepostedSubTitleLevelThree, member.Name, repostCount-1, postMetatadataValue)
+	}
+
+	// send notification
+	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,
+		category, subCategory, platformCode, versionCode)
+}
+
 // Internal Method to validate notification receivers
 func validateReceivers(activity *entities.Activity) *entities.Activity {
 	receivers := []string{}
@@ -609,6 +655,9 @@ func SendNotification(activityID primitive.ObjectID, handlers FeedHandlers, plat
 
 	case constants.AlsoCommentOnPost:
 		sendAlsoCommentActionNotification(activity, handlers, platformCode, versionCode)
+
+	case constants.RepostOnPost:
+		sendRepostPostActionNotification(activity, handlers, platformCode, versionCode)
 
 	case constants.TaggedInPost, constants.TaggedInPostComment:
 		sendTagActionNotification(activity, handlers, platformCode, versionCode)

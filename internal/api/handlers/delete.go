@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -67,6 +69,15 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 			err = handlers.postHelper.UpdatePostByIdHelper(post.ID, update_data)
 			if err != nil {
 				log.Error(fmt.Sprintf("DeleteUserData() - Error while deleting post with _id %s : %s", post.ID.Hex(), err.Error()))
+			}
+
+			// update the count of posts in topics
+			if len(post.TopicIds) > 0 {
+				stringTopicIds := helpers.ConvertObjectIdsToString(post.TopicIds)
+				err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
+				if err != nil {
+					log.Error(err.Error())
+				}
 			}
 		}
 
