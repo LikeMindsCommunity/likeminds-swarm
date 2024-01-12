@@ -1291,10 +1291,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			"post_id":     originalPostID,
 		}
 
-		OriginalPostUserIDObject, err := primitive.ObjectIDFromHex(originalPostID)
+		OriginalPostIDObject, err := primitive.ObjectIDFromHex(originalPostID)
 
 		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, OriginalPostUserID, constants.Post,
-			OriginalPostUserIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
+			OriginalPostIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
