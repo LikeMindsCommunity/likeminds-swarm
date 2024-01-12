@@ -647,7 +647,8 @@ func fetchActivityCtaForAction(action constants.ActivityAction, ctaData map[stri
 		constants.CommentOnComment,
 		constants.TaggedInPost,
 		constants.TaggedInPostComment,
-		constants.AlsoCommentOnPost:
+		constants.AlsoCommentOnPost,
+		constants.RepostOnPost:
 		cta = parseCTAData(ctaData)
 
 	case constants.CreatePostPermitAdded:

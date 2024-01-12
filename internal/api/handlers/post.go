@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -108,7 +109,7 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	originalPost := postResults[0]
 
 	originalPostRepostWidgetData := getRepostWidgetDataFromPost(originalPost)
-	if originalPostRepostWidgetData.Type == enums.RepostType {
+	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
 		//get respost widget id, update respost widget data
 		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
 
@@ -165,12 +166,15 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 		"repost_count": 1,
 	}
 
-	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, repostID.(primitive.ObjectID).String(), "post", respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
+	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, originalPostID, constants.PostEntityType, respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
 	if err != nil {
 		return
 	}
 
-	repostAttachmentMeta := &entities.AttachmentMeta{EntityID: repostWidgetID.(primitive.ObjectID)}
+	repostAttachmentMeta := &entities.AttachmentMeta{
+		OgTags:   &entities.OGTags{},
+		EntityID: repostWidgetID.(primitive.ObjectID),
+	}
 
 	originalPostAttachments := originalPost.Attachments
 	repostWidgetAttachmentData := entities.Attachment{enums.RepostType.ToInt(), repostAttachmentMeta, enums.RepostType, nil}
@@ -188,11 +192,24 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	handlers.postHelper.UpdatePostByIdHelper(originalPostIDPrimitiveObject, postUpdateData)
 }
 
+// extract repost type attachment from a post
 func getRepostWidgetDataFromPost(post entities.Post) entities.Attachment {
 	originalPostAttachments := post.Attachments
 
 	for _, attachment := range originalPostAttachments {
-		if attachment.Type == enums.RepostType {
+		if attachment.AttachmentType == enums.RepostWidget {
+			return attachment
+		}
+	}
+	return entities.Attachment{}
+}
+
+// extract post type attachement from a repost
+func getPostAttachmentDataFromPost(post entities.Post) entities.Attachment {
+	postAttachments := post.Attachments
+
+	for _, attachment := range postAttachments {
+		if attachment.AttachmentType == enums.PostWidget {
 			return attachment
 		}
 	}
@@ -360,7 +377,7 @@ func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post
 	var postRepostCount int32 = 0
 
 	postRepostWidgetData := getRepostWidgetDataFromPost(post)
-	if postRepostWidgetData.Type == enums.RepostType {
+	if postRepostWidgetData.AttachmentType == enums.RepostWidget {
 		repostWidgetID := postRepostWidgetData.AttachmentMeta.EntityID
 
 		widgetFilter := gin.H{
@@ -383,7 +400,7 @@ func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post
 
 func getIsRepostedByUser(widgetHelper interfaces.WidgetHelper, userID string, post entities.Post) bool {
 	originalPostRepostWidgetData := getRepostWidgetDataFromPost(post)
-	if originalPostRepostWidgetData.Type == enums.RepostType {
+	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
 		//get repost widget id, update repost widget data
 		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
 
@@ -620,7 +637,7 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 				utils.GeneralAPIValidationError(c, errorMessage)
 				return false
 			}
-			return true
+			continue
 		}
 
 		switch element.AttachmentType {
@@ -685,6 +702,10 @@ func validateRepostPostAttachment(postData *entities.Post, editPostRequest reque
 	// repost's attached post id should not be updated in edit request
 	// repost will have only post type (=8) attachment
 	existingOriginalPostID := postData.Attachments[0].AttachmentMeta.EntityID.Hex()
+
+	if len(editPostRequest.Attachments) <= 0 {
+		return false
+	}
 	editRepostRequestPostID := editPostRequest.Attachments[0].AttachmentMeta.EntityID
 
 	if existingOriginalPostID == editRepostRequestPostID {
@@ -894,10 +915,28 @@ func getPostIdsFromReposts(response interface{}) []string {
 	}
 
 	// extract from multiple posts []
-	if posts, ok := response.(gin.H)["posts"]; ok {
-		for _, post := range posts.([]requests.PostResponse) {
-			if post.IsRepost {
-				tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf([]requests.PostResponse{}) {
+		if posts, ok := response.(gin.H)["posts"]; ok {
+			for _, post := range posts.([]requests.PostResponse) {
+				if post.IsRepost {
+					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+				}
+			}
+		}
+	}
+
+	//extract from multiple posts map[string]requests.PostResponse
+	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf(map[string]requests.PostResponse{}) {
+		if posts, ok := response.(gin.H)["posts"]; ok {
+			postsMap := posts.(map[string]requests.PostResponse)
+			postsList := make([]requests.PostResponse, 0, len(postsMap))
+			for _, post := range postsMap {
+				postsList = append(postsList, post)
+			}
+			for _, post := range postsList {
+				if post.IsRepost {
+					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+				}
 			}
 		}
 	}
@@ -1249,13 +1288,13 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		OriginalPostUserID := originalPost.UserId
 		ctaData := gin.H{
 			"entity_type": constants.PostEntityType,
-			"post_id":     OriginalPostUserID,
+			"post_id":     originalPostID,
 		}
 
-		OriginalPostUserIDObject, err := primitive.ObjectIDFromHex(OriginalPostUserID)
+		OriginalPostIDObject, err := primitive.ObjectIDFromHex(originalPostID)
 
 		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, OriginalPostUserID, constants.Post,
-			OriginalPostUserIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
+			OriginalPostIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -1771,53 +1810,69 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 }
 
 func deleteOriginalPostRepostWidgetData(handlers *FeedHandlers, postData *entities.Post) {
-	originalPostRepostWidgetData := getRepostWidgetDataFromPost(*postData)
-	if originalPostRepostWidgetData.Type == enums.RepostType {
-		//get repost widget id, update repost widget data
-		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
+	PostAttachmentData := getPostAttachmentDataFromPost(*postData)
+	if PostAttachmentData.AttachmentType != enums.PostWidget {
+		return
+	}
+	OriginalPostID := PostAttachmentData.AttachmentMeta.EntityID
 
-		widgetFilter := gin.H{
-			"_id": repostWidgetID,
-		}
-		repostWidgets, err := handlers.widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
-		if err != nil {
-			return
-		}
+	postFilter := gin.H{
+		"_id": OriginalPostID,
+	}
 
-		repostWidgetData := repostWidgets[0]
-		repostWidgetMetadata := repostWidgetData.MetaData
-		repostWidgetMetadataReposts := repostWidgetMetadata["reposts"]
-		repostWidgetMetadataRepostsMap, ok := repostWidgetMetadataReposts.(map[string]interface{})
-		if !ok {
-			return
-		}
-
-		delete(repostWidgetMetadataRepostsMap, postData.UserId)
-
-		repostWidgetMetadataRepostCount := repostWidgetMetadata["repost_count"].(int32)
-		repostCount := repostWidgetMetadataRepostCount - 1
-		if repostCount < 0 {
-			repostCount = 0
-		}
-		repostWidgetMetadataRepostCount = repostCount
-
-		respostWidgetMetaData := gin.H{
-			"reposts":      repostWidgetMetadataRepostsMap,
-			"repost_count": repostWidgetMetadataRepostCount,
-		}
-
-		widgetUpdateData := gin.H{
-			"$set": gin.H{
-				"metadata": respostWidgetMetaData,
-			},
-		}
-
-		// update widget data
-		handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
-
+	postDatas, err := handlers.postHelper.FindPostHelper(postFilter, gin.H{})
+	if err != nil || len(postDatas) <= 0 {
 		return
 	}
 
+	originalPostData := postDatas[0]
+	RepostWidgetData := getRepostWidgetDataFromPost(originalPostData)
+	if RepostWidgetData.AttachmentType != enums.RepostWidget {
+		return
+	}
+	//get repost widget id, update repost widget data
+	repostWidgetID := RepostWidgetData.AttachmentMeta.EntityID
+
+	widgetFilter := gin.H{
+		"_id": repostWidgetID,
+	}
+	repostWidgets, err := handlers.widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
+	if err != nil || len(repostWidgets) <= 0 {
+		return
+	}
+
+	repostWidgetData := repostWidgets[0]
+	repostWidgetMetadata := repostWidgetData.MetaData
+	repostWidgetMetadataReposts := repostWidgetMetadata["reposts"]
+	repostWidgetMetadataRepostsMap, ok := repostWidgetMetadataReposts.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	delete(repostWidgetMetadataRepostsMap, postData.UserId)
+
+	repostWidgetMetadataRepostCount := repostWidgetMetadata["repost_count"].(int32)
+	repostCount := repostWidgetMetadataRepostCount - 1
+	if repostCount < 0 {
+		repostCount = 0
+	}
+	repostWidgetMetadataRepostCount = repostCount
+
+	respostWidgetMetaData := gin.H{
+		"reposts":      repostWidgetMetadataRepostsMap,
+		"repost_count": repostWidgetMetadataRepostCount,
+	}
+
+	widgetUpdateData := gin.H{
+		"$set": gin.H{
+			"metadata": respostWidgetMetaData,
+		},
+	}
+
+	// update widget data
+	handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
+
+	return
 }
 
 func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entities.Post, headers map[string]string) error {
@@ -1828,7 +1883,7 @@ func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entiti
 		"community_id": repostPostData.CommunityId,
 		"entity_type":  constants.Post,
 		"entity_id":    OriginalPostID,
-		"action":       constants.LikeOnPost,
+		"action":       constants.RepostOnPost,
 	}
 
 	activity, err := handlers.activityHelper.FindActivityHelper(activityFilterData, gin.H{})

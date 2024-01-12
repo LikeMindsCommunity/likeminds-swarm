@@ -18,7 +18,7 @@ const (
 	CommentReplySubCategory             = "Comment Reply"
 	PostLikedSubCategory                = "Post Liked"
 	CommentLikedSubCategory             = "Comment Liked"
-	RepostOnPostCategory                = "Post Reposted"
+	RepostOnPostSubCategory             = "Post Reposted"
 )
 
 const (
