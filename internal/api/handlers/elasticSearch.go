@@ -16,6 +16,7 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 		ChatroomId:  Post.ChatroomId,
 		CommunityId: Post.CommunityId,
 		IsPinned:    Post.IsPinned,
+		IsRepost:    Post.IsRepost,
 		UserId:      Post.UserId,
 		Attachments: Post.Attachments,
 		CreatedAt:   Post.CreatedAt,
