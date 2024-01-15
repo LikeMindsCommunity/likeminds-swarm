@@ -12,7 +12,7 @@ import (
 func RunScripts(handlers *handlers.FeedHandlers) {
 	// indexPostData(handlers)
 	// indexTopicData(handlers)
-	indexWidgetData(handlers)
+	// indexWidgetData(handlers)
 	// addCommunityIdToComments(handlers)
 }
 
