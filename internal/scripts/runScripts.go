@@ -12,6 +12,7 @@ import (
 func RunScripts(handlers *handlers.FeedHandlers) {
 	// indexPostData(handlers)
 	// indexTopicData(handlers)
+	// indexWidgetData(handlers)
 	// addCommunityIdToComments(handlers)
 }
 
@@ -32,6 +33,18 @@ func indexTopicData(handlers *handlers.FeedHandlers) {
 		return
 	}
 	fmt.Println("function indexTopicData completed in ", time.Since(startTime))
+}
+
+func indexWidgetData(handlers *handlers.FeedHandlers) {
+	fmt.Println("starting function indexWidgetData")
+	startTime := time.Now()
+
+	err := handlers.IndexAllWidgetData()
+	if err != nil {
+		log.Error(fmt.Sprintf("Scripts: Error running indexWidgetData: %s", err.Error()))
+		return
+	}
+	fmt.Println("function indexWidgetData completed in ", time.Since(startTime))
 }
 
 func addCommunityIdToComments(handlers *handlers.FeedHandlers) {
