@@ -12,7 +12,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -288,7 +287,7 @@ func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}
 func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.FetchWidgetRequest, communityId int,
 	uuid string, page int, pageSize int) ([]requests.WidgetResponse, error) {
 
-	filter := gin.H{}
+	var filter gin.H
 
 	filter_options := gin.H{
 		"$skip":  pageSize * (page - 1),
@@ -407,14 +406,12 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 		return
 	}
 
-	parsedWidgets := []requests.WidgetResponse{}
+	var parsedWidgets []requests.WidgetResponse
 
-	// check if fetch widgets from ES is false
-	fetchWidgetsFromES := environment.GoDotEnvVariable("FETCH_WIDGETS_FROM_ES")
+	// fetch widgets from DB or ES
+	if constants.FetchWidgetsFromDb {
 
-	// fetch widgets from DB
-	if fetchWidgetsFromES == "false" {
-
+		// fetch widgets from DB
 		parsedWidgets, err = fetchWidgetsFromDB(handlers, &fetchWidgetRequest, communityId,
 			headers[utils.HeadersMemberId], page, pageSize)
 		if err != nil {
@@ -423,6 +420,8 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 		}
 
 	} else {
+
+		// fetch widgets from ES index
 		parsedWidgets, err = fetchParsedWidgetsFromES(handlers, &fetchWidgetRequest, communityId,
 			headers[utils.HeadersMemberId], page, pageSize)
 		if err != nil {
