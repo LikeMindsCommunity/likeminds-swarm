@@ -10,7 +10,9 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -282,6 +284,103 @@ func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}
 	return widgetResponse
 }
 
+// internal method to fetch widgets from DB
+func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.FetchWidgetRequest, communityId int,
+	uuid string, page int, pageSize int) ([]requests.WidgetResponse, error) {
+
+	filter := gin.H{}
+
+	filter_options := gin.H{
+		"$skip":  pageSize * (page - 1),
+		"$limit": pageSize,
+	}
+	filter_options = addSortingOptions(filter_options, "updated_at", OrderTypeDescending)
+
+	if fetchWidgetRequest.WidgetIds != "" {
+
+		widgetObjectIds := helpers.ConvertIdsToObjectIds(parseStringArrayParam(fetchWidgetRequest.WidgetIds))
+		filter = gin.H{
+			"_id": gin.H{
+				"$in": widgetObjectIds,
+			},
+			"community_id": communityId,
+		}
+
+	} else if fetchWidgetRequest.ParentEntityId != "" && fetchWidgetRequest.ParentEntityType != "" {
+
+		filter = gin.H{
+			"parent_entity_id":   fetchWidgetRequest.ParentEntityId,
+			"parent_entity_type": fetchWidgetRequest.ParentEntityType,
+			"community_id":       communityId,
+		}
+	} else if fetchWidgetRequest.SearchKey != "" && fetchWidgetRequest.SearchValue != "" {
+
+		// remove starting and trailing "(inverted commas) from search value
+		fetchWidgetRequest.SearchValue = fetchWidgetRequest.SearchValue[1 : len(fetchWidgetRequest.SearchValue)-1]
+		fetchWidgetRequest.SearchKey = fetchWidgetRequest.SearchKey[1 : len(fetchWidgetRequest.SearchKey)-1]
+
+		filter = gin.H{
+			fetchWidgetRequest.SearchKey: fetchWidgetRequest.SearchValue,
+			"community_id":               communityId,
+		}
+	} else {
+		return nil, fmt.Errorf("invalid search params sent")
+	}
+
+	// fetch widget using helper method
+	widgetResults, err := handlers.widgetHelper.FindWidgetHelper(filter, filter_options)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse all fetched Widget Data
+	widgetResponse := []requests.WidgetResponse{}
+	for _, widget := range widgetResults {
+		widgetResponse = append(widgetResponse, parseWidgetResponse(handlers, &widget, communityId, uuid))
+	}
+
+	return widgetResponse, nil
+
+}
+
+// internal method to fetch widgets from ES
+func fetchParsedWidgetsFromES(handlers *FeedHandlers, fetchWidgetRequest *requests.FetchWidgetRequest, communityId int,
+	uuid string, page int, pageSize int) ([]requests.WidgetResponse, error) {
+
+	widgetQuery := ""
+
+	if fetchWidgetRequest.WidgetIds != "" {
+
+		// if widgetIds are sent, fetch widgets by widgetIds
+		widgetQuery = GetWidgetByIdsFilterQuery(communityId, fetchWidgetRequest.WidgetIds)
+
+	} else if fetchWidgetRequest.ParentEntityId != "" && fetchWidgetRequest.ParentEntityType != "" {
+
+		// if parentEntityId and parentEntityType are sent, fetch widgets by parentEntityId and parentEntityType
+		widgetQuery = GetWidgetsByParentEntityFilterQuery(communityId, fetchWidgetRequest.ParentEntityId,
+			fetchWidgetRequest.ParentEntityType)
+
+	} else if fetchWidgetRequest.SearchKey != "" && fetchWidgetRequest.SearchValue != "" {
+
+		// if searchKey and searchValue are sent, fetch widgets by searchKey and searchValue
+		widgetQuery = GetWidgetFilterQuery(page, pageSize, communityId, fetchWidgetRequest.SearchKey,
+			fetchWidgetRequest.SearchValue)
+
+	}
+
+	// Check for JSON errors
+	isValid := json.Valid([]byte(widgetQuery)) // returns bool
+	if !isValid {
+		return nil, fmt.Errorf("invalid search params sent")
+	}
+
+	// Execute ES query
+	esResponse := handlers.esHelper.ExecuteQuery(widgetQuery, constants.WidgetIndexName)
+	parsedWidgets := processWidgetSearchData(handlers, esResponse, communityId, uuid)
+
+	return parsedWidgets, nil
+}
+
 // Exposed Method to Fetch CustomWidgets based on given params
 func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	// fetch headers
@@ -308,37 +407,29 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 		return
 	}
 
-	widgetQuery := ""
+	parsedWidgets := []requests.WidgetResponse{}
 
-	if fetchWidgetRequest.WidgetIds != "" {
+	// check if fetch widgets from ES is false
+	fetchWidgetsFromES := environment.GoDotEnvVariable("FETCH_WIDGETS_FROM_ES")
 
-		// if widgetIds are sent, fetch widgets by widgetIds
-		widgetQuery = GetWidgetByIdsFilterQuery(communityId, fetchWidgetRequest.WidgetIds)
+	// fetch widgets from DB
+	if fetchWidgetsFromES == "false" {
 
-	} else if fetchWidgetRequest.ParentEntityId != "" && fetchWidgetRequest.ParentEntityType != "" {
+		parsedWidgets, err = fetchWidgetsFromDB(handlers, &fetchWidgetRequest, communityId,
+			headers[utils.HeadersMemberId], page, pageSize)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
 
-		// if parentEntityId and parentEntityType are sent, fetch widgets by parentEntityId and parentEntityType
-		widgetQuery = GetWidgetsByParentEntityFilterQuery(communityId, fetchWidgetRequest.ParentEntityId,
-			fetchWidgetRequest.ParentEntityType)
-
-	} else if fetchWidgetRequest.SearchKey != "" && fetchWidgetRequest.SearchValue != "" {
-
-		// if searchKey and searchValue are sent, fetch widgets by searchKey and searchValue
-		widgetQuery = GetWidgetFilterQuery(page, pageSize, communityId, fetchWidgetRequest.SearchKey,
-			fetchWidgetRequest.SearchValue)
-
+	} else {
+		parsedWidgets, err = fetchParsedWidgetsFromES(handlers, &fetchWidgetRequest, communityId,
+			headers[utils.HeadersMemberId], page, pageSize)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
 	}
-
-	// Check for JSON errors
-	isValid := json.Valid([]byte(widgetQuery)) // returns bool
-	if !isValid {
-		utils.GeneralAPIValidationError(c, "Invalid search params sent")
-		return
-	}
-
-	// Execute ES query
-	esResponse := handlers.esHelper.ExecuteQuery(widgetQuery, constants.WidgetIndexName)
-	parsedWidgets := processWidgetSearchData(handlers, esResponse, communityId, headers[utils.HeadersMemberId])
 
 	// reponse data
 	finalParsedResponse := gin.H{
