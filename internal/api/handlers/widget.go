@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -314,10 +315,11 @@ func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.Fet
 		}
 	} else if fetchWidgetRequest.SearchKey != "" && fetchWidgetRequest.SearchValue != "" {
 
-		// remove starting and trailing "(inverted commas) from search value
-		fetchWidgetRequest.SearchValue = fetchWidgetRequest.SearchValue[1 : len(fetchWidgetRequest.SearchValue)-1]
-		fetchWidgetRequest.SearchKey = fetchWidgetRequest.SearchKey[1 : len(fetchWidgetRequest.SearchKey)-1]
+		// remove leading and trailing (inverted commas) from search value
+		fetchWidgetRequest.SearchKey = strings.Trim(fetchWidgetRequest.SearchKey, "\"")
+		fetchWidgetRequest.SearchValue = strings.Trim(fetchWidgetRequest.SearchValue, "\"")
 
+		// searching only works for string type values
 		filter = gin.H{
 			fetchWidgetRequest.SearchKey: fetchWidgetRequest.SearchValue,
 			"community_id":               communityId,
