@@ -1,5 +1,12 @@
 package utils
 
+import (
+	"encoding/json"
+	"fmt"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
 // RemoveAllOccurenceStringList | removes all occurences of item in string list
 func RemoveAllOccurenceStringList(list [](string), item string) [](string) {
 	newIter := 0
@@ -20,4 +27,28 @@ func RemoveAllOccurenceStringList(list [](string), item string) [](string) {
 
 	// slice the list till valid values and return
 	return list[:newIter]
+}
+
+// This function is used to parse String array to json string using json marshal
+func ParseStringArrayToString(array []string) string {
+	temp_params, _ := json.Marshal(array)
+
+	str := fmt.Sprintf("%v", string(temp_params))
+
+	return str
+}
+
+// returns the elements in `a` that aren't in `b`.
+func GetDifferenceBetweenArray(a []primitive.ObjectID, b []primitive.ObjectID) []primitive.ObjectID {
+	mb := make(map[primitive.ObjectID]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []primitive.ObjectID
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
 }

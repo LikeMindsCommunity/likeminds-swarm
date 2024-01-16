@@ -13,6 +13,7 @@ const (
 	CreatePostPermitRemovedAction      string = "create_post_permit_removed"
 	CreateCommentPermissionAddedAction string = "create_comment_permit_added"
 	CreateCommentPermitRemovedAction   string = "create_comment_permit_removed"
+	RepostedPostAction                 string = "reposted_post"
 )
 
 // EntityType | constants for activity entities
@@ -76,6 +77,9 @@ const (
 
 	// AlsoCommentOnPost | level 0 comment added on a commented post
 	AlsoCommentOnPost ActivityAction = 12
+
+	// RepostOnPost | repost on post
+	RepostOnPost ActivityAction = 13
 )
 
 // ActivityCacheKey | cache key for activity instance

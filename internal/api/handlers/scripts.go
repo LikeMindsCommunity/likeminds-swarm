@@ -65,8 +65,47 @@ func (handlers *FeedHandlers) IndexAllTopicData() error {
 	}
 
 	for _, topicData := range topicResults {
+		// find posts with topicId
+		postResults, err := fetchPostsWithTopicID(handlers, topicData.ID, topicData.CommunityId)
+		if err != nil {
+			return err
+		}
+
+		postsCount := len(postResults)
+
 		// insert topic data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParseTopicIndexData(&topicData), topicData.ID.Hex(), constants.TopicIndexName)
+		err = handlers.esHelper.InsertDocument(context.Background(), ParseTopicIndexData(&topicData, &postsCount), topicData.ID.Hex(), constants.TopicIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (handlers *FeedHandlers) IndexAllWidgetData() error {
+
+	// delete widget index in elastic search
+	err := handlers.esHelper.DeleteIndex(constants.WidgetIndexName)
+	if err != nil {
+		return err
+	}
+
+	// create widget index in elastic search
+	err = handlers.esHelper.CreateIndex(constants.WidgetIndexName)
+	if err != nil {
+		return err
+	}
+
+	// fetch widget using helper method
+	widgetResults, err := handlers.widgetHelper.FindWidgetHelper(gin.H{}, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	for _, widgetData := range widgetResults {
+		// insert widget data in elastic search
+		err = handlers.esHelper.InsertDocument(context.Background(), ParseWidgetIndexData(&widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}

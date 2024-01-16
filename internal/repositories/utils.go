@@ -28,6 +28,14 @@ func _createDocumentInDB(db *mongo.Database, collectionName string, document int
 	return result.InsertedID, err
 }
 
+// Internal Method to Insert multiple documents in MongoDB
+func _createManyDocumentsInDB(db *mongo.Database, collectionName string, documents []interface{}) ([]interface{}, error) {
+	coll := db.Collection(collectionName)
+	result, err := coll.InsertMany(context.TODO(), documents)
+
+	return result.InsertedIDs, err
+}
+
 // Internal Method to Find a document in MongoDB
 func _findDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error) {
 	coll := db.Collection(collectionName)
@@ -58,6 +66,14 @@ func _deleteDocumentInDB(db *mongo.Database, collectionName string, filter map[s
 	_, err := coll.DeleteOne(context.TODO(), filter)
 
 	return err
+}
+
+// Internal Method to Delete many documents in MongoDB
+func _deleteManyDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}) (int64, error) {
+	coll := db.Collection(collectionName)
+	deleteResults, err := coll.DeleteMany(context.TODO(), filter)
+
+	return deleteResults.DeletedCount, err
 }
 
 // Internal Method to Fetch Documents Count

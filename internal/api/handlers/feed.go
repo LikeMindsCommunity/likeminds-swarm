@@ -142,7 +142,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 		// parse pinned posts
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
+			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pinnedPostResults, headers[utils.HeadersMemberId],
 			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
 			apiRevampV1Check, handlers.cacheHelper)
 
@@ -159,7 +159,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	// parse unpinned posts
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
+		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
 		universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
 		apiRevampV1Check, handlers.cacheHelper)
 
@@ -179,6 +179,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -558,7 +559,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 		// parse pinned posts
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-			handlers.saveHelper, handlers.topicHelper, pinnedPostResults, headers[utils.HeadersMemberId],
+			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pinnedPostResults, headers[utils.HeadersMemberId],
 			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
 			apiRevampV1Check, handlers.cacheHelper)
 
@@ -575,7 +576,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	// parse unpinned posts
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
+		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
 		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
 		apiRevampV1Check, handlers.cacheHelper)
 
@@ -595,6 +596,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -718,7 +720,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 
 	// parse connection feed posts
 	connectionFeedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, connectionFeedPostResults, headers[utils.HeadersMemberId],
+		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, connectionFeedPostResults, headers[utils.HeadersMemberId],
 		connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
 		apiRevampV1Check, handlers.cacheHelper)
 
@@ -736,6 +738,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
