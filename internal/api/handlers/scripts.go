@@ -83,6 +83,37 @@ func (handlers *FeedHandlers) IndexAllTopicData() error {
 	return nil
 }
 
+func (handlers *FeedHandlers) IndexAllWidgetData() error {
+
+	// delete widget index in elastic search
+	err := handlers.esHelper.DeleteIndex(constants.WidgetIndexName)
+	if err != nil {
+		return err
+	}
+
+	// create widget index in elastic search
+	err = handlers.esHelper.CreateIndex(constants.WidgetIndexName)
+	if err != nil {
+		return err
+	}
+
+	// fetch widget using helper method
+	widgetResults, err := handlers.widgetHelper.FindWidgetHelper(gin.H{}, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	for _, widgetData := range widgetResults {
+		// insert widget data in elastic search
+		err = handlers.esHelper.InsertDocument(context.Background(), ParseWidgetIndexData(&widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+
+	return nil
+}
+
 // function to insert community_id to all comments of a post
 func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 
