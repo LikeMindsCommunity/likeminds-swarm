@@ -104,7 +104,7 @@ func (handlers *FeedHandlers) IndexAllWidgetData() error {
 
 	for _, widgetData := range widgetResults {
 		// insert widget data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParseWidgetIndexData(&widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
+		err = handlers.esHelper.InsertDocument(ParseWidgetIndexData(&widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
