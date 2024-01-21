@@ -32,7 +32,8 @@ func SendMail(userId string, mail_recipients []string, subject string, body stri
 
 	if statusCode != http.StatusOK {
 		logging.Error(fmt.Sprintf("Error while sending mail | statusCode: %d , Response:  %s", statusCode, string(respBytes)))
-	} else {
-		logging.Info(fmt.Sprintf("Mail sent by user: %s to mails: %v with subject: %s", userId, mail_recipients, subject))
+		return
 	}
+
+	logging.Info(fmt.Sprintf("Mail sent by user: %s to mails: %v with subject: %s", userId, mail_recipients, subject))
 }

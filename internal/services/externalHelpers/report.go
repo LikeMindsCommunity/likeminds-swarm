@@ -9,24 +9,22 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
-func pushReport(userId string, communityId int, postBody gin.H) error {
+func pushReport(headers gin.H, postBody gin.H) error {
 
-	headers := gin.H{
-		"x-member-id": userId,
+	if headers == nil || postBody == nil {
+		return fmt.Errorf("headers or postBody is nil")
 	}
-
-	postBody["community_id"] = fmt.Sprint(communityId)
 
 	// Send request
 	respBytes, statusCode, err := GetRequestResponse(CaravanService, PushReportEndpoint, POSTRequestRawBody, headers,
 		nil, postBody)
 	if err != nil {
-		logging.Error(fmt.Errorf("error while pushing report: %s", err.Error()))
+		logging.Error(fmt.Sprintf("error while pushing report: %s", err.Error()))
 		return err
 	}
 
 	if statusCode != http.StatusOK {
-		logging.Error(fmt.Errorf("error while pushing report | statusCode: %d , Response:  %s", statusCode, string(respBytes)))
+		logging.Error(fmt.Sprintf("error while pushing report | statusCode: %d , Response:  %s", statusCode, string(respBytes)))
 		return fmt.Errorf("error while pushing report:  %s", string(respBytes))
 	}
 
@@ -36,11 +34,16 @@ func pushReport(userId string, communityId int, postBody gin.H) error {
 // SendPendingPostForReview | Exposed method for pushing pending post for review
 func SendPendingPostForReview(userId string, communityId int, pendingPostId string) error {
 
+	headers := gin.H{
+		"x-member-id": userId,
+	}
+
 	postBody := gin.H{
 		"entity_id":    pendingPostId,
 		"entity_type":  enums.EntityTypePendingPost,
 		"accused_uuid": userId,
+		"community_id": fmt.Sprint(communityId),
 	}
 
-	return pushReport(userId, communityId, postBody)
+	return pushReport(headers, postBody)
 }

@@ -3,10 +3,12 @@ package externalHelpers
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
@@ -41,10 +43,19 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 		logging.Error(fmt.Sprintf("NSFW Filtering | Error while sending request to Inferdo api: statusCode: %d %s",
 			statusCode, parsedResponse))
 
-		// Increment key in redis cache with expiry of 1 day
-		count, err := cacheHelper.IncrWithExpiry(inferdoFailureCacheKey, 24*time.Hour)
+		// Increment key in redis cache
+		count, err := cacheHelper.Increment(inferdoFailureCacheKey)
 		if err != nil {
 			logging.Error(fmt.Sprintf("NSFW Filtering | Error while incrementing inferdo api fails count: %s", err.Error()))
+
+		} else if count == 1 {
+
+			// Set expiry for key to 1 day if first error
+			_, err := cacheHelper.Expire(inferdoFailureCacheKey, time.Hour*24)
+			if err != nil {
+				logging.Error(fmt.Sprintf("NSFW Filtering | Error while setting expiry for inferdo api fails count: %s", err.Error()))
+			}
+
 		} else if count == 10 {
 
 			// Send mail to team notifying about inferdo api errors [In background]
@@ -70,14 +81,19 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 
 func sendMailtoTeamForInferdoAPIErrors(userId string, communityId int, errorResponse string) {
 
-	// Get community name
-	// communityName, err := GetCommunityName(userId, communityId)
+	subject := fmt.Sprintf("Multiple Inferdo API Errors for communityId: %d", communityId)
+	body := fmt.Sprintf(`
+						<h1>Multiple Inferdo API errors occured for CommunityId %d</h1>
+						<h2>Date And time: %v </h2>
+						<h2>Error Response: </h2>
+						%s
+						<br>
+						<h3>Please contact team & check logs for more info<h3>`,
+		communityId, time.Now().String(), errorResponse)
 
-	mails := []string{"shubh.gupta@likeminds.community"}
-	subject := "Multiple Inferdo API Errors for community: "
-	body := fmt.Sprintf("Inferdo API Error: %s", errorResponse)
+	teamMails := environment.GoDotEnvVariable("TEAM_ADMIN_MAILS")
+	mails := strings.Split(teamMails, ",")
 
 	// Send mail using caravan service
 	SendMail(userId, mails, subject, body)
-
 }

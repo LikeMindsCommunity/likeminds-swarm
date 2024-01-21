@@ -69,3 +69,8 @@ const (
 	PendingPostApprovedSubTitle      = "Your %s has been approved."
 	PendingPostRejectedSubTitle      = "Your %s has been rejected."
 )
+
+// routes
+const (
+	PlaceholderHomeRoute = "route://home"
+)

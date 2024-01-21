@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -178,11 +177,13 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	}
 
 	originalPostAttachments := originalPost.Attachments
-	repostWidgetAttachmentData := entities.Attachment{enums.RepostType.ToInt(), repostAttachmentMeta, enums.RepostType, nil}
+	repostWidgetAttachmentData := entities.Attachment{
+		AttachmentType: enums.RepostType.ToInt(),
+		AttachmentMeta: repostAttachmentMeta}
 
 	originalPostAttachments = append(originalPostAttachments, repostWidgetAttachmentData)
 
-	originalPostIDPrimitiveObject, err := primitive.ObjectIDFromHex(originalPostID)
+	originalPostIDPrimitiveObject, _ := primitive.ObjectIDFromHex(originalPostID)
 	postUpdateData := gin.H{
 		"$set": gin.H{
 			"attachments": originalPostAttachments,
@@ -687,8 +688,8 @@ func validateAndUpdatePostAttachments(handlers *FeedHandlers, communityId int, a
 }
 
 // Internal Method to validate/update post images for NSFW score and return error meta
-func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
-	attachments *[]requests.Attachment, onlyUpdateScore bool) (string, gin.H) {
+func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
+	attachments *[]requests.Attachment) (string, gin.H) {
 
 	// Check if NSFW Filtering is enabled and API Key is present
 	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
@@ -698,25 +699,16 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 		nsfwImageScores := getNsfwScoresFromImageAttachmentsInParallel(cacheHelper, userId, communityId,
 			configuration.InferdoApiKey, *attachments)
 
-		// Update NSFW score in attachment meta
-		if onlyUpdateScore {
-
-			for index, score := range nsfwImageScores {
-
-				if score > configuration.CutoffScore {
-					(*attachments)[index].AttachmentMeta.NsfwScore = score
-				}
-			}
-
-			return "", nil
-		}
-
 		nsfwImageIndices := []int{}
 
-		// Get the indices of images with NSFW score greater than cutoff score
 		for index, score := range nsfwImageScores {
 			if score > configuration.CutoffScore {
+
+				// Append index to nsfwImageIndices
 				nsfwImageIndices = append(nsfwImageIndices, index)
+
+				// Update NSFW score in attachment meta
+				(*attachments)[index].AttachmentMeta.NsfwScore = score
 			}
 		}
 
@@ -726,13 +718,18 @@ func validatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, c
 			indicesString := ""
 
 			// For all the indices get its ordinal number and append it to the error message
-			for _, index := range nsfwImageIndices {
+			for i, imageIndex := range nsfwImageIndices {
 
-				if index != 0 && index == len(nsfwImageIndices)-1 {
-					indicesString += "and "
+				indicesString += utils.GetOrdinal(imageIndex + 1)
+
+				if i == len(nsfwImageIndices)-2 {
+					indicesString += " and"
+				} else if i < len(nsfwImageIndices)-1 {
+					indicesString += ","
 				}
 
-				indicesString += utils.GetOrdinal(index+1) + " "
+				indicesString += " "
+
 			}
 
 			errorMessage := fmt.Sprintf(utils.NsfwContentInImageError, indicesString)
@@ -1371,8 +1368,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(createPostRequest.Attachments) > 0 {
-		errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, userId, communityId,
-			&createPostRequest.Attachments, false)
+		errorMessage, errorMeta := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, userId, communityId,
+			&createPostRequest.Attachments)
 		if errorMeta != nil {
 
 			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
@@ -1541,30 +1538,33 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 		return
 	}
 
-	// Get Query Params
-	paramPostIds := c.Query("post_ids")
-	paramPendingPostIds := c.Query("pending_post_ids")
-	paramIsCm, err := strconv.ParseBool(c.Query("user_is_cm"))
+	var fetchPostQueryRequest requests.FetchPostsQueryRequest
+
+	err := c.BindQuery(&fetchPostQueryRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
 
 	// If user is not cm, return error
-	if !paramIsCm {
+	if !fetchPostQueryRequest.UserIsCm {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
 
-	// Unmarshal post_ids
+	// Unmarshal post and pending post ids
 	postIds, pendingPostIds := []string{}, []string{}
 
-	if paramPostIds != "" {
-		err := json.Unmarshal([]byte(paramPostIds), &postIds)
+	if fetchPostQueryRequest.PostIds != "" {
+		err := json.Unmarshal([]byte(fetchPostQueryRequest.PostIds), &postIds)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
 	}
 
-	if paramPendingPostIds != "" {
-		err := json.Unmarshal([]byte(paramPendingPostIds), &pendingPostIds)
+	if fetchPostQueryRequest.PendingPostIds != "" {
+		err := json.Unmarshal([]byte(fetchPostQueryRequest.PendingPostIds), &pendingPostIds)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -1585,7 +1585,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	// If pending_post_ids are present, fetch posts data from pending posts
-	if len(paramPendingPostIds) > 0 {
+	if len(pendingPostIds) > 0 {
 
 		// Fetch posts data from pending posts using internal method
 		pendingPostData, err := fetchMultiplePendingPostsData(handlers, pendingPostIds, communityId, headers[utils.HeadersMemberId],
@@ -1595,7 +1595,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 			return
 		}
 
-		// Merge posts data from pending posts with posts data from posts
+		// Add parsed posts data to response
 		for key, value := range pendingPostData {
 			postsResponse[key] = value
 		}
@@ -1619,7 +1619,8 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
 	response["widgets"] = getWidgetDataFromPosts(handlers, parsedResponse, communityId, headers[utils.HeadersMemberId])
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], paramIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
+		fetchPostQueryRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -1724,8 +1725,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(editPostRequest.Attachments) > 0 {
-		errorMessage, errorMeta := validatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId,
-			&editPostRequest.Attachments, false)
+		errorMessage, errorMeta := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId,
+			&editPostRequest.Attachments)
 		if errorMeta != nil {
 			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
 			return

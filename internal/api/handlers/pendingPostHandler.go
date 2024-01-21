@@ -12,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -40,7 +41,7 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 	// Make key value pair of post_id -> PostResponse
 	postResponse := map[string]requests.PostResponse{}
 
-	// parse post data for response data for each pending post
+	// parse post data from pending posts
 	for _, pendingPost := range pendingPostLists {
 		postResponse[pendingPost.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
 			handlers.topicHelper, handlers.widgetHelper, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper)
@@ -89,7 +90,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content and update scores
 	if len(cppr.Attachments) > 0 {
-		validatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, &cppr.Attachments, true)
+		validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, &cppr.Attachments)
 	}
 
 	// convert topic_ids to object ids
@@ -154,19 +155,16 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 			gin.H{"$set": gin.H{"is_deleted": true}})
 		if err != nil {
 			// Log the error
-			fmt.Println("Error in deleting the pending post: ", pendingPostId.(primitive.ObjectID).Hex(), " after error in sending for review: ", err.Error())
+			logging.Error(fmt.Sprint(
+				"Error in deleting the pending post: ", pendingPostId.(primitive.ObjectID).Hex(), " after error in sending for review: ", err.Error()))
 		}
 
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// Response
-	response := gin.H{
-		"message": "Pending post created successfully",
-	}
-
-	utils.GenereateSuccessResponse(c, response)
+	// Generate success response
+	utils.GenereateSuccessResponse(c, nil)
 }
 
 // Exposed method to approve/reject a pending post under review

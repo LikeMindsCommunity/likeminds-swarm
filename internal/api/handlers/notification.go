@@ -38,7 +38,7 @@ func sendPendingPostRejectionNotification(handlers FeedHandlers, recieverUUID st
 	subCategory := constants.PendingPostRejectedSubCategory
 	title := fmt.Sprintf(constants.PendingPostRejectedTitle, postMetatadataValue)
 	subTitle := fmt.Sprintf(constants.PendingPostRejectedSubTitle, postMetatadataValue)
-	route := "route://home" // placeholder route
+	route := constants.PlaceholderHomeRoute // placeholder route
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, communityId, category, subCategory, "", "")
@@ -56,7 +56,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	subCategory := constants.CommentPermissionRemovedSubCategory
 	title := constants.PermissionUpdatedTitle
 	subTitle := fmt.Sprintf(constants.CommentPermissionRemovedSubTitle, postMetatadataValue)
-	route := "route://home" // placeholder route
+	route := constants.PlaceholderHomeRoute // placeholder route
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, activity.CommunityID,

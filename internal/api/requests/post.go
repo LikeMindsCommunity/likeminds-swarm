@@ -140,3 +140,10 @@ type SearchPostRequest struct {
 	ExcludedChatroomIDs string `form:"excluded_chatroom_ids"`
 	UserIsCm            bool   `form:"user_is_cm"`
 }
+
+// Query Structure for fetch posts
+type FetchPostsQueryRequest struct {
+	PostIds        string `form:"post_ids"`
+	PendingPostIds string `form:"pending_post_ids"`
+	UserIsCm       bool   `form:"user_is_cm"`
+}
