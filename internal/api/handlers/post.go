@@ -699,7 +699,7 @@ func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId 
 
 		// Get existing image urls from attachments if edit post request
 		existingImgUrls := map[string]bool{}
-		if len(*existingAttachments) > 0 {
+		if existingAttachments != nil && len(*existingAttachments) > 0 {
 			for _, attachment := range *existingAttachments {
 
 				if attachment.AttachmentType == enums.ImageWidget && attachment.AttachmentMeta.Url != "" {
@@ -1468,19 +1468,6 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 		postRequest.ParsedTopicIds = topicIDs
 	}
 
-	// if on_behalf_of_uuid is not empty
-	if postRequest.OnBehalfOfUUID != "" {
-		// Validate if user is cm or not
-		if !postRequest.UserIsCm {
-			// utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
-			return nil, fmt.Errorf(utils.NotAuthorizedError)
-		}
-
-		// update UserId and OriginalAuthorUUID
-		postRequest.OriginalAuthor = userId
-		userId = postRequest.OnBehalfOfUUID
-	}
-
 	// check the visibility of the post
 	if postRequest.Visibility == "" {
 		postRequest.Visibility = enums.PublicVisibility
@@ -1522,6 +1509,18 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err := c.ShouldBindJSON(&createPostRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	// if on_behalf_of_uuid is not empty
+	if createPostRequest.OnBehalfOfUUID != "" {
+		// Validate if user is cm or not
+		if !createPostRequest.UserIsCm {
+			utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		}
+
+		// update UserId and OriginalAuthorUUID
+		createPostRequest.OriginalAuthor = userId
+		userId = createPostRequest.OnBehalfOfUUID
 	}
 
 	// Validate create post request
