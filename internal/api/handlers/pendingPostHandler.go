@@ -10,11 +10,36 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
+	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// Internal Method to fetch pending post using post_id and community_id
+func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string, communityId int) (*entities.PendingPost, error) {
+
+	// filter data
+	filterData := gin.H{
+		"_id":          pendingPostId,
+		"is_deleted":   false,
+		"community_id": communityId,
+	}
+
+	// fetch post using helper method
+	results, err := helper.FindPendingPostHelper(filterData, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of post_id
+	if len(results) == 0 {
+		return nil, fmt.Errorf("invalid pending_post_id sent")
+	}
+
+	return &results[0], nil
+}
 
 // Internal Method to fetch multiple posts data using post_ids
 func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []string, communityId int, userId string,
@@ -75,16 +100,10 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 		return nil, err
 	}
 
-	// fetch post data using new post_id
-	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
+	// fetch pending post data using new post_id
+	pendingPostData, err := fetchPendingPost(handlers.pendingPostHelper, postId.(primitive.ObjectID).Hex(), communityId)
 	if err != nil {
 		return nil, err
-	}
-
-	// update original post widget for repost
-	if postRequest.IsRepost {
-		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
-		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
 	}
 
 	// Call caravan API to create a review report for the pending post
@@ -103,7 +122,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 		return nil, err
 	}
 
-	return postData, nil
+	return &pendingPostData.PostData, nil
 }
 
 // Exposed method to create a pending post for review (similar to Create post method)
