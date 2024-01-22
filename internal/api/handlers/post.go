@@ -1062,6 +1062,15 @@ func getPostIdsFromReposts(response interface{}) []string {
 	return uniquePostIds
 }
 
+func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostRequest) string {
+	for _, attachement := range createPostRequest.Attachments {
+		if attachement.AttachmentType == enums.PostWidget {
+			return attachement.AttachmentMeta.EntityID
+		}
+	}
+	return ""
+}
+
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, post entities.Post,
@@ -1274,144 +1283,6 @@ func fetchPostsWithTopicID(handlers *FeedHandlers, topicId primitive.ObjectID, c
 	return postResults, nil
 }
 
-func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
-
-	// Create pending post
-	postId, err := handlers.pendingPostHelper.CreatePendingPostHelper(postRequest.Text, postRequest.Heading, communityId,
-		userId, postRequest.Attachments, postRequest.ChatroomID, postRequest.TempID, postRequest.ParsedTopicIds, "",
-		postRequest.Visibility, false, postRequest.CreatedAt, enums.UnderReview)
-	if err != nil {
-		// utils.GeneralAPIInternalError(c, err.Error())
-		return nil, err
-	}
-
-	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
-		postId.(primitive.ObjectID).Hex(), communityId, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	err = handlers.pendingPostHelper.EditPendingPostHelper(postId.(primitive.ObjectID), postRequest.Text,
-		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false,
-		enums.UnderReview)
-	if err != nil {
-		// utils.GeneralAPIInternalError(c, err.Error())
-		return nil, err
-	}
-
-	// fetch post data using new post_id
-	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
-	if err != nil {
-		return nil, err
-	}
-
-	// update original post widget for repost
-	if postRequest.IsRepost {
-		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
-		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
-	}
-
-	// Call caravan API to create a review report for the pending post
-	err = externalHelpers.SendPendingPostForReview(userId, communityId, postId.(primitive.ObjectID).Hex())
-	if err != nil {
-
-		// Delete the pending post if there is an error in sending the report
-		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(postId.(primitive.ObjectID),
-			gin.H{"$set": gin.H{"is_deleted": true}})
-		if err != nil {
-			// Log the error
-			logging.Error(fmt.Sprint(
-				"Error in deleting the pending post: ", postId.(primitive.ObjectID).Hex(), " after error in sending for review: ", err.Error()))
-		}
-
-		// utils.GeneralAPIInternalError(c, err.Error())
-		return nil, err
-	}
-
-	return postData, nil
-}
-
-func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
-
-	// create post using the helper method
-	postId, err := handlers.postHelper.CreatePostHelper(postRequest.Text, postRequest.Heading,
-		communityId, userId, postRequest.Attachments, postRequest.ChatroomID,
-		postRequest.TempID, postRequest.ParsedTopicIds, postRequest.OriginalAuthor, postRequest.Visibility,
-		postRequest.IsRepost, postRequest.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-
-	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
-		postId.(primitive.ObjectID).Hex(), communityId, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), postRequest.Text,
-		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false)
-	if err != nil {
-		return nil, err
-	}
-
-	// update post in connection buffer lists
-	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
-	if len(userConnectionData) == 0 {
-		updateConnectionList(handlers, userId, communityId, "", false)
-	}
-
-	userConnectionData, _ = getUserConnectionDataFromCache(handlers, userId, communityId)
-	for connectionData := range userConnectionData {
-		updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
-	}
-
-	// fetch post data using new post_id
-	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
-	if err != nil {
-		return nil, err
-	}
-
-	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
-		constants.PostIndexName)
-	if err != nil {
-		logging.Error(fmt.Sprint("Error in inserting post data in elastic search: ", err.Error()))
-	}
-
-	// update original post widget for repost
-	if postRequest.IsRepost {
-		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
-		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
-	}
-
-	return postData, nil
-}
-
-// Internal method to create post after validation of request
-func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
-
-	postData, err := &entities.Post{}, error(nil)
-
-	// create post based on post type
-	if postRequest.PostType == constants.PendingPostEntityType {
-
-		postData, err = createPendingPostAfterValidation(handlers, userId, communityId, postRequest)
-
-	} else {
-
-		postData, err = createNormalPostAfterValidation(handlers, userId, communityId, postRequest)
-
-	}
-
-	return postData, err
-}
-
 func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers, userId string, communityId int,
 	headers map[string]string, postRequest requests.CreatePostRequest, postData *entities.Post) error {
 
@@ -1475,6 +1346,81 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 	}
 
 	return nil
+}
+
+func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+
+	// create post using the helper method
+	postId, err := handlers.postHelper.CreatePostHelper(postRequest.Text, postRequest.Heading,
+		communityId, userId, postRequest.Attachments, postRequest.ChatroomID,
+		postRequest.TempID, postRequest.ParsedTopicIds, postRequest.OriginalAuthor, postRequest.Visibility,
+		postRequest.IsRepost, postRequest.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	// process attachments for widgets
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
+		postId.(primitive.ObjectID).Hex(), communityId, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// update post data using helper method
+	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), postRequest.Text,
+		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// update post in connection buffer lists
+	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
+	if len(userConnectionData) == 0 {
+		updateConnectionList(handlers, userId, communityId, "", false)
+	}
+
+	userConnectionData, _ = getUserConnectionDataFromCache(handlers, userId, communityId)
+	for connectionData := range userConnectionData {
+		updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
+	}
+
+	// fetch post data using new post_id
+	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	// insert post data in elastic search
+	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
+		constants.PostIndexName)
+	if err != nil {
+		logging.Error(fmt.Sprint("Error in inserting post data in elastic search: ", err.Error()))
+	}
+
+	// update original post widget for repost
+	if postRequest.IsRepost {
+		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
+		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
+	}
+
+	return postData, nil
+}
+
+// Internal method to create normal or pending post after validation of request
+func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+
+	postData, err := &entities.Post{}, error(nil)
+
+	// create post based on post type
+	if postRequest.PostType == constants.PendingPostEntityType {
+		postData, err = createPendingPostAfterValidation(handlers, userId, communityId, postRequest)
+	} else {
+		postData, err = createNormalPostAfterValidation(handlers, userId, communityId, postRequest)
+	}
+
+	return postData, err
 }
 
 func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string, userId string, communityId int,
@@ -1633,15 +1579,6 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, response)
-}
-
-func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostRequest) string {
-	for _, attachement := range createPostRequest.Attachments {
-		if attachement.AttachmentType == enums.PostWidget {
-			return attachement.AttachmentMeta.EntityID
-		}
-	}
-	return ""
 }
 
 // Exposed Method to fetch multiple posts from post_ids

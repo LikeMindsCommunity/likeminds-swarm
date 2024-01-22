@@ -11,6 +11,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -47,6 +48,62 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 
 	return postResponse, nil
 
+}
+
+func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+
+	// Create pending post
+	postId, err := handlers.pendingPostHelper.CreatePendingPostHelper(postRequest.Text, postRequest.Heading, communityId,
+		userId, postRequest.Attachments, postRequest.ChatroomID, postRequest.TempID, postRequest.ParsedTopicIds, "",
+		postRequest.Visibility, false, postRequest.CreatedAt, enums.UnderReview)
+	if err != nil {
+		return nil, err
+	}
+
+	// process attachments for widgets
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
+		postId.(primitive.ObjectID).Hex(), communityId, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = handlers.pendingPostHelper.EditPendingPostHelper(postId.(primitive.ObjectID), postRequest.Text,
+		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false,
+		enums.UnderReview)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch post data using new post_id
+	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	// update original post widget for repost
+	if postRequest.IsRepost {
+		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
+		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
+	}
+
+	// Call caravan API to create a review report for the pending post
+	err = externalHelpers.SendPendingPostForReview(userId, communityId, postId.(primitive.ObjectID).Hex())
+	if err != nil {
+
+		// Delete the pending post if there is an error in sending the report
+		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(postId.(primitive.ObjectID),
+			gin.H{"$set": gin.H{"is_deleted": true}})
+		if err != nil {
+			// Log the error
+			logging.Error(fmt.Sprint(
+				"Error in deleting the pending post: ", postId.(primitive.ObjectID).Hex(), " after error in sending for review: ", err.Error()))
+		}
+
+		return nil, err
+	}
+
+	return postData, nil
 }
 
 // Exposed method to create a pending post for review (similar to Create post method)
