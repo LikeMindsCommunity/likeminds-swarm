@@ -90,7 +90,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content and update scores
 	if len(cppr.Attachments) > 0 {
-		validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, &cppr.Attachments)
+		validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, &cppr.Attachments, nil)
 	}
 
 	// convert topic_ids to object ids

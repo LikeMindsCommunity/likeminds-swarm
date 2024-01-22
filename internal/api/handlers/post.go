@@ -689,15 +689,26 @@ func validateAndUpdatePostAttachments(handlers *FeedHandlers, communityId int, a
 
 // Internal Method to validate/update post images for NSFW score and return error meta
 func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
-	attachments *[]requests.Attachment) (string, gin.H) {
+	attachments *[]requests.Attachment, existingAttachments *[]entities.Attachment) (string, gin.H) {
 
 	// Check if NSFW Filtering is enabled and API Key is present
 	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
 
 	if enabled && configuration.InferdoApiKey != "" {
 
+		// Get existing image urls from attachments if edit post request
+		existingImgUrls := map[string]bool{}
+		if len(*existingAttachments) > 0 {
+			for _, attachment := range *existingAttachments {
+
+				if attachment.AttachmentType == enums.ImageWidget && attachment.AttachmentMeta.Url != "" {
+					existingImgUrls[attachment.AttachmentMeta.Url] = true
+				}
+			}
+		}
+
 		nsfwImageScores := getNsfwScoresFromImageAttachmentsInParallel(cacheHelper, userId, communityId,
-			configuration.InferdoApiKey, *attachments)
+			configuration.InferdoApiKey, *attachments, existingImgUrls)
 
 		nsfwImageIndices := []int{}
 
@@ -750,7 +761,7 @@ func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId 
 
 // Internal method to fetch NSFW score for images in parallel
 func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
-	inferdoApiKey string, attachments []requests.Attachment) []float64 {
+	inferdoApiKey string, attachments []requests.Attachment, existingImgUrls map[string]bool) []float64 {
 
 	nsfwScores := make([]float64, len(attachments))
 
@@ -759,6 +770,11 @@ func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userI
 
 	for index, attachment := range attachments {
 		if attachment.AttachmentType == enums.ImageWidget {
+
+			// If image url is already present in existing images, skip it
+			if _, exists := existingImgUrls[attachment.AttachmentMeta.Url]; exists {
+				continue
+			}
 
 			// Increment the WaitGroup counter.
 			wg.Add(1)
@@ -1369,9 +1385,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(createPostRequest.Attachments) > 0 {
 		errorMessage, errorMeta := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, userId, communityId,
-			&createPostRequest.Attachments)
+			&createPostRequest.Attachments, nil)
 		if errorMeta != nil {
-
 			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
 			return
 		}
@@ -1726,7 +1741,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(editPostRequest.Attachments) > 0 {
 		errorMessage, errorMeta := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId,
-			&editPostRequest.Attachments)
+			&editPostRequest.Attachments, &postData.Attachments)
 		if errorMeta != nil {
 			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, errorMessage, errorMeta)
 			return
