@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -12,7 +11,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -55,8 +53,7 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	headers := utils.GetHeaders(c)
-	postUserId := headers[utils.HeadersMemberId]
-
+	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
@@ -72,93 +69,18 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 		return
 	}
 
-	// strip text to check if it is empty
-	cppr.Text = strings.Trim(cppr.Text, " ")
-
-	if cppr.Text == "" && len(cppr.Attachments) == 0 {
-		utils.GeneralAPIValidationError(c, "can't create post without content")
-		return
-	}
-
-	// validation of attachments
-	err := validateAndUpdatePostAttachments(handlers, communityId, cppr.Attachments, apiRevampV1Check,
-		false, false)
-	if err != nil {
+	// Validate create post request
+	errorMeta, err := validateCreatePostRequest(handlers, headers, userId, communityId, apiRevampV1Check, &cppr)
+	if err != nil && errorMeta == nil {
+		// if errorMeta is nil, then it is a general validation error
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// If NSFW Filtering is enabled & attachments are present, check for NSFW content and update scores
-	if len(cppr.Attachments) > 0 {
-		validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, postUserId, communityId, &cppr.Attachments, nil)
-	}
-
-	// convert topic_ids to object ids
-	topicIDs := helpers.ConvertIdsToObjectIds(cppr.TopicIds)
-
-	// fetch all the topics sent in the create post body
-	if len(topicIDs) > 0 {
-		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
-		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return
-		}
-
-		// Validation of Topics
-		if len(topics) != len(topicIDs) {
-			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
-			return
-		}
-	}
-
-	// check the visibility of the post
-	if cppr.Visibility == "" {
-		cppr.Visibility = enums.PublicVisibility
-	}
-
-	if cppr.Visibility != enums.PrivateVisibility && cppr.Visibility != enums.PublicVisibility {
-		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
-		return
-	}
-
-	// Create pending post
-	pendingPostId, err := handlers.pendingPostHelper.CreatePendingPostHelper(cppr.Text, cppr.Heading, communityId,
-		postUserId, cppr.Attachments, cppr.ChatroomID, cppr.TempID, topicIDs, "", cppr.Visibility, false, cppr.CreatedAt,
-		enums.UnderReview)
+	// create pending post using internal method
+	cppr.PostType = constants.PendingPostEntityType
+	_, err = createPostAfterValidation(handlers, userId, communityId, &cppr)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PendingPostEntityType,
-		cppr.Attachments, pendingPostId.(primitive.ObjectID).Hex(), communityId, postUserId)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// update post data using helper method for widgets
-	err = handlers.pendingPostHelper.EditPendingPostHelper(pendingPostId.(primitive.ObjectID), cppr.Text,
-		cppr.Heading, updatedAttachments, topicIDs, cppr.Visibility, false, enums.UnderReview)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// Call caravan API to create a review report for the pending post
-	err = externalHelpers.SendPendingPostForReview(postUserId, communityId, pendingPostId.(primitive.ObjectID).Hex())
-	if err != nil {
-
-		// Delete the pending post if there is an error in sending the report
-		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostId.(primitive.ObjectID),
-			gin.H{"$set": gin.H{"is_deleted": true}})
-		if err != nil {
-			// Log the error
-			logging.Error(fmt.Sprint(
-				"Error in deleting the pending post: ", pendingPostId.(primitive.ObjectID).Hex(), " after error in sending for review: ", err.Error()))
-		}
-
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
@@ -266,7 +188,7 @@ func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.
 		return nil, err
 	}
 
-	createPostRequest := requests.CreatePostRequest{
+	cpr := requests.CreatePostRequest{
 		Text:           pendingPostData.PostData.Text,
 		Heading:        pendingPostData.PostData.Heading,
 		Attachments:    requestAttachments,
@@ -278,8 +200,8 @@ func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.
 	}
 
 	// create post using internal method
-	postData, err := createPostAfterValidation(handlers, pendingPostData.UserId, pendingPostData.CommunityID,
-		createPostRequest)
+	cpr.PostType = constants.PostEntityType
+	postData, err := createPostAfterValidation(handlers, pendingPostData.UserId, pendingPostData.CommunityID, &cpr)
 	if err != nil {
 		return nil, err
 	}
