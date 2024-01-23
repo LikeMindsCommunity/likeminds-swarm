@@ -15,4 +15,7 @@ type Helper interface {
 	Del(key string) *redis.IntCmd
 	LPush(key string, object string, listMaxLength int) *redis.IntCmd
 	LRem(key string, count int64, element interface{}) *redis.IntCmd
+	Increment(key string) (int64, error)
+	Expire(key string, expiration time.Duration) (bool, error)
+	IncrWithExpiry(key string, expiration time.Duration) (int64, error)
 }

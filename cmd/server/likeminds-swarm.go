@@ -48,6 +48,7 @@ func main() {
 
 	// Dependency injection of repositories
 	postRepository := repositories.NewPostRepository(db)
+	pendingPostRepository := repositories.NewPendingPostRepository(db)
 	likeRepository := repositories.NewLikeRepository(db)
 	commentRepository := repositories.NewCommentRepository(db)
 	saveRepository := repositories.NewSaveRepository(db)
@@ -59,6 +60,7 @@ func main() {
 
 	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)
+	pendingPostHelper := helpers.NewPendingPostHelper(pendingPostRepository)
 	likeHelper := helpers.NewLikeHelper(likeRepository)
 	commentHelper := helpers.NewCommentHelper(commentRepository)
 	saveHelper := helpers.NewSaveHelper(saveRepository)
@@ -72,8 +74,8 @@ func main() {
 	esHelper := searchElastic.NewESHelper(es)
 
 	// New feed Handler
-	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, saveHelper, activityHelper,
-		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper)
+	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
+		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)

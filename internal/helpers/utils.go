@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -80,18 +81,18 @@ func IsValidURL(urlString string) bool {
 }
 
 // Helper method to check if strings are valid URLs or not
-func AreValidURLs(urlStrings []string) string {
+func AreValidURLs(urlStrings []string) error {
 	for _, urlString := range urlStrings {
 		if urlString != "" {
 			isValid := IsValidURL(urlString)
 
 			if !isValid {
-				return "Invalid url in attachments meta_data: " + urlString
+				return fmt.Errorf("Invalid url in attachments meta_data: " + urlString)
 			}
 		}
 	}
 
-	return ""
+	return nil
 }
 
 // Helper method to typecase interface Ids to ObjectIds

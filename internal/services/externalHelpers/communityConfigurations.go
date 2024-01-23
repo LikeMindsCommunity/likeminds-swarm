@@ -10,6 +10,13 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
+type NSFWConfigurations struct {
+	Enabled       bool    `json:"enabled"`
+	InferdoApiKey string  `json:"inferdo_api_key"`
+	CutoffScore   float64 `json:"cutoff_score"`
+	ErrorStatus   string  `json:"error_status"`
+}
+
 type CommunityConfirgurationResponse struct {
 	Success                 bool                     `json:"success"`
 	CommunityConfigurations []CommunityConfiguration `json:"community_configurations"`
@@ -78,7 +85,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	return &communityConfigurationResponse, nil
 }
 
-func GetDefaultOrDbCommunityConfiguration(cacheHelper cache.Helper, userId string, communityId int) string {
+func GetFeedPostVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
 	var postFeedMetadataValues string = DefaultFeedMetadataPostVariableValue
 
 	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
@@ -99,4 +106,41 @@ func GetDefaultOrDbCommunityConfiguration(cacheHelper cache.Helper, userId strin
 	}
 
 	return postFeedMetadataValues
+}
+
+// Exposed Helper method to fetch NSFW Filtering Configurations for a community
+func GetNSFWConfigurationsOrDefault(cacheHelper cache.Helper, userId string, communityId int) (bool, *NSFWConfigurations) {
+
+	// Default NSFW Configurations
+	nsfwConfigurations := NSFWConfigurations{
+		Enabled:       false,
+		InferdoApiKey: "",
+		CutoffScore:   0.8,
+		ErrorStatus:   "",
+	}
+
+	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
+
+	if communityConfigurationResponse != nil {
+		externalEntities := ExternalEntities{
+			communityConfigurationResponse.CommunityConfigurations,
+		}
+
+		communityConfiguration, err := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
+			NSFWFilteringCommunityConfigurationType)
+		if err != nil {
+			return nsfwConfigurations.Enabled, &nsfwConfigurations
+		}
+
+		if communityConfiguration.Type == NSFWFilteringCommunityConfigurationType {
+
+			bytes, _ := json.Marshal(communityConfiguration.Value)
+			json.Unmarshal(bytes, &nsfwConfigurations)
+
+		}
+
+	}
+
+	return nsfwConfigurations.Enabled, &nsfwConfigurations
+
 }

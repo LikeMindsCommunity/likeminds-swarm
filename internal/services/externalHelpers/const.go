@@ -30,6 +30,8 @@ const SendNotificationEndPoint = "/api/external_service_apis/send_notifications"
 const FetchMembersMetaEndPoint = "/api/community/fetch_members_meta"
 const FetchCommunityConfigurations = "/api/community/configurations"
 const FetchUserConnectionsEndPoint = "/api/community_member/%s/connection"
+const SendMailEndpoint = "/api/external_service_apis/send_email"
+const PushReportEndpoint = "/api/community/report"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
@@ -44,7 +46,8 @@ const (
 )
 
 const (
-	FeedMetadataCommunityConfigurationType = "feed_metadata"
+	FeedMetadataCommunityConfigurationType  = "feed_metadata"
+	NSFWFilteringCommunityConfigurationType = "nsfw_filtering"
 )
 
 const (
@@ -53,4 +56,10 @@ const (
 
 const (
 	CommunityConfigurationsCacheTTLInHours = 6
+)
+
+// Inferdo API related constants
+const (
+	InferdoApiHeaderHost   = "nsfw-image-classification1.p.rapidapi.com"
+	InferdoNsfwApiEndpoint = "https://nsfw-image-classification1.p.rapidapi.com/img/nsfw"
 )
