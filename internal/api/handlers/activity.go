@@ -280,7 +280,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 
 	switch entityType {
 	case constants.Post:
-		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "",
+		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, userId, false, "", "",
 			apiRevampV1Check)
 		if err != nil {
 			return nil, err
