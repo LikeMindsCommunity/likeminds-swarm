@@ -19,18 +19,22 @@ const (
 	PostLikedSubCategory                = "Post Liked"
 	CommentLikedSubCategory             = "Comment Liked"
 	RepostOnPostSubCategory             = "Post Reposted"
+	PendingPostApprovedSubCategory      = "Pending Post Approved"
+	PendingPostRejectedSubCategory      = "Pending Post Rejected"
 )
 
 const (
-	PermissionUpdatedTitle = "Permission updated"
-	PostDeletedTitle       = "%s deleted"
-	CommentDeletedTitle    = "Comment deleted"
-	ReplyDeletedTitle      = "Reply deleted"
-	LikeTitle              = "New Like!"
-	CommentTitle           = "New Comment!"
-	ReplyTitle             = "New Reply!"
-	TagTitle               = "You are tagged!"
-	RepostTitle            = "New Repost!"
+	PermissionUpdatedTitle   = "Permission updated"
+	PostDeletedTitle         = "%s deleted"
+	CommentDeletedTitle      = "Comment deleted"
+	ReplyDeletedTitle        = "Reply deleted"
+	LikeTitle                = "New Like!"
+	CommentTitle             = "New Comment!"
+	ReplyTitle               = "New Reply!"
+	TagTitle                 = "You are tagged!"
+	RepostTitle              = "New Repost!"
+	PendingPostApprovedTitle = "%s approved!"
+	PendingPostRejectedTitle = "%s rejected!"
 )
 
 const (
@@ -62,4 +66,11 @@ const (
 	PostRepostedSubTitleLevelOne     = "%s reposted your %s."
 	PostRepostedSubTitleLevelTwo     = "%s and 1 other reposted your %s."
 	PostRepostedSubTitleLevelThree   = "%s and %d others reposted your %s."
+	PendingPostApprovedSubTitle      = "Your %s has been approved."
+	PendingPostRejectedSubTitle      = "Your %s has been rejected."
+)
+
+// routes
+const (
+	PlaceholderHomeRoute = "route://home"
 )

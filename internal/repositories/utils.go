@@ -10,6 +10,7 @@ import (
 
 const (
 	PostCollection           string = "post"
+	PendingPostCollection    string = "pendingPost"
 	LikeCollection           string = "like"
 	CommentCollection        string = "comment"
 	ActivityCollection       string = "activity"

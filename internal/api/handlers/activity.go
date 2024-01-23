@@ -31,7 +31,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		return response, userDatas, topicDatas, widgetDatas, nil
 	}
 
-	postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, uuid, activities[0].CommunityID)
+	postMetatadataValue = externalHelpers.GetFeedPostVariableOrDefault(handler.cacheHelper, uuid, activities[0].CommunityID)
 
 	userIds := [](string){}
 	topicIds := []primitive.ObjectID{}
@@ -141,7 +141,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
 
-	postMetatadataValue = externalHelpers.GetDefaultOrDbCommunityConfiguration(handler.cacheHelper, userId, activities[0].CommunityID)
+	postMetatadataValue = externalHelpers.GetFeedPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 
 	userIds := [](string){uuid}
 	topicIds := []primitive.ObjectID{}

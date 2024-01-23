@@ -182,7 +182,7 @@ func ParseResponse(c *gin.Context, respBytes []byte, statusCode int) {
 	}
 }
 
-// Expoxed Method to Send a HTTP Request
+// Exposed Method to Send a HTTP Request
 func SendRequest(c *gin.Context, serviceType ServiceType, url string, requestType RequestType, headers map[string]interface{}, params map[string]string, body interface{}) {
 	respBytes, statusCode, err := GetRequestResponse(serviceType, url, requestType, headers, params, body)
 	if respBytes == nil {
@@ -194,4 +194,24 @@ func SendRequest(c *gin.Context, serviceType ServiceType, url string, requestTyp
 	//Parse response
 	ParseResponse(c, respBytes, statusCode)
 
+}
+
+// Exposed Method to send a POST request to external services
+func SendPostRequestToExternalService(url string, headers map[string]interface{}, body interface{}) ([]byte, int, error) {
+	//Create internal API client
+	client := NewAPIClient()
+
+	options := PostRequestOptions{
+		Url:           url,
+		CustomHeaders: headers,
+		Body:          body,
+	}
+
+	respBytes, statusCode, err := client.PostRequest(&options, BodyTypeRaw)
+
+	if err != nil || respBytes == nil {
+		return nil, DefaultStatusCode, err
+	}
+
+	return respBytes, statusCode, nil
 }

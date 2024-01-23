@@ -31,7 +31,7 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 		attachmentMeta := entities.NewAttachmentMeta(metaData.Name, metaData.Url, metaData.Format, metaData.Size, metaData.Duration,
 			metaData.PageCount, metaData.ThumbnailUrl, metaOgTags, entityId, metaData.CoverImageUrl, metaData.Title, metaData.Body,
 			metaData.ExpiryTime, metaData.PollType, metaData.MultipleSelectState, metaData.MultipleSelectNumber, metaData.IsAnonymous,
-			metaData.AllowAddOption)
+			metaData.AllowAddOption, metaData.NsfwScore)
 		attachment := entities.NewAttachment(element.AttachmentType, attachmentMeta)
 		postAttachments = append(postAttachments, attachment)
 	}

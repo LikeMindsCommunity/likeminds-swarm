@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
@@ -53,13 +54,13 @@ func processPollCustomAttachmentData(metaData map[string]interface{}) map[string
 
 // Internal Method to process meta data before widget creation
 func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData map[string]interface{},
-	lmMeta map[string]interface{}, uuid string) (map[string]interface{}, map[string]interface{}, bool) {
+	lmMeta map[string]interface{}, uuid string) (map[string]interface{}, map[string]interface{}, error) {
 	switch attachment.AttachmentType {
 	case enums.PollWidget:
 		// create poll options
 		pollOptionObjects, err := createPollOptionObjects(attachment.AttachmentMeta.Options, uuid)
 		if err != nil {
-			return metaData, lmMeta, false
+			return metaData, lmMeta, err
 		}
 
 		lmMeta["options"] = pollOptionObjects
@@ -71,7 +72,7 @@ func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData ma
 		}
 	}
 
-	return metaData, lmMeta, true
+	return metaData, lmMeta, nil
 }
 
 // Internal Method to process meta data before widget edition
@@ -177,11 +178,13 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	}
 
 	originalPostAttachments := originalPost.Attachments
-	repostWidgetAttachmentData := entities.Attachment{enums.RepostType.ToInt(), repostAttachmentMeta, enums.RepostType, nil}
+	repostWidgetAttachmentData := entities.Attachment{
+		AttachmentType: enums.RepostType.ToInt(),
+		AttachmentMeta: repostAttachmentMeta}
 
 	originalPostAttachments = append(originalPostAttachments, repostWidgetAttachmentData)
 
-	originalPostIDPrimitiveObject, err := primitive.ObjectIDFromHex(originalPostID)
+	originalPostIDPrimitiveObject, _ := primitive.ObjectIDFromHex(originalPostID)
 	postUpdateData := gin.H{
 		"$set": gin.H{
 			"attachments": originalPostAttachments,
@@ -217,9 +220,9 @@ func getPostAttachmentDataFromPost(post entities.Post) entities.Attachment {
 }
 
 // Internal Method to process attachments for widgets
-func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attachments []requests.Attachment,
-	postId string, communityId int, uuid string) ([]requests.Attachment, bool) {
-	// process attachments for custom widgets
+func processAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType string, attachments []requests.Attachment,
+	postId string, communityId int, uuid string) ([]requests.Attachment, error) {
+
 	updatedAttachments := []requests.Attachment{}
 
 	for _, attachment := range attachments {
@@ -252,16 +255,16 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			if attachment.AttachmentMeta.EntityID != "" {
 				widgetData, err := fetchWidgetByID(handlers.widgetHelper, attachment.AttachmentMeta.EntityID, true, communityId)
 				if err != nil {
-					return nil, false
+					return nil, err
 				}
 
 				// process meta data before widget edition
 				updatedMetaData := processMetaBeforeWidgetEdition(attachment, metaData, widgetData.MetaData)
 
 				// update widget from given metadata
-				_, ok := editWidget(c, handlers, attachment.AttachmentMeta.EntityID, true, updatedMetaData, nil, communityId)
-				if !ok {
-					return nil, false
+				_, err = editWidget(handlers, attachment.AttachmentMeta.EntityID, "", "", true, updatedMetaData, nil, communityId)
+				if err != nil {
+					return nil, err
 				}
 
 				entityId = attachment.AttachmentMeta.EntityID
@@ -272,15 +275,15 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 				lmMeta := map[string]interface{}{}
 
 				// process meta data before widget creation
-				metaData, lmMeta, ok := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, uuid)
-				if !ok {
-					return nil, false
+				metaData, lmMeta, err := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, uuid)
+				if err != nil {
+					return nil, err
 				}
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, true, postId, constants.PostEntityType, metaData, lmMeta, communityId)
-				if !ok {
-					return nil, false
+				widgetData, err := createWidget(handlers, true, postId, parentEntityType, metaData, lmMeta, communityId)
+				if err != nil {
+					return nil, err
 				}
 
 				entityId = widgetData.ID.Hex()
@@ -305,9 +308,9 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 			if entityId == "" && widgetMeta != nil {
 
 				// create widget from given metadata
-				widgetData, ok := createWidget(c, handlers, false, postId, constants.PostEntityType, widgetMeta, nil, communityId)
-				if !ok {
-					return nil, false
+				widgetData, err := createWidget(handlers, false, postId, parentEntityType, widgetMeta, nil, communityId)
+				if err != nil {
+					return nil, err
 				}
 
 				// update attachment with widget id
@@ -324,7 +327,7 @@ func processAttachmentsForWidgets(c *gin.Context, handlers *FeedHandlers, attach
 		}
 	}
 
-	return updatedAttachments, true
+	return updatedAttachments, nil
 }
 
 // Internal Method to parse Post Attachments
@@ -507,28 +510,26 @@ func validateLinkAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal Method to validate custom attachment with context
-func validateAndUpdateCustomWidgetAttachment(c *gin.Context, handlers *FeedHandlers, attachment requests.Attachment,
-	communityId int) bool {
+func validateAndUpdateCustomWidgetAttachment(handlers *FeedHandlers, attachment requests.Attachment,
+	communityId int) error {
 
 	widgetId := attachment.AttachmentMeta.EntityID
 	widgetMeta := attachment.AttachmentMeta.WidgetMeta
 
 	if widgetId == "" && (len(widgetMeta) == 0) {
-		utils.GeneralAPIValidationError(c, "please send entity_id or widget_meta in attachment meta")
-		return false
+		return fmt.Errorf("please send entity_id or widget_meta in attachment meta")
 	}
 
 	// If widget id is present, validate if widget exists
 	if widgetId != "" {
 		_, err := fetchWidgetByID(handlers.widgetHelper, widgetId, false, communityId)
 		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return false
+			return err
 		}
 
 	}
 
-	return true
+	return nil
 }
 
 // Internal Method to validate poll attachment
@@ -581,8 +582,8 @@ func validateArticleAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal method to validate attachments for post
-func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, communityId int, attachments []requests.Attachment, apiRevampV1check bool,
-	isEditRequest bool, isRepost bool) bool {
+func validateAndUpdatePostAttachments(handlers *FeedHandlers, communityId int, attachments []requests.Attachment,
+	apiRevampV1check bool, isEditRequest bool, isRepost bool) error {
 
 	// Api revamp check to validate and update attachments
 	if apiRevampV1check {
@@ -594,14 +595,12 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 
 				// Check if attachment type is valid
 				if !attachments[i].Type.IsValid() {
-					utils.GeneralAPIValidationError(c, "Invalid attachment type: "+attachments[i].Type.ToString())
-					return false
+					return fmt.Errorf("Invalid attachment type: " + attachments[i].Type.ToString())
 				}
 
 				// Check if attachment type is valid for repost
 				if isRepost && !attachments[i].Type.IsValidRepostAttachment() {
-					utils.GeneralAPIValidationError(c, "Invalid attachment type: "+attachments[i].Type.ToString())
-					return false
+					return fmt.Errorf("Invalid attachment type: " + attachments[i].Type.ToString())
 				}
 
 				// Update attachment_type from type
@@ -620,9 +619,8 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 			}
 
 			err := helpers.AreValidURLs(urlArray)
-			if err != "" {
-				utils.GeneralAPIValidationError(c, err)
-				return false
+			if err != nil {
+				return err
 			}
 		}
 
@@ -634,8 +632,7 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 		if isRepost {
 			errorMessage, ok := validateRepostAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 			continue
 		}
@@ -644,58 +641,167 @@ func validateAndUpdatePostAttachments(c *gin.Context, handlers *FeedHandlers, co
 		case enums.ImageWidget:
 			errorMessage, ok := validateImageAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.VideoWidget:
 			errorMessage, ok := validateVideoAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.DocumentWidget:
 			errorMessage, ok := validateDocumentAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.LinkWidget:
 			errorMessage, ok := validateLinkAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.CustomWidget:
-			ok := validateAndUpdateCustomWidgetAttachment(c, handlers, element, communityId)
-			if !ok {
-				return false
+			err := validateAndUpdateCustomWidgetAttachment(handlers, element, communityId)
+			if err != nil {
+				return err
 			}
 
 		case enums.PollWidget:
 			errorMessage, ok := validatePollAttachment(element, isEditRequest)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		case enums.ArticleWidget:
 			errorMessage, ok := validateArticleAttachment(element)
 			if !ok {
-				utils.GeneralAPIValidationError(c, errorMessage)
-				return false
+				return fmt.Errorf(errorMessage)
 			}
 
 		default:
-			utils.GeneralAPIValidationError(c, "send valid attachment_type in attachment")
-			return false
+			return fmt.Errorf("send valid attachment_type in attachment")
 		}
 	}
 
-	return true
+	return nil
+}
+
+// Internal Method to validate/update post images for NSFW score and return error meta
+func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
+	attachments *[]requests.Attachment, existingAttachments *[]entities.Attachment) (gin.H, error) {
+
+	// Check if NSFW Filtering is enabled and API Key is present
+	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
+
+	if enabled && configuration.InferdoApiKey != "" {
+
+		// Get existing image urls from attachments if edit post request
+		existingImgUrls := map[string]bool{}
+		if existingAttachments != nil && len(*existingAttachments) > 0 {
+			for _, attachment := range *existingAttachments {
+
+				if attachment.AttachmentType == enums.ImageWidget && attachment.AttachmentMeta.Url != "" {
+					existingImgUrls[attachment.AttachmentMeta.Url] = true
+				}
+			}
+		}
+
+		nsfwImageScores := getNsfwScoresFromImageAttachmentsInParallel(cacheHelper, userId, communityId,
+			configuration.InferdoApiKey, *attachments, existingImgUrls)
+
+		nsfwImageIndices := []int{}
+
+		for index, score := range nsfwImageScores {
+			if score > configuration.CutoffScore {
+
+				// Append index to nsfwImageIndices
+				nsfwImageIndices = append(nsfwImageIndices, index)
+
+				// Update NSFW score in attachment meta
+				(*attachments)[index].AttachmentMeta.NsfwScore = score
+			}
+		}
+
+		// If NSFW images are present, return error message with custom meta
+		if len(nsfwImageIndices) > 0 {
+
+			indicesString := ""
+
+			// For all the indices get its ordinal number and append it to the error message
+			for i, imageIndex := range nsfwImageIndices {
+
+				indicesString += utils.GetOrdinal(imageIndex + 1)
+
+				if i == len(nsfwImageIndices)-2 {
+					indicesString += " and"
+				} else if i < len(nsfwImageIndices)-1 {
+					indicesString += ","
+				}
+
+				indicesString += " "
+
+			}
+
+			errorMessage := fmt.Errorf(fmt.Sprintf(utils.NsfwContentInImageError, indicesString))
+
+			errorMeta := gin.H{
+				"title":              "NSFW content detected in images",
+				"type":               "nsfw_content_in_image",
+				"cta":                "<<route://dialog/nsfw_content>>",
+				"nsfw_image_indices": nsfwImageIndices,
+			}
+
+			return errorMeta, errorMessage
+		}
+	}
+
+	return nil, nil
+}
+
+// Internal method to fetch NSFW score for images in parallel
+func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
+	inferdoApiKey string, attachments []requests.Attachment, existingImgUrls map[string]bool) []float64 {
+
+	nsfwScores := make([]float64, len(attachments))
+
+	// Make a channel to receive NSFW scores
+	wg := sync.WaitGroup{}
+
+	for index, attachment := range attachments {
+		if attachment.AttachmentType == enums.ImageWidget {
+
+			// If image url is already present in existing images, skip it
+			if _, exists := existingImgUrls[attachment.AttachmentMeta.Url]; exists {
+				continue
+			}
+
+			// Increment the WaitGroup counter.
+			wg.Add(1)
+
+			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
+			go func(index int, attachment requests.Attachment) {
+
+				// Decrement the counter when the goroutine completes.
+				defer wg.Done()
+
+				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId, attachment.AttachmentMeta.Url, inferdoApiKey)
+
+				// if no error and score is greater than 0.0, update the score in the array
+				if err == nil && nsfwScore > 0.0 {
+					nsfwScores[index] = nsfwScore
+				}
+
+			}(index, attachment)
+
+		}
+	}
+
+	// wait for all goroutines to complete
+	wg.Wait()
+
+	return nsfwScores
 }
 
 func validateRepostPostAttachment(postData *entities.Post, editPostRequest requests.EditPostRequest) bool {
@@ -715,28 +821,32 @@ func validateRepostPostAttachment(postData *entities.Post, editPostRequest reque
 	return false
 }
 
-func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID string) (bool, string) {
+func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID string) error {
 	postFilterData := gin.H{
 		"_id": originalPostID,
 	}
 	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
 	if (err != nil) || (len(postResults) <= 0) {
-		return false, "original post not found for repost"
+		return fmt.Errorf("original post not found for repost")
 	}
 
 	if userID == postResults[0].UserId {
-		return false, "can not repost self post"
+		return fmt.Errorf("can not repost self post")
 	}
 
 	if getIsRepostedByUser(handlers.widgetHelper, userID, postResults[0]) {
-		return false, "can not repost one post multiple times"
+		return fmt.Errorf("can not repost one post multiple times")
 	}
 
-	return true, ""
+	return nil
 }
 
 // Internal Method to parse response for fetch multiple posts api
-func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []requests.PostResponse, posts_count int64) requests.FetchUserMultiplePostResponse {
+func parseFetchMultiplePostResponse(
+	postHelper interfaces.PostHelper,
+	posts []requests.PostResponse,
+	posts_count int64) requests.FetchUserMultiplePostResponse {
+
 	response := requests.FetchUserMultiplePostResponse{}
 
 	response.Success = true
@@ -750,7 +860,9 @@ func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []re
 }
 
 // Internal Method to parse topics response
-func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int) (map[string]requests.TopicResponse, error) {
+func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
+	communityId int) (map[string]requests.TopicResponse, error) {
+
 	// Fetch topics using topic Ids
 	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false)
 	if err != nil {
@@ -768,7 +880,9 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 }
 
 // Internal Method to parse widgets response
-func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int, uuid string) (map[string]requests.WidgetResponse, error) {
+func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int,
+	uuid string) (map[string]requests.WidgetResponse, error) {
+
 	// Fetch widgets using widget Ids
 	widgets, err := fetchWidgetsByIDs(handlers.widgetHelper, widgetIds, communityId)
 	if err != nil {
@@ -946,6 +1060,15 @@ func getPostIdsFromReposts(response interface{}) []string {
 	}
 
 	return uniquePostIds
+}
+
+func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostRequest) string {
+	for _, attachement := range createPostRequest.Attachments {
+		if attachement.AttachmentType == enums.PostWidget {
+			return attachement.AttachmentMeta.EntityID
+		}
+	}
+	return ""
 }
 
 // Internal Method to parse post for response
@@ -1160,120 +1283,12 @@ func fetchPostsWithTopicID(handlers *FeedHandlers, topicId primitive.ObjectID, c
 	return postResults, nil
 }
 
-// Exposed Method to create a Post
-func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
-	// fetch headers
-	headers := utils.GetHeaders(c)
+func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers, userId string, communityId int,
+	headers map[string]string, postRequest requests.CreatePostRequest, postData *entities.Post) error {
 
-	// Post owner user_id
-	postUserId := headers[utils.HeadersMemberId]
-
-	// Set OriginalAuthorUUID to empty string for new posts
-	OriginalAuthorUUID := ""
-
-	// used for repost request
-	originalPostID := ""
-
-	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-
-	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
-	if communityId == externalHelpers.DefaultCommunityId {
-		return
-	}
-
-	// validation of request body
-	var createPostRequest requests.CreatePostRequest
-	if err := c.ShouldBindJSON(&createPostRequest); err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// check if custom creation timestamp is used
-	var useCustomCreationTimestamp bool = false
-	if createPostRequest.CreatedAt > 0 &&
-		float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		useCustomCreationTimestamp = true
-	}
-
-	UserIsCM := createPostRequest.User_is_cm
-
-	// strip text to check if it is empty
-	createPostRequest.Text = strings.Trim(createPostRequest.Text, " ")
-
-	if createPostRequest.Text == "" && len(createPostRequest.Attachments) == 0 {
-		utils.GeneralAPIValidationError(c, "can't create post without content")
-		return
-	}
-
-	// validation of attachments
-	success := validateAndUpdatePostAttachments(c, handlers, communityId, createPostRequest.Attachments, apiRevampV1Check, false, createPostRequest.IsRepost)
-	if !success {
-		return
-	}
-
-	if createPostRequest.IsRepost {
-		originalPostID = getOriginalPostIDFromRepostRequest(createPostRequest)
-		success, errMessage := validateUserForRepost(handlers, postUserId, originalPostID)
-		if !success {
-			utils.GeneralAPIValidationError(c, errMessage)
-			return
-		}
-	}
-
-	// convert topic_ids to object ids
-	topicIDs := helpers.ConvertIdsToObjectIds(createPostRequest.TopicIds)
-
-	// fetch all the topics sent in the create post body
-	if len(topicIDs) > 0 {
-		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
-		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return
-		}
-
-		// Validation of Topics
-		if len(topics) != len(topicIDs) {
-			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
-			return
-		}
-	}
-
-	// if on_behalf_of_uuid is not empty
-	if createPostRequest.On_behalf_of_uuid != "" {
-		// Validate if user is cm or not
-		if !UserIsCM {
-			utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
-			return
-		}
-
-		// update postUserId and OriginalAuthorUUID
-		OriginalAuthorUUID = postUserId
-		postUserId = createPostRequest.On_behalf_of_uuid
-	}
-
-	// check the visibility of the post
-	if createPostRequest.Visibility == "" {
-		createPostRequest.Visibility = enums.PublicVisibility
-	}
-
-	if createPostRequest.Visibility != enums.PrivateVisibility && createPostRequest.Visibility != enums.PublicVisibility {
-		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
-		return
-	}
-
-	// create post using the helper method
-	postId, err := handlers.postHelper.CreatePostHelper(createPostRequest.Text, createPostRequest.Heading,
-		communityId, postUserId, createPostRequest.Attachments, createPostRequest.ChatroomID,
-		createPostRequest.TempID, topicIDs, OriginalAuthorUUID, createPostRequest.Visibility, createPostRequest.IsRepost,
-		createPostRequest.CreatedAt)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	if createPostRequest.IsRepost {
-		updateOriginalPostWidgetForRepost(handlers, originalPostID, postId, postUserId)
+	// create activity for repost
+	if postRequest.IsRepost {
+		originalPostID := getOriginalPostIDFromRepostRequest(postRequest)
 
 		// create activity for repost
 		postFilterData := gin.H{
@@ -1281,7 +1296,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		}
 		postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
 		if err != nil {
-			return
+			return fmt.Errorf("original post not found for repost")
 		}
 
 		originalPost := postResults[0]
@@ -1291,13 +1306,13 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 			"post_id":     originalPostID,
 		}
 
-		OriginalPostIDObject, err := primitive.ObjectIDFromHex(originalPostID)
+		OriginalPostIDObject, _ := primitive.ObjectIDFromHex(originalPostID)
 
-		activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, OriginalPostUserID, constants.Post,
+		activityID, err := handlers.CreateActivity(communityId, []string{userId}, OriginalPostUserID, constants.Post,
 			OriginalPostIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
 		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
+			// utils.GeneralAPIInternalError(c, err.Error())
+			return err
 		}
 
 		if activityID != nil {
@@ -1305,75 +1320,22 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		}
 	}
 
-	// process attachments for widgets
-	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, createPostRequest.Attachments,
-		postId.(primitive.ObjectID).Hex(), communityId, postUserId)
-	if !ok {
-		return
-	}
-
-	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), createPostRequest.Text,
-		createPostRequest.Heading, updatedAttachments, topicIDs, createPostRequest.Visibility, false)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// update post in connection buffer lists
-	userConnectionData, _ := getUserConnectionDataFromCache(handlers, postUserId, communityId)
-	if len(userConnectionData) == 0 {
-		updateConnectionList(handlers, postUserId, communityId, "", false)
-	}
-
-	userConnectionData, _ = getUserConnectionDataFromCache(handlers, postUserId, communityId)
-	for connectionData := range userConnectionData {
-		updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
-	}
-
-	// fetch post data using new post_id
-	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
-		constants.PostIndexName)
-	if err != nil {
-		log.Error(err.Error())
-	}
-
-	// update the post count in topics
-	if len(topicIDs) > 0 {
-		// query to increment the count of posts in topics
-		stringTopicIds := helpers.ConvertObjectIdsToString(topicIDs)
-		updatePostCountInTopicQuery := UpdatePostCountInTopicsQuery(stringTopicIds, true)
-
-		err = handlers.esHelper.UpdateByQuery(updatePostCountInTopicQuery, constants.TopicIndexName)
-		if err != nil {
-			log.Error(err.Error())
-		}
-	}
-
-	if !useCustomCreationTimestamp {
-		// Get tagged members from request
-		taggedMembers := createPostRequest.UUIDs
+	// create activity for tagged members
+	if len(postRequest.UUIDs) > 0 {
 
 		// cta data for activity
 		ctaData := gin.H{
 			"entity_type": constants.PostEntityType,
-			"post_id":     postId.(primitive.ObjectID).Hex(),
+			"post_id":     postData.ID.Hex(),
 		}
 
-		for _, member := range taggedMembers {
+		for _, member := range postRequest.UUIDs {
 			// create tag activity
-			activityID, err := handlers.CreateActivity(communityId, []string{postUserId}, member, constants.Post,
-				postId.(primitive.ObjectID), postUserId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
+			activityID, err := handlers.CreateActivity(communityId, []string{userId}, member, constants.Post,
+				postData.ID, userId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
+				// utils.GeneralAPIInternalError(c, err.Error())
+				return err
 			}
 
 			if activityID != nil {
@@ -1383,7 +1345,214 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		}
 	}
 
-	// filter options
+	return nil
+}
+
+func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+
+	// create post using the helper method
+	postId, err := handlers.postHelper.CreatePostHelper(postRequest.Text, postRequest.Heading,
+		communityId, userId, postRequest.Attachments, postRequest.ChatroomID,
+		postRequest.TempID, postRequest.ParsedTopicIds, postRequest.OriginalAuthor, postRequest.Visibility,
+		postRequest.IsRepost, postRequest.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	// process attachments for widgets
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
+		postId.(primitive.ObjectID).Hex(), communityId, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// update post data using helper method
+	err = handlers.postHelper.EditPostHelper(postId.(primitive.ObjectID), postRequest.Text,
+		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// update post in connection buffer lists
+	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
+	if len(userConnectionData) == 0 {
+		updateConnectionList(handlers, userId, communityId, "", false)
+	}
+
+	userConnectionData, _ = getUserConnectionDataFromCache(handlers, userId, communityId)
+	for connectionData := range userConnectionData {
+		updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
+	}
+
+	// fetch post data using new post_id
+	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	// insert post data in elastic search
+	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
+		constants.PostIndexName)
+	if err != nil {
+		logging.Error(fmt.Sprint("Error in inserting post data in elastic search: ", err.Error()))
+	}
+
+	// update original post widget for repost
+	if postRequest.IsRepost {
+		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
+		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
+	}
+
+	return postData, nil
+}
+
+// Internal method to create normal or pending post after validation of request
+func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+
+	postData, err := &entities.Post{}, error(nil)
+
+	// create post based on post type
+	if postRequest.PostType == constants.PendingPostEntityType {
+		postData, err = createPendingPostAfterValidation(handlers, userId, communityId, postRequest)
+	} else {
+		postData, err = createNormalPostAfterValidation(handlers, userId, communityId, postRequest)
+	}
+
+	return postData, err
+}
+
+func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string, userId string, communityId int,
+	apiRevampV1Check bool, postRequest *requests.CreatePostRequest) (gin.H, error) {
+
+	postRequest.Text = strings.Trim(postRequest.Text, " ")
+
+	if postRequest.Text == "" && len(postRequest.Attachments) == 0 {
+		return nil, fmt.Errorf("can't create post without content")
+	}
+
+	// validation of attachments
+	err := validateAndUpdatePostAttachments(handlers, communityId, postRequest.Attachments, apiRevampV1Check,
+		false, postRequest.IsRepost)
+	if err != nil {
+		return nil, err
+	}
+
+	if postRequest.IsRepost {
+		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
+		err := validateUserForRepost(handlers, userId, originalPostID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// convert topic_ids to object ids
+	topicIDs := helpers.ConvertIdsToObjectIds(postRequest.TopicIds)
+
+	// fetch all the topics sent in the create post body
+	if len(topicIDs) > 0 {
+		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+		if err != nil {
+			// utils.GeneralAPIValidationError(c, err.Error())
+			return nil, err
+		}
+
+		// Validation of Topics
+		if len(topics) != len(topicIDs) {
+			// utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
+			return nil, fmt.Errorf("invalid topic_ids sent")
+		}
+
+		// update parsed topic ids in request struct
+		postRequest.ParsedTopicIds = topicIDs
+	}
+
+	// check the visibility of the post
+	if postRequest.Visibility == "" {
+		postRequest.Visibility = enums.PublicVisibility
+	}
+
+	if postRequest.Visibility != enums.PrivateVisibility && postRequest.Visibility != enums.PublicVisibility {
+		// utils.GeneralAPIValidationError(c, "Invalid visibility sent")
+		return nil, fmt.Errorf("invalid visibility sent")
+	}
+
+	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
+	if len(postRequest.Attachments) > 0 {
+		errorMeta, err := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, userId, communityId,
+			&postRequest.Attachments, nil)
+		if errorMeta != nil {
+			return errorMeta, err
+		}
+	}
+
+	return nil, nil
+}
+
+// Exposed Method to create a Post
+func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
+
+	// fetch headers
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// bind request body to struct
+	var createPostRequest requests.CreatePostRequest
+	if err := c.ShouldBindJSON(&createPostRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// if on_behalf_of_uuid is not empty
+	if createPostRequest.OnBehalfOfUUID != "" {
+		// Validate if user is cm or not
+		if !createPostRequest.UserIsCm {
+			utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		}
+
+		// update UserId and OriginalAuthorUUID
+		createPostRequest.OriginalAuthor = userId
+		userId = createPostRequest.OnBehalfOfUUID
+	}
+
+	// Validate create post request
+	errorMeta, err := validateCreatePostRequest(handlers, headers, userId, communityId, apiRevampV1Check, &createPostRequest)
+	if err != nil {
+
+		// if errorMeta is not nil, return custom error with meta else return validation error
+		if errorMeta != nil {
+			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, err.Error(), errorMeta)
+		} else {
+			utils.GeneralAPIValidationError(c, err.Error())
+		}
+		return
+	}
+
+	// create normal post using internal method
+	createPostRequest.PostType = constants.PostEntityType
+	postData, err := createPostAfterValidation(handlers, userId, communityId, &createPostRequest)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// if custom creation timestamp is not used, create activities and send notifications
+	if !(createPostRequest.CreatedAt > 0 && float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
+		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
+		if err != nil {
+			logging.Error(fmt.Sprint("Error while creating activities and sending notifications after post creation: ", err.Error()))
+		}
+	}
+
+	// filter options for pagination
 	filterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -1396,27 +1565,19 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetchPostData, err := fetchPostData(handlers, postId.(primitive.ObjectID).Hex(), communityId,
-		filterOptions, headers[utils.HeadersMemberId], UserIsCM, headers[utils.HeadersVersionCode],
+	fetchPostData, err := fetchPostData(handlers, postData.ID.Hex(), communityId,
+		filterOptions, headers[utils.HeadersMemberId], createPostRequest.UserIsCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
 		response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
-		response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], UserIsCM, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
+			createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	}
 
 	// return final response
 	c.JSON(http.StatusOK, response)
-}
-
-func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostRequest) string {
-	for _, attachement := range createPostRequest.Attachments {
-		if attachement.AttachmentType == enums.PostWidget {
-			return attachement.AttachmentMeta.EntityID
-		}
-	}
-	return ""
 }
 
 // Exposed Method to fetch multiple posts from post_ids
@@ -1433,30 +1594,68 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 		return
 	}
 
-	// Get Query Params
-	paramPostIds := c.Query("post_ids")
-	paramIsCm, _ := strconv.ParseBool(c.Query("user_is_cm"))
+	var fetchPostQueryRequest requests.FetchPostsQueryRequest
 
-	// If user is not cm, return error
-	if !paramIsCm {
-		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
-		return
-	}
-
-	// Unmarshal post_ids
-	var postIds []string
-	err := json.Unmarshal([]byte(paramPostIds), &postIds)
+	err := c.BindQuery(&fetchPostQueryRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// fetch multiple posts data using internal method
-	postsResponse, err := fetchMultiplePostsData(handlers, postIds, communityId, headers[utils.HeadersMemberId],
-		true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+	// If user is not cm, return error
+	if !fetchPostQueryRequest.UserIsCm {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
+	}
+
+	// Unmarshal post and pending post ids
+	postIds, pendingPostIds := []string{}, []string{}
+
+	if fetchPostQueryRequest.PostIds != "" {
+		err := json.Unmarshal([]byte(fetchPostQueryRequest.PostIds), &postIds)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+	}
+
+	if fetchPostQueryRequest.PendingPostIds != "" {
+		err := json.Unmarshal([]byte(fetchPostQueryRequest.PendingPostIds), &pendingPostIds)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+	}
+
+	postsResponse := map[string]requests.PostResponse{}
+
+	if len(postIds) > 0 {
+		// fetch multiple posts data using internal method
+		postsResponse, err = fetchMultiplePostsData(handlers, postIds, communityId, headers[utils.HeadersMemberId],
+			true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+	}
+
+	// If pending_post_ids are present, fetch posts data from pending posts
+	if len(pendingPostIds) > 0 {
+
+		// Fetch posts data from pending posts using internal method
+		pendingPostData, err := fetchMultiplePendingPostsData(handlers, pendingPostIds, communityId, headers[utils.HeadersMemberId],
+			true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		// Add parsed posts data to response
+		for key, value := range pendingPostData {
+			postsResponse[key] = value
+		}
+
 	}
 
 	// reponse data
@@ -1476,7 +1675,8 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
 	response["widgets"] = getWidgetDataFromPosts(handlers, parsedResponse, communityId, headers[utils.HeadersMemberId])
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], paramIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
+		fetchPostQueryRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -1566,8 +1766,10 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	success := validateAndUpdatePostAttachments(c, handlers, communityId, editPostRequest.Attachments, apiRevampV1Check, true, postData.IsRepost)
-	if !success {
+	err = validateAndUpdatePostAttachments(handlers, communityId, editPostRequest.Attachments, apiRevampV1Check,
+		true, postData.IsRepost)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
@@ -1575,6 +1777,16 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	if postData.IsRepost && !validateRepostPostAttachment(postData, editPostRequest) {
 		utils.GeneralAPIValidationError(c, "cannot update repost's post attachment")
 		return
+	}
+
+	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
+	if len(editPostRequest.Attachments) > 0 {
+		errorMeta, err := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId,
+			&editPostRequest.Attachments, &postData.Attachments)
+		if errorMeta != nil {
+			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, err.Error(), errorMeta)
+			return
+		}
 	}
 
 	// strip text and check if it is empty
@@ -1607,9 +1819,10 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, ok := processAttachmentsForWidgets(c, handlers, editPostRequest.Attachments, postId, communityId,
-		headers[utils.HeadersMemberId])
-	if !ok {
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PostEntityType, editPostRequest.Attachments,
+		postId, communityId, headers[utils.HeadersMemberId])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 

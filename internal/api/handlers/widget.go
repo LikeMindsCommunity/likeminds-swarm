@@ -20,45 +20,52 @@ import (
 )
 
 // Internal Method to create a new widget with indexing
-func createWidget(c *gin.Context, handlers *FeedHandlers, createdByLM bool, parentEntityID string, parentEntityType string,
-	metaData map[string]interface{}, lmMeta map[string]interface{}, communityId int) (*entities.Widget, bool) {
+func createWidget(handlers *FeedHandlers, createdByLM bool, parentEntityID string, parentEntityType string,
+	metaData map[string]interface{}, lmMeta map[string]interface{}, communityId int) (*entities.Widget, error) {
 	// create Widget using the helper method
 	widgetId, err := handlers.widgetHelper.CreateWidgetHelper(createdByLM, parentEntityID, parentEntityType, metaData, lmMeta,
 		communityId)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return nil, false
+		return nil, err
 	}
 
 	widgetData, err := fetchWidgetByID(handlers.widgetHelper, widgetId.(primitive.ObjectID).Hex(), createdByLM, communityId)
 	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return nil, false
+		return nil, err
 	}
 
 	// insert widget data in elastic search
-	err = handlers.esHelper.InsertDocument(c, ParseWidgetIndexData(widgetData), widgetData.ID.Hex(),
-		constants.WidgetIndexName)
+	err = handlers.esHelper.InsertDocument(ParseWidgetIndexData(widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
 	if err != nil {
 		log.Error(err.Error())
 	}
 
-	return widgetData, true
+	return widgetData, nil
 }
 
 // Internal Method to edit an existing widget with index update
-func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, createdByLM bool, metaData map[string]interface{},
-	lmMeta map[string]interface{}, communityId int) (*entities.Widget, bool) {
+func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, parentEntityType string,
+	createdByLM bool, metaData map[string]interface{}, lmMeta map[string]interface{}, communityId int) (*entities.Widget, error) {
+
 	// fetch Widget using widget_id
 	widget, err := fetchWidgetByID(handlers.widgetHelper, widgetId, createdByLM, communityId)
 	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return widget, false
+		return widget, err
 	}
 
 	// widget update data
 	widgetUpdateData := gin.H{
 		"$set": gin.H{},
+	}
+
+	// Update set object with parentEntityId field, if changed
+	if parentEntityId != "" {
+		widgetUpdateData["$set"].(gin.H)["parent_entity_id"] = parentEntityId
+	}
+
+	// Update set object with parentEntityType field, if changed
+	if parentEntityType != "" {
+		widgetUpdateData["$set"].(gin.H)["parent_entity_type"] = parentEntityType
 	}
 
 	// Update set object with metadata field, if changed
@@ -76,25 +83,23 @@ func editWidget(c *gin.Context, handlers *FeedHandlers, widgetId string, created
 		// update widget using the helper method
 		err := handlers.widgetHelper.UpdateWidgetByIdHelper(widget.ID, widgetUpdateData)
 		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return nil, false
+			return nil, err
 		}
 
 		widget, err = fetchWidgetByID(handlers.widgetHelper, widget.ID.Hex(), createdByLM, communityId)
 		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return nil, false
+			return nil, err
 		}
 
 		// Index updated widget data in elastic search
-		err = handlers.esHelper.IndexDocument(c, ParseWidgetIndexData(widget), widget.ID.Hex(),
+		err = handlers.esHelper.IndexDocument(ParseWidgetIndexData(widget), widget.ID.Hex(),
 			constants.WidgetIndexName)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
 	}
 
-	return widget, true
+	return widget, nil
 }
 
 // Internal Method to fetch pollVotes Data Map for poll options
@@ -240,9 +245,10 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 	}
 
 	// create Widget
-	widgetData, ok := createWidget(c, handlers, false, createWidgetRequest.ParentEntityID, createWidgetRequest.ParentEntityType,
+	widgetData, err := createWidget(handlers, false, createWidgetRequest.ParentEntityID, createWidgetRequest.ParentEntityType,
 		createWidgetRequest.MetaData, nil, communityId)
-	if !ok {
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
@@ -462,8 +468,9 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	}
 
 	// edit Widget
-	widget, ok := editWidget(c, handlers, widgetId, false, editWidgetRequest.MetaData, nil, communityId)
-	if !ok {
+	widget, err := editWidget(handlers, widgetId, "", "", false, editWidgetRequest.MetaData, nil, communityId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 

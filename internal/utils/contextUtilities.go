@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
 
 // GetHeaders Used to get headers from API request
 func GetHeaders(c *gin.Context) map[string]string {

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -36,7 +35,7 @@ func (handlers *FeedHandlers) IndexAllPostData() error {
 
 	for _, postData := range postResults {
 		// insert post data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
+		err = handlers.esHelper.InsertDocument(ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -74,7 +73,7 @@ func (handlers *FeedHandlers) IndexAllTopicData() error {
 		postsCount := len(postResults)
 
 		// insert topic data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParseTopicIndexData(&topicData, &postsCount), topicData.ID.Hex(), constants.TopicIndexName)
+		err = handlers.esHelper.InsertDocument(ParseTopicIndexData(&topicData, &postsCount), topicData.ID.Hex(), constants.TopicIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
@@ -105,7 +104,7 @@ func (handlers *FeedHandlers) IndexAllWidgetData() error {
 
 	for _, widgetData := range widgetResults {
 		// insert widget data in elastic search
-		err = handlers.esHelper.InsertDocument(context.Background(), ParseWidgetIndexData(&widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
+		err = handlers.esHelper.InsertDocument(ParseWidgetIndexData(&widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
 		if err != nil {
 			log.Error(err.Error())
 		}
