@@ -55,7 +55,7 @@ const (
 )
 
 const (
-	CommunityConfigurationsCacheTTLInHours = 6
+	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 )
 
 // Inferdo API related constants
