@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
@@ -38,6 +39,12 @@ func main() {
 	es := searchElastic.InitiateES()
 
 	cacheHelper := cache.NewCacheHelper(redisClient)
+
+	redisOpt := asynq.RedisClientOpt{
+		Addr: "0.0.0.0.6380",
+	}
+
+	taskDistributor := handlers.NewRedisTaskDistributor(redisOpt)
 
 	router.Use(cors.New(enableCors()))
 	router.Use(LoggingMiddleware())
@@ -75,7 +82,7 @@ func main() {
 
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
-		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper)
+		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, taskDistributor)
 
 	// Routes
 	routes.BaseRouter(routerGroup, feedHandlers)
@@ -89,8 +96,9 @@ func main() {
 	// Run Scripts
 	// scripts.RunScripts(feedHandlers)
 
+	go runTaskProcessor(redisOpt, feedHandlers)
 	log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
-	log.Fatal(router.Run(":8080"))
+	log.Fatal(router.Run(":8090"))
 }
 
 // Internal Method to initiate Gin module in the server
@@ -213,4 +221,13 @@ func enableCors() cors.Config {
 		"x-api-key",
 	)
 	return config
+}
+
+func runTaskProcessor(redisOpt asynq.RedisClientOpt, handler *handlers.FeedHandlers) {
+	taskProcessor := handlers.NewRedisTaskProcessor(redisOpt, handler)
+	fmt.Println("Starting task processor")
+	err := taskProcessor.Start()
+	if err != nil {
+		fmt.Println("Failed to start task processor")
+	}
 }

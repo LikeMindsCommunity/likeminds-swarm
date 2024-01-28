@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -414,13 +415,23 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	// delete topics from elastic search
 	err = handlers.esHelper.DeleteByQuery(getTopicsToBeDeletedQuery, constants.TopicIndexName)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Error(err.Error())
 	}
 
-	err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
+	fmt.Println("Sending to bg: ", time.Now())
+
+	deleteTaskPayload := &PayloadSendDeleteTopicsFromPostsTask{
+		deleteTopicsRequest.TopicIds,
+	}
+
+	err = handlers.taskDistributer.DistributeTaskDeleteTopicsFromPosts(c, deleteTaskPayload)
+	fmt.Println("Proceeding ahead: ", time.Now())
+
+	// err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+		fmt.Println("Delete failed")
+		// utils.GeneralAPIInternalError(c, err.Error())
+		// return
 	}
 
 	// response data
@@ -429,6 +440,7 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	}
 
 	// return final response
+	fmt.Println("REturning  response: ", time.Now())
 	c.JSON(http.StatusOK, response)
 }
 
