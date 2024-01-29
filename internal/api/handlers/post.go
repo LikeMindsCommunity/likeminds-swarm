@@ -12,7 +12,6 @@ import (
 
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -1398,6 +1397,18 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 		logging.Error(fmt.Sprint("Error in inserting post data in elastic search: ", err.Error()))
 	}
 
+	// Update posts count in topics index
+	if len(postData.TopicIds) > 0 {
+
+		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		updatePostCountInTopicQuery := UpdatePostCountInTopicsQuery(stringTopicIds, true)
+
+		err = handlers.esHelper.UpdateByQuery(updatePostCountInTopicQuery, constants.TopicIndexName)
+		if err != nil {
+			logging.Error(err.Error())
+		}
+	}
+
 	// update original post widget for repost
 	if postRequest.IsRepost {
 		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
@@ -1904,7 +1915,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 		stringTopicIds := helpers.ConvertObjectIdsToString(addedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, true), constants.TopicIndexName)
 		if err != nil {
-			log.Error(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 
@@ -1913,7 +1924,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 		stringTopicIds := helpers.ConvertObjectIdsToString(removedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
-			log.Error(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 }
@@ -2012,7 +2023,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
 		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
-			log.Error(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 
