@@ -341,7 +341,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		}
 
 		// update topic data in elastic search
-		err = handlers.esHelper.IndexDocument(ParseTopicIndexData(handlers.postHelper, topic, false), topic.ID.Hex(), constants.TopicIndexName)
+		err = handlers.esHelper.IndexDocument(ParseTopicIndexData(handlers.postHelper, topic, true), topic.ID.Hex(), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
 		}
