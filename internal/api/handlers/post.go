@@ -1262,7 +1262,7 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 }
 
 // Internal function to fetch posts with topic id
-func fetchPostsWithTopicID(handlers *FeedHandlers, topicId primitive.ObjectID, communityId int) ([]entities.Post, error) {
+func fetchPostsWithTopicID(postHelper interfaces.PostHelper, topicId primitive.ObjectID, communityId int) ([]entities.Post, error) {
 	// filter to find posts with the specified topic_id and is_deleted set to false
 	filter := bson.M{
 		"topic_ids": bson.M{
@@ -1275,7 +1275,7 @@ func fetchPostsWithTopicID(handlers *FeedHandlers, topicId primitive.ObjectID, c
 	}
 
 	// find posts based on the filter
-	postResults, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	postResults, err := postHelper.FindPostHelper(filter, gin.H{})
 	if err != nil {
 		return nil, err
 	}
@@ -1868,7 +1868,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// update post data in elastic search
-	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -2207,8 +2207,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	handlers.updatePinnedPostCache(postData)
 
 	// update post data in elastic search
-	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
-		constants.PostIndexName)
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
