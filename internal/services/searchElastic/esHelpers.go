@@ -126,10 +126,6 @@ func (esHelper *esHelper) IndexDocument(document interface{}, documentId string,
 		return fmt.Errorf("Search(Elastic): index: request: %w", err)
 	}
 
-	fmt.Println(`
-	res: %w
-	`, res.String())
-
 	defer res.Body.Close()
 
 	if res.IsError() {
