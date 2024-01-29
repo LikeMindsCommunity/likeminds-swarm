@@ -134,7 +134,7 @@ var IndexMapping = map[string]string{
 		"mappings": {
 			"properties": {
 				"metadata": {
-					"type": "flattened"
+					"type": "flat_object"
 				}
 			}
 		}
