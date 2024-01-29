@@ -8,7 +8,7 @@ import (
 )
 
 type TaskProcessor interface {
-	Start() error
+	Run() error
 	ProcessTaskDeleteTopicsFromPosts(
 		ctx context.Context,
 		task *asynq.Task,
@@ -32,10 +32,10 @@ func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers)
 	}
 }
 
-func (processor *RedisTaskProcessor) Start() error {
+func (processor *RedisTaskProcessor) Run() error {
 	fmt.Println("Server Mux Starting server")
 	mux := asynq.NewServeMux()
 
 	mux.HandleFunc(TaskSendDeleteTopicsFromPosts, processor.ProcessTaskDeleteTopicsFromPosts)
-	return processor.server.Start(mux)
+	return processor.server.Run(mux)
 }

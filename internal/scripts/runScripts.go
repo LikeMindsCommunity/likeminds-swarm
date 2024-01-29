@@ -9,11 +9,29 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 )
 
-func RunScripts(handlers *handlers.FeedHandlers) {
-	// indexPostData(handlers)
-	// indexTopicData(handlers)
-	// indexWidgetData(handlers)
-	// addCommunityIdToComments(handlers)
+func RunScripts(handlers *handlers.FeedHandlers, scriptName string) {
+	fmt.Printf("starting %s script\n", scriptName)
+	startTime := time.Now()
+
+	switch scriptName {
+	case "indexPostData":
+		indexPostData(handlers)
+		break
+	case "indexTopicData":
+		indexTopicData(handlers)
+		break
+	case "indexWidgetData":
+		indexWidgetData(handlers)
+		break
+	case "addCommunityIdToComments":
+		addCommunityIdToComments(handlers)
+		break
+	default:
+		// TODO: throw error
+		fmt.Errorf("Script not found")
+	}
+
+	fmt.Printf("script %s executed in %d\n", scriptName, time.Since(startTime))
 }
 
 func indexPostData(handlers *handlers.FeedHandlers) {
@@ -25,26 +43,19 @@ func indexPostData(handlers *handlers.FeedHandlers) {
 }
 
 func indexTopicData(handlers *handlers.FeedHandlers) {
-	fmt.Println("starting function indexTopicData")
-	startTime := time.Now()
 	err := handlers.IndexAllTopicData()
 	if err != nil {
 		log.Error(fmt.Sprintf("Scripts: Error running indexTopicData: %s", err.Error()))
 		return
 	}
-	fmt.Println("function indexTopicData completed in ", time.Since(startTime))
 }
 
 func indexWidgetData(handlers *handlers.FeedHandlers) {
-	fmt.Println("starting function indexWidgetData")
-	startTime := time.Now()
-
 	err := handlers.IndexAllWidgetData()
 	if err != nil {
 		log.Error(fmt.Sprintf("Scripts: Error running indexWidgetData: %s", err.Error()))
 		return
 	}
-	fmt.Println("function indexWidgetData completed in ", time.Since(startTime))
 }
 
 func addCommunityIdToComments(handlers *handlers.FeedHandlers) {

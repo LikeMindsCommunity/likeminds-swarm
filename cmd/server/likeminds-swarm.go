@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/scripts"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
@@ -33,7 +35,6 @@ var (
 func main() {
 	var AppVersion string = "1.12.0"
 
-	initGin()
 	redisClient = cache.InitRedis()
 	db := database.InitiateDB()
 	es := searchElastic.InitiateES()
@@ -41,17 +42,10 @@ func main() {
 	cacheHelper := cache.NewCacheHelper(redisClient)
 
 	redisOpt := asynq.RedisClientOpt{
-		Addr: "0.0.0.0.6380",
+		Addr: "0.0.0.0:6381",
 	}
 
 	taskDistributor := handlers.NewRedisTaskDistributor(redisOpt)
-
-	router.Use(cors.New(enableCors()))
-	router.Use(LoggingMiddleware())
-
-	router.GET("", web.Home)
-
-	routerGroup := router.Group("/")
 
 	// Dependency injection of repositories
 	postRepository := repositories.NewPostRepository(db)
@@ -84,21 +78,60 @@ func main() {
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
 		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, taskDistributor)
 
-	// Routes
-	routes.BaseRouter(routerGroup, feedHandlers)
-	routes.PostRouter(routerGroup, feedHandlers)
-	routes.UserRouter(routerGroup, feedHandlers)
-	routes.FeedRouter(routerGroup, feedHandlers)
-	routes.TopicRouter(routerGroup, feedHandlers)
-	routes.WidgetRouter(routerGroup, feedHandlers)
-	routes.PollRouter(routerGroup, feedHandlers)
+	switch {
+	case len(os.Args) == 1:
+		//run server here
+		fmt.Println("----------run server here")
+		initGin()
+		router.Use(cors.New(enableCors()))
+		router.Use(LoggingMiddleware())
 
-	// Run Scripts
-	// scripts.RunScripts(feedHandlers)
+		router.GET("", web.Home)
 
-	go runTaskProcessor(redisOpt, feedHandlers)
-	log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
-	log.Fatal(router.Run(":8090"))
+		routerGroup := router.Group("/")
+
+		// Routes
+		routes.BaseRouter(routerGroup, feedHandlers)
+		routes.PostRouter(routerGroup, feedHandlers)
+		routes.UserRouter(routerGroup, feedHandlers)
+		routes.FeedRouter(routerGroup, feedHandlers)
+		routes.TopicRouter(routerGroup, feedHandlers)
+		routes.WidgetRouter(routerGroup, feedHandlers)
+		routes.PollRouter(routerGroup, feedHandlers)
+
+		log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
+		log.Fatal(router.Run(":8090"))
+		break
+	case os.Args[1] == "runworker":
+		// run worker here
+		fmt.Println("----------run worker here")
+		runTaskProcessor(redisOpt, feedHandlers)
+		// select {}
+		break
+	case os.Args[1] == "runscript":
+		fmt.Println("----------run script here")
+		fmt.Println(os.Args[2])
+		// Run Scripts
+		scripts.RunScripts(feedHandlers, os.Args[2])
+		os.Exit(0)
+		break
+	default:
+		//TODO:
+		// throw invalid args error
+	}
+
+	//TODO:
+	//cases:
+	// 1-> routes
+	// 2-> script?
+	// 3-> worker
+
+	// config -> Builder pattern
+	// opts := Config.Builder().option1("value").build() -> 5 retries
+	// specific task -> updatedOpts := opts.toBuilder().option2("value2").build()
+
+	// default options
+	// override -> overriden otherwise default values
 }
 
 // Internal Method to initiate Gin module in the server
@@ -226,7 +259,7 @@ func enableCors() cors.Config {
 func runTaskProcessor(redisOpt asynq.RedisClientOpt, handler *handlers.FeedHandlers) {
 	taskProcessor := handlers.NewRedisTaskProcessor(redisOpt, handler)
 	fmt.Println("Starting task processor")
-	err := taskProcessor.Start()
+	err := taskProcessor.Run()
 	if err != nil {
 		fmt.Println("Failed to start task processor")
 	}
