@@ -1392,7 +1392,7 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 	}
 
 	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
 	if err != nil {
 		logging.Error(fmt.Sprint("Error in inserting post data in elastic search: ", err.Error()))

@@ -43,6 +43,8 @@ func InitiateES() *elasticsearch.Client {
 			Addresses: []string{
 				environment.GoDotEnvVariable("ELASTIC_SEARCH_HOST"),
 			},
+			Username: "likeminds-non-prod",
+			Password: "!23Likeminds",
 		}
 
 		// Instantiate a new Elasticsearch client object instance
