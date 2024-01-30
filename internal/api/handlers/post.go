@@ -1461,7 +1461,7 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 	// convert topic_ids to object ids
 	topicIDs := helpers.ConvertIdsToObjectIds(postRequest.TopicIds)
 
-	// fetch all the topics sent in the create post body
+	// validate if topic_ids are valid
 	if len(topicIDs) > 0 {
 		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
 		if err != nil {
@@ -1472,10 +1472,10 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 		if len(topics) != len(topicIDs) {
 			return nil, fmt.Errorf("invalid topic_ids sent")
 		}
-
-		// update parsed topic ids in request struct
-		postRequest.ParsedTopicIds = topicIDs
 	}
+
+	// update parsed topic ids in request struct
+	postRequest.ParsedTopicIds = topicIDs
 
 	// check the visibility of the post
 	if postRequest.Visibility == "" {
@@ -1882,7 +1882,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
-	updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
+	if editPostRequest.TopicIds != nil {
+		updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
+	}
 
 	response := gin.H{
 		"success": true,
