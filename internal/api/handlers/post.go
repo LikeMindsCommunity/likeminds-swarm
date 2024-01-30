@@ -1465,13 +1465,11 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 	if len(topicIDs) > 0 {
 		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
 		if err != nil {
-			// utils.GeneralAPIValidationError(c, err.Error())
 			return nil, err
 		}
 
 		// Validation of Topics
 		if len(topics) != len(topicIDs) {
-			// utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
 			return nil, fmt.Errorf("invalid topic_ids sent")
 		}
 
