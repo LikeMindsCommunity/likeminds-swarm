@@ -13,7 +13,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -150,18 +150,16 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 	topicsIndexData := make(map[string]interface{})
 	var topicsResponse []requests.TopicResponse
 
-	postsCount := 0
-
 	// parse the topics data for ES indexing and API response
 	for _, topicData := range topicsData {
-		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(&topicData, &postsCount)
+		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(handlers.postHelper, &topicData, false)
 		topicsResponse = append(topicsResponse, parseTopicResponse(&topicData))
 	}
 
 	// insert topics data in elastic search
 	err = handlers.esHelper.InsertManyDocuments(topicsIndexData, constants.TopicIndexName)
 	if err != nil {
-		log.Error(err.Error())
+		logging.Error(err.Error())
 	}
 
 	// reponse data
@@ -343,9 +341,9 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		}
 
 		// update topic data in elastic search
-		err = handlers.esHelper.UpdateDocument(c, ParseTopicIndexData(topic, nil), topic.ID.Hex(), constants.TopicIndexName)
+		err = handlers.esHelper.IndexDocument(ParseTopicIndexData(handlers.postHelper, topic, true), topic.ID.Hex(), constants.TopicIndexName)
 		if err != nil {
-			fmt.Println(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 
@@ -474,13 +472,13 @@ func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 	}
 
 	// fetch the updated posts and update in ES
-	updatedPosts, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	updatedPosts, _ := handlers.postHelper.FindPostHelper(filter, gin.H{})
 
 	for _, postData := range updatedPosts {
 		// update post data in elastic search
 		err = handlers.esHelper.IndexDocument(ParsePostIndexData(&postData), postData.ID.Hex(), constants.PostIndexName)
 		if err != nil {
-			log.Error(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 

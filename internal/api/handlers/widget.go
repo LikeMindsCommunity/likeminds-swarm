@@ -35,7 +35,7 @@ func createWidget(handlers *FeedHandlers, createdByLM bool, parentEntityID strin
 	}
 
 	// insert widget data in elastic search
-	err = handlers.esHelper.InsertDocument(ParseWidgetIndexData(widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
+	err = handlers.esHelper.IndexDocument(ParseWidgetIndexData(widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
 	if err != nil {
 		log.Error(err.Error())
 	}
