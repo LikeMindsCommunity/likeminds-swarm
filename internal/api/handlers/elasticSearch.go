@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 )
 
@@ -165,7 +167,8 @@ func GetSelfPostFilterQuery(page int, page_size int, search_type string, search 
 	`, from, page_size, communityQuery, searchQuery, userQuery)
 }
 
-func ParseTopicIndexData(Topic *entities.Topic, numberOfPosts *int) searchElastic.TopicIndex {
+func ParseTopicIndexData(postHelper interfaces.PostHelper, Topic *entities.Topic, updatePostCount bool) searchElastic.TopicIndex {
+
 	topicIndex := searchElastic.TopicIndex{
 		Id:          Topic.ID.Hex(),
 		Name:        Topic.Name,
@@ -175,9 +178,16 @@ func ParseTopicIndexData(Topic *entities.Topic, numberOfPosts *int) searchElasti
 		UpdatedAt:   Topic.UpdatedAt,
 	}
 
-	if numberOfPosts != nil {
-		topicIndex.NumberOfPosts = numberOfPosts
+	// if updatePostCount is true, then fetch the posts with topic id and update the count
+	if updatePostCount {
+
+		postResults, err := fetchPostsWithTopicID(postHelper, Topic.ID, Topic.CommunityId)
+		if err != nil {
+			logging.Error(fmt.Sprint("Error while fetching posts with topic id: ", err.Error()))
+		}
+		topicIndex.NumberOfPosts = len(postResults)
 	}
+
 	return topicIndex
 }
 
