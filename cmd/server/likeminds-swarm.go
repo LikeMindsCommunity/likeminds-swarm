@@ -46,7 +46,7 @@ func main() {
 		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
 	}
 
-	taskDistributor := handlers.NewRedisTaskDistributor(redisOpt)
+	feedTaskDistributor := handlers.NewRedisTaskDistributor(redisOpt)
 
 	// Dependency injection of repositories
 	postRepository := repositories.NewPostRepository(db)
@@ -77,7 +77,7 @@ func main() {
 
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
-		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, taskDistributor)
+		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor)
 
 	switch {
 	case len(os.Args) == 1:
@@ -114,9 +114,6 @@ func main() {
 	default:
 		log.Fatal("Invalid args")
 	}
-
-	// config -> Builder pattern
-	// opts := Config.Builder().option1("value").build() -> 5 retries
 }
 
 // Internal Method to initiate Gin module in the server
@@ -243,9 +240,8 @@ func enableCors() cors.Config {
 
 func runTaskProcessor(redisOpt asynq.RedisClientOpt, handler *handlers.FeedHandlers) {
 	taskProcessor := handlers.NewRedisTaskProcessor(redisOpt, handler)
-	fmt.Println("Starting task processor")
 	err := taskProcessor.Run()
 	if err != nil {
-		fmt.Println("Failed to start task processor")
+		log.Fatal("Failed to start task processor")
 	}
 }

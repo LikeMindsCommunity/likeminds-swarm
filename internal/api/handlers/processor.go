@@ -10,12 +10,9 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 )
 
-type TaskProcessor interface {
+type FeedTaskProcessor interface {
 	Run() error
-	ProcessTaskDeleteTopicsFromPosts(
-		ctx context.Context,
-		task *asynq.Task,
-	) error
+	ProcessTaskDeleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error
 }
 
 type RedisTaskProcessor struct {
@@ -23,7 +20,7 @@ type RedisTaskProcessor struct {
 	handler *FeedHandlers
 }
 
-func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers) TaskProcessor {
+func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers) FeedTaskProcessor {
 	concurrency, _ := strconv.Atoi(environment.GoDotEnvVariable("ASYNQ_WORKER_CONCURRENCY"))
 
 	server := asynq.NewServer(
