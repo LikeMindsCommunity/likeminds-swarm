@@ -13,6 +13,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/scripts"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-contrib/cors"
@@ -42,7 +43,7 @@ func main() {
 	cacheHelper := cache.NewCacheHelper(redisClient)
 
 	redisOpt := asynq.RedisClientOpt{
-		Addr: "0.0.0.0:6381",
+		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
 	}
 
 	taskDistributor := handlers.NewRedisTaskDistributor(redisOpt)
@@ -81,7 +82,6 @@ func main() {
 	switch {
 	case len(os.Args) == 1:
 		//run server here
-		fmt.Println("----------run server here")
 		initGin()
 		router.Use(cors.New(enableCors()))
 		router.Use(LoggingMiddleware())
@@ -104,34 +104,19 @@ func main() {
 		break
 	case os.Args[1] == "runworker":
 		// run worker here
-		fmt.Println("----------run worker here")
 		runTaskProcessor(redisOpt, feedHandlers)
-		// select {}
 		break
 	case os.Args[1] == "runscript":
-		fmt.Println("----------run script here")
-		fmt.Println(os.Args[2])
 		// Run Scripts
 		scripts.RunScripts(feedHandlers, os.Args[2])
 		os.Exit(0)
 		break
 	default:
-		//TODO:
-		// throw invalid args error
+		log.Fatal("Invalid args")
 	}
-
-	//TODO:
-	//cases:
-	// 1-> routes
-	// 2-> script?
-	// 3-> worker
 
 	// config -> Builder pattern
 	// opts := Config.Builder().option1("value").build() -> 5 retries
-	// specific task -> updatedOpts := opts.toBuilder().option2("value2").build()
-
-	// default options
-	// override -> overriden otherwise default values
 }
 
 // Internal Method to initiate Gin module in the server

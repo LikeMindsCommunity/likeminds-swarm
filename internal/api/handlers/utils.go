@@ -1,16 +1,19 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -281,4 +284,21 @@ func parseStringArrayParam(param string) []string {
 	}
 
 	return response
+}
+
+// creates a task with the provided options and payload and enqueues it
+func EnqueueBackgroundTask(client *asynq.Client, taskName string, taskPayload []byte, opts ...asynq.Option) (*asynq.TaskInfo, error) {
+	// adds max retry option
+	maxRetry, _ := strconv.Atoi(environment.GoDotEnvVariable("ASYNQ_MAX_RETRY"))
+	opts = append(opts, asynq.MaxRetry(maxRetry))
+
+	// creates a new task with the provided options and payload
+	task := asynq.NewTask(taskName, taskPayload, opts...)
+
+	// enqueues the task to the queue
+	taskInfo, err := client.EnqueueContext(context.Background(), task)
+	if err != nil {
+		return nil, fmt.Errorf("failed to enqueue task %w", err)
+	}
+	return taskInfo, nil
 }

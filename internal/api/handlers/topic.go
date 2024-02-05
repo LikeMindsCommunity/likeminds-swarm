@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
@@ -419,24 +418,22 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		log.Error(err.Error())
 	}
 
-	fmt.Println("Sending to bg: ", time.Now())
+	// uncomment this code to test background tasks
 
-	deleteTaskPayload := &PayloadSendDeleteTopicsFromPostsTask{
-		deleteTopicsRequest.TopicIds,
-	}
+	// deleteTaskPayload := &PayloadSendDeleteTopicsFromPostsTask{
+	// 	deleteTopicsRequest.TopicIds,
+	// }
 
-	opt := []asynq.Option{
-		asynq.MaxRetry(5),
-	}
+	// opt := []asynq.Option{
+	// 	asynq.TaskID(time.Now().GoString()),
+	// }
 
-	err = handlers.taskDistributor.DistributeTaskDeleteTopicsFromPosts(c, deleteTaskPayload, opt...)
-	fmt.Println("Proceeding ahead: ", time.Now())
+	// err = handlers.taskDistributor.DistributeTaskDeleteTopicsFromPosts(deleteTaskPayload, opt...)
 
 	// err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
 	if err != nil {
-		fmt.Println("Delete failed")
-		// utils.GeneralAPIInternalError(c, err.Error())
-		// return
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
 	}
 
 	// response data
@@ -445,7 +442,6 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	}
 
 	// return final response
-	fmt.Println("REturning  response: ", time.Now())
 	c.JSON(http.StatusOK, response)
 }
 

@@ -3,8 +3,11 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
+	"strconv"
 
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 )
 
 type TaskProcessor interface {
@@ -21,9 +24,14 @@ type RedisTaskProcessor struct {
 }
 
 func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers) TaskProcessor {
+	concurrency, _ := strconv.Atoi(environment.GoDotEnvVariable("ASYNQ_WORKER_CONCURRENCY"))
+
 	server := asynq.NewServer(
 		redisOpt,
-		asynq.Config{},
+		asynq.Config{
+			Concurrency:  concurrency,
+			ErrorHandler: asynq.ErrorHandlerFunc(reportError),
+		},
 	)
 
 	return &RedisTaskProcessor{
@@ -33,9 +41,13 @@ func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers)
 }
 
 func (processor *RedisTaskProcessor) Run() error {
-	fmt.Println("Server Mux Starting server")
 	mux := asynq.NewServeMux()
 
 	mux.HandleFunc(TaskSendDeleteTopicsFromPosts, processor.ProcessTaskDeleteTopicsFromPosts)
 	return processor.server.Run(mux)
+}
+
+// callback function for error while executing tasks
+func reportError(ctx context.Context, task *asynq.Task, err error) {
+	log.Fatal(fmt.Sprintf("error while executing task %s: %s", task.Type(), err.Error()))
 }

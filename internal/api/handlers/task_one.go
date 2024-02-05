@@ -16,21 +16,20 @@ type PayloadSendDeleteTopicsFromPostsTask struct {
 	TopicIds []string `json:"topic_ids"`
 }
 
-// arguments -> (topicsIds)
-
-func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(ctx context.Context, payload *PayloadSendDeleteTopicsFromPostsTask, opts ...asynq.Option,
+func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(payload *PayloadSendDeleteTopicsFromPostsTask, opts ...asynq.Option,
 ) error {
 	// wrap into payload
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
-	task := asynq.NewTask(TaskSendDeleteTopicsFromPosts, jsonPayload, opts...)
-	info, err := distributor.client.EnqueueContext(ctx, task)
+
+	// enqueue the task
+	taskInfo, err := EnqueueBackgroundTask(distributor.client, TaskSendDeleteTopicsFromPosts, jsonPayload, opts...)
 	if err != nil {
-		return fmt.Errorf("failed to enqueue task", err)
+		return fmt.Errorf("failed to enqueue task %w", err)
 	}
-	fmt.Print("queue", info.Queue)
+	fmt.Print("queue", taskInfo.Queue)
 
 	return nil
 }
@@ -39,7 +38,7 @@ func (processor *RedisTaskProcessor) ProcessTaskDeleteTopicsFromPosts(ctx contex
 ) error {
 	var payload PayloadSendDeleteTopicsFromPostsTask
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal payload: %w")
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
 	// convert topic_ids to object ids
