@@ -249,7 +249,7 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 
 // Exposed method to get topics by their ids
 func GetTopicsByIdQuery(topicIds string) string {
-	query := fmt.Sprintf(`
+	return fmt.Sprintf(`
 	{
 		"query": {
 			"terms": {
@@ -257,9 +257,6 @@ func GetTopicsByIdQuery(topicIds string) string {
 			}
 		}
 	}`, topicIds)
-
-	fmt.Println(query)
-	return query
 }
 
 func ParseWidgetIndexData(Widget *entities.Widget) searchElastic.WidgetIndex {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -300,5 +301,6 @@ func EnqueueBackgroundTask(client *asynq.Client, taskName string, taskPayload []
 	if err != nil {
 		return nil, fmt.Errorf("failed to enqueue task %w", err)
 	}
+	log.Printf("task enqueued. taskId: %s; taskType: %s; taskPayload: %s, taskQueue: %s, taskState: %s, taskResult: %s\n", taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String(), taskInfo.Result)
 	return taskInfo, nil
 }

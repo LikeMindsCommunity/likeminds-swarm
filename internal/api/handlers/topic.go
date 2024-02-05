@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -425,12 +424,12 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	// }
 
 	// opt := []asynq.Option{
-	// 	asynq.TaskID(time.Now().GoString()),
+	// 	// asynq.TaskID(time.Now().GoString()),
 	// }
 
-	// err = handlers.taskDistributor.DistributeTaskDeleteTopicsFromPosts(deleteTaskPayload, opt...)
+	// err = handlers.taskDistributor.DistributeTaskDeleteTopicsFromPosts(deleteTaskPayload)
 
-	// err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
+	err = DeleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -447,7 +446,6 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 
 // deletes topics from posts and update the post in ES index
 func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID, c *gin.Context) error {
-	fmt.Println("calling DeleteTopicsFromPostsAndUpdatePost", time.Now().Nanosecond())
 	// Create a filter to find posts to be updated
 	filter := bson.M{
 		"topic_ids": bson.M{
@@ -497,7 +495,6 @@ func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 			log.Error(err.Error())
 		}
 	}
-	fmt.Println("finished executing DeleteTopicsFromPostsAndUpdatePost", time.Now().Nanosecond())
 
 	return nil
 }

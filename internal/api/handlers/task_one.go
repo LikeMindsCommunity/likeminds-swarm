@@ -16,8 +16,7 @@ type PayloadSendDeleteTopicsFromPostsTask struct {
 	TopicIds []string `json:"topic_ids"`
 }
 
-func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(payload *PayloadSendDeleteTopicsFromPostsTask, opts ...asynq.Option,
-) error {
+func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(payload *PayloadSendDeleteTopicsFromPostsTask, opts ...asynq.Option) error {
 	// wrap into payload
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
@@ -29,7 +28,7 @@ func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(pay
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %w", err)
 	}
-	fmt.Print("queue", taskInfo.Queue)
+	fmt.Print("task id", taskInfo.ID)
 
 	return nil
 }
