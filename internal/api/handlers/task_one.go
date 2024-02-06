@@ -33,8 +33,7 @@ func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(pay
 	return nil
 }
 
-func (processor *RedisTaskProcessor) ProcessTaskDeleteTopicsFromPosts(ctx context.Context, task *asynq.Task,
-) error {
+func (processor *RedisTaskProcessor) ProcessTaskDeleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error {
 	var payload PayloadSendDeleteTopicsFromPostsTask
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal payload: %w", err)

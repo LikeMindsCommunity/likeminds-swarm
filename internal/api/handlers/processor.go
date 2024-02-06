@@ -22,7 +22,7 @@ type RedisTaskProcessor struct {
 
 func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers) FeedTaskProcessor {
 	concurrency, _ := strconv.Atoi(environment.GoDotEnvVariable("ASYNQ_WORKER_CONCURRENCY"))
-
+	// creates a new server to process tasks
 	server := asynq.NewServer(
 		redisOpt,
 		asynq.Config{
@@ -46,5 +46,5 @@ func (processor *RedisTaskProcessor) Run() error {
 
 // callback function for error while executing tasks
 func reportError(ctx context.Context, task *asynq.Task, err error) {
-	log.Fatal(fmt.Sprintf("error while executing task %s: %s", task.Type(), err.Error()))
+	log.Fatal(fmt.Sprintf("error while executing task %s with id: %s: %s", task.Type(), task.ResultWriter().TaskID(), err.Error()))
 }

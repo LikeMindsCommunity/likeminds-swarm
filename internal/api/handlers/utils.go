@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
@@ -301,6 +301,6 @@ func EnqueueBackgroundTask(client *asynq.Client, taskName string, taskPayload []
 	if err != nil {
 		return nil, fmt.Errorf("failed to enqueue task %w", err)
 	}
-	log.Printf("task enqueued. taskId: %s; taskType: %s; taskPayload: %s, taskQueue: %s, taskState: %s, taskResult: %s\n", taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String(), taskInfo.Result)
+	logging.Info(fmt.Sprintf("task enqueued. taskId: %s; taskType: %s; taskPayload: %s, taskQueue: %s, taskState: %s, taskResult: %s\n", taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String(), taskInfo.Result))
 	return taskInfo, nil
 }

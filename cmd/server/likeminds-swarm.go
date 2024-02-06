@@ -238,10 +238,11 @@ func enableCors() cors.Config {
 	return config
 }
 
+// runs processor to execute tasks
 func runTaskProcessor(redisOpt asynq.RedisClientOpt, handler *handlers.FeedHandlers) {
 	taskProcessor := handlers.NewRedisTaskProcessor(redisOpt, handler)
 	err := taskProcessor.Run()
 	if err != nil {
-		log.Fatal("Failed to start task processor")
+		log.Fatal(fmt.Sprintf("Failed to start task processor %s", err.Error()))
 	}
 }
