@@ -40,8 +40,6 @@ func main() {
 	db := database.InitiateDB()
 	es := searchElastic.InitiateES()
 
-	cacheHelper := cache.NewCacheHelper(redisClient)
-
 	redisOpt := asynq.RedisClientOpt{
 		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
 	}
@@ -60,6 +58,10 @@ func main() {
 	pollVotesRepository := repositories.NewPollVotesRepository(db)
 	connectionFeedRepository := repositories.NewConnectionFeedRepository(db)
 
+	// Dependency injection of Cache & ES
+	cacheHelper := cache.NewCacheHelper(redisClient)
+	esHelper := searchElastic.NewESHelper(es)
+
 	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)
 	pendingPostHelper := helpers.NewPendingPostHelper(pendingPostRepository)
@@ -72,16 +74,14 @@ func main() {
 	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
 	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
 
-	// Dependency injection of elasticSearch Helper
-	esHelper := searchElastic.NewESHelper(es)
-
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
 		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor)
 
 	switch {
+
+	// By default, run the server
 	case len(os.Args) == 1:
-		//run server here
 		initGin()
 		router.Use(cors.New(enableCors()))
 		router.Use(LoggingMiddleware())
@@ -100,17 +100,21 @@ func main() {
 		routes.PollRouter(routerGroup, feedHandlers)
 
 		log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
-		log.Fatal(router.Run(":8090"))
-		break
+		log.Fatal(router.Run(":8080"))
+
+	// Run background worker to process tasks
 	case os.Args[1] == "runworker":
-		// run worker here
 		runTaskProcessor(redisOpt, feedHandlers)
-		break
+
+	// Run Scripts
 	case os.Args[1] == "runscript":
-		// Run Scripts
-		scripts.RunScripts(feedHandlers, os.Args[2])
+		if len(os.Args) == 3 {
+			scripts.RunScripts(feedHandlers, os.Args[2])
+		} else {
+			log.Fatal("Please provide a valid script name to run")
+		}
 		os.Exit(0)
-		break
+
 	default:
 		log.Fatal("Invalid args")
 	}

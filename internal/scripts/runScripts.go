@@ -10,20 +10,26 @@ import (
 
 func RunScripts(handlers *handlers.FeedHandlers, scriptName string) {
 	switch scriptName {
+
+	// Run the script to index all post data
 	case "indexPostData":
 		indexPostData(handlers)
-		break
+
+	// Run the script to index all topic data
 	case "indexTopicData":
 		indexTopicData(handlers)
-		break
+
+	// Run the script to index all widget data
 	case "indexWidgetData":
 		indexWidgetData(handlers)
-		break
+
+	// Run the script to add community id to all comments
 	case "addCommunityIdToComments":
 		addCommunityIdToComments(handlers)
-		break
+
+	// If the script is not found
 	default:
-		log.Fatal("Script not found")
+		log.Fatal(fmt.Sprintf(`Scripts: Script '%s' not found`, scriptName))
 	}
 }
 
