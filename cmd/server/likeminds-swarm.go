@@ -4,22 +4,30 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/go-redis/redis/v7"
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/middlewares"
+	"github.com/nateshr/likeminds-swarm/internal/repositories"
 	"github.com/nateshr/likeminds-swarm/internal/scripts"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/api/routes"
-	"github.com/nateshr/likeminds-swarm/internal/helpers"
-	"github.com/nateshr/likeminds-swarm/internal/repositories"
 	"github.com/nateshr/likeminds-swarm/internal/services/database"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/web"
+)
+
+const (
+	AppVersion     string = "1.12.0" // Application Version
+	GinPortAddress string = ":8080"  // Gin Port Address
 )
 
 // Internal Method to enable Cors in the server
@@ -52,29 +60,23 @@ func initGin() *gin.Engine {
 	return router
 }
 
-// Internal Method to initiate the server
-func main() {
-	var AppVersion string = "1.12.0"
-
-	redisClient := cache.InitRedis()
-	db := database.InitiateDB()
-	es := searchElastic.InitiateES()
+func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redis.Client, esClient *elasticsearch.Client) *handlers.FeedHandlers {
 
 	// Dependency injection of repositories
-	postRepository := repositories.NewPostRepository(db)
-	pendingPostRepository := repositories.NewPendingPostRepository(db)
-	likeRepository := repositories.NewLikeRepository(db)
-	commentRepository := repositories.NewCommentRepository(db)
-	saveRepository := repositories.NewSaveRepository(db)
-	activityRepository := repositories.NewActivityRepository(db)
-	topicRepository := repositories.NewTopicRepository(db)
-	widgetRepository := repositories.NewWidgetRepository(db)
-	pollVotesRepository := repositories.NewPollVotesRepository(db)
-	connectionFeedRepository := repositories.NewConnectionFeedRepository(db)
+	postRepository := repositories.NewPostRepository(dbClient)
+	pendingPostRepository := repositories.NewPendingPostRepository(dbClient)
+	likeRepository := repositories.NewLikeRepository(dbClient)
+	commentRepository := repositories.NewCommentRepository(dbClient)
+	saveRepository := repositories.NewSaveRepository(dbClient)
+	activityRepository := repositories.NewActivityRepository(dbClient)
+	topicRepository := repositories.NewTopicRepository(dbClient)
+	widgetRepository := repositories.NewWidgetRepository(dbClient)
+	pollVotesRepository := repositories.NewPollVotesRepository(dbClient)
+	connectionFeedRepository := repositories.NewConnectionFeedRepository(dbClient)
 
 	// Dependency injection of Cache & ES
 	cacheHelper := cache.NewCacheHelper(redisClient)
-	esHelper := searchElastic.NewESHelper(es)
+	esHelper := searchElastic.NewESHelper(esClient)
 
 	// Dependency injection of helpers
 	postHelper := helpers.NewPostHelper(postRepository)
@@ -91,15 +93,27 @@ func main() {
 	// initiate task distributor for background tasks
 	feedTaskDistributor := handlers.NewTaskDistributor()
 
-	// New feed Handler
-	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
-		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor)
+	// return feed handlers
+	return handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper, activityHelper,
+		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor)
+}
+
+// Main Method
+func main() {
+
+	// Initiate clients
+	redisClient := cache.InitRedis()
+	dbClient := database.InitiateDB()
+	esClient := searchElastic.InitiateES()
+
+	// Inject dependencies and get feed handlers
+	feedHandlers := injectDependenciesAndGetHandler(dbClient, redisClient, esClient)
 
 	switch {
-
-	// By default, run the server
+	// By default, run gin server
 	case len(os.Args) == 1:
 
+		// Initiate Gin Router
 		router := initGin()
 
 		router.GET("", web.Home)
@@ -117,15 +131,15 @@ func main() {
 		logging.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
 
 		// Run gin server
-		logging.Fatal(router.Run(":8080"))
+		logging.Fatal(router.Run(GinPortAddress))
 
-	// Run background worker to process tasks
+	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
 
 		// Run Background Worker to process tasks
 		logging.Fatal(runBackgroundWorker(feedHandlers))
 
-	// Run Scripts
+	// runscript | Run script to perform some action
 	case os.Args[1] == "runscript":
 		if len(os.Args) == 3 {
 			scripts.RunScripts(feedHandlers, os.Args[2])
