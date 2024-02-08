@@ -1,22 +1,16 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
@@ -25,45 +19,6 @@ const (
 	OrderTypeDescending int = -1
 	OrderTypeDefault    int = 0
 )
-
-// Feed Handlers structure for all Helper classes
-type FeedHandlers struct {
-	likeHelper           interfaces.LikeHelper
-	commentHelper        interfaces.CommentHelper
-	postHelper           interfaces.PostHelper
-	pendingPostHelper    interfaces.PendingPostHelper
-	activityHelper       interfaces.ActivityHelper
-	saveHelper           interfaces.SaveHelper
-	topicHelper          interfaces.TopicHelper
-	widgetHelper         interfaces.WidgetHelper
-	pollVotesHelper      interfaces.PollVotesHelper
-	connectionFeedHelper interfaces.ConnectionFeedHelper
-	esHelper             searchElastic.EsHelper
-	cacheHelper          cache.Helper
-	taskDistributor      FeedTaskDistributor
-}
-
-// Exposed Method to get an instance for Feed Handlers
-func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, postHelper interfaces.PostHelper,
-	pendingPostHelper interfaces.PendingPostHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, topicHelper interfaces.TopicHelper,
-	widgetHelper interfaces.WidgetHelper, pollVotesHelper interfaces.PollVotesHelper, connectionFeedHelper interfaces.ConnectionFeedHelper,
-	esHelper searchElastic.EsHelper, cacheHelper cache.Helper, taskDistributor FeedTaskDistributor) *FeedHandlers {
-	return &FeedHandlers{
-		likeHelper:           likeHelper,
-		commentHelper:        commentHelper,
-		postHelper:           postHelper,
-		pendingPostHelper:    pendingPostHelper,
-		saveHelper:           saveHelper,
-		activityHelper:       activityHelper,
-		topicHelper:          topicHelper,
-		widgetHelper:         widgetHelper,
-		pollVotesHelper:      pollVotesHelper,
-		connectionFeedHelper: connectionFeedHelper,
-		esHelper:             esHelper,
-		cacheHelper:          cacheHelper,
-		taskDistributor:      taskDistributor,
-	}
-}
 
 // Internal Method to get pagination params in an API
 func fetchPaginationParams(c *gin.Context) (int, int, error) {
@@ -285,22 +240,4 @@ func parseStringArrayParam(param string) []string {
 	}
 
 	return response
-}
-
-// creates a task with the provided options and payload and enqueues it
-func EnqueueBackgroundTask(client *asynq.Client, taskName string, taskPayload []byte, opts ...asynq.Option) (*asynq.TaskInfo, error) {
-	// adds max retry option
-	maxRetry, _ := strconv.Atoi(environment.GoDotEnvVariable("ASYNQ_MAX_RETRY"))
-	opts = append(opts, asynq.MaxRetry(maxRetry))
-
-	// creates a new task with the provided options and payload
-	task := asynq.NewTask(taskName, taskPayload, opts...)
-
-	// enqueues the task to the queue
-	taskInfo, err := client.EnqueueContext(context.Background(), task)
-	if err != nil {
-		return nil, fmt.Errorf("failed to enqueue task %w", err)
-	}
-	logging.Info(fmt.Sprintf("task enqueued. taskId: %s; taskType: %s; taskPayload: %s, taskQueue: %s, taskState: %s, taskResult: %s\n", taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String(), taskInfo.Result))
-	return taskInfo, nil
 }

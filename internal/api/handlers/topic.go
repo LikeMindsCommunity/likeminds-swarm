@@ -417,23 +417,19 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		log.Error(err.Error())
 	}
 
-	// uncomment this code to test background tasks
-
-	// deleteTaskPayload := &PayloadSendDeleteTopicsFromPostsTask{
-	// 	deleteTopicsRequest.TopicIds,
-	// }
-
-	// opt := []asynq.Option{
-	// 	// asynq.TaskID(time.Now().GoString()),
-	// }
-
-	// err = handlers.taskDistributor.DistributeTaskDeleteTopicsFromPosts(deleteTaskPayload)
-
-	err = DeleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
+	// TODO: Remove taskDistribution code from here
+	err = handlers.taskDistributor.DistributeTaskDeleteTopicsFromPosts(deleteTopicsRequest.TopicIds)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	// TODO: Uncomment this code after removing taskDistribution code
+	// err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs)
+	// if err != nil {
+	// 	utils.GeneralAPIInternalError(c, err.Error())
+	// 	return
+	// }
 
 	// response data
 	response := gin.H{
@@ -445,7 +441,8 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 }
 
 // deletes topics from posts and update the post in ES index
-func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID, c *gin.Context) error {
+func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID) error {
+
 	// Create a filter to find posts to be updated
 	filter := bson.M{
 		"topic_ids": bson.M{
@@ -455,6 +452,9 @@ func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 
 	// find posts based on the filter
 	postResults, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	if err != nil {
+		return err
+	}
 
 	// extract postIds from the postResults
 	postIDs, postIDsString := []primitive.ObjectID{}, []string{}

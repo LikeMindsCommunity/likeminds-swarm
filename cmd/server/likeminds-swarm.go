@@ -1,20 +1,15 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"time"
 
-	"github.com/go-redis/redis/v7"
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/middlewares"
 	"github.com/nateshr/likeminds-swarm/internal/scripts"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -27,24 +22,43 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/web"
 )
 
-var (
-	redisClient *redis.Client
-	router      *gin.Engine
-)
+// Internal Method to enable Cors in the server
+func enableCors() cors.Config {
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	config.AddAllowHeaders(
+		"x-member-id",
+		"x-platform-code",
+		"x-version-code",
+		"x-sdk-source",
+		"x-device-id",
+		"x-api-key",
+	)
+	return config
+}
+
+// Internal Method to initiate Gin module in the server
+func initGin() *gin.Engine {
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+
+	// Enable CORS
+	router.Use(cors.New(enableCors()))
+
+	// Enable Logging Middleware
+	router.Use(middlewares.LoggingMiddleware())
+
+	return router
+}
 
 // Internal Method to initiate the server
 func main() {
 	var AppVersion string = "1.12.0"
 
-	redisClient = cache.InitRedis()
+	redisClient := cache.InitRedis()
 	db := database.InitiateDB()
 	es := searchElastic.InitiateES()
-
-	redisOpt := asynq.RedisClientOpt{
-		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
-	}
-
-	feedTaskDistributor := handlers.NewRedisTaskDistributor(redisOpt)
 
 	// Dependency injection of repositories
 	postRepository := repositories.NewPostRepository(db)
@@ -74,6 +88,9 @@ func main() {
 	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
 	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
 
+	// initiate task distributor for background tasks
+	feedTaskDistributor := handlers.NewTaskDistributor()
+
 	// New feed Handler
 	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
 		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor)
@@ -82,12 +99,10 @@ func main() {
 
 	// By default, run the server
 	case len(os.Args) == 1:
-		initGin()
-		router.Use(cors.New(enableCors()))
-		router.Use(LoggingMiddleware())
+
+		router := initGin()
 
 		router.GET("", web.Home)
-
 		routerGroup := router.Group("/")
 
 		// Routes
@@ -99,154 +114,42 @@ func main() {
 		routes.WidgetRouter(routerGroup, feedHandlers)
 		routes.PollRouter(routerGroup, feedHandlers)
 
-		log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
-		log.Fatal(router.Run(":8080"))
+		logging.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
+
+		// Run gin server
+		logging.Fatal(router.Run(":8080"))
 
 	// Run background worker to process tasks
 	case os.Args[1] == "runworker":
-		runTaskProcessor(redisOpt, feedHandlers)
+
+		// Run Background Worker to process tasks
+		logging.Fatal(runBackgroundWorker(feedHandlers))
 
 	// Run Scripts
 	case os.Args[1] == "runscript":
 		if len(os.Args) == 3 {
 			scripts.RunScripts(feedHandlers, os.Args[2])
 		} else {
-			log.Fatal("Please provide a valid script name to run")
+			logging.Fatal("please provide a valid script name to run")
 		}
-		os.Exit(0)
+		os.Exit(0) // TODO: Check if needed else remove
 
 	default:
-		log.Fatal("Invalid args")
+		logging.Fatal("Invalid args")
 	}
 }
 
-// Internal Method to initiate Gin module in the server
-func initGin() {
-	gin.SetMode(gin.ReleaseMode)
-	router = gin.Default()
-}
+// Internal Method to run background worker
+func runBackgroundWorker(handler *handlers.FeedHandlers) error {
 
-// Method to process API request to log
-func processRequest(c *gin.Context) interface{} {
-	requestBodyData := gin.H{}
-
-	// Reading request body
-	requestBody, err := io.ReadAll(c.Request.Body)
-
-	// Updating request body after read
-	c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
-
-	// Unmarshalling request body
-	if err == nil {
-		_ = json.Unmarshal(requestBody, &requestBodyData)
+	// initiate redis client
+	redisOpt := asynq.RedisClientOpt{
+		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
 	}
 
-	return gin.H{
-		"host":         c.Request.Host,
-		"absolute_uri": c.Request.RequestURI,
-		"method":       c.Request.Method,
-		"headers":      c.Request.Header,
-		"body":         requestBodyData,
-	}
-}
+	// initiate task processor
+	taskProcessor := handlers.NewTaskProcessor(redisOpt, handler)
 
-// responseBodyWriter | Custom Response Writer
-type responseBodyWriter struct {
-	gin.ResponseWriter
-	body *bytes.Buffer
-}
-
-// Write | Custom Write Method for responseBodyWriter
-func (r responseBodyWriter) Write(b []byte) (int, error) {
-	r.body.Write(b)
-	return r.ResponseWriter.Write(b)
-}
-
-// LoggingMiddleware will log the request and response of API
-func LoggingMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.Request.RequestURI == "/" {
-
-			c.Next()
-
-		} else {
-
-			data := gin.H{}
-
-			// Starting time
-			startTime := time.Now()
-
-			// Implementing custom response body writer in the context
-			w := &responseBodyWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}
-			c.Writer = w
-
-			// Updating Request Data
-			data["request"] = processRequest(c)
-
-			// Processing request
-			c.Next()
-
-			// End Time
-			endTime := time.Now()
-
-			response := gin.H{}
-			statusCode := c.Writer.Status()
-
-			// Unmarshalling Request Response
-			_ = json.Unmarshal(w.body.Bytes(), &response)
-
-			// Updating Request Response
-			data["response"] = gin.H{
-				"http_response_code": statusCode,
-				"content":            response,
-			}
-
-			if statusCode < http.StatusBadRequest {
-				data["response"].(gin.H)["content"] = gin.H{}
-			}
-
-			// Updating Request Meta Data
-			data["meta"] = gin.H{
-				"latency":   endTime.Sub(startTime),
-				"client_ip": c.ClientIP(),
-			}
-
-			// Marshalling the final Data
-			marshelledData, _ := json.Marshal(data)
-
-			if statusCode >= http.StatusOK && statusCode < http.StatusBadRequest {
-				// Logging the generated request data as Info
-				log.Info(string(marshelledData))
-			} else {
-				// Logging the generated request data as Error
-				log.Error(string(marshelledData))
-			}
-
-			c.Next()
-		}
-	}
-}
-
-// Internal Method to enable Cors in the server
-func enableCors() cors.Config {
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AddAllowHeaders(
-		"x-member-id",
-		"x-platform-code",
-		"x-version-code",
-		"x-sdk-source",
-		"x-device-id",
-		"x-api-key",
-	)
-	return config
-}
-
-// runs processor to execute tasks
-func runTaskProcessor(redisOpt asynq.RedisClientOpt, handler *handlers.FeedHandlers) {
-	taskProcessor := handlers.NewRedisTaskProcessor(redisOpt, handler)
-	err := taskProcessor.Run()
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Failed to start task processor %s", err.Error()))
-	}
+	// run the task processor
+	return taskProcessor.Run()
 }
