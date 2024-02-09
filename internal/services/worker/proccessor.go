@@ -30,16 +30,11 @@ type FeedTaskProcessor interface {
 }
 
 type RedisTaskProcessor struct {
-	server  *asynq.Server
-	handler *handlers.FeedHandlers
+	server       *asynq.Server
+	feedHandlers *handlers.FeedHandlers
 }
 
-func NewTaskProcessor(handler *handlers.FeedHandlers) FeedTaskProcessor {
-
-	// initiate redis client
-	redisOpt := asynq.RedisClientOpt{
-		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
-	}
+func getAsynqServerConfigurations() asynq.Config {
 
 	// default configurations for the Task Processor
 	config := asynq.Config{
@@ -56,6 +51,18 @@ func NewTaskProcessor(handler *handlers.FeedHandlers) FeedTaskProcessor {
 		config.Concurrency = concurrency
 	}
 
+	return config
+
+}
+
+func NewTaskProcessor(feedHandlers *handlers.FeedHandlers) FeedTaskProcessor {
+
+	// initiate redis client
+	redisOpt := distributor.InitRedisBrokerClient()
+
+	// get AsynQ server configurations
+	config := getAsynqServerConfigurations()
+
 	// creates a new server to process tasks
 	server := asynq.NewServer(
 		redisOpt,
@@ -63,7 +70,7 @@ func NewTaskProcessor(handler *handlers.FeedHandlers) FeedTaskProcessor {
 	)
 
 	return &RedisTaskProcessor{
-		server:  server,
-		handler: handler,
+		server:       server,
+		feedHandlers: feedHandlers,
 	}
 }

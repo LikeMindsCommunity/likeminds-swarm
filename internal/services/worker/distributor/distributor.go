@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hibiken/asynq"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 )
 
 // Task Distributor for "task:DeleteTopicsFromPosts"
@@ -43,9 +42,11 @@ type RedisTaskDistributor struct {
 // NewTaskDistributor | Creates a new task distributor for feed background tasks
 func NewTaskDistributor() FeedTaskDistributor {
 
-	client := asynq.NewClient(asynq.RedisClientOpt{
-		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
-	})
+	// create a new redis client
+	redisClientOpts := InitRedisBrokerClient()
+
+	// create a new asynq client
+	client := asynq.NewClient(redisClientOpts)
 
 	return &RedisTaskDistributor{
 		client: client,

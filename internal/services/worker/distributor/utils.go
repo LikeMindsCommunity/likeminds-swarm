@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
@@ -36,4 +37,18 @@ func enqueueBackgroundTask(client *asynq.Client, taskName string, taskPayload []
 		taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String(), taskInfo.Result))
 
 	return taskInfo, nil
+}
+
+func InitRedisBrokerClient() *asynq.RedisClientOpt {
+
+	brokerAddress := environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS")
+	if brokerAddress == "" {
+		brokerAddress = "localhost:6379"
+	}
+
+	redisClientOpt := asynq.RedisClientOpt{
+		Addr: brokerAddress,
+	}
+
+	return &redisClientOpt
 }

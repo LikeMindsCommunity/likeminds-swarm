@@ -22,5 +22,5 @@ func (processor *RedisTaskProcessor) DeleteTopicsFromPosts(ctx context.Context, 
 	// convert topic_ids to object ids
 	objectIDs := helpers.ConvertIdsToObjectIds(payload.TopicIds)
 
-	return handlers.DeleteTopicsFromPostsAndUpdatePost(processor.handler, objectIDs)
+	return handlers.DeleteTopicsFromPostsAndUpdatePost(processor.feedHandlers, objectIDs)
 }
