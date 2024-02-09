@@ -13,7 +13,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker/processor"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
@@ -92,7 +92,7 @@ func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redi
 	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
 
 	// initiate task distributor for background tasks
-	feedTaskDistributor := worker.NewTaskDistributor()
+	feedTaskDistributor := distributor.NewTaskDistributor()
 
 	// return feed handlers
 	return handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper, activityHelper,
@@ -137,10 +137,10 @@ func main() {
 	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
 
-		workerProccessor := processor.NewTaskProcessor(feedHandlers)
+		feedTaskProcessor := worker.NewTaskProcessor(feedHandlers)
 
-		// Run Background Worker to process tasks
-		logging.Fatal(workerProccessor.Run())
+		// Run Background worker to process tasks
+		logging.Fatal(feedTaskProcessor.Run())
 
 	// runscript | Run script to perform some action
 	case os.Args[1] == "runscript":

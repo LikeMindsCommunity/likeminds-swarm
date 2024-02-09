@@ -1,4 +1,4 @@
-package worker
+package distributor
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 )
 
 // Task Distributor for "task:DeleteTopicsFromPosts"
-func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(topicIds []string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) DeleteTopicsFromPosts(topicIds []string, opts ...asynq.Option) error {
 
 	// create task payload
 	payload := PayloadSendDeleteTopicsFromPostsTask{
@@ -33,7 +33,7 @@ func (distributor *RedisTaskDistributor) DistributeTaskDeleteTopicsFromPosts(top
 
 // FeedTaskDistributor | Interface for the feed task distributor
 type FeedTaskDistributor interface {
-	DistributeTaskDeleteTopicsFromPosts(topicIds []string, opts ...asynq.Option) error
+	DeleteTopicsFromPosts(topicIds []string, opts ...asynq.Option) error
 }
 
 type RedisTaskDistributor struct {

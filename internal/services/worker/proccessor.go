@@ -1,4 +1,4 @@
-package processor
+package worker
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
 )
 
 // Run | Method to register task handlers and run the server
@@ -19,7 +19,7 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux := asynq.NewServeMux()
 
 	// register handlers for each task
-	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
+	mux.HandleFunc(distributor.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
 
 	return processor.server.Run(mux)
 }

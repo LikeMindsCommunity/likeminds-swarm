@@ -4,7 +4,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
 )
 
 // Feed Handlers structure for all Helper classes
@@ -21,7 +21,7 @@ type FeedHandlers struct {
 	connectionFeedHelper interfaces.ConnectionFeedHelper
 	esHelper             searchElastic.EsHelper
 	cacheHelper          cache.Helper
-	taskDistributor      worker.FeedTaskDistributor
+	taskDistributor      distributor.FeedTaskDistributor
 }
 
 // Exposed Method to get an instance for Feed Handlers
@@ -38,7 +38,7 @@ func NewFeedHandlers(
 	connectionFeedHelper interfaces.ConnectionFeedHelper,
 	esHelper searchElastic.EsHelper,
 	cacheHelper cache.Helper,
-	taskDistributor worker.FeedTaskDistributor) *FeedHandlers {
+	taskDistributor distributor.FeedTaskDistributor) *FeedHandlers {
 
 	return &FeedHandlers{
 		likeHelper:           likeHelper,

@@ -418,7 +418,7 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	}
 
 	// TODO: Remove taskDistribution code from here
-	err = handlers.taskDistributor.DistributeTaskDeleteTopicsFromPosts(deleteTopicsRequest.TopicIds)
+	err = handlers.taskDistributor.DeleteTopicsFromPosts(deleteTopicsRequest.TopicIds)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -457,10 +457,9 @@ func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 	}
 
 	// extract postIds from the postResults
-	postIDs, postIDsString := []primitive.ObjectID{}, []string{}
+	postIDs := []primitive.ObjectID{}
 	for _, post := range postResults {
 		postIDs = append(postIDs, post.ID)
-		postIDsString = append(postIDsString, post.ID.String())
 	}
 
 	// update the filter to update posts by postIds
@@ -487,6 +486,9 @@ func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 
 	// fetch the updated posts and update in ES
 	updatedPosts, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	if err != nil {
+		return err
+	}
 
 	for _, postData := range updatedPosts {
 		// update post data in elastic search
