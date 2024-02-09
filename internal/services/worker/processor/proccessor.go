@@ -1,16 +1,28 @@
-package handlers
+package processor
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/hibiken/asynq"
-	"github.com/nateshr/likeminds-swarm/internal/helpers"
+	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
+
+// Run | Method to register task handlers and run the server
+func (processor *RedisTaskProcessor) Run() error {
+
+	// create a new ServeMux to register task handlers
+	mux := asynq.NewServeMux()
+
+	// register handlers for each task
+	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
+
+	return processor.server.Run(mux)
+}
 
 type FeedTaskProcessor interface {
 	Run() error
@@ -19,17 +31,20 @@ type FeedTaskProcessor interface {
 
 type RedisTaskProcessor struct {
 	server  *asynq.Server
-	handler *FeedHandlers
+	handler *handlers.FeedHandlers
 }
 
-func NewTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers) FeedTaskProcessor {
+func NewTaskProcessor(handler *handlers.FeedHandlers) FeedTaskProcessor {
+
+	// initiate redis client
+	redisOpt := asynq.RedisClientOpt{
+		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
+	}
 
 	// default configurations for the Task Processor
 	config := asynq.Config{
-
 		// callback function for error while executing tasks
 		ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
-
 			// TODO: Try to find Task ID from the task payload and log it (This currently throws panic)
 			logging.Fatal(fmt.Sprintf("error while executing task %s with id: %s: %s", task.Type(), task.ResultWriter().TaskID(), err.Error()))
 		}),
@@ -51,30 +66,4 @@ func NewTaskProcessor(redisOpt asynq.RedisClientOpt, handler *FeedHandlers) Feed
 		server:  server,
 		handler: handler,
 	}
-}
-
-// Run | Method to register task handlers and run the server
-func (processor *RedisTaskProcessor) Run() error {
-
-	// create a new ServeMux to register task handlers
-	mux := asynq.NewServeMux()
-
-	// register handlers for each task
-	mux.HandleFunc(TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
-
-	return processor.server.Run(mux)
-}
-
-// DeleteTopicsFromPosts | Task to delete topics from posts
-func (processor *RedisTaskProcessor) DeleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error {
-
-	var payload PayloadSendDeleteTopicsFromPostsTask
-	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal payload: %w", err)
-	}
-
-	// convert topic_ids to object ids
-	objectIDs := helpers.ConvertIdsToObjectIds(payload.TopicIds)
-
-	return DeleteTopicsFromPostsAndUpdatePost(processor.handler, objectIDs)
 }

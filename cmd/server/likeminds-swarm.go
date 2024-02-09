@@ -6,14 +6,14 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/go-redis/redis/v7"
-	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/middlewares"
 	"github.com/nateshr/likeminds-swarm/internal/repositories"
 	"github.com/nateshr/likeminds-swarm/internal/scripts"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/processor"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
@@ -60,6 +60,7 @@ func initGin() *gin.Engine {
 	return router
 }
 
+// Internal Method to inject dependencies and get feed handlers
 func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redis.Client, esClient *elasticsearch.Client) *handlers.FeedHandlers {
 
 	// Dependency injection of repositories
@@ -91,7 +92,7 @@ func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redi
 	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
 
 	// initiate task distributor for background tasks
-	feedTaskDistributor := handlers.NewTaskDistributor()
+	feedTaskDistributor := worker.NewTaskDistributor()
 
 	// return feed handlers
 	return handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper, activityHelper,
@@ -136,8 +137,10 @@ func main() {
 	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
 
+		workerProccessor := processor.NewTaskProcessor(feedHandlers)
+
 		// Run Background Worker to process tasks
-		logging.Fatal(runBackgroundWorker(feedHandlers))
+		logging.Fatal(workerProccessor.Run())
 
 	// runscript | Run script to perform some action
 	case os.Args[1] == "runscript":
@@ -151,19 +154,4 @@ func main() {
 	default:
 		logging.Fatal("Invalid args")
 	}
-}
-
-// Internal Method to run background worker
-func runBackgroundWorker(handler *handlers.FeedHandlers) error {
-
-	// initiate redis client
-	redisOpt := asynq.RedisClientOpt{
-		Addr: environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS"),
-	}
-
-	// initiate task processor
-	taskProcessor := handlers.NewTaskProcessor(redisOpt, handler)
-
-	// run the task processor
-	return taskProcessor.Run()
 }
