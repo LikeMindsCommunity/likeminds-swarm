@@ -1,4 +1,4 @@
-package distributor
+package worker
 
 // Task Names for each task type
 const (

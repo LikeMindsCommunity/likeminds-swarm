@@ -12,8 +12,8 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/scripts"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/proccessor"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
@@ -137,7 +137,7 @@ func main() {
 	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
 
-		feedTaskProcessor := worker.NewTaskProcessor(feedHandlers)
+		feedTaskProcessor := proccessor.NewTaskProcessor(feedHandlers)
 
 		// Run Background worker to process tasks
 		logging.Fatal(feedTaskProcessor.Run())
