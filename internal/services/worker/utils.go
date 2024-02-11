@@ -11,8 +11,8 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
-// InitRedisBrokerClient | Initiates a new Redis broker client for background tasks
-func InitRedisBrokerClient() *asynq.RedisClientOpt {
+// GetRedisClientOpts | Returns the redis client options for the Asynq client
+func GetRedisClientOpts() *asynq.RedisClientOpt {
 
 	brokerAddress := environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS")
 	if brokerAddress == "" {
@@ -64,7 +64,7 @@ func GetServerConfigurations() asynq.Config {
 		// callback function for error while executing tasks
 		ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
 			// TODO: Try to find Task ID from the task payload and log it (This currently throws panic)
-			logging.Fatal(fmt.Sprintf("error while executing task %s with id: %s: %s", task.Type(), task.ResultWriter().TaskID(), err.Error()))
+			logging.Fatal(fmt.Sprintf("error while executing task %s", err.Error()))
 		}),
 	}
 

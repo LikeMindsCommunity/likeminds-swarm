@@ -1,4 +1,4 @@
-package proccessor
+package processor
 
 import (
 	"context"
@@ -8,8 +8,15 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
+
+// ConnectionTest | Task to test the connection with the broker
+func (processor *RedisTaskProcessor) ConnectionTest(ctx context.Context, task *asynq.Task) error {
+	logging.Info("taskProcessor | Connection Test Task Received")
+	return nil
+}
 
 // DeleteTopicsFromPosts | Task to delete topics from posts
 func (processor *RedisTaskProcessor) DeleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error {

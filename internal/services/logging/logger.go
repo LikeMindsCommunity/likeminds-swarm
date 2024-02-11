@@ -75,8 +75,8 @@ func Error(v interface{}) {
 }
 
 // Fatal
-func Fatal(v interface{}) {
-	log.Fatal(v)
+func Fatal(v ...interface{}) {
+	log.Fatal(v...)
 }
 
 // Panic

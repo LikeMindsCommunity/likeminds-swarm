@@ -1,4 +1,4 @@
-package proccessor
+package processor
 
 import (
 	"context"
@@ -15,6 +15,7 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux := asynq.NewServeMux()
 
 	// register handlers for each task
+	mux.HandleFunc(worker.BrokerConnectionTest, processor.ConnectionTest)
 	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
 
 	return processor.server.Run(mux)
@@ -22,6 +23,7 @@ func (processor *RedisTaskProcessor) Run() error {
 
 type FeedTaskProcessor interface {
 	Run() error
+	ConnectionTest(ctx context.Context, task *asynq.Task) error
 	DeleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error
 }
 
@@ -32,8 +34,8 @@ type RedisTaskProcessor struct {
 
 func NewTaskProcessor(feedHandlers *handlers.FeedHandlers) FeedTaskProcessor {
 
-	// initiate redis client
-	redisOpt := worker.InitRedisBrokerClient()
+	// get Redis client options
+	redisOpt := worker.GetRedisClientOpts()
 
 	// get AsynQ server configurations
 	config := worker.GetServerConfigurations()
