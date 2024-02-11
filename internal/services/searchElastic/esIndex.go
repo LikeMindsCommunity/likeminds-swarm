@@ -32,7 +32,7 @@ type TopicIndex struct {
 	CommunityId   int       `json:"community_id"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
-	NumberOfPosts *int      `json:"number_of_posts,omitempty"`
+	NumberOfPosts int       `json:"number_of_posts"`
 }
 
 // Struct for Elasticsearch Widget Index fields
@@ -134,7 +134,7 @@ var IndexMapping = map[string]string{
 		"mappings": {
 			"properties": {
 				"metadata": {
-					"type": "flattened"
+					"type": "flat_object"
 				}
 			}
 		}

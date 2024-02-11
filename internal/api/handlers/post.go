@@ -12,7 +12,6 @@ import (
 
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -1262,7 +1261,7 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 }
 
 // Internal function to fetch posts with topic id
-func fetchPostsWithTopicID(handlers *FeedHandlers, topicId primitive.ObjectID, communityId int) ([]entities.Post, error) {
+func fetchPostsWithTopicID(postHelper interfaces.PostHelper, topicId primitive.ObjectID, communityId int) ([]entities.Post, error) {
 	// filter to find posts with the specified topic_id and is_deleted set to false
 	filter := bson.M{
 		"topic_ids": bson.M{
@@ -1275,7 +1274,7 @@ func fetchPostsWithTopicID(handlers *FeedHandlers, topicId primitive.ObjectID, c
 	}
 
 	// find posts based on the filter
-	postResults, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	postResults, err := postHelper.FindPostHelper(filter, gin.H{})
 	if err != nil {
 		return nil, err
 	}
@@ -1392,10 +1391,22 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 	}
 
 	// insert post data in elastic search
-	err = handlers.esHelper.InsertDocument(ParsePostIndexData(postData), postData.ID.Hex(),
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
 	if err != nil {
 		logging.Error(fmt.Sprint("Error in inserting post data in elastic search: ", err.Error()))
+	}
+
+	// Update posts count in topics index
+	if len(postData.TopicIds) > 0 {
+
+		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		updatePostCountInTopicQuery := UpdatePostCountInTopicsQuery(stringTopicIds, true)
+
+		err = handlers.esHelper.UpdateByQuery(updatePostCountInTopicQuery, constants.TopicIndexName)
+		if err != nil {
+			logging.Error(err.Error())
+		}
 	}
 
 	// update original post widget for repost
@@ -1450,23 +1461,21 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 	// convert topic_ids to object ids
 	topicIDs := helpers.ConvertIdsToObjectIds(postRequest.TopicIds)
 
-	// fetch all the topics sent in the create post body
+	// validate if topic_ids are valid
 	if len(topicIDs) > 0 {
 		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
 		if err != nil {
-			// utils.GeneralAPIValidationError(c, err.Error())
 			return nil, err
 		}
 
 		// Validation of Topics
 		if len(topics) != len(topicIDs) {
-			// utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
 			return nil, fmt.Errorf("invalid topic_ids sent")
 		}
-
-		// update parsed topic ids in request struct
-		postRequest.ParsedTopicIds = topicIDs
 	}
+
+	// update parsed topic ids in request struct
+	postRequest.ParsedTopicIds = topicIDs
 
 	// check the visibility of the post
 	if postRequest.Visibility == "" {
@@ -1868,12 +1877,14 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// update post data in elastic search
-	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
-	updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
+	if editPostRequest.TopicIds != nil {
+		updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
+	}
 
 	response := gin.H{
 		"success": true,
@@ -1904,7 +1915,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 		stringTopicIds := helpers.ConvertObjectIdsToString(addedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, true), constants.TopicIndexName)
 		if err != nil {
-			log.Error(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 
@@ -1913,7 +1924,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 		stringTopicIds := helpers.ConvertObjectIdsToString(removedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
-			log.Error(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 }
@@ -2012,7 +2023,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
 		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
-			log.Error(err.Error())
+			logging.Error(err.Error())
 		}
 	}
 
@@ -2207,8 +2218,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	handlers.updatePinnedPostCache(postData)
 
 	// update post data in elastic search
-	err = handlers.esHelper.UpdateDocument(c, ParsePostIndexData(postData), postData.ID.Hex(),
-		constants.PostIndexName)
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
