@@ -46,6 +46,7 @@ func NewTaskProcessor(feedHandlers *handlers.FeedHandlers) FeedTaskProcessor {
 		config,
 	)
 
+	// TODO: Add middleware to log task received and completed (how much time) along with task id, type & payload
 	return &RedisTaskProcessor{
 		server:       server,
 		feedHandlers: feedHandlers,

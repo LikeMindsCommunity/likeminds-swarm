@@ -149,7 +149,6 @@ func main() {
 		} else {
 			logging.Fatal("please provide a valid script name to run")
 		}
-		os.Exit(0) // TODO: Check if needed else remove
 
 	default:
 		logging.Fatal("Invalid args")
