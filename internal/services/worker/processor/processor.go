@@ -32,13 +32,13 @@ type RedisTaskProcessor struct {
 	feedHandlers *handlers.FeedHandlers
 }
 
-func NewTaskProcessor(feedHandlers *handlers.FeedHandlers) FeedTaskProcessor {
+func NewTaskProcessor(feedHandlers *handlers.FeedHandlers, QueueNames []string) FeedTaskProcessor {
 
 	// get Redis client options
 	redisOpt := worker.GetRedisClientOpts()
 
 	// get AsynQ server configurations
-	config := worker.GetServerConfigurations()
+	config := worker.GetServerConfigurations(QueueNames)
 
 	// creates a new server to process tasks
 	server := asynq.NewServer(

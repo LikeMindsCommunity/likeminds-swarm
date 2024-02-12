@@ -11,6 +11,63 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
+// Queue Names
+const (
+	DefaultQueue string = "default" // Priority -> 10
+)
+
+// getAllQueues | Returns a map of all queue names with their priority
+func getAllQueues() map[string]int {
+
+	// Queues priority map
+	queuePriortiyMap := map[string]int{
+		DefaultQueue: 10,
+	}
+
+	return queuePriortiyMap
+}
+
+// getValidQueuesMap | Return valid queue priority map from qNames else return all queues
+func getValidQueuesMap(qNames []string) map[string]int {
+
+	userQueueMap := map[string]int{}
+
+	defaultQueues := getAllQueues()
+
+	// If qNames are passed, return valid queue priority map
+	if len(qNames) > 0 {
+		for _, qname := range qNames {
+			if _, exists := defaultQueues[qname]; exists {
+				userQueueMap[qname] = defaultQueues[qname]
+			} else {
+				logging.Error("Invalid queue name: ", qname)
+			}
+		}
+	}
+
+	if len(userQueueMap) > 0 {
+		logging.Info("Listening to user queues: ", userQueueMap)
+		return userQueueMap
+	}
+
+	logging.Info("Listening to default queues: ", defaultQueues)
+	return defaultQueues
+}
+
+// customErrorHandler | Custom error handler for Asynq background processor
+func customErrorHandler(ctx context.Context, task *asynq.Task, err error) {
+
+	// Get task metadata
+	taskId, _ := asynq.GetTaskID(ctx)
+	taskPayload := task.Payload()
+	taskName := task.Type()
+
+	// Log the error with task metadata
+	logging.Error(fmt.Sprintf(`Task Failed | taskId: %s ; taskType: %s ; taskPayload: %s ; error: %s ;`,
+		taskId, taskName, taskPayload, err.Error()))
+
+}
+
 // GetRedisClientOpts | Returns the redis client options for the Asynq client
 func GetRedisClientOpts() *asynq.RedisClientOpt {
 
@@ -33,6 +90,7 @@ func EnqueueTaskToQueue(client *asynq.Client, taskName string, taskPayload []byt
 	defaultOpts := []asynq.Option{
 		asynq.MaxRetry(1),                 // max number of times the task can be retried
 		asynq.Retention(10 * time.Minute), // how long to keep the task result in completed state
+		asynq.Queue(DefaultQueue),         // which queue to enqueue the task to
 	}
 
 	// creates a new task with the provided payload and DEFAULT OPTIONS
@@ -44,14 +102,14 @@ func EnqueueTaskToQueue(client *asynq.Client, taskName string, taskPayload []byt
 		return nil, fmt.Errorf("failed to enqueue task %w", err)
 	}
 
-	logging.Info(fmt.Sprintf(`Task Enqueued | taskId: %s ; taskType: %s ; taskPayload: %s ; taskQueue: %s ; taskState: %s ; taskResult: %s ;`,
-		taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String(), taskInfo.Result))
+	logging.Info(fmt.Sprintf(`Task Enqueued | taskId: %s ; taskType: %s ; taskPayload: %s ; taskQueue: %s ; taskState: %s`,
+		taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String()))
 
 	return taskInfo, nil
 }
 
 // GetServerConfigurations | Returns configurations for the Asynq server
-func GetServerConfigurations() asynq.Config {
+func GetServerConfigurations(QueueNames []string) asynq.Config {
 
 	// default configurations for the Task Processor
 	config := asynq.Config{
@@ -61,6 +119,9 @@ func GetServerConfigurations() asynq.Config {
 
 		// Using custom logger for logging
 		Logger: logging.NewCustomLogger(),
+
+		// Queue names and their priority
+		Queues: getValidQueuesMap(QueueNames),
 	}
 
 	// set concurrency from environment variable if present | default: cpu cores count
@@ -70,19 +131,5 @@ func GetServerConfigurations() asynq.Config {
 	}
 
 	return config
-
-}
-
-// customErrorHandler | Custom error handler for Asynq background processor
-func customErrorHandler(ctx context.Context, task *asynq.Task, err error) {
-
-	// Get task metadata
-	taskId, _ := asynq.GetTaskID(ctx)
-	taskPayload := task.Payload()
-	taskName := task.Type()
-
-	// Log the error with task metadata
-	logging.Error(fmt.Sprintf(`Task Failed | taskId: %s ; taskType: %s ; taskPayload: %s ; error: %s ;`,
-		taskId, taskName, taskPayload, err.Error()))
 
 }

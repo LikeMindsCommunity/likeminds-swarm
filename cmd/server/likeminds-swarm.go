@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/go-redis/redis/v7"
@@ -137,7 +138,13 @@ func main() {
 	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
 
-		feedTaskProcessor := processor.NewTaskProcessor(feedHandlers)
+		// get queue names from arguments
+		queues := []string{}
+		if len(os.Args) == 3 && os.Args[2] != "" {
+			queues = strings.Split(os.Args[2], ",")
+		}
+
+		feedTaskProcessor := processor.NewTaskProcessor(feedHandlers, queues)
 
 		// Run Background worker to process tasks
 		logging.Fatal(feedTaskProcessor.Run())
