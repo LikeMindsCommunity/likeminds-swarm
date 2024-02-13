@@ -18,4 +18,5 @@ type Helper interface {
 	Increment(key string) (int64, error)
 	Expire(key string, expiration time.Duration) (bool, error)
 	IncrWithExpiry(key string, expiration time.Duration) (int64, error)
+	GetKeysFromPattern(pattern string) *redis.StringSliceCmd
 }
