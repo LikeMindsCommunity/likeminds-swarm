@@ -54,20 +54,6 @@ func getValidQueuesMap(qNames []string) map[string]int {
 	return defaultQueues
 }
 
-// customErrorHandler | Custom error handler for Asynq background processor
-func customErrorHandler(ctx context.Context, task *asynq.Task, err error) {
-
-	// Get task metadata
-	taskId, _ := asynq.GetTaskID(ctx)
-	taskPayload := task.Payload()
-	taskName := task.Type()
-
-	// Log the error with task metadata
-	logging.Error(fmt.Sprintf(`Task Failed | taskId: %s ; taskType: %s ; taskPayload: %s ; error: %s ;`,
-		taskId, taskName, taskPayload, err.Error()))
-
-}
-
 // GetRedisClientOpts | Returns the redis client options for the Asynq client
 func GetRedisClientOpts() *asynq.RedisClientOpt {
 
@@ -102,10 +88,44 @@ func EnqueueTaskToQueue(client *asynq.Client, taskName string, taskPayload []byt
 		return nil, fmt.Errorf("failed to enqueue task %w", err)
 	}
 
-	logging.Info(fmt.Sprintf(`Task Enqueued | taskId: %s ; taskType: %s ; taskPayload: %s ; taskQueue: %s ; taskState: %s`,
-		taskInfo.ID, taskInfo.Type, taskInfo.Payload, taskInfo.Queue, taskInfo.State.String()))
+	logging.Info(fmt.Sprintf(`Task Enqueued | taskId: %s ; taskName: %s ; taskPayload: %s ; taskQueue: %s ;`,
+		taskInfo.ID, taskInfo.Type, string(taskInfo.Payload), taskInfo.Queue))
 
 	return taskInfo, nil
+}
+
+// loggingMiddleware | Processor middleware to log task lifescycle (start, end & error)
+func LoggingMiddleware(h asynq.Handler) asynq.Handler {
+	return asynq.HandlerFunc(func(ctx context.Context, task *asynq.Task) error {
+		start := time.Now()
+
+		// Get task metadata
+		taskId, _ := asynq.GetTaskID(ctx)
+		taskPayload := task.Payload()
+		taskName := task.Type()
+		taskQueue, _ := asynq.GetQueueName(ctx)
+
+		// Log task received with task metadata
+		logging.Info(fmt.Sprintf(`Task Received | taskId: %s ; taskName: %s ; taskPayload: %s ; taskQueue: %s ;`,
+			taskId, taskName, string(taskPayload), taskQueue))
+
+		// Process task
+		err := h.ProcessTask(ctx, task)
+		if err != nil {
+
+			// Log the error with task metadata
+			logging.Error(fmt.Sprintf(`Task Failed | taskId: %s ; taskType: %s ; taskPayload: %s ; error: %s ;`,
+				taskId, taskName, taskPayload, err.Error()))
+
+			return err
+		}
+
+		// Log task finished with task metadata
+		logging.Info(fmt.Sprintf(`Task Finished | taskId: %s ; taskName: %s ; taskPayload: %s ; taskQueue: %s ; Finished in %v ;`,
+			taskId, taskName, string(taskPayload), taskQueue, time.Since(start)))
+
+		return nil
+	})
 }
 
 // GetServerConfigurations | Returns configurations for the Asynq server
@@ -113,9 +133,6 @@ func GetServerConfigurations(QueueNames []string) asynq.Config {
 
 	// default configurations for the Task Processor
 	config := asynq.Config{
-
-		// Using custom error handler for handling errors
-		ErrorHandler: asynq.ErrorHandlerFunc(customErrorHandler),
 
 		// Using custom logger for logging
 		Logger: logging.NewCustomLogger(),

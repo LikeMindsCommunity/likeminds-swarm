@@ -14,6 +14,9 @@ func (processor *RedisTaskProcessor) Run() error {
 	// create a new ServeMux to register task handlers
 	mux := asynq.NewServeMux()
 
+	// add logging middleware to the mux
+	mux.Use(worker.LoggingMiddleware)
+
 	// register handlers for each task
 	mux.HandleFunc(worker.BrokerConnectionTest, processor.ConnectionTest)
 	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)

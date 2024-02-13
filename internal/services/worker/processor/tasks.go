@@ -14,7 +14,7 @@ import (
 
 // ConnectionTest | Task to test the connection with the broker
 func (processor *RedisTaskProcessor) ConnectionTest(ctx context.Context, task *asynq.Task) error {
-	logging.Info("taskProcessor | Connection Test Task Received")
+	logging.Info(`Successfully received and completed task:BrokerConnectionTest`)
 	return nil
 }
 
