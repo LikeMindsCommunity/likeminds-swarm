@@ -27,7 +27,7 @@ func NewTaskDistributor() FeedTaskDistributor {
 	// enqueue a test task to check the connection with the broker
 	_, err := client.Enqueue(asynq.NewTask(worker.BrokerConnectionTest, []byte("test payload")))
 	if err != nil {
-		logging.Fatal("Cannot enqueue task, some error with redis broker: ", err)
+		logging.Fatal("Cannot enqueue task, error with redis broker: ", err)
 	}
 
 	return &RedisTaskDistributor{
