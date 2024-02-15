@@ -1567,17 +1567,25 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// Trigger post creation webhook
-	err = handlers.taskDistributor.TriggerPostCreationWebhook(postData.ID.Hex(), headers[utils.HeadersApiKey])
-	if err != nil {
-		logging.Error("Error while triggering post creation webhook: ", err.Error())
-	}
-
 	// if custom creation timestamp is not used, create activities and send notifications
 	if !(createPostRequest.CreatedAt > 0 && float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
 		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
 		if err != nil {
 			logging.Error(fmt.Sprint("Error while creating activities and sending notifications after post creation: ", err.Error()))
+		}
+
+		// trigger post creation webhook
+		err = handlers.taskDistributor.TriggerPostCreationWebhook(postData.ID.Hex(), headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error while triggering post creation webhook: ", err.Error())
+		}
+
+		// trigger post tagged webhook
+		if len(createPostRequest.UUIDs) > 0 {
+			err = handlers.taskDistributor.TriggerPostTaggedWebhook(postData.ID.Hex(), createPostRequest.UUIDs, headers[utils.HeadersApiKey])
+			if err != nil {
+				logging.Error("Error while triggering post tagged webhook: ", err.Error())
+			}
 		}
 	}
 
@@ -2198,6 +2206,9 @@ func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.Obj
 
 // Exposed Method to pin a Post
 func (handlers *FeedHandlers) PinPost(c *gin.Context) {
+
+	headers := utils.GetHeaders(c)
+
 	// fetch url params
 	postId := c.Param("post_id")
 
@@ -2236,6 +2247,14 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	}
 
 	handlers.updatePinnedPostCache(postData)
+
+	// trigger post pinned webhook
+	if postData.IsPinned {
+		err = handlers.taskDistributor.TriggerPostPinnedWebhook(postData.ID.Hex(), headers[utils.HeadersMemberId], headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error while triggering post pinned webhook: ", err.Error())
+		}
+	}
 
 	// update post data in elastic search
 	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)

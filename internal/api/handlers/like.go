@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -176,6 +177,12 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 
 		if !useCustomCreationTimestamp {
 			createUserPostLikeActivity(handlers, post_data, c, headers)
+
+			// Trigger post liked webhook
+			err := handlers.taskDistributor.TriggerPostLikedWebhook(post_id, headers[utils.HeadersMemberId], headers[utils.HeadersApiKey])
+			if err != nil {
+				logging.Error("Failed to trigger post liked webhook: ", err)
+			}
 		}
 
 	} else {
@@ -383,6 +390,12 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 
 		if !useCustomCreationTimestamp {
 			createUserCommentLikeActivity(handlers, post_data, comment_data, c, headers)
+
+			// Trigger comment liked webhook
+			err := handlers.taskDistributor.TriggerCommentReactWebhook(comment_id, headers[utils.HeadersMemberId], headers[utils.HeadersApiKey])
+			if err != nil {
+				logging.Error("Failed to trigger comment liked webhook: ", err)
+			}
 		}
 
 	} else {

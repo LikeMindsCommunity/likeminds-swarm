@@ -16,6 +16,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -613,6 +614,18 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 			}
 		}
+
+		// trigger comment added webhook
+		err = handlers.taskDistributor.TriggerCommentAddedWebhook(commentId.(primitive.ObjectID).Hex(), headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error triggering comment added webhook", err)
+		}
+
+		// trigger comment tagged webhook
+		err = handlers.taskDistributor.TriggerCommentTaggedWebhook(commentId.(primitive.ObjectID).Hex(), taggedMembers, headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error triggering comment tagged webhook", err)
+		}
 	}
 
 	// filter options
@@ -853,6 +866,17 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 		}
 
+		// trigger comment added webhook
+		err = handlers.taskDistributor.TriggerCommentAddedWebhook(newCommentId.(primitive.ObjectID).Hex(), headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error triggering comment added webhook", err)
+		}
+
+		// trigger comment tagged webhook
+		err = handlers.taskDistributor.TriggerCommentTaggedWebhook(newCommentId.(primitive.ObjectID).Hex(), taggedMembers, headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error triggering comment tagged webhook", err)
+		}
 	}
 
 	// filter options
