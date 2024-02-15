@@ -67,3 +67,22 @@ const (
 	InferdoApiHeaderHost   = "nsfw-image-classification1.p.rapidapi.com"
 	InferdoNsfwApiEndpoint = "https://nsfw-image-classification1.p.rapidapi.com/img/nsfw"
 )
+
+// Webhook Failure Mail Constants
+const (
+	WebhookFailureSubject = "Notification for webhook failure"
+	WebhookFailureBody    = `Hey Team,<br>
+	%s webhook has failed on %v. <br>
+	Please inform the customer about the same.<br>
+
+	<h2>Here are the details:</h2>
+	<br>
+	Webhook URL: %s<br>
+	Webhook Failure Time: %v<br>
+	Webhook Status Code: %d<br>
+	Webhook Response: %v<br>
+	Webhook Payload: <br>
+	<code>
+	%v
+	</code>`
+)

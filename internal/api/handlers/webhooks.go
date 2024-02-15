@@ -246,7 +246,6 @@ func SendWebhookRequestWithPayload(handlers *FeedHandlers, apiKey string, url st
 		return nil
 	}
 
-	// Check if webhook url is active or not
 	isActive := externalHelpers.IsWebhookUrlActive(handlers.cacheHelper, apiKey, webhookType, url)
 	if !isActive {
 		return nil
@@ -257,20 +256,15 @@ func SendWebhookRequestWithPayload(handlers *FeedHandlers, apiKey string, url st
 	// generate signature for the payload if secret is present
 	if secret != "" {
 
-		// Marshal payload to bytes
 		payloadBytes, err := json.Marshal(*payload)
 		if err != nil {
 			logging.Error("Error marshalling payload for the webhook: ", err)
 		}
 
-		// Generate hexDigest signature for the payload
 		signature, err := utils.GenerateMessageDigestOrSignature(payloadBytes, []byte(secret))
 		if err != nil {
 			logging.Error("Error generating signature for the payload: ", err)
 		}
-
-		// TODO: remove this print statement
-		fmt.Println("Signature: ", signature, " Payload: ", string(payloadBytes))
 
 		headers["x-signature"] = signature
 	}
@@ -279,7 +273,6 @@ func SendWebhookRequestWithPayload(handlers *FeedHandlers, apiKey string, url st
 	respbytes, statusCode, err := externalHelpers.SendPostRequestToExternalService(url, headers, *payload)
 	if err != nil || statusCode != 200 {
 
-		// Log error
 		logging.Error("Error sending webhook request to URL: ", url, " Error: ", err, "status code: ", statusCode, " Response: ", string(respbytes))
 
 		// Retry the request, else disable the webhook if retry limit reached
@@ -288,9 +281,10 @@ func SendWebhookRequestWithPayload(handlers *FeedHandlers, apiKey string, url st
 		} else {
 			logging.Error("Disabling Webhook as retry limit reached for URL: ", url)
 
-			// Disable the webhook and send mail to team
-			go externalHelpers.DisableWebhookAndSendMail(handlers.cacheHelper, apiKey, webhookType, url)
+			payloadBytes, _ := json.MarshalIndent(payload, "", " ")
+			go externalHelpers.DisableWebhookAndSendMail(handlers.cacheHelper, apiKey, webhookType, url, string(respbytes), string(payloadBytes))
 		}
+
 	} else {
 		logging.Info(fmt.Sprintf("Successfully sent (%s) webhook request to URL: %s for ApiKey: %s",
 			webhookType, url, apiKey))

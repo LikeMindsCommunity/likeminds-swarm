@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
+	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
@@ -144,7 +146,8 @@ func IsWebhookUrlActive(cacheHelper cache.Helper, apiKey string, webhookType str
 }
 
 // Exposed method to disable a webhook and send mail to team
-func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookType string, webhookUrl string) {
+func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookType string, webhookUrl string,
+	webhookResponse string, webhookPayload string) {
 
 	botId := GetCommunityBotId(apiKey)
 
@@ -173,13 +176,22 @@ func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookT
 		return
 	}
 
-	// Send mail to team for webhook disable
-	sendMailToTeamForWebhookFailure(apiKey, webhookType, webhookUrl)
+	logging.Info("Webhook disabled successfully: ", webhookUrl)
 
+	// Send mail to team for webhook disable
+	sendMailToTeamForWebhookFailure(apiKey, botId, webhookType, webhookUrl, statusCode, webhookResponse, webhookPayload)
 }
 
 // internal method to send mail to team for webhook disable
-func sendMailToTeamForWebhookFailure(apiKey string, webhookType string, webhookUrl string) {
-	//TODO: Send mail to team for webhook disable
+func sendMailToTeamForWebhookFailure(apiKey string, userId string, webhookType string, webhookUrl string,
+	statusCode int, response string, payload string) {
 
+	subject := WebhookFailureBody
+	body := fmt.Sprintf(WebhookFailureBody, webhookType, time.Now(), webhookUrl, time.Now(), statusCode, response, payload)
+
+	teamMails := environment.GoDotEnvVariable("TEAM_ADMIN_MAILS")
+	mails := strings.Split(teamMails, ",")
+
+	// Send mail using caravan service
+	SendMail(userId, mails, subject, body)
 }
