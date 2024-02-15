@@ -40,5 +40,5 @@ func (processor *RedisTaskProcessor) triggerPostCreationWebhook(ctx context.Cont
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	return handlers.TriggerPostCreationWebhook(processor.feedHandlers, payload.PostId, payload.ApiKey)
+	return handlers.TriggerPostCreationWebhook(processor.feedHandlers, payload.ApiKey, payload.PostId)
 }

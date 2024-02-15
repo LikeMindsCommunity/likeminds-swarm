@@ -11,8 +11,8 @@ import (
 )
 
 type CommunityWebhook struct {
-	Id          string `json:"id"`
-	CommunityId string `json:"community_id"`
+	Id          int    `json:"id"`
+	CommunityId int    `json:"community"`
 	IsActive    bool   `json:"is_active"`
 	Url         string `json:"url"`
 	WebhookType string `json:"webhook_type"`
@@ -27,6 +27,9 @@ func fetchCommunityWebhooksFromInternalService(apiKey string) []CommunityWebhook
 
 	// Get Bot Id using ApiKey
 	botId := GetCommunityBotId(apiKey)
+	if botId == "" {
+		return nil
+	}
 
 	headers := map[string]interface{}{
 		"x-member-id":     botId,
@@ -97,7 +100,7 @@ func fetchCommunityWebhooks(cacheHelper cache.Helper, apiKey string) []Community
 }
 
 // internal method to fetch webhook id
-func fetchWebhookId(cacheHelper cache.Helper, apiKey string, webhookType string, webhookUrl string) string {
+func fetchWebhookId(cacheHelper cache.Helper, apiKey string, webhookType string, webhookUrl string) int {
 
 	communityWebhooks := fetchCommunityWebhooks(cacheHelper, apiKey)
 
@@ -107,7 +110,7 @@ func fetchWebhookId(cacheHelper cache.Helper, apiKey string, webhookType string,
 		}
 	}
 
-	return ""
+	return 0
 }
 
 // Exposed method to fetch active webhook urls for a specific webhook type
@@ -146,7 +149,7 @@ func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookT
 	botId := GetCommunityBotId(apiKey)
 
 	webhookId := fetchWebhookId(cacheHelper, apiKey, webhookType, webhookUrl)
-	if webhookId == "" {
+	if webhookId == 0 {
 		logging.Error("Error fetching webhook id for url: ", webhookUrl)
 		return
 	}
@@ -161,7 +164,7 @@ func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookT
 		"is_active": false,
 	}
 
-	UpdateWebhooksEndpoint := CommunityWebhooksEndpoint + "/" + webhookId
+	UpdateWebhooksEndpoint := fmt.Sprint(CommunityWebhooksEndpoint, "/", webhookId)
 
 	// Send request to disable webhook
 	respBytes, statusCode, err := GetRequestResponse(CaravanService, UpdateWebhooksEndpoint, PATCHRequest, headers, nil, requestBody)

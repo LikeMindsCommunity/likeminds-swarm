@@ -34,7 +34,7 @@ const FetchCommunityConfigurationsEndpoint = "/api/community/configurations"
 const FetchUserConnectionsEndPoint = "/api/community_member/%s/connection"
 const SendMailEndpoint = "/api/external_service_apis/send_email"
 const PushReportEndpoint = "/api/community/report"
-const CommunityWebhooksEndpoint = "/api/community/webhook"
+const CommunityWebhooksEndpoint = "/api/webhook"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"

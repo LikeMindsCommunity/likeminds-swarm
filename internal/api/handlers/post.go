@@ -1225,6 +1225,20 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 	return fetchPostResponse, nil
 }
 
+// Internal Method to fetch single post response
+func FetchSinglePostResponse(handlers *FeedHandlers, postId string) (*requests.PostResponse, error) {
+
+	postData, err := getPostByID(handlers.postHelper, postId)
+	if err != nil {
+		return nil, err
+	}
+
+	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
+		handlers.widgetHelper, *postData, postData.UserId, false, "", "", false, handlers.cacheHelper)
+
+	return &postResponse, nil
+}
+
 // Internal Method to fetch multiple posts data using post_ids
 func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityId int, userId string,
 	isCm bool, versionCode string, platformCode string,

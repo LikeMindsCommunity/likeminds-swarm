@@ -15,19 +15,23 @@ import (
 
 func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*responses.WebhookPostPayload, error) {
 
-	// Fetch post data
-	postData, err := getPostByID(handlers.postHelper, postId)
+	// Fetch post response
+	post, err := FetchSinglePostResponse(handlers, postId)
 	if err != nil {
 		return nil, err
 	}
 
-	post := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
-		handlers.widgetHelper, *postData, postData.UserId, false, "", "", false, handlers.cacheHelper)
+	// Fetch topics for the post
+	topics, err := parseTopicsResponse(handlers.topicHelper, post.Topics, post.CommunityId)
+	if err != nil {
+		return nil, err
+	}
 
-	// response["post"] = fetchPostData
-	topics := getTopicDataFromPosts(handlers.topicHelper, post, post.CommunityId)
-	widgets := getWidgetDataFromPosts(handlers, post, post.CommunityId, post.UserId)
-	repostedPosts := getOriginalPostForReposts(handlers, post, post.CommunityId, post.UserId, false, "", "", false)
+	// Fetch widgets for the post
+	widgets, err := parseWidgetsResponse(handlers, getWidgetIdsFromAttachments(post.Attachments), post.CommunityId, post.UserId)
+	if err != nil {
+		return nil, err
+	}
 
 	// Fetch post creator data
 	_, usersMeta := externalHelpers.FetchMemberMeta([]string{post.UserId}, post.UserId, post.CommunityId)
@@ -36,11 +40,10 @@ func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*resp
 	}
 
 	postPayload := responses.WebhookPostPayload{
-		Post:          post,
-		Topics:        topics,
-		Widgets:       widgets,
-		RepostedPosts: repostedPosts,
-		PostCreator:   usersMeta.Members[0],
+		Post:        *post,
+		Topics:      topics,
+		Widgets:     widgets,
+		PostCreator: usersMeta.Members[0],
 	}
 
 	return &postPayload, nil
@@ -58,7 +61,7 @@ func generatePayloadForPostCreationWebhook(handlers *FeedHandlers, postId string
 
 	// generate post payload
 	postPaylod, err := generatePostPayloadForWebhook(handlers, postId)
-	if err == nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -123,7 +126,8 @@ func SendWebhookRequestWithPayload(handlers *FeedHandlers, apiKey string, url st
 			go externalHelpers.DisableWebhookAndSendMail(handlers.cacheHelper, apiKey, webhookType, url)
 		}
 	} else {
-		logging.Info("Successfully sent webhook request to URL: ", url, " for ApiKey: ", apiKey, " Response: ", string(respbytes))
+		logging.Info(fmt.Sprintf("Successfully sent (%s) webhook request to URL: %s for ApiKey: %s",
+			webhookType, url, apiKey))
 	}
 
 	return nil
