@@ -26,13 +26,11 @@ func (distributor *RedisTaskDistributor) SendWebhookRequestWithPayload(apiKey st
 	// Set max retry limit for the task
 	opts = append(opts, asynq.MaxRetry(enums.WebhookRetryLimit))
 
-	// marshal the payload
 	jsonPayload, err := json.Marshal(taskPayload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	// enqueue task with payload and options
 	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskSendWebhookRequestWithPayload, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
@@ -48,20 +46,173 @@ func (distributor *RedisTaskDistributor) TriggerPostCreationWebhook(postId strin
 		return fmt.Errorf("postId or apiKey is missing")
 	}
 
-	// create task payload
 	payload := worker.PayloadTriggerPostCreationWebhook{
 		PostId: postId,
 		ApiKey: apiKey,
 	}
 
-	// marshal the payload
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	// enqueue task with payload and options
 	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerPostCreationWebhook, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TriggerPostLikedWebhook"
+func (distributor *RedisTaskDistributor) TriggerPostLikedWebhook(postId string, userId string, apiKey string, opts ...asynq.Option) error {
+
+	if postId == "" || userId == "" || apiKey == "" {
+		return fmt.Errorf("postId, userId or apiKey is missing")
+	}
+
+	payload := worker.PayloadTriggerPostLikedWebhook{
+		PostId: postId,
+		UserId: userId,
+		ApiKey: apiKey,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerPostLikedWebhook, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TriggerPostPinnedWebhook"
+func (distributor *RedisTaskDistributor) TriggerPostPinnedWebhook(postId string, userId string, apiKey string, opts ...asynq.Option) error {
+
+	if postId == "" || userId == "" || apiKey == "" {
+		return fmt.Errorf("postId, userId or apiKey is missing")
+	}
+
+	payload := worker.PayloadTriggerPostPinnedWebhook{
+		PostId: postId,
+		UserId: userId,
+		ApiKey: apiKey,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerPostPinnedWebhook, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TriggerPostTaggedWebhook"
+func (distributor *RedisTaskDistributor) TriggerPostTaggedWebhook(postId string, userIds []string, apiKey string, opts ...asynq.Option) error {
+
+	if postId == "" || len(userIds) == 0 || apiKey == "" {
+		return fmt.Errorf("postId, userIds or apiKey is missing")
+	}
+
+	payload := worker.PayloadTriggerPostTaggedWebhook{
+		PostId:  postId,
+		UserIds: userIds,
+		ApiKey:  apiKey,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerPostTaggedWebhook, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TriggerCommentAddedWebhook"
+func (distributor *RedisTaskDistributor) TriggerCommentAddedWebhook(commentId string, apiKey string, opts ...asynq.Option) error {
+
+	if commentId == "" || apiKey == "" {
+		return fmt.Errorf("commentId or apiKey is missing")
+	}
+
+	payload := worker.PayloadTriggerCommentAddedWebhook{
+		CommentId: commentId,
+		ApiKey:    apiKey,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerCommentAddedWebhook, jsonPayload, opts...)
+
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TriggerCommentReactWebhook"
+func (distributor *RedisTaskDistributor) TriggerCommentReactWebhook(commentId string, userId string, apiKey string, opts ...asynq.Option) error {
+
+	if commentId == "" || userId == "" || apiKey == "" {
+		return fmt.Errorf("commentId, userId or apiKey is missing")
+	}
+
+	payload := worker.PayloadTriggerCommentReactWebhook{
+		CommentId: commentId,
+		UserId:    userId,
+		ApiKey:    apiKey,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerCommentReactWebhook, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TriggerCommentTaggedWebhook"
+func (distributor *RedisTaskDistributor) TriggerCommentTaggedWebhook(commentId string, userIds []string, apiKey string, opts ...asynq.Option) error {
+
+	if commentId == "" || len(userIds) == 0 || apiKey == "" {
+		return fmt.Errorf("commentId, userIds or apiKey is missing")
+	}
+
+	payload := worker.PayloadTriggerCommentTaggedWebhook{
+		CommentId: commentId,
+		UserIds:   userIds,
+		ApiKey:    apiKey,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerCommentTaggedWebhook, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}

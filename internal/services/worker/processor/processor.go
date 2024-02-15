@@ -21,6 +21,12 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.HandleFunc(worker.BrokerConnectionTest, processor.connectionTest)
 	mux.HandleFunc(worker.TaskSendWebhookRequestWithPayload, processor.sendWebhookRequestWithPayload)
 	mux.HandleFunc(worker.TaskTriggerPostCreationWebhook, processor.triggerPostCreationWebhook)
+	mux.HandleFunc(worker.TaskTriggerPostLikedWebhook, processor.triggerPostLikedWebhook)
+	mux.HandleFunc(worker.TaskTriggerPostPinnedWebhook, processor.triggerPostPinnedWebhook)
+	mux.HandleFunc(worker.TaskTriggerPostTaggedWebhook, processor.triggerPostTaggedWebhook)
+	mux.HandleFunc(worker.TaskTriggerCommentAddedWebhook, processor.triggerCommentAddedWebhook)
+	mux.HandleFunc(worker.TaskTriggerCommentReactWebhook, processor.triggerCommentReactWebhook)
+	mux.HandleFunc(worker.TaskTriggerCommentTaggedWebhook, processor.triggerCommentTaggedWebhook)
 
 	return processor.server.Run(mux)
 }
@@ -30,6 +36,12 @@ type FeedTaskProcessor interface {
 	connectionTest(ctx context.Context, task *asynq.Task) error
 	sendWebhookRequestWithPayload(ctx context.Context, task *asynq.Task) error
 	triggerPostCreationWebhook(ctx context.Context, task *asynq.Task) error
+	triggerPostLikedWebhook(ctx context.Context, task *asynq.Task) error
+	triggerPostPinnedWebhook(ctx context.Context, task *asynq.Task) error
+	triggerPostTaggedWebhook(ctx context.Context, task *asynq.Task) error
+	triggerCommentAddedWebhook(ctx context.Context, task *asynq.Task) error
+	triggerCommentReactWebhook(ctx context.Context, task *asynq.Task) error
+	triggerCommentTaggedWebhook(ctx context.Context, task *asynq.Task) error
 }
 
 type RedisTaskProcessor struct {

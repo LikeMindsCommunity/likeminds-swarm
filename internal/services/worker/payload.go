@@ -7,6 +7,12 @@ const (
 	BrokerConnectionTest              = "task:BrokerConnectionTest"
 	TaskSendWebhookRequestWithPayload = "task:SendWebhookRequestWithPayload"
 	TaskTriggerPostCreationWebhook    = "task:TriggerPostCreationWebhook"
+	TaskTriggerPostLikedWebhook       = "task:TriggerPostLikedWebhook"
+	TaskTriggerPostPinnedWebhook      = "task:TriggerPostPinnedWebhook"
+	TaskTriggerPostTaggedWebhook      = "task:TriggerPostTaggedWebhook"
+	TaskTriggerCommentAddedWebhook    = "task:TriggerCommentAddedWebhook"
+	TaskTriggerCommentReactWebhook    = "task:TriggerCommentReactWebhook"
+	TaskTriggerCommentTaggedWebhook   = "task:TriggerCommentTaggedWebhook"
 )
 
 // Payload for the task to trigger post creation webhook
@@ -22,4 +28,45 @@ type PayloadSendWebhookRequestWithPayload struct {
 	WebhookType string                   `json:"webhook_type"`
 	Secret      string                   `json:"secret"`
 	Payload     responses.WebhookPayload `json:"payload"`
+}
+
+// Payload for the task to trigger post liked webhook
+type PayloadTriggerPostLikedWebhook struct {
+	PostId string `json:"post_id"`
+	UserId string `json:"user_id"`
+	ApiKey string `json:"api_key"`
+}
+
+// Payload for the task to trigger post pinned webhook
+type PayloadTriggerPostPinnedWebhook struct {
+	PostId string `json:"post_id"`
+	UserId string `json:"user_id"`
+	ApiKey string `json:"api_key"`
+}
+
+// Payload for the task to trigger post tagged webhook
+type PayloadTriggerPostTaggedWebhook struct {
+	PostId  string   `json:"post_id"`
+	UserIds []string `json:"user_ids"`
+	ApiKey  string   `json:"api_key"`
+}
+
+// Payload for the task to trigger comment added webhook
+type PayloadTriggerCommentAddedWebhook struct {
+	CommentId string `json:"comment_id"`
+	ApiKey    string `json:"api_key"`
+}
+
+// Payload for the task to trigger comment react webhook
+type PayloadTriggerCommentReactWebhook struct {
+	CommentId string `json:"comment_id"`
+	UserId    string `json:"user_id"`
+	ApiKey    string `json:"api_key"`
+}
+
+// Payload for the task to trigger comment tagged webhook
+type PayloadTriggerCommentTaggedWebhook struct {
+	CommentId string   `json:"comment_id"`
+	UserIds   []string `json:"user_ids"`
+	ApiKey    string   `json:"api_key"`
 }

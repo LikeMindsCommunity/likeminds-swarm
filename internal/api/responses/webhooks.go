@@ -5,7 +5,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 )
 
-// WebhookPayload | Webhook payload structure
+// Webhook payload structure
 type WebhookPayload struct {
 	Event     string                 `json:"event"`
 	CreatedAt int64                  `json:"created_at"`
@@ -14,10 +14,16 @@ type WebhookPayload struct {
 	Data      map[string]interface{} `json:"data"`
 }
 
-// WebhookPostPayload | Webhook post payload structure
+// Webhook post payload structure
 type WebhookPostPayload struct {
 	Post        requests.PostResponse              `json:"post"`
 	Topics      map[string]requests.TopicResponse  `json:"topics"`
 	Widgets     map[string]requests.WidgetResponse `json:"widgets"`
 	PostCreator externalHelpers.MemberMeta         `json:"post_creator"`
+}
+
+// Webhook comment payload structure
+type WebhookCommentPayload struct {
+	Comment        requests.CommentWithParentResponse `json:"comment"`
+	CommentCreator externalHelpers.MemberMeta         `json:"comment_creator"`
 }

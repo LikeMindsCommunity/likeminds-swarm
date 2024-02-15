@@ -128,7 +128,7 @@ func fetchCommentByID(helper interfaces.CommentHelper, commentId string) (*entit
 // Internal Method to fetch multiple comments data using comment_ids
 func fetchMultipleCommentsData(handlers *FeedHandlers, commentIds []string, communityId int,
 	userId string, isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool) (map[string]requests.FetchCommentsResponse, error) {
+	apiRevampV1Check bool) (map[string]requests.CommentWithParentResponse, error) {
 
 	// convert comment_ids to object ids
 	commentObjectIds := helpers.ConvertIdsToObjectIds(commentIds)
@@ -148,11 +148,11 @@ func fetchMultipleCommentsData(handlers *FeedHandlers, commentIds []string, comm
 	}
 
 	// Make key value pair map for response, comment_id -> comment
-	parsedCommentsResponse := map[string]requests.FetchCommentsResponse{}
+	parsedCommentsResponse := map[string]requests.CommentWithParentResponse{}
 	for _, comment := range comments {
 
 		// Parse comment for response
-		parseCommentsResponse := parseCommentsResponse(handlers, comment, userId, isCm, versionCode, platformCode, apiRevampV1Check)
+		parseCommentsResponse := parseCommentWithParentResponse(handlers, comment, userId, isCm, versionCode, platformCode, apiRevampV1Check)
 
 		// Add to response map
 		parsedCommentsResponse[comment.ID.Hex()] = parseCommentsResponse
@@ -229,6 +229,19 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	return response
 }
 
+// Method to fetch comment response using comment id
+func FetchSingleCommentWithParentResponse(handlers *FeedHandlers, commentId string) (*requests.CommentWithParentResponse, error) {
+
+	comment, err := fetchCommentByID(handlers.commentHelper, commentId)
+	if err != nil {
+		return nil, err
+	}
+
+	response := parseCommentWithParentResponse(handlers, *comment, comment.UserId, false, "", "", false)
+
+	return &response, nil
+}
+
 // Internal Method to parse multiple comments for response
 func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	comments []entities.Comment, userId string, isCm bool,
@@ -243,10 +256,10 @@ func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelpe
 }
 
 // Internal method to parse comments for FetchCommentsResponse
-func parseCommentsResponse(handlers *FeedHandlers, comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool) requests.FetchCommentsResponse {
+func parseCommentWithParentResponse(handlers *FeedHandlers, comment entities.Comment, userId string, isCm bool,
+	versionCode string, platformCode string, apiRevampV1Check bool) requests.CommentWithParentResponse {
 
-	fetchCommentResponse := requests.FetchCommentsResponse{
+	fetchCommentResponse := requests.CommentWithParentResponse{
 		CommentResponse: parseCommentResponse(handlers.likeHelper, handlers.commentHelper, comment, userId, isCm, versionCode, platformCode,
 			apiRevampV1Check, handlers.cacheHelper),
 	}
