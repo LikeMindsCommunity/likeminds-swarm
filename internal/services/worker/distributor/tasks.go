@@ -6,41 +6,19 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
 
-// Task Distributor for "task:DeleteTopicsFromPosts"
-func (distributor *RedisTaskDistributor) DeleteTopicsFromPosts(topicIds []string, opts ...asynq.Option) error {
-
-	// create task payload
-	payload := worker.PayloadSendDeleteTopicsFromPosts{
-		TopicIds: topicIds,
-	}
-
-	// marshal the payload
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal task payload: %w", err)
-	}
-
-	// enqueue task with payload and options
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskSendDeleteTopicsFromPosts, jsonPayload, opts...)
-	if err != nil {
-		return fmt.Errorf("failed to enqueue task %v", err)
-	}
-
-	return nil
-}
-
 // Task Distributor for "task:SendWebhookRequestWithPayload"
-func (distributor *RedisTaskDistributor) SendWebhookRequestWithPayload(apiKey string, url string, payload map[string]interface{},
+func (distributor *RedisTaskDistributor) SendWebhookRequestWithPayload(apiKey string, url string, payload *responses.WebhookPayload,
 	webhookType string, secret string, opts ...asynq.Option) error {
 
 	// create task payload
 	taskPayload := worker.PayloadSendWebhookRequestWithPayload{
 		ApiKey:      apiKey,
 		Url:         url,
-		Payload:     payload,
+		Payload:     *payload,
 		WebhookType: webhookType,
 		Secret:      secret,
 	}
@@ -64,8 +42,11 @@ func (distributor *RedisTaskDistributor) SendWebhookRequestWithPayload(apiKey st
 }
 
 // Task Distributor for "task:TriggerPostCreationWebhook"
-func (distributor *RedisTaskDistributor) TriggerPostCreationWebhook(postId string, apiKey string,
-	opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) TriggerPostCreationWebhook(postId string, apiKey string, opts ...asynq.Option) error {
+
+	if postId == "" || apiKey == "" {
+		return fmt.Errorf("postId or apiKey is missing")
+	}
 
 	// create task payload
 	payload := worker.PayloadTriggerPostCreationWebhook{

@@ -2,14 +2,14 @@ package distributor
 
 import (
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
 
 // FeedTaskDistributor | Interface for feed background task distributor
 type FeedTaskDistributor interface {
-	DeleteTopicsFromPosts(topicIds []string, opts ...asynq.Option) error
-	SendWebhookRequestWithPayload(apiKey string, url string, payload map[string]interface{}, webhookType string, secret string, opts ...asynq.Option) error
+	SendWebhookRequestWithPayload(apiKey string, url string, payload *responses.WebhookPayload, webhookType string, secret string, opts ...asynq.Option) error
 	TriggerPostCreationWebhook(postId string, apiKey string, opts ...asynq.Option) error
 }
 

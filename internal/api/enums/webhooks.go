@@ -9,3 +9,8 @@ const (
 const (
 	WebhookRetryLimit = 3
 )
+
+// Webhook sources
+const (
+	WebhookSourceLMFeed = "LM_FEED"
+)

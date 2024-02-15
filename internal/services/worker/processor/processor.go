@@ -19,7 +19,6 @@ func (processor *RedisTaskProcessor) Run() error {
 
 	// register handlers for each task
 	mux.HandleFunc(worker.BrokerConnectionTest, processor.connectionTest)
-	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.deleteTopicsFromPosts)
 	mux.HandleFunc(worker.TaskSendWebhookRequestWithPayload, processor.sendWebhookRequestWithPayload)
 	mux.HandleFunc(worker.TaskTriggerPostCreationWebhook, processor.triggerPostCreationWebhook)
 
@@ -29,7 +28,6 @@ func (processor *RedisTaskProcessor) Run() error {
 type FeedTaskProcessor interface {
 	Run() error
 	connectionTest(ctx context.Context, task *asynq.Task) error
-	deleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error
 	sendWebhookRequestWithPayload(ctx context.Context, task *asynq.Task) error
 	triggerPostCreationWebhook(ctx context.Context, task *asynq.Task) error
 }

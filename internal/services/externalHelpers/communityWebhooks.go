@@ -96,6 +96,20 @@ func fetchCommunityWebhooks(cacheHelper cache.Helper, apiKey string) []Community
 	return communityWebhooks
 }
 
+// internal method to fetch webhook id
+func fetchWebhookId(cacheHelper cache.Helper, apiKey string, webhookType string, webhookUrl string) string {
+
+	communityWebhooks := fetchCommunityWebhooks(cacheHelper, apiKey)
+
+	for _, webhook := range communityWebhooks {
+		if webhook.WebhookType == webhookType && webhook.Url == webhookUrl {
+			return webhook.Id
+		}
+	}
+
+	return ""
+}
+
 // Exposed method to fetch active webhook urls for a specific webhook type
 func FetchActiveWebhookUrls(cacheHelper cache.Helper, apiKey string, webhookType string) []string {
 
@@ -124,19 +138,6 @@ func IsWebhookUrlActive(cacheHelper cache.Helper, apiKey string, webhookType str
 	}
 
 	return false
-}
-
-func fetchWebhookId(cacheHelper cache.Helper, apiKey string, webhookType string, webhookUrl string) string {
-
-	communityWebhooks := fetchCommunityWebhooks(cacheHelper, apiKey)
-
-	for _, webhook := range communityWebhooks {
-		if webhook.WebhookType == webhookType && webhook.Url == webhookUrl {
-			return webhook.Id
-		}
-	}
-
-	return ""
 }
 
 // Exposed method to disable a webhook and send mail to team
@@ -169,7 +170,13 @@ func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookT
 		return
 	}
 
-	// Send mail to team
-	// TODO: create utility function to send mail to team
+	// Send mail to team for webhook disable
+	sendMailToTeamForWebhookFailure(apiKey, webhookType, webhookUrl)
+
+}
+
+// internal method to send mail to team for webhook disable
+func sendMailToTeamForWebhookFailure(apiKey string, webhookType string, webhookUrl string) {
+	//TODO: Send mail to team for webhook disable
 
 }

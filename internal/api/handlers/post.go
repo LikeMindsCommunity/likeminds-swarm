@@ -1553,6 +1553,12 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// Trigger post creation webhook
+	err = handlers.taskDistributor.TriggerPostCreationWebhook(postData.ID.Hex(), headers[utils.HeadersApiKey])
+	if err != nil {
+		logging.Error("Error while triggering post creation webhook: ", err.Error())
+	}
+
 	// if custom creation timestamp is not used, create activities and send notifications
 	if !(createPostRequest.CreatedAt > 0 && float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
 		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
