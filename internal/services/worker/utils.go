@@ -139,6 +139,9 @@ func GetServerConfigurations(QueueNames []string) asynq.Config {
 
 		// Queue names and their priority
 		Queues: getValidQueuesMap(QueueNames),
+
+		// How to handle retries for tasks
+		RetryDelayFunc: retryDelayFunctionForWebhookTasks,
 	}
 
 	// set concurrency from environment variable if present | default: cpu cores count
@@ -148,5 +151,21 @@ func GetServerConfigurations(QueueNames []string) asynq.Config {
 	}
 
 	return config
+}
 
+func retryDelayFunctionForWebhookTasks(n int, e error, t *asynq.Task) time.Duration {
+
+	// If task is webhookRequest
+	if t.Type() == TaskSendWebhookRequestWithPayload {
+
+		// Calculate retry delay for webhook tasks (1 -> 60 -> 360 seconds)
+		delayinSeconds := n * 60
+
+		println("Retry Count: ", n, ", delay for webhook task: ", delayinSeconds)
+
+		return time.Duration(delayinSeconds) * time.Second
+	}
+
+	// Retry delay for all other tasks
+	return asynq.DefaultRetryDelayFunc(n, e, t)
 }

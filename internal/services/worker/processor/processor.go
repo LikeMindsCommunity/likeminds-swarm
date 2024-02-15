@@ -18,16 +18,20 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.Use(worker.LoggingMiddleware)
 
 	// register handlers for each task
-	mux.HandleFunc(worker.BrokerConnectionTest, processor.ConnectionTest)
-	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
+	mux.HandleFunc(worker.BrokerConnectionTest, processor.connectionTest)
+	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.deleteTopicsFromPosts)
+	mux.HandleFunc(worker.TaskSendWebhookRequestWithPayload, processor.sendWebhookRequestWithPayload)
+	mux.HandleFunc(worker.TaskTriggerPostCreationWebhook, processor.triggerPostCreationWebhook)
 
 	return processor.server.Run(mux)
 }
 
 type FeedTaskProcessor interface {
 	Run() error
-	ConnectionTest(ctx context.Context, task *asynq.Task) error
-	DeleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error
+	connectionTest(ctx context.Context, task *asynq.Task) error
+	deleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error
+	sendWebhookRequestWithPayload(ctx context.Context, task *asynq.Task) error
+	triggerPostCreationWebhook(ctx context.Context, task *asynq.Task) error
 }
 
 type RedisTaskProcessor struct {
