@@ -103,3 +103,14 @@ func _aggregateDocumentsInDB(db *mongo.Database, collectionName string, query []
 
 	return results, nil
 }
+
+// Internal Method to Perform Aggregration on Collection
+func _aggregateDocumentsInDBReturnCursor(db *mongo.Database, collectionName string, query []map[string]interface{}) (*mongo.Cursor, error) {
+	coll := db.Collection(collectionName)
+	cursor, err := coll.Aggregate(context.TODO(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	return cursor, nil
+}

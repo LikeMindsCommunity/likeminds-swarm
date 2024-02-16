@@ -13,6 +13,7 @@ type CommentRepository interface {
 	Find(filter map[string]interface{}, filterOptions *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
+	Aggregate(query []map[string]interface{}) (*mongo.Cursor, error)
 }
 
 // Interface for Comment Helper
@@ -22,4 +23,5 @@ type CommentHelper interface {
 	FindCommentHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Comment, error)
 	UpdateCommentByIdHelper(commentId primitive.ObjectID, update map[string]interface{}) error
 	CountCommentHelper(filter map[string]interface{}) (int64, error)
+	AggregateCommentHelper(query []map[string]interface{}) (*mongo.Cursor, error)
 }

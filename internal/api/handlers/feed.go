@@ -56,6 +56,10 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
 	var universalFeedRequest requests.FetchUniversalFeedRequest
+	var feedMetatdataCommunityConfig externalHelpers.CommunityConfiguration
+	var configFetchErr error
+	var commentSortOrderVal int
+	var feedMetadataConfig map[string]interface{}
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -180,6 +184,66 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+
+	// Get community configurations
+	communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(handlers.cacheHelper,
+		headers[utils.HeadersMemberId], communityId)
+
+	if communityConfigurationResponse != nil {
+		feedMetatdataCommunityConfig, configFetchErr = externalHelpers.GetCommunityConfigurationAgainstType(
+			communityConfigurationResponse.CommunityConfigurations,
+			externalHelpers.FeedMetadataCommunityConfigurationType)
+
+		if configFetchErr != nil {
+			utils.GeneralAPIValidationError(c, configFetchErr.Error())
+			return
+		}
+	}
+
+	// Universal feed metadata configurations
+	feedMetadata, isFetched := feedMetatdataCommunityConfig.Value[externalHelpers.UniversalFeedCommunityConfigurationKey]
+
+	if isFetched {
+		feedMetadataConfig = feedMetadata.(map[string]interface{})
+	}
+
+	commentSortOn, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentSortKey]
+
+	if !ok {
+		commentSortOn = ""
+	}
+
+	commentSortOrder, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentSortOrderKey]
+
+	if !ok || commentSortOrder == "desc" {
+		commentSortOrderVal = -1
+	} else {
+		commentSortOrderVal = 1
+	}
+
+	commentCount, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentCountKey].(int)
+
+	if !ok {
+		commentCount = 1
+	}
+
+	if commentSortOn == "likes" {
+		// var filteredComments map[string][]string
+		var postIds []primitive.ObjectID
+
+		for _, postData := range finalResponse.Posts {
+			postIds = append(postIds, postData.ID)
+		}
+
+		topCommentsAgainstPostsData, err := getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount)
+
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		fmt.Println(topCommentsAgainstPostsData)
+	}
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)

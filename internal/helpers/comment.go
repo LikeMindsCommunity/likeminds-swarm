@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Exposed Helper Method to Create a Comment
@@ -72,6 +73,22 @@ func (helper *commentHelper) CountCommentHelper(filter map[string]interface{}) (
 	count, err := helper.commentRepository.Count(filter)
 
 	return count, err
+}
+
+// Exposed Helper Method to perform Aggregation on Comments
+func (helper *commentHelper) AggregateCommentHelper(query []map[string]interface{}) (*mongo.Cursor, error) {
+	for _, value := range query {
+		if matchGroup, ok := value["$match"]; ok {
+			err := convertHexIdsToObjectIds(matchGroup.(gin.H), []string{"_id", "entity_id"})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	results, err := helper.commentRepository.Aggregate(query)
+
+	return results, err
 }
 
 // Structure for Comment Helper

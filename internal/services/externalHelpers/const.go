@@ -42,7 +42,8 @@ const ContentTypeHeader = "application/json"
 const SwarmServiceMemberIdHeader = "swarm-service"
 
 const (
-	PostCommunityConfigurationKey = "post"
+	PostCommunityConfigurationKey          = "post"
+	UniversalFeedCommunityConfigurationKey = "universal_feed"
 )
 
 const (
@@ -52,6 +53,12 @@ const (
 
 const (
 	DefaultFeedMetadataPostVariableValue = "post"
+)
+
+const (
+	FeedMetadataUniversalFeedCommentSortKey      = "comment_sort_order_key"
+	FeedMetadataUniversalFeedCommentSortOrderKey = "comment_sort_order"
+	FeedMetadataUniversalFeedCommentCountKey     = "comment_count"
 )
 
 const (
