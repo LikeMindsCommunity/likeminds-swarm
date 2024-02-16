@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,15 +19,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-type TopCommentIDResponse struct {
-	CommentID primitive.ObjectID `json:"comment_id" bson: "comment_id"`
-}
-
-type TopCommentsAggregationQueryResponse struct {
-	PostID      primitive.ObjectID     `json:"_id" bson: "_id"`
-	TopComments []TopCommentIDResponse `json:"top_comments" bson: "top_comments"`
-}
 
 // Internal Method to fetch comments count of a Post
 func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) (int64, error) {
@@ -1049,9 +1039,10 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 }
 
 // Internal Method to get top n comments against posts based on sorting key, sort order
-func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount int) (map[string]interface{}, error) {
+func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}) (map[string]interface{}, []string, error) {
 	postsTopComments := map[string]interface{}{}
 	commentsFilterData := []map[string]interface{}{}
+	allCommentsIds := []string{}
 
 	// Add match logic
 	commentsFilterData = append(commentsFilterData, gin.H{
@@ -1074,44 +1065,33 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 	// Add lookup logic
 	commentsFilterData = append(commentsFilterData, gin.H{
 		"$lookup": gin.H{
-			"from":         "like",
-			"localField":   "_id",
-			"foreignField": "entity_id",
-			"as":           "likes_data",
-		},
-	})
-
-	// Add unwind logic
-	commentsFilterData = append(commentsFilterData, gin.H{
-		"$unwind": gin.H{
-			"path":                       "$likes_data",
-			"preserveNullAndEmptyArrays": false,
-		},
-	})
-
-	// Add group logic
-	commentsFilterData = append(commentsFilterData, gin.H{
-		"$group": gin.H{
-			"_id": gin.H{
-				"post_id":    "$post_id",
-				"_id":        "$_id",
-				"created_at": "$created_at",
-				"updated_at": "$updated_at",
+			"from": "like",
+			"let": gin.H{
+				"commentId": "$_id",
 			},
-			"likes_count": gin.H{
-				"$count": gin.H{},
+			"pipeline": []gin.H{
+				{
+					"$match": gin.H{
+						"$expr": gin.H{
+							"$eq": []string{"$entity_id", "$$commentId"},
+						},
+						"is_deleted": false,
+					},
+				},
 			},
+			"as": "likes_data",
 		},
 	})
 
-	// Add project logic
 	commentsFilterData = append(commentsFilterData, gin.H{
 		"$project": gin.H{
-			"post_id":     "$_id.post_id",
-			"comment_id":  "$_id._id",
-			"likes_count": 1,
-			"created_at":  "$_id.created_at",
-			"updated_at":  "$_id.updated_at",
+			"post_id":    1,
+			"comment_id": "$_id",
+			"created_at": 1,
+			"updated_at": 1,
+			"likes_count": gin.H{
+				"$size": "$likes_data",
+			},
 		},
 	})
 
@@ -1138,67 +1118,28 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 		"$project": gin.H{
 			"_id": 1,
 			"top_comments": gin.H{
-				"$slice": []interface{}{"$filtered_comments", 2},
+				"$slice": []interface{}{"$filtered_comments", commentsCount},
 			},
 		},
 	})
 
 	// fetch post using helper method
-	commentResults, err := handlers.commentHelper.AggregateCommentHelper(commentsFilterData)
-
-	var commentResultsList []TopCommentsAggregationQueryResponse
-
-	if err = commentResults.All(context.TODO(), &commentResultsList); err != nil {
-		return nil, fmt.Errorf("Error in conversion!")
-	}
-
-	fmt.Println(commentResults, commentResultsList)
+	commentResults, err := handlers.commentHelper.AggregateTopCommentsHelper(commentsFilterData)
 
 	if err == nil {
 
-		// for _, commentResult := range commentResultsList {
-		// var topCommentsList []string
+		for _, commentResult := range commentResults {
+			var topCommentsList []string
 
-		// fmt.Println(commentResult, commentResult.PostID.Hex(), commentResult.TopComments)
-		// 	postId, ok := commentResult["_id"]
+			for _, topComment := range commentResult.TopComments {
+				topCommentsList = append(topCommentsList, topComment.CommentID.Hex())
+				allCommentsIds = append(allCommentsIds, topComment.CommentID.Hex())
+			}
 
-		// 	if !ok {
-		// 		return nil, fmt.Errorf("Error in fetching post ID!")
-		// 	}
+			postsTopComments[commentResult.PostID.Hex()] = topCommentsList
 
-		// 	postIdObject := postId.(primitive.ObjectID)
-
-		// 	topComments, ok := commentResult["top_comments"].(interface{})
-
-		// 	if !ok {
-		// 		return nil, fmt.Errorf("Error in fetching top comments!")
-		// 	}
-
-		// 	topCommentsMap, ok := topComments.([]map[string]interface{})
-
-		// 	fmt.Println(topComments)
-
-		// 	fmt.Println(topComments.([]map[string]interface{}))
-
-		// 	for _, topComment := range topCommentsMap {
-
-		// 		commentId, ok := topComment["comment_id"].(primitive.ObjectID)
-
-		// 		if !ok {
-		// 			return postsTopComments, fmt.Errorf("Error in fetching comment IDs!")
-		// 		}
-
-		// 		fmt.Println(commentId)
-
-		// 		topCommentsList = append(topCommentsList, commentId.Hex())
-		// 	}
-
-		// 	fmt.Println(topCommentsList)
-
-		// 	postsTopComments[postIdObject.Hex()] = topCommentsList
-
-		// }
+		}
 	}
 
-	return postsTopComments, nil
+	return postsTopComments, allCommentsIds, nil
 }

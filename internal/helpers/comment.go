@@ -2,13 +2,14 @@ package helpers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Exposed Helper Method to Create a Comment
@@ -76,19 +77,16 @@ func (helper *commentHelper) CountCommentHelper(filter map[string]interface{}) (
 }
 
 // Exposed Helper Method to perform Aggregation on Comments
-func (helper *commentHelper) AggregateCommentHelper(query []map[string]interface{}) (*mongo.Cursor, error) {
-	for _, value := range query {
-		if matchGroup, ok := value["$match"]; ok {
-			err := convertHexIdsToObjectIds(matchGroup.(gin.H), []string{"_id", "entity_id"})
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
+func (helper *commentHelper) AggregateTopCommentsHelper(query []map[string]interface{}) ([]requests.TopCommentsAggregationQueryResponse, error) {
 	results, err := helper.commentRepository.Aggregate(query)
 
-	return results, err
+	var commentResultsList []requests.TopCommentsAggregationQueryResponse
+
+	if err = results.All(context.TODO(), &commentResultsList); err != nil {
+		return nil, fmt.Errorf("Error in conversion!")
+	}
+
+	return commentResultsList, err
 }
 
 // Structure for Comment Helper

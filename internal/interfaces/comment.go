@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -23,5 +24,5 @@ type CommentHelper interface {
 	FindCommentHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Comment, error)
 	UpdateCommentByIdHelper(commentId primitive.ObjectID, update map[string]interface{}) error
 	CountCommentHelper(filter map[string]interface{}) (int64, error)
-	AggregateCommentHelper(query []map[string]interface{}) (*mongo.Cursor, error)
+	AggregateTopCommentsHelper(query []map[string]interface{}) ([]requests.TopCommentsAggregationQueryResponse, error)
 }

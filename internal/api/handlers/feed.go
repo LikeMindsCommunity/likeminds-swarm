@@ -60,8 +60,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	var configFetchErr error
 	var commentSortOrderVal int
 	var feedMetadataConfig map[string]interface{}
+	filtered_comments := map[string]requests.FetchCommentsResponse{}
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	versionCode := headers[utils.HeadersAcceptVersion]
+	platformCode := headers[utils.HeadersPlatformCode]
 
 	err := c.BindQuery(&universalFeedRequest)
 	if err != nil {
@@ -87,6 +90,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
+
+	userId := headers[utils.HeadersMemberId]
 
 	// pinned posts filter data
 	pinnedPostFilterData := getUniversalFeedPostFilter(communityId, true)
@@ -186,8 +191,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// Get community configurations
-	communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(handlers.cacheHelper,
-		headers[utils.HeadersMemberId], communityId)
+	communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(handlers.cacheHelper, userId, communityId)
 
 	if communityConfigurationResponse != nil {
 		feedMetatdataCommunityConfig, configFetchErr = externalHelpers.GetCommunityConfigurationAgainstType(
@@ -221,29 +225,43 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		commentSortOrderVal = 1
 	}
 
-	commentCount, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentCountKey].(int)
+	commentCount, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentCountKey]
 
 	if !ok {
 		commentCount = 1
 	}
 
 	if commentSortOn == "likes" {
-		// var filteredComments map[string][]string
+		var updatedPostsWithComments []requests.PostResponse
 		var postIds []primitive.ObjectID
 
 		for _, postData := range finalResponse.Posts {
 			postIds = append(postIds, postData.ID)
 		}
 
-		topCommentsAgainstPostsData, err := getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount)
+		topCommentsAgainstPostsData, allCommentIds, err := getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount)
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
 
-		fmt.Println(topCommentsAgainstPostsData)
+		for _, postData := range finalResponse.Posts {
+			postDataAddress := &postData
+			commentsData, _ := topCommentsAgainstPostsData[postData.ID.Hex()].([]string)
+
+			(*postDataAddress).TopCommentIDs = commentsData
+			updatedPostsWithComments = append(updatedPostsWithComments, *postDataAddress)
+		}
+
+		finalParsedResponse["posts"] = updatedPostsWithComments
+
+		filtered_comments, _ = fetchMultipleCommentsData(handlers, allCommentIds, communityId, userId, universalFeedRequest.IsCm,
+			versionCode, platformCode, apiRevampV1Check)
+
 	}
+
+	finalParsedResponse["filtered_comments"] = filtered_comments
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
