@@ -49,14 +49,14 @@ func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*resp
 	return &postPayload, nil
 }
 
-func generateUsersPayloadForWebhook(handlers *FeedHandlers, userIds []string) ([]externalHelpers.MemberMeta, error) {
+func generateUsersPayloadForWebhook(handlers *FeedHandlers, userIds []string, communityId int) ([]externalHelpers.MemberMeta, error) {
 
 	if len(userIds) == 0 {
 		return nil, fmt.Errorf("user ids are missing in the payload")
 	}
 
 	// Fetch users meta
-	_, usersMeta := externalHelpers.FetchMemberMeta(userIds, userIds[0], 0)
+	_, usersMeta := externalHelpers.FetchMemberMeta(userIds, userIds[0], communityId)
 	if len(usersMeta.Members) == 0 {
 		return nil, fmt.Errorf("error fetching user data for user ids: %v", userIds)
 	}
@@ -90,8 +90,8 @@ func generateCommentPayloadForWebhook(handlers *FeedHandlers, commentId string) 
 func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds []string, webhookType string) (*responses.WebhookPayload, error) {
 
 	payload := &responses.WebhookPayload{
-		Event:     enums.PostCreatedWebhookType,
-		CreatedAt: time.Now().Unix(),
+		Event:     webhookType,
+		CreatedAt: time.Now().UnixMilli(),
 		ID:        uuid.New().String(),
 		Source:    enums.WebhookSourceLMFeed,
 		Data:      map[string]interface{}{},
@@ -118,7 +118,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate user meta
-		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds)
+		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +136,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate user meta
-		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds)
+		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +154,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Add to payload data
-		usersMeta, err := generateUsersPayloadForWebhook(handlers, userIds)
+		usersMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate user meta
-		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds)
+		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +220,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate users meta
-		usersMeta, err := generateUsersPayloadForWebhook(handlers, userIds)
+		usersMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
