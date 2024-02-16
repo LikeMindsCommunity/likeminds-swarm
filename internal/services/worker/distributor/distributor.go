@@ -6,11 +6,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
 
-// FeedTaskDistributor | Interface for feed background task distributor
-type FeedTaskDistributor interface {
-	DeleteTopicsFromPosts(topicIds []string, opts ...asynq.Option) error
-}
-
 type RedisTaskDistributor struct {
 	client *asynq.Client
 }

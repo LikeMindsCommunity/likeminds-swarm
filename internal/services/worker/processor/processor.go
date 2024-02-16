@@ -1,8 +1,6 @@
 package processor
 
 import (
-	"context"
-
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
@@ -22,12 +20,6 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
 
 	return processor.server.Run(mux)
-}
-
-type FeedTaskProcessor interface {
-	Run() error
-	ConnectionTest(ctx context.Context, task *asynq.Task) error
-	DeleteTopicsFromPosts(ctx context.Context, task *asynq.Task) error
 }
 
 type RedisTaskProcessor struct {
