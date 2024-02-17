@@ -9,10 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
@@ -21,43 +19,6 @@ const (
 	OrderTypeDescending int = -1
 	OrderTypeDefault    int = 0
 )
-
-// Feed Handlers structure for all Helper classes
-type FeedHandlers struct {
-	likeHelper           interfaces.LikeHelper
-	commentHelper        interfaces.CommentHelper
-	postHelper           interfaces.PostHelper
-	pendingPostHelper    interfaces.PendingPostHelper
-	activityHelper       interfaces.ActivityHelper
-	saveHelper           interfaces.SaveHelper
-	topicHelper          interfaces.TopicHelper
-	widgetHelper         interfaces.WidgetHelper
-	pollVotesHelper      interfaces.PollVotesHelper
-	connectionFeedHelper interfaces.ConnectionFeedHelper
-	esHelper             searchElastic.EsHelper
-	cacheHelper          cache.Helper
-}
-
-// Exposed Method to get an instance for Feed Handlers
-func NewFeedHandlers(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, postHelper interfaces.PostHelper,
-	pendingPostHelper interfaces.PendingPostHelper, saveHelper interfaces.SaveHelper, activityHelper interfaces.ActivityHelper, topicHelper interfaces.TopicHelper,
-	widgetHelper interfaces.WidgetHelper, pollVotesHelper interfaces.PollVotesHelper, connectionFeedHelper interfaces.ConnectionFeedHelper,
-	esHelper searchElastic.EsHelper, cacheHelper cache.Helper) *FeedHandlers {
-	return &FeedHandlers{
-		likeHelper:           likeHelper,
-		commentHelper:        commentHelper,
-		postHelper:           postHelper,
-		pendingPostHelper:    pendingPostHelper,
-		saveHelper:           saveHelper,
-		activityHelper:       activityHelper,
-		topicHelper:          topicHelper,
-		widgetHelper:         widgetHelper,
-		pollVotesHelper:      pollVotesHelper,
-		connectionFeedHelper: connectionFeedHelper,
-		esHelper:             esHelper,
-		cacheHelper:          cacheHelper,
-	}
-}
 
 // Internal Method to get pagination params in an API
 func fetchPaginationParams(c *gin.Context) (int, int, error) {

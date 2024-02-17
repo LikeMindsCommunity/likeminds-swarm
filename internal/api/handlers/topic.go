@@ -14,6 +14,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -412,14 +413,22 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	// delete topics from elastic search
 	err = handlers.esHelper.DeleteByQuery(getTopicsToBeDeletedQuery, constants.TopicIndexName)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Error(err.Error())
 	}
 
-	err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs, c)
+	// TODO: Remove taskDistribution code from here
+	err = handlers.taskDistributor.DeleteTopicsFromPosts(deleteTopicsRequest.TopicIds)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	// TODO: Uncomment this code after removing taskDistribution code
+	// err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs)
+	// if err != nil {
+	// 	utils.GeneralAPIInternalError(c, err.Error())
+	// 	return
+	// }
 
 	// response data
 	response := gin.H{
@@ -431,7 +440,8 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 }
 
 // deletes topics from posts and update the post in ES index
-func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID, c *gin.Context) error {
+func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID) error {
+
 	// Create a filter to find posts to be updated
 	filter := bson.M{
 		"topic_ids": bson.M{
@@ -441,12 +451,14 @@ func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 
 	// find posts based on the filter
 	postResults, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	if err != nil {
+		return err
+	}
 
 	// extract postIds from the postResults
-	postIDs, postIDsString := []primitive.ObjectID{}, []string{}
+	postIDs := []primitive.ObjectID{}
 	for _, post := range postResults {
 		postIDs = append(postIDs, post.ID)
-		postIDsString = append(postIDsString, post.ID.String())
 	}
 
 	// update the filter to update posts by postIds
@@ -472,7 +484,10 @@ func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primi
 	}
 
 	// fetch the updated posts and update in ES
-	updatedPosts, _ := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	updatedPosts, err := handlers.postHelper.FindPostHelper(filter, gin.H{})
+	if err != nil {
+		return err
+	}
 
 	for _, postData := range updatedPosts {
 		// update post data in elastic search

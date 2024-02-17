@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.18-alpine
+WORKDIR /usr/src/app
+
+COPY go.mod ./
+COPY go.sum ./
+
+RUN go mod download
+
+COPY . ./
+
+ADD https://likeminds-configs-beta.s3.ap-south-1.amazonaws.com/application-dot-envs-beta/swarm-beta/swarm-beta-dot-env-public ./cmd/server/config/.env
+
+RUN go build -o ./cmd/server/likeminds-swarm cmd/server/likeminds-swarm.go
+
+CMD [ "./cmd/server/likeminds-swarm runworker" ]
