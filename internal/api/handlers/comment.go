@@ -1039,7 +1039,7 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 }
 
 // Internal Method to get top n comments against posts based on sorting key, sort order
-func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}) (map[string]interface{}, []string, error) {
+func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}, communityId int) (map[string]interface{}, []string, error) {
 	postsTopComments := map[string]interface{}{}
 	commentsFilterData := []map[string]interface{}{}
 	allCommentsIds := []string{}
@@ -1137,9 +1137,51 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 			}
 
 			postsTopComments[commentResult.PostID.Hex()] = topCommentsList
-
 		}
 	}
 
+	// Save data in cache
+	for _, postId := range postIds {
+		var likedCommentsCacheData []byte
+		topCommentsData, ok := postsTopComments[postId.Hex()]
+
+		if ok {
+			likedCommentsCacheData, _ = json.Marshal(topCommentsData)
+		}
+
+		if likedCommentsCacheData == nil {
+			likedCommentsCacheData, _ = json.Marshal([]string{})
+		}
+
+		handlers.cacheHelper.Set(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId.Hex()), likedCommentsCacheData, 0)
+	}
+
 	return postsTopComments, allCommentsIds, nil
+}
+
+// Get top liked comments against posts from cache
+func getTopCommentsAgainstPostsOnLikesFromCache(handlers *FeedHandlers, postIds []primitive.ObjectID, communityId int) (map[string]interface{}, []string, bool, error) {
+	postsTopComments := map[string]interface{}{}
+	allCommentsIds := []string{}
+
+	for _, postId := range postIds {
+		var topCommentsList []string
+
+		postTopComments := handlers.cacheHelper.Get(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId.Hex()))
+
+		if postTopComments.Val() == "" {
+			return nil, nil, false, nil
+		}
+
+		topCommentsBytes, err := postTopComments.Bytes()
+
+		if err == nil {
+			json.Unmarshal(topCommentsBytes, &topCommentsList)
+		}
+
+		postsTopComments[postId.Hex()] = topCommentsList
+		allCommentsIds = append(allCommentsIds, topCommentsList...)
+	}
+
+	return postsTopComments, allCommentsIds, true, nil
 }

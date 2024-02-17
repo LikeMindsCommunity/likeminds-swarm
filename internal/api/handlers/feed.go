@@ -239,7 +239,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			postIds = append(postIds, postData.ID)
 		}
 
-		topCommentsAgainstPostsData, allCommentIds, err := getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount)
+		topCommentsAgainstPostsData, allCommentIds, allPostsFetched, err := getTopCommentsAgainstPostsOnLikesFromCache(handlers, postIds, communityId)
+
+		if !allPostsFetched {
+			topCommentsAgainstPostsData, allCommentIds, err = getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount, communityId)
+		}
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
