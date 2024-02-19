@@ -159,7 +159,7 @@ func retryDelayFunctionForWebhookTasks(n int, e error, t *asynq.Task) time.Durat
 	// If task is webhookRequest
 	if t.Type() == TaskSendWebhookRequestWithPayload {
 
-		// Calculate retry delay for webhook tasks (1 -> 60 -> 360 seconds)
+		// Calculate retry delay for webhook tasks (1 -> 60 -> 3600 seconds)
 		delayinSeconds := math.Pow(60, float64(n))
 
 		return time.Duration(delayinSeconds) * time.Second

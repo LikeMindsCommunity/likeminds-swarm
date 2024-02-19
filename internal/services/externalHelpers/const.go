@@ -72,7 +72,7 @@ const (
 const (
 	WebhookFailureSubject = "Notification for webhook failure"
 	WebhookFailureBody    = `Hey Team,<br>
-	%s webhook has failed on %v. <br>
+	<b>%s</b> webhook has failed on %v. <br>
 	Please inform the customer about the same.<br>
 
 	<h2>Here are the details:</h2>

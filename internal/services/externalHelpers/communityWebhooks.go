@@ -186,8 +186,8 @@ func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookT
 func sendMailToTeamForWebhookFailure(apiKey string, userId string, webhookType string, webhookUrl string,
 	statusCode int, response string, payload string) {
 
-	subject := WebhookFailureBody
-	body := fmt.Sprintf(WebhookFailureBody, webhookType, time.Now(), webhookUrl, time.Now(), statusCode, response, payload)
+	subject := WebhookFailureSubject
+	body := fmt.Sprintf(WebhookFailureBody, webhookType, time.Now().Local().Format(time.RFC1123), webhookUrl, time.Now(), statusCode, response, payload)
 
 	teamMails := environment.GoDotEnvVariable("TEAM_ADMIN_MAILS")
 	mails := strings.Split(teamMails, ",")
