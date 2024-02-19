@@ -1,8 +1,6 @@
 package processor
 
 import (
-	"context"
-
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
@@ -29,19 +27,6 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.HandleFunc(worker.TaskTriggerCommentTaggedWebhook, processor.triggerCommentTaggedWebhook)
 
 	return processor.server.Run(mux)
-}
-
-type FeedTaskProcessor interface {
-	Run() error
-	connectionTest(ctx context.Context, task *asynq.Task) error
-	sendWebhookRequestWithPayload(ctx context.Context, task *asynq.Task) error
-	triggerPostCreationWebhook(ctx context.Context, task *asynq.Task) error
-	triggerPostLikedWebhook(ctx context.Context, task *asynq.Task) error
-	triggerPostPinnedWebhook(ctx context.Context, task *asynq.Task) error
-	triggerPostTaggedWebhook(ctx context.Context, task *asynq.Task) error
-	triggerCommentAddedWebhook(ctx context.Context, task *asynq.Task) error
-	triggerCommentReactWebhook(ctx context.Context, task *asynq.Task) error
-	triggerCommentTaggedWebhook(ctx context.Context, task *asynq.Task) error
 }
 
 type RedisTaskProcessor struct {
