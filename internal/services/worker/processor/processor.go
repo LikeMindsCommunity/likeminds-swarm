@@ -16,8 +16,15 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.Use(worker.LoggingMiddleware)
 
 	// register handlers for each task
-	mux.HandleFunc(worker.BrokerConnectionTest, processor.ConnectionTest)
-	mux.HandleFunc(worker.TaskSendDeleteTopicsFromPosts, processor.DeleteTopicsFromPosts)
+	mux.HandleFunc(worker.BrokerConnectionTest, processor.connectionTest)
+	mux.HandleFunc(worker.TaskSendWebhookRequestWithPayload, processor.sendWebhookRequestWithPayload)
+	mux.HandleFunc(worker.TaskTriggerPostCreationWebhook, processor.triggerPostCreationWebhook)
+	mux.HandleFunc(worker.TaskTriggerPostLikedWebhook, processor.triggerPostLikedWebhook)
+	mux.HandleFunc(worker.TaskTriggerPostPinnedWebhook, processor.triggerPostPinnedWebhook)
+	mux.HandleFunc(worker.TaskTriggerPostTaggedWebhook, processor.triggerPostTaggedWebhook)
+	mux.HandleFunc(worker.TaskTriggerCommentAddedWebhook, processor.triggerCommentAddedWebhook)
+	mux.HandleFunc(worker.TaskTriggerCommentReactWebhook, processor.triggerCommentReactWebhook)
+	mux.HandleFunc(worker.TaskTriggerCommentTaggedWebhook, processor.triggerCommentTaggedWebhook)
 
 	return processor.server.Run(mux)
 }

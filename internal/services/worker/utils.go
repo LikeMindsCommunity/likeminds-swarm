@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -139,6 +140,9 @@ func GetServerConfigurations(QueueNames []string) asynq.Config {
 
 		// Queue names and their priority
 		Queues: getValidQueuesMap(QueueNames),
+
+		// How to handle retries for tasks
+		RetryDelayFunc: retryDelayFunctionForWebhookTasks,
 	}
 
 	// set concurrency from environment variable if present | default: cpu cores count
@@ -148,5 +152,19 @@ func GetServerConfigurations(QueueNames []string) asynq.Config {
 	}
 
 	return config
+}
 
+func retryDelayFunctionForWebhookTasks(n int, e error, t *asynq.Task) time.Duration {
+
+	// If task is webhookRequest
+	if t.Type() == TaskSendWebhookRequestWithPayload {
+
+		// Calculate retry delay for webhook tasks (1 -> 60 -> 3600 seconds)
+		delayinSeconds := math.Pow(60, float64(n))
+
+		return time.Duration(delayinSeconds) * time.Second
+	}
+
+	// Retry delay for all other tasks
+	return asynq.DefaultRetryDelayFunc(n, e, t)
 }

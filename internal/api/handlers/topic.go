@@ -416,19 +416,11 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		log.Error(err.Error())
 	}
 
-	// TODO: Remove taskDistribution code from here
-	err = handlers.taskDistributor.DeleteTopicsFromPosts(deleteTopicsRequest.TopicIds)
+	err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
-
-	// TODO: Uncomment this code after removing taskDistribution code
-	// err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs)
-	// if err != nil {
-	// 	utils.GeneralAPIInternalError(c, err.Error())
-	// 	return
-	// }
 
 	// response data
 	response := gin.H{
@@ -440,7 +432,7 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 }
 
 // deletes topics from posts and update the post in ES index
-func DeleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID) error {
+func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID) error {
 
 	// Create a filter to find posts to be updated
 	filter := bson.M{

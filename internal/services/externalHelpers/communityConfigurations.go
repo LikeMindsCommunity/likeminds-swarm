@@ -10,16 +10,26 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
-type NSFWConfigurations struct {
-	Enabled       bool    `json:"enabled"`
-	InferdoApiKey string  `json:"inferdo_api_key"`
-	CutoffScore   float64 `json:"cutoff_score"`
-	ErrorStatus   string  `json:"error_status"`
+type ExternalEntities struct {
+	CommunityConfigurations []CommunityConfiguration
+}
+
+type CommunityConfiguration struct {
+	Type        string                 `json:"type"`
+	Description string                 `json:"description"`
+	Value       map[string]interface{} `json:"value"`
 }
 
 type CommunityConfirgurationResponse struct {
 	Success                 bool                     `json:"success"`
 	CommunityConfigurations []CommunityConfiguration `json:"community_configurations"`
+}
+
+type NSFWConfigurations struct {
+	Enabled       bool    `json:"enabled"`
+	InferdoApiKey string  `json:"inferdo_api_key"`
+	CutoffScore   float64 `json:"cutoff_score"`
+	ErrorStatus   string  `json:"error_status"`
 }
 
 func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityConfiguration, communityConfigurationType string) (CommunityConfiguration, error) {
@@ -65,7 +75,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	}
 
 	//Send Request
-	respBytes, _, err := GetRequestResponse(CaravanService, FetchCommunityConfigurations, GETRequest, headers, params, nil)
+	respBytes, _, err := GetRequestResponse(CaravanService, FetchCommunityConfigurationsEndpoint, GETRequest, headers, params, nil)
 
 	if respBytes == nil {
 		//If API fails or any other error
