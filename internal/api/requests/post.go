@@ -112,7 +112,7 @@ type PostResponse struct {
 	MenuItems          []MenuResponse        `json:"menu_items"`
 	CreatedAt          int                   `json:"created_at"`
 	UpdatedAt          int                   `json:"updated_at"`
-	TopCommentIDs      []string              `json:"top_comment_ids"`
+	CommentIDs         []string              `json:"comment_ids"`
 }
 
 // Response Structure for Menu Item of an Entity

@@ -59,12 +59,3 @@ type FetchCommentsResponse struct {
 	CommentResponse
 	ParentComment *CommentResponse `json:"parent_comment,omitempty"`
 }
-
-type TopCommentIDResponse struct {
-	CommentID primitive.ObjectID `json:"comment_id" bson:"comment_id"`
-}
-
-type TopCommentsAggregationQueryResponse struct {
-	PostID      primitive.ObjectID     `json:"_id" bson:"_id"`
-	TopComments []TopCommentIDResponse `json:"top_comments" bson:"top_comments"`
-}

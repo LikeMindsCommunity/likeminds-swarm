@@ -17,6 +17,12 @@ type NSFWConfigurations struct {
 	ErrorStatus   string  `json:"error_status"`
 }
 
+type UniversalFeedConfigurations struct {
+	CommentSortOn    string `json:"comment_sort_order_key"`
+	CommentSortOrder string `json:"comment_sort_order"`
+	CommentCount     int    `json:"comment_count"`
+}
+
 type CommunityConfirgurationResponse struct {
 	Success                 bool                     `json:"success"`
 	CommunityConfigurations []CommunityConfiguration `json:"community_configurations"`
@@ -106,6 +112,33 @@ func GetFeedPostVariableOrDefault(cacheHelper cache.Helper, userId string, commu
 	}
 
 	return postFeedMetadataValues
+}
+
+func GetUniversalFeedConfigurationsData(cacheHelper cache.Helper, userId string, communityId int) *UniversalFeedConfigurations {
+	// Default Universal Feed Configurations
+	universalFeedConfigurations := UniversalFeedConfigurations{}
+
+	// Get community configurations
+	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
+
+	if communityConfigurationResponse != nil {
+		externalEntities := ExternalEntities{
+			communityConfigurationResponse.CommunityConfigurations,
+		}
+
+		feedMetatdataCommunityConfig, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
+			FeedMetadataCommunityConfigurationType)
+
+		// Universal feed metadata configurations
+		universalFeedMetadata, isFetched := feedMetatdataCommunityConfig.Value[UniversalFeedCommunityConfigurationKey]
+
+		if isFetched {
+			feedMetatdataCommunityConfigBytes, _ := json.Marshal(universalFeedMetadata)
+			json.Unmarshal(feedMetatdataCommunityConfigBytes, &universalFeedConfigurations)
+		}
+	}
+
+	return &universalFeedConfigurations
 }
 
 // Exposed Helper method to fetch NSFW Filtering Configurations for a community

@@ -56,10 +56,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
 	var universalFeedRequest requests.FetchUniversalFeedRequest
-	var feedMetatdataCommunityConfig externalHelpers.CommunityConfiguration
-	var configFetchErr error
 	var commentSortOrderVal int
-	var feedMetadataConfig map[string]interface{}
 	filtered_comments := map[string]requests.FetchCommentsResponse{}
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
@@ -191,77 +188,24 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// Get community configurations
-	communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(handlers.cacheHelper, userId, communityId)
+	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
 
-	if communityConfigurationResponse != nil {
-		feedMetatdataCommunityConfig, configFetchErr = externalHelpers.GetCommunityConfigurationAgainstType(
-			communityConfigurationResponse.CommunityConfigurations,
-			externalHelpers.FeedMetadataCommunityConfigurationType)
-
-		if configFetchErr != nil {
-			utils.GeneralAPIValidationError(c, configFetchErr.Error())
-			return
-		}
-	}
-
-	// Universal feed metadata configurations
-	feedMetadata, isFetched := feedMetatdataCommunityConfig.Value[externalHelpers.UniversalFeedCommunityConfigurationKey]
-
-	if isFetched {
-		feedMetadataConfig = feedMetadata.(map[string]interface{})
-	}
-
-	commentSortOn, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentSortKey]
-
-	if !ok {
-		commentSortOn = ""
-	}
-
-	commentSortOrder, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentSortOrderKey]
-
-	if !ok || commentSortOrder == "desc" {
+	if universalFeedConfig.CommentSortOrder == enums.DescendingSortOrder {
 		commentSortOrderVal = -1
 	} else {
 		commentSortOrderVal = 1
 	}
 
-	commentCount, ok := feedMetadataConfig[externalHelpers.FeedMetadataUniversalFeedCommentCountKey]
-
-	if !ok {
-		commentCount = 1
-	}
-
-	if commentSortOn == "likes" {
+	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
 		var updatedPostsWithComments []requests.PostResponse
-		var postIds []primitive.ObjectID
-
-		for _, postData := range finalResponse.Posts {
-			postIds = append(postIds, postData.ID)
-		}
-
-		topCommentsAgainstPostsData, allCommentIds, allPostsFetched, err := getTopCommentsAgainstPostsOnLikesFromCache(handlers, postIds, communityId)
-
-		if !allPostsFetched {
-			topCommentsAgainstPostsData, allCommentIds, err = getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount, communityId)
-		}
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts, userId, universalFeedRequest.IsCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check)
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
 
-		for _, postData := range finalResponse.Posts {
-			postDataAddress := &postData
-			commentsData, _ := topCommentsAgainstPostsData[postData.ID.Hex()].([]string)
-
-			(*postDataAddress).TopCommentIDs = commentsData
-			updatedPostsWithComments = append(updatedPostsWithComments, *postDataAddress)
-		}
-
 		finalParsedResponse["posts"] = updatedPostsWithComments
-
-		filtered_comments, _ = fetchMultipleCommentsData(handlers, allCommentIds, communityId, userId, universalFeedRequest.IsCm,
-			versionCode, platformCode, apiRevampV1Check)
 
 	}
 

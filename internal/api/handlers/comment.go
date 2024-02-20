@@ -1126,18 +1126,19 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 	// fetch post using helper method
 	commentResults, err := handlers.commentHelper.AggregateTopCommentsHelper(commentsFilterData)
 
-	if err == nil {
+	if err != nil {
+		return nil, nil, err
+	}
 
-		for _, commentResult := range commentResults {
-			var topCommentsList []string
+	for _, commentResult := range commentResults {
+		var topCommentsList []string
 
-			for _, topComment := range commentResult.TopComments {
-				topCommentsList = append(topCommentsList, topComment.CommentID.Hex())
-				allCommentsIds = append(allCommentsIds, topComment.CommentID.Hex())
-			}
-
-			postsTopComments[commentResult.PostID.Hex()] = topCommentsList
+		for _, topComment := range commentResult.TopComments {
+			topCommentsList = append(topCommentsList, topComment.CommentID.Hex())
+			allCommentsIds = append(allCommentsIds, topComment.CommentID.Hex())
 		}
+
+		postsTopComments[commentResult.PostID.Hex()] = topCommentsList
 	}
 
 	// Save data in cache
@@ -1175,13 +1176,49 @@ func getTopCommentsAgainstPostsOnLikesFromCache(handlers *FeedHandlers, postIds 
 
 		topCommentsBytes, err := postTopComments.Bytes()
 
-		if err == nil {
-			json.Unmarshal(topCommentsBytes, &topCommentsList)
+		if err != nil {
+			return nil, nil, false, err
 		}
+
+		json.Unmarshal(topCommentsBytes, &topCommentsList)
 
 		postsTopComments[postId.Hex()] = topCommentsList
 		allCommentsIds = append(allCommentsIds, topCommentsList...)
 	}
 
 	return postsTopComments, allCommentsIds, true, nil
+}
+
+func getTopCommentsAgainstPostsSortOnLikes(handlers *FeedHandlers, postsResponse []requests.PostResponse,
+	userId string, isUserCM bool, communityId int, commentSortOrderVal int, commentCount int,
+	versionCode string, platformCode string, apiRevampV1Check bool) ([]requests.PostResponse, map[string]requests.FetchCommentsResponse, error) {
+	var updatedPostsWithComments []requests.PostResponse
+	var postIds []primitive.ObjectID
+
+	for _, postData := range postsResponse {
+		postIds = append(postIds, postData.ID)
+	}
+
+	topCommentsAgainstPostsData, allCommentIds, allPostsFetched, err := getTopCommentsAgainstPostsOnLikesFromCache(handlers, postIds, communityId)
+
+	if !allPostsFetched {
+		topCommentsAgainstPostsData, allCommentIds, err = getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount, communityId)
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, postData := range postsResponse {
+		postDataAddress := &postData
+		commentsData, _ := topCommentsAgainstPostsData[postData.ID.Hex()].([]string)
+
+		(*postDataAddress).CommentIDs = commentsData
+		updatedPostsWithComments = append(updatedPostsWithComments, *postDataAddress)
+	}
+
+	filtered_comments, _ := fetchMultipleCommentsData(handlers, allCommentIds, communityId, userId, isUserCM,
+		versionCode, platformCode, apiRevampV1Check)
+
+	return updatedPostsWithComments, filtered_comments, nil
 }
