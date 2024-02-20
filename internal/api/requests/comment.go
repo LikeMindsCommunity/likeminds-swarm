@@ -47,15 +47,16 @@ type CommentResponse struct {
 	UpdatedAt     int                `json:"updated_at"`
 }
 
+// Response Structure for Comment with Parent
+type CommentWithParentResponse struct {
+	CommentResponse
+	ParentComment *CommentResponse `json:"parent_comment,omitempty"`
+}
+
 // Response Structure for Fetch Comment
 type FetchCommentResponse struct {
 	CommentResponse
 	Post          *PostResponse     `json:"post_data,omitempty"`
 	ParentComment *CommentResponse  `json:"parent_comment,omitempty"`
 	Replies       []CommentResponse `json:"replies"`
-}
-
-type FetchCommentsResponse struct {
-	CommentResponse
-	ParentComment *CommentResponse `json:"parent_comment,omitempty"`
 }

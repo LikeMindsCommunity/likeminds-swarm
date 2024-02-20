@@ -127,6 +127,17 @@ func GetRequestResponse(serviceType ServiceType, url string, requestType Request
 		}
 
 		respBytes, statusCode, err = client.DeleteRequest(&options)
+
+	case PATCHRequest:
+
+		options := PostRequestOptions{
+			Url:           baseUrl + url,
+			CustomHeaders: headers,
+			Params:        params,
+			Body:          body,
+		}
+
+		respBytes, statusCode, err = client.PatchRequest(&options)
 	}
 
 	if err != nil {

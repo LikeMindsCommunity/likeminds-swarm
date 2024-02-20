@@ -1225,6 +1225,20 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 	return fetchPostResponse, nil
 }
 
+// Internal Method to fetch single post response
+func FetchSinglePostResponse(handlers *FeedHandlers, postId string) (*requests.PostResponse, error) {
+
+	postData, err := getPostByID(handlers.postHelper, postId)
+	if err != nil {
+		return nil, err
+	}
+
+	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
+		handlers.widgetHelper, *postData, postData.UserId, false, "", "", false, handlers.cacheHelper)
+
+	return &postResponse, nil
+}
+
 // Internal Method to fetch multiple posts data using post_ids
 func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityId int, userId string,
 	isCm bool, versionCode string, platformCode string,
@@ -1558,6 +1572,20 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
 		if err != nil {
 			logging.Error(fmt.Sprint("Error while creating activities and sending notifications after post creation: ", err.Error()))
+		}
+
+		// trigger post creation webhook
+		err = handlers.taskDistributor.TriggerPostCreationWebhook(postData.ID.Hex(), headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error while triggering post creation webhook: ", err.Error())
+		}
+
+		// trigger post tagged webhook
+		if len(createPostRequest.UUIDs) > 0 {
+			err = handlers.taskDistributor.TriggerPostTaggedWebhook(postData.ID.Hex(), createPostRequest.UUIDs, headers[utils.HeadersApiKey])
+			if err != nil {
+				logging.Error("Error while triggering post tagged webhook: ", err.Error())
+			}
 		}
 	}
 
@@ -2178,6 +2206,9 @@ func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.Obj
 
 // Exposed Method to pin a Post
 func (handlers *FeedHandlers) PinPost(c *gin.Context) {
+
+	headers := utils.GetHeaders(c)
+
 	// fetch url params
 	postId := c.Param("post_id")
 
@@ -2216,6 +2247,14 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	}
 
 	handlers.updatePinnedPostCache(postData)
+
+	// trigger post pinned webhook
+	if postData.IsPinned {
+		err = handlers.taskDistributor.TriggerPostPinnedWebhook(postData.ID.Hex(), headers[utils.HeadersMemberId], headers[utils.HeadersApiKey])
+		if err != nil {
+			logging.Error("Error while triggering post pinned webhook: ", err.Error())
+		}
+	}
 
 	// update post data in elastic search
 	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)

@@ -19,6 +19,7 @@ const (
 	POSTRequestFormUrlEncodedBody
 	PUTRequest
 	DELETERequest
+	PATCHRequest
 )
 
 type PlatformType string
@@ -26,12 +27,14 @@ type PlatformType string
 const DefaultCommunityId = -1
 
 const SdkAuthenticateEndPoint = "/api/sdk/authenticate"
+const SdkBotUserEndpoint = "/api/user/bot"
 const SendNotificationEndPoint = "/api/external_service_apis/send_notifications"
 const FetchMembersMetaEndPoint = "/api/community/fetch_members_meta"
-const FetchCommunityConfigurations = "/api/community/configurations"
+const FetchCommunityConfigurationsEndpoint = "/api/community/configurations"
 const FetchUserConnectionsEndPoint = "/api/community_member/%s/connection"
 const SendMailEndpoint = "/api/external_service_apis/send_email"
 const PushReportEndpoint = "/api/community/report"
+const CommunityWebhooksEndpoint = "/api/webhook"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
@@ -39,7 +42,7 @@ const ParamPage = "page"
 const ParamPageSize = "page_size"
 
 const ContentTypeHeader = "application/json"
-const SwarmServiceMemberIdHeader = "swarm-service"
+const SwarmServiceHeader = "swarm-service"
 
 const (
 	PostCommunityConfigurationKey = "post"
@@ -56,10 +59,30 @@ const (
 
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
+	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
 )
 
 // Inferdo API related constants
 const (
 	InferdoApiHeaderHost   = "nsfw-image-classification1.p.rapidapi.com"
 	InferdoNsfwApiEndpoint = "https://nsfw-image-classification1.p.rapidapi.com/img/nsfw"
+)
+
+// Webhook Failure Mail Constants
+const (
+	WebhookFailureSubject = "Notification for webhook failure"
+	WebhookFailureBody    = `Hey Team,<br>
+	<b>%s</b> webhook has failed on %v. <br>
+	Please inform the customer about the same.<br>
+
+	<h2>Here are the details:</h2>
+	<br>
+	Webhook URL: %s<br>
+	Webhook Failure Time: %v<br>
+	Webhook Status Code: %d<br>
+	Webhook Response: %v<br>
+	Webhook Payload: <br>
+	<code>
+	%v
+	</code>`
 )

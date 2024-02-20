@@ -275,3 +275,33 @@ func (c *APIClient) DeleteRequest(pro *PostRequestOptions) ([]byte, int, error) 
 
 	return respBytes, statusCode, nil
 }
+
+// Exposed Method to send Patch request
+func (c *APIClient) PatchRequest(pro *PostRequestOptions) ([]byte, int, error) {
+	jsonData, err := json.Marshal(pro.Body)
+	if err != nil {
+		return nil, DefaultStatusCode, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, pro.Url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, DefaultStatusCode, err
+	}
+
+	params := pro.Params
+	if params != nil {
+		AddParams(req, params)
+	}
+
+	headers := pro.CustomHeaders
+	if headers != nil {
+		AddHeaders(req, headers)
+	}
+
+	respBytes, statusCode, err := c.sendRequest(req)
+	if err != nil {
+		return nil, DefaultStatusCode, err
+	}
+
+	return respBytes, statusCode, nil
+}

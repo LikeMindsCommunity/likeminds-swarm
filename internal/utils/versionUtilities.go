@@ -14,6 +14,11 @@ const (
 	PlatformReactJS     string = "rt"
 )
 
+// Api Version Codes
+const (
+	FetchMembersMetaApiVersion string = "2"
+)
+
 var UnreleasedMaxVersion int = 9999
 var UnreleasedMinVersion int = -1
 

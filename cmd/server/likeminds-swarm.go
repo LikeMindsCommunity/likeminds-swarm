@@ -1,204 +1,35 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"time"
+	"os"
+	"strings"
 
+	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/go-redis/redis/v7"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
+	"github.com/nateshr/likeminds-swarm/internal/middlewares"
+	"github.com/nateshr/likeminds-swarm/internal/repositories"
+	"github.com/nateshr/likeminds-swarm/internal/scripts"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/processor"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 	"github.com/nateshr/likeminds-swarm/internal/api/routes"
-	"github.com/nateshr/likeminds-swarm/internal/helpers"
-	"github.com/nateshr/likeminds-swarm/internal/repositories"
 	"github.com/nateshr/likeminds-swarm/internal/services/database"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/web"
 )
 
-var (
-	redisClient *redis.Client
-	router      *gin.Engine
+const (
+	AppVersion     string = "1.14.0" // Application Version
+	GinPortAddress string = ":8080"  // Gin Port Address
 )
-
-// Internal Method to initiate the server
-func main() {
-	var AppVersion string = "1.13.0"
-
-	initGin()
-	redisClient = cache.InitRedis()
-	db := database.InitiateDB()
-	es := searchElastic.InitiateES()
-
-	cacheHelper := cache.NewCacheHelper(redisClient)
-
-	router.Use(cors.New(enableCors()))
-	router.Use(LoggingMiddleware())
-
-	router.GET("", web.Home)
-
-	routerGroup := router.Group("/")
-
-	// Dependency injection of repositories
-	postRepository := repositories.NewPostRepository(db)
-	pendingPostRepository := repositories.NewPendingPostRepository(db)
-	likeRepository := repositories.NewLikeRepository(db)
-	commentRepository := repositories.NewCommentRepository(db)
-	saveRepository := repositories.NewSaveRepository(db)
-	activityRepository := repositories.NewActivityRepository(db)
-	topicRepository := repositories.NewTopicRepository(db)
-	widgetRepository := repositories.NewWidgetRepository(db)
-	pollVotesRepository := repositories.NewPollVotesRepository(db)
-	connectionFeedRepository := repositories.NewConnectionFeedRepository(db)
-
-	// Dependency injection of helpers
-	postHelper := helpers.NewPostHelper(postRepository)
-	pendingPostHelper := helpers.NewPendingPostHelper(pendingPostRepository)
-	likeHelper := helpers.NewLikeHelper(likeRepository)
-	commentHelper := helpers.NewCommentHelper(commentRepository)
-	saveHelper := helpers.NewSaveHelper(saveRepository)
-	activityHelper := helpers.NewActivityHelper(activityRepository, cacheHelper)
-	topicHelper := helpers.NewTopicHelper(topicRepository)
-	widgetHepler := helpers.NewWidgetHelper(widgetRepository)
-	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
-	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
-
-	// Dependency injection of elasticSearch Helper
-	esHelper := searchElastic.NewESHelper(es)
-
-	// New feed Handler
-	feedHandlers := handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper,
-		activityHelper, topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper)
-
-	// Routes
-	routes.BaseRouter(routerGroup, feedHandlers)
-	routes.PostRouter(routerGroup, feedHandlers)
-	routes.UserRouter(routerGroup, feedHandlers)
-	routes.FeedRouter(routerGroup, feedHandlers)
-	routes.TopicRouter(routerGroup, feedHandlers)
-	routes.WidgetRouter(routerGroup, feedHandlers)
-	routes.PollRouter(routerGroup, feedHandlers)
-
-	// Run Scripts
-	// scripts.RunScripts(feedHandlers)
-
-	log.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
-	log.Fatal(router.Run(":8080"))
-}
-
-// Internal Method to initiate Gin module in the server
-func initGin() {
-	gin.SetMode(gin.ReleaseMode)
-	router = gin.Default()
-}
-
-// Method to process API request to log
-func processRequest(c *gin.Context) interface{} {
-	requestBodyData := gin.H{}
-
-	// Reading request body
-	requestBody, err := io.ReadAll(c.Request.Body)
-
-	// Updating request body after read
-	c.Request.Body = io.NopCloser(bytes.NewReader(requestBody))
-
-	// Unmarshalling request body
-	if err == nil {
-		_ = json.Unmarshal(requestBody, &requestBodyData)
-	}
-
-	return gin.H{
-		"host":         c.Request.Host,
-		"absolute_uri": c.Request.RequestURI,
-		"method":       c.Request.Method,
-		"headers":      c.Request.Header,
-		"body":         requestBodyData,
-	}
-}
-
-// responseBodyWriter | Custom Response Writer
-type responseBodyWriter struct {
-	gin.ResponseWriter
-	body *bytes.Buffer
-}
-
-// Write | Custom Write Method for responseBodyWriter
-func (r responseBodyWriter) Write(b []byte) (int, error) {
-	r.body.Write(b)
-	return r.ResponseWriter.Write(b)
-}
-
-// LoggingMiddleware will log the request and response of API
-func LoggingMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.Request.RequestURI == "/" {
-
-			c.Next()
-
-		} else {
-
-			data := gin.H{}
-
-			// Starting time
-			startTime := time.Now()
-
-			// Implementing custom response body writer in the context
-			w := &responseBodyWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}
-			c.Writer = w
-
-			// Updating Request Data
-			data["request"] = processRequest(c)
-
-			// Processing request
-			c.Next()
-
-			// End Time
-			endTime := time.Now()
-
-			response := gin.H{}
-			statusCode := c.Writer.Status()
-
-			// Unmarshalling Request Response
-			_ = json.Unmarshal(w.body.Bytes(), &response)
-
-			// Updating Request Response
-			data["response"] = gin.H{
-				"http_response_code": statusCode,
-				"content":            response,
-			}
-
-			if statusCode < http.StatusBadRequest {
-				data["response"].(gin.H)["content"] = gin.H{}
-			}
-
-			// Updating Request Meta Data
-			data["meta"] = gin.H{
-				"latency":   endTime.Sub(startTime),
-				"client_ip": c.ClientIP(),
-			}
-
-			// Marshalling the final Data
-			marshelledData, _ := json.Marshal(data)
-
-			if statusCode >= http.StatusOK && statusCode < http.StatusBadRequest {
-				// Logging the generated request data as Info
-				log.Info(string(marshelledData))
-			} else {
-				// Logging the generated request data as Error
-				log.Error(string(marshelledData))
-			}
-
-			c.Next()
-		}
-	}
-}
 
 // Internal Method to enable Cors in the server
 func enableCors() cors.Config {
@@ -213,4 +44,120 @@ func enableCors() cors.Config {
 		"x-api-key",
 	)
 	return config
+}
+
+// Internal Method to initiate Gin module in the server
+func initGin() *gin.Engine {
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+
+	// Enable CORS
+	router.Use(cors.New(enableCors()))
+
+	// Enable Logging Middleware
+	router.Use(middlewares.LoggingMiddleware())
+
+	return router
+}
+
+// Internal Method to inject dependencies and get feed handlers
+func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redis.Client, esClient *elasticsearch.Client) *handlers.FeedHandlers {
+
+	// Dependency injection of repositories
+	postRepository := repositories.NewPostRepository(dbClient)
+	pendingPostRepository := repositories.NewPendingPostRepository(dbClient)
+	likeRepository := repositories.NewLikeRepository(dbClient)
+	commentRepository := repositories.NewCommentRepository(dbClient)
+	saveRepository := repositories.NewSaveRepository(dbClient)
+	activityRepository := repositories.NewActivityRepository(dbClient)
+	topicRepository := repositories.NewTopicRepository(dbClient)
+	widgetRepository := repositories.NewWidgetRepository(dbClient)
+	pollVotesRepository := repositories.NewPollVotesRepository(dbClient)
+	connectionFeedRepository := repositories.NewConnectionFeedRepository(dbClient)
+
+	// Dependency injection of Cache & ES
+	cacheHelper := cache.NewCacheHelper(redisClient)
+	esHelper := searchElastic.NewESHelper(esClient)
+
+	// Dependency injection of helpers
+	postHelper := helpers.NewPostHelper(postRepository)
+	pendingPostHelper := helpers.NewPendingPostHelper(pendingPostRepository)
+	likeHelper := helpers.NewLikeHelper(likeRepository)
+	commentHelper := helpers.NewCommentHelper(commentRepository)
+	saveHelper := helpers.NewSaveHelper(saveRepository)
+	activityHelper := helpers.NewActivityHelper(activityRepository, cacheHelper)
+	topicHelper := helpers.NewTopicHelper(topicRepository)
+	widgetHepler := helpers.NewWidgetHelper(widgetRepository)
+	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
+	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
+
+	// initiate task distributor for background tasks
+	feedTaskDistributor := distributor.NewTaskDistributor()
+
+	// return feed handlers
+	return handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper, activityHelper,
+		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor)
+}
+
+// Main Method
+func main() {
+
+	// Initiate clients
+	redisClient := cache.InitRedis()
+	dbClient := database.InitiateDB()
+	esClient := searchElastic.InitiateES()
+
+	// Inject dependencies and get feed handlers
+	feedHandlers := injectDependenciesAndGetHandler(dbClient, redisClient, esClient)
+
+	switch {
+	// By default, run gin server
+	case len(os.Args) == 1:
+
+		// Initiate Gin Router
+		router := initGin()
+
+		router.GET("", web.Home)
+		routerGroup := router.Group("/")
+
+		// Routes
+		routes.BaseRouter(routerGroup, feedHandlers)
+		routes.PostRouter(routerGroup, feedHandlers)
+		routes.UserRouter(routerGroup, feedHandlers)
+		routes.FeedRouter(routerGroup, feedHandlers)
+		routes.TopicRouter(routerGroup, feedHandlers)
+		routes.WidgetRouter(routerGroup, feedHandlers)
+		routes.PollRouter(routerGroup, feedHandlers)
+
+		logging.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
+
+		// Run gin server
+		logging.Fatal(router.Run(GinPortAddress))
+
+	// runworker | Run background worker to process tasks
+	case os.Args[1] == "runworker":
+
+		// get queue names from arguments
+		queues := []string{}
+		if len(os.Args) == 3 && os.Args[2] != "" {
+			queues = strings.Split(os.Args[2], ",")
+		}
+
+		feedTaskProcessor := processor.NewTaskProcessor(feedHandlers, queues)
+
+		// Run Background worker to process tasks
+		logging.Fatal(feedTaskProcessor.Run())
+
+	// runscript | Run script to perform some action
+	case os.Args[1] == "runscript":
+		if len(os.Args) == 3 {
+			scripts.RunScripts(feedHandlers, os.Args[2])
+		} else {
+			logging.Fatal("please provide a valid script name to run")
+		}
+
+	default:
+		logging.Fatal("Invalid args")
+	}
 }
