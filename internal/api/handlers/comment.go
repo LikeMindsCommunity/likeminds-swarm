@@ -1228,7 +1228,7 @@ func getTopCommentsAgainstPostsOnLikesFromCache(handlers *FeedHandlers, postIds 
 
 func getTopCommentsAgainstPostsSortOnLikes(handlers *FeedHandlers, postsResponse []requests.PostResponse,
 	userId string, isUserCM bool, communityId int, commentSortOrderVal int, commentCount int,
-	versionCode string, platformCode string, apiRevampV1Check bool) ([]requests.PostResponse, map[string]requests.FetchCommentsResponse, error) {
+	versionCode string, platformCode string, apiRevampV1Check bool) ([]requests.PostResponse, map[string]requests.CommentWithParentResponse, error) {
 	var updatedPostsWithComments []requests.PostResponse
 	var postIds []primitive.ObjectID
 
