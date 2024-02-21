@@ -9,6 +9,11 @@ const (
 	HeadersDeviceId      string = "x-device-id"
 	HeadersApiKey        string = "x-api-key"
 	HeadersAcceptVersion string = "x-accept-version"
+	HeadersApiVersion    string = "x-api-version"
+)
+
+const (
+	SdkSourceFeed string = "feed"
 )
 
 const (

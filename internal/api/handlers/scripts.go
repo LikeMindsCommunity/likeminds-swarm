@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"time"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 
@@ -10,6 +11,9 @@ import (
 )
 
 func (handlers *FeedHandlers) IndexAllPostData() error {
+	fmt.Println("starting IndexAllPostData script")
+	startTime := time.Now()
+
 	// delete post index in elastic search
 	err := handlers.esHelper.DeleteIndex(constants.PostIndexName)
 	if err != nil {
@@ -40,11 +44,15 @@ func (handlers *FeedHandlers) IndexAllPostData() error {
 			log.Error(err.Error())
 		}
 	}
+	fmt.Printf("script: IndexAllPostData, executed in %d\n", time.Since(startTime))
 
 	return nil
 }
 
 func (handlers *FeedHandlers) IndexAllTopicData() error {
+	fmt.Println("starting IndexAllTopicData script")
+	startTime := time.Now()
+
 	// delete topic index in elastic search
 	err := handlers.esHelper.DeleteIndex(constants.TopicIndexName)
 	if err != nil {
@@ -70,11 +78,14 @@ func (handlers *FeedHandlers) IndexAllTopicData() error {
 			log.Error(err.Error())
 		}
 	}
+	fmt.Printf("script: IndexAllTopicData, executed in %d\n", time.Since(startTime))
 
 	return nil
 }
 
 func (handlers *FeedHandlers) IndexAllWidgetData() error {
+	fmt.Println("starting IndexAllWidgetData script")
+	startTime := time.Now()
 
 	// delete widget index in elastic search
 	err := handlers.esHelper.DeleteIndex(constants.WidgetIndexName)
@@ -101,12 +112,15 @@ func (handlers *FeedHandlers) IndexAllWidgetData() error {
 			log.Error(err.Error())
 		}
 	}
+	fmt.Printf("script: IndexAllWidgetData, executed in %d\n", time.Since(startTime))
 
 	return nil
 }
 
 // function to insert community_id to all comments of a post
 func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
+	fmt.Println("starting InsertCommunityIDToAllComments script")
+	startTime := time.Now()
 
 	// fetch all comments
 	commentResults, err := handlers.commentHelper.FindCommentHelper(gin.H{}, gin.H{})
@@ -138,6 +152,7 @@ func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 			continue
 		}
 	}
+	fmt.Printf("script: InsertCommunityIDToAllComments, executed in %d\n", time.Since(startTime))
 
 	return nil
 }

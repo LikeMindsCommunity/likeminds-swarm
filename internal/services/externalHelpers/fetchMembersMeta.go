@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 // SDKClientInfo | defines sdk client info object schema
@@ -26,6 +27,7 @@ type MemberMeta struct {
 	IsGuest         bool          `json:"is_guest"`
 	CustomTitle     string        `json:"custom_title"`
 	SDKClientInfo   SDKClientInfo `json:"sdk_client_info"`
+	IsDeleted       bool          `json:"is_deleted"`
 	QuestionAnswers []interface{} `json:"question_answers"`
 }
 
@@ -37,9 +39,12 @@ type MemberMetaResponse struct {
 
 // FetchMemberMeta | fetch member meta for sent id
 func FetchMemberMeta(memberIds []string, userId string, communityId int) (bool, *MemberMetaResponse) {
+
+	// Call API with Api Version
 	headers := gin.H{
-		"Content-Type": "application/json",
-		"x-member-id":  userId,
+		utils.HeadersMemberId:   userId,
+		utils.HeadersSdkSource:  utils.SdkSourceFeed,
+		utils.HeadersApiVersion: utils.FetchMembersMetaApiVersion,
 	}
 
 	paramMemberIds, _ := json.Marshal(memberIds)

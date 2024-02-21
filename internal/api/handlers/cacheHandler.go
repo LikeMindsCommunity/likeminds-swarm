@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
@@ -41,6 +42,8 @@ func (handlers *FeedHandlers) DeleteCache(c *gin.Context) {
 		utils.GeneralAPIInternalError(c, "Send either cache key or key pattern!")
 		return
 	}
+
+	logging.Info("Successfully deleted cache key: ", dcr.CacheKey)
 
 	utils.GenereateSuccessResponse(c, nil)
 }
