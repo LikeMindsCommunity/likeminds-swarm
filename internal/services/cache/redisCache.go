@@ -81,6 +81,12 @@ func (cacheHelper *cacheHelper) IncrWithExpiry(key string, expiration time.Durat
 	return count, err
 }
 
+// Get | get the keys value from cache storage having the pattern
+func (cacheHelper *cacheHelper) GetKeysFromPattern(pattern string) *redis.StringSliceCmd {
+	stringSliceCMD := cacheHelper.redisClient.Keys(pattern)
+	return stringSliceCMD
+}
+
 // Structure for ElasticSearch Helper
 type cacheHelper struct {
 	redisClient *redis.Client

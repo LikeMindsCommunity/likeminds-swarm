@@ -1074,3 +1074,188 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 		handlers.activityHelper.WarmupUserActivityFeedCache(activity[0].CommunityID, activity[0].ActionOn)
 	}
 }
+
+// Internal Method to get top n comments against posts based on sorting key, sort order
+func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}, communityId int) (map[string]interface{}, []string, error) {
+	postsTopComments := map[string]interface{}{}
+	commentsFilterData := []map[string]interface{}{}
+	allCommentsIds := []string{}
+
+	// Add match logic
+	commentsFilterData = append(commentsFilterData, gin.H{
+		"$match": gin.H{
+			"$and": []gin.H{
+				{
+					"post_id": gin.H{
+						"$in": postIds,
+					},
+				},
+				{
+					"replies": gin.H{
+						"$eq": []interface{}{},
+					},
+				},
+			},
+		},
+	})
+
+	// Add lookup logic
+	commentsFilterData = append(commentsFilterData, gin.H{
+		"$lookup": gin.H{
+			"from": "like",
+			"let": gin.H{
+				"commentId": "$_id",
+			},
+			"pipeline": []gin.H{
+				{
+					"$match": gin.H{
+						"$expr": gin.H{
+							"$eq": []string{"$entity_id", "$$commentId"},
+						},
+						"is_deleted": false,
+					},
+				},
+			},
+			"as": "likes_data",
+		},
+	})
+
+	commentsFilterData = append(commentsFilterData, gin.H{
+		"$project": gin.H{
+			"post_id":    1,
+			"comment_id": "$_id",
+			"created_at": 1,
+			"updated_at": 1,
+			"likes_count": gin.H{
+				"$size": "$likes_data",
+			},
+		},
+	})
+
+	// Add sort logic
+	commentsFilterData = append(commentsFilterData, gin.H{
+		"$sort": gin.H{
+			"likes_count": sortOrder,
+			"updated_at":  -1,
+		},
+	})
+
+	// Add group logic
+	commentsFilterData = append(commentsFilterData, gin.H{
+		"$group": gin.H{
+			"_id": "$post_id",
+			"filtered_comments": gin.H{
+				"$push": "$$ROOT",
+			},
+		},
+	})
+
+	// Add project logic
+	commentsFilterData = append(commentsFilterData, gin.H{
+		"$project": gin.H{
+			"_id": 1,
+			"top_comments": gin.H{
+				"$slice": []interface{}{"$filtered_comments", commentsCount},
+			},
+		},
+	})
+
+	// fetch post using helper method
+	commentResults, err := handlers.commentHelper.AggregateTopCommentsHelper(commentsFilterData)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, commentResult := range commentResults {
+		var topCommentsList []string
+
+		for _, topComment := range commentResult.TopComments {
+			topCommentsList = append(topCommentsList, topComment.CommentID.Hex())
+			allCommentsIds = append(allCommentsIds, topComment.CommentID.Hex())
+		}
+
+		postsTopComments[commentResult.PostID.Hex()] = topCommentsList
+	}
+
+	// Save data in cache
+	for _, postId := range postIds {
+		var likedCommentsCacheData []byte
+		topCommentsData, ok := postsTopComments[postId.Hex()]
+
+		if ok {
+			likedCommentsCacheData, _ = json.Marshal(topCommentsData)
+		}
+
+		if likedCommentsCacheData == nil {
+			likedCommentsCacheData, _ = json.Marshal([]string{})
+		}
+
+		handlers.cacheHelper.Set(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId.Hex()), likedCommentsCacheData, 0)
+	}
+
+	return postsTopComments, allCommentsIds, nil
+}
+
+// Get top liked comments against posts from cache
+func getTopCommentsAgainstPostsOnLikesFromCache(handlers *FeedHandlers, postIds []primitive.ObjectID, communityId int) (map[string]interface{}, []string, bool, error) {
+	postsTopComments := map[string]interface{}{}
+	allCommentsIds := []string{}
+
+	for _, postId := range postIds {
+		var topCommentsList []string
+
+		postTopComments := handlers.cacheHelper.Get(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId.Hex()))
+
+		if postTopComments.Val() == "" {
+			return nil, nil, false, nil
+		}
+
+		topCommentsBytes, err := postTopComments.Bytes()
+
+		if err != nil {
+			return nil, nil, false, err
+		}
+
+		json.Unmarshal(topCommentsBytes, &topCommentsList)
+
+		postsTopComments[postId.Hex()] = topCommentsList
+		allCommentsIds = append(allCommentsIds, topCommentsList...)
+	}
+
+	return postsTopComments, allCommentsIds, true, nil
+}
+
+func getTopCommentsAgainstPostsSortOnLikes(handlers *FeedHandlers, postsResponse []requests.PostResponse,
+	userId string, isUserCM bool, communityId int, commentSortOrderVal int, commentCount int,
+	versionCode string, platformCode string, apiRevampV1Check bool) ([]requests.PostResponse, map[string]requests.FetchCommentsResponse, error) {
+	var updatedPostsWithComments []requests.PostResponse
+	var postIds []primitive.ObjectID
+
+	for _, postData := range postsResponse {
+		postIds = append(postIds, postData.ID)
+	}
+
+	topCommentsAgainstPostsData, allCommentIds, allPostsFetched, err := getTopCommentsAgainstPostsOnLikesFromCache(handlers, postIds, communityId)
+
+	if !allPostsFetched {
+		topCommentsAgainstPostsData, allCommentIds, err = getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount, communityId)
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, postData := range postsResponse {
+		postDataAddress := &postData
+		commentsData, _ := topCommentsAgainstPostsData[postData.ID.Hex()].([]string)
+
+		(*postDataAddress).CommentIDs = commentsData
+		updatedPostsWithComments = append(updatedPostsWithComments, *postDataAddress)
+	}
+
+	filtered_comments, _ := fetchMultipleCommentsData(handlers, allCommentIds, communityId, userId, isUserCM,
+		versionCode, platformCode, apiRevampV1Check)
+
+	return updatedPostsWithComments, filtered_comments, nil
+}

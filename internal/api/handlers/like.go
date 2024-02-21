@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -423,6 +425,9 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 			}
 		}
 	}
+
+	// Delete top liked comments data in post from cache
+	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, community_id, post_id))
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
