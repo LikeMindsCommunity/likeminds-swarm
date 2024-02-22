@@ -817,6 +817,5 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	}
 
 	// return final response
-	// c.JSON(http.StatusOK, finalResponse)
 	utils.GenereateSuccessResponse(c, finalResponse)
 }
