@@ -1453,7 +1453,7 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 
 	postRequest.Text = strings.Trim(postRequest.Text, " ")
 
-	if postRequest.Text == "" && len(postRequest.Attachments) == 0 {
+	if postRequest.Text == "" && postRequest.Heading == "" && len(postRequest.Attachments) == 0 {
 		return nil, fmt.Errorf("can't create post without content")
 	}
 
