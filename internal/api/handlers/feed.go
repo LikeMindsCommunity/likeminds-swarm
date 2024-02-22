@@ -773,3 +773,49 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
 }
+
+// Exposed Method to fetch user feed meta
+func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
+	// fetch url params and headers
+	userId := c.Param("user_id")
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// post filter data
+	postFilterData := gin.H{
+		"user_id":      userId,
+		"is_deleted":   false,
+		"community_id": communityId,
+	}
+
+	// fetch posts count using helper method
+	postsCount, err := handlers.postHelper.CountPostHelper(postFilterData)
+
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// comment filter data
+	commentFilterData := gin.H{
+		"user_id":      userId,
+		"is_deleted":   false,
+		"community_id": communityId,
+	}
+
+	commentsCount, err := handlers.commentHelper.CountCommentHelper(commentFilterData)
+
+	// response data
+	finalResponse := gin.H{
+		"posts_count":    postsCount,
+		"comments_count": commentsCount,
+		"success":        true,
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, finalResponse)
+}
