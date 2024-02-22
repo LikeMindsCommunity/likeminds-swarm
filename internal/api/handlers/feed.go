@@ -57,7 +57,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	var universalFeedRequest requests.FetchUniversalFeedRequest
 	var commentSortOrderVal int
-	filtered_comments := map[string]requests.FetchCommentsResponse{}
+	filtered_comments := map[string]requests.CommentWithParentResponse{}
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	versionCode := headers[utils.HeadersAcceptVersion]
