@@ -647,6 +647,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		response["comment"] = fetchCommentResponse
 	}
 
+	// Delete top liked comments data in post from cache
+	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId))
+
 	// return final response
 	c.JSON(http.StatusOK, response)
 }
