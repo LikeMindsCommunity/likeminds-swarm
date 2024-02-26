@@ -991,6 +991,79 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	})
 }
 
+// Exposed Method to fetch comment by comment_id
+func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	userId := c.Param("user_id")
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
+	if paramIsCm == "true" {
+		isCm = true
+	}
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	commentFilterData := map[string]any{
+		"user_id":      userId,
+		"community_id": communityId,
+		"is_deleted":   false,
+	}
+
+	// filter options
+	commentFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch comments using helper method
+	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, commentFilterOptions)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	fetchCommentsResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, headers[utils.HeadersMemberId],
+		isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, handlers.cacheHelper)
+
+	// Fetch post ids
+	var postIds []string
+	postIdsDataMap := map[string]requests.PostResponse{}
+
+	for _, commentResponse := range fetchCommentsResponse {
+
+		if _, ok := postIdsDataMap[commentResponse.PostId.Hex()]; !ok {
+			postIds = append(postIds, commentResponse.PostId.Hex())
+			postIdsDataMap[commentResponse.PostId.Hex()] = requests.PostResponse{}
+		}
+	}
+
+	postIdsDataMap, err = fetchMultiplePostsData(handlers, postIds, communityId, userId, isCm, headers[utils.HeadersVersionCode],
+		headers[utils.HeadersPlatformCode], apiRevampV1Check)
+
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// return final response
+	finalResponse := gin.H{
+		"success":  true,
+		"comments": fetchCommentsResponse,
+		"posts":    postIdsDataMap,
+	}
+
+	utils.GenereateSuccessResponse(c, finalResponse)
+}
+
 func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Post, c *gin.Context, headers map[string]string) {
 
 	activityFilterData := gin.H{
