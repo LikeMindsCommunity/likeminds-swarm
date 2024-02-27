@@ -595,7 +595,9 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 	return nil, nil
 }
 
-func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post, headers map[string]string) {
+func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post,
+	headers map[string]string, ctaData gin.H) {
+
 	postCommentActivity, err := fetchActivity(handlers.activityHelper, activityID.(primitive.ObjectID).Hex())
 	if err != nil {
 		return
@@ -607,12 +609,6 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 	// if previousCommentUsers = [], no need to create activity
 	if len(previousCommentUsers) == 0 {
 		return
-	}
-
-	// cta data for also commented activity
-	ctaData := gin.H{
-		"entity_type": constants.CommentEntityType,
-		"post_id":     postData.ID.Hex(),
 	}
 
 	for _, previousCommentUser := range previousCommentUsers {
