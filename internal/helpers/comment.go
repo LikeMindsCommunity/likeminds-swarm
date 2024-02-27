@@ -2,9 +2,11 @@ package helpers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/response"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -72,6 +74,19 @@ func (helper *commentHelper) CountCommentHelper(filter map[string]interface{}) (
 	count, err := helper.commentRepository.Count(filter)
 
 	return count, err
+}
+
+// Exposed Helper Method to perform Aggregation on Comments
+func (helper *commentHelper) AggregateTopCommentsHelper(query []map[string]interface{}) ([]response.TopCommentsAggregationQueryResponse, error) {
+	results, err := helper.commentRepository.Aggregate(query)
+
+	var commentResultsList []response.TopCommentsAggregationQueryResponse
+
+	if err = results.All(context.TODO(), &commentResultsList); err != nil {
+		return nil, fmt.Errorf("Error in conversion!")
+	}
+
+	return commentResultsList, err
 }
 
 // Structure for Comment Helper

@@ -26,6 +26,11 @@ func (repository *commentRepository) Count(filter map[string]interface{}) (int64
 	return _countDocumentsInDB(repository.db, CommentCollection, filter)
 }
 
+// Exposed Helper Method to perform Aggregration on Comment
+func (repository *commentRepository) Aggregate(query []map[string]interface{}) (*mongo.Cursor, error) {
+	return _aggregateDocumentsInDBReturnCursor(repository.db, CommentCollection, query)
+}
+
 // Structure for Comment Repository
 type commentRepository struct {
 	db *mongo.Database

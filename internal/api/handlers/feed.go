@@ -56,8 +56,12 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
 	var universalFeedRequest requests.FetchUniversalFeedRequest
+	var commentSortOrderVal int
+	filtered_comments := map[string]requests.CommentWithParentResponse{}
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	versionCode := headers[utils.HeadersAcceptVersion]
+	platformCode := headers[utils.HeadersPlatformCode]
 
 	err := c.BindQuery(&universalFeedRequest)
 	if err != nil {
@@ -83,6 +87,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
+
+	userId := headers[utils.HeadersMemberId]
 
 	// pinned posts filter data
 	pinnedPostFilterData := getUniversalFeedPostFilter(communityId, true)
@@ -180,6 +186,30 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+
+	// Get community configurations
+	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
+
+	if universalFeedConfig.CommentSortOrder == enums.DescendingSortOrder {
+		commentSortOrderVal = -1
+	} else {
+		commentSortOrderVal = 1
+	}
+
+	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
+		var updatedPostsWithComments []requests.PostResponse
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts, userId, universalFeedRequest.IsCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check)
+
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		finalParsedResponse["posts"] = updatedPostsWithComments
+
+	}
+
+	finalParsedResponse["filtered_comments"] = filtered_comments
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -742,4 +772,50 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
+}
+
+// Exposed Method to fetch user feed meta
+func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
+	// fetch url params and headers
+	userId := c.Param("user_id")
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// post filter data
+	postFilterData := gin.H{
+		"user_id":      userId,
+		"is_deleted":   false,
+		"community_id": communityId,
+	}
+
+	// fetch posts count using helper method
+	postsCount, err := handlers.postHelper.CountPostHelper(postFilterData)
+
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// comment filter data
+	commentFilterData := gin.H{
+		"user_id":      userId,
+		"is_deleted":   false,
+		"community_id": communityId,
+	}
+
+	commentsCount, err := handlers.commentHelper.CountCommentHelper(commentFilterData)
+
+	// response data
+	finalResponse := gin.H{
+		"posts_count":    postsCount,
+		"comments_count": commentsCount,
+		"success":        true,
+	}
+
+	// return final response
+	utils.GenereateSuccessResponse(c, finalResponse)
 }
