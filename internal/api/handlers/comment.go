@@ -1078,11 +1078,9 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 	}
 }
 
-// Internal Method to get top n comments against posts based on sorting key, sort order
-func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}, communityId int) (map[string]interface{}, []string, error) {
-	postsTopComments := map[string]interface{}{}
+// Internal method to create mongo query to get top comments based on likes
+func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}) []map[string]interface{} {
 	commentsFilterData := []map[string]interface{}{}
-	allCommentsIds := []string{}
 
 	// Add match logic
 	commentsFilterData = append(commentsFilterData, gin.H{
@@ -1162,6 +1160,16 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 			},
 		},
 	})
+
+	return commentsFilterData
+}
+
+// Internal Method to get top n comments against posts based on sorting key, sort order
+func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}, communityId int) (map[string]interface{}, []string, error) {
+	postsTopComments := map[string]interface{}{}
+	allCommentsIds := []string{}
+
+	commentsFilterData := createTopCommentsBasedOnLikesQuery(postIds, sortOrder, commentsCount)
 
 	// fetch post using helper method
 	commentResults, err := handlers.commentHelper.AggregateTopCommentsHelper(commentsFilterData)
