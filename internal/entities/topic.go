@@ -8,18 +8,19 @@ import (
 
 // Structure for Topic
 type Topic struct {
-	ID           primitive.ObjectID   `json:"_id" bson:"_id,omitempty"`
-	Name         string               `json:"name" bson:"name"`
-	IsEnabled    bool                 `json:"is_enabled" bson:"is_enabled"`
-	CommunityId  int                  `json:"community_id" bson:"community_id"`
-	Priority     float32              `json:"priority" bson:"priority"`
-	IsSearchable bool                 `json:"is_searchable" bson:"is_searchable"`
-	ParentId     primitive.ObjectID   `json:"parent_id" bson:"parent_id"`
-	ParentName   string               `json:"parent_name" bson:"parent_name"`
-	AllParentIds []primitive.ObjectID `json:"all_parent_ids" bson:"all_parent_ids"`
-	Level        int                  `json:"level" bson:"level"`
-	CreatedAt    time.Time            `json:"created_at" bson:"created_at"`
-	UpdatedAt    time.Time            `json:"updated_at" bson:"updated_at"`
+	ID              primitive.ObjectID   `json:"_id" bson:"_id,omitempty"`
+	Name            string               `json:"name" bson:"name"`
+	IsEnabled       bool                 `json:"is_enabled" bson:"is_enabled"`
+	CommunityId     int                  `json:"community_id" bson:"community_id"`
+	Priority        float32              `json:"priority" bson:"priority"`
+	IsSearchable    bool                 `json:"is_searchable" bson:"is_searchable"`
+	ParentId        primitive.ObjectID   `json:"parent_id" bson:"parent_id"`
+	ParentName      string               `json:"parent_name" bson:"parent_name"`
+	AllParentIds    []primitive.ObjectID `json:"all_parent_ids" bson:"all_parent_ids"`
+	TotalChildCount int                  `json:"total_child_count" bson:"total_child_count"`
+	Level           int                  `json:"level" bson:"level"`
+	CreatedAt       time.Time            `json:"created_at" bson:"created_at"`
+	UpdatedAt       time.Time            `json:"updated_at" bson:"updated_at"`
 }
 
 // Exposed Method to Create a New Topic Instance
