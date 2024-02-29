@@ -108,3 +108,15 @@ func (processor *RedisTaskProcessor) triggerCommentTaggedWebhook(ctx context.Con
 
 	return handlers.TriggerCommentTaggedWebhook(processor.feedHandlers, payload.ApiKey, payload.CommentId, payload.UserIds)
 }
+
+// Task to create, update or delete post topics records
+func (processor *RedisTaskProcessor) triggerModifyTopicsDataAgainstPosts(ctx context.Context, task *asynq.Task) error {
+
+	payload := worker.PayloadModifyTopicsAgainstPost{}
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return handlers.CreateOrUpdatePostTopics(processor.feedHandlers, payload.PostID, payload.DeleteAllExisting,
+		payload.RecreatePostTopics)
+}

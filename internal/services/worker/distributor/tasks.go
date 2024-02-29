@@ -219,3 +219,32 @@ func (distributor *RedisTaskDistributor) TriggerCommentTaggedWebhook(commentId s
 
 	return nil
 }
+
+// Task Distributor for "task:TriggerCommentTaggedWebhook"
+func (distributor *RedisTaskDistributor) TriggerPostBackgroundTasks(postId string, taskType string, deleteAllExisting bool,
+	recreatePostTopics bool, opts ...asynq.Option) error {
+
+	if postId == "" {
+		return fmt.Errorf("Missing Post ID!")
+	}
+
+	if taskType == enums.CreatePostBackgroundTasks {
+		payload := worker.PayloadModifyTopicsAgainstPost{
+			PostID:             postId,
+			DeleteAllExisting:  deleteAllExisting,
+			RecreatePostTopics: recreatePostTopics,
+		}
+
+		jsonPayload, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("failed to marshal task payload: %w", err)
+		}
+
+		_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerCreatePost, jsonPayload, opts...)
+		if err != nil {
+			return fmt.Errorf("failed to enqueue task %v", err)
+		}
+	}
+
+	return nil
+}

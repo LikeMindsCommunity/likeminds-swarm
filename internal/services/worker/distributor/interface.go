@@ -15,4 +15,5 @@ type FeedTaskDistributor interface {
 	TriggerCommentAddedWebhook(commentId string, apiKey string, opts ...asynq.Option) error
 	TriggerCommentReactWebhook(commentId string, userId string, apiKey string, opts ...asynq.Option) error
 	TriggerCommentTaggedWebhook(commentId string, userIds []string, apiKey string, opts ...asynq.Option) error
+	TriggerPostBackgroundTasks(postId string, taskType string, deleteAllExisting bool, recreatePostTopics bool, opts ...asynq.Option) error
 }

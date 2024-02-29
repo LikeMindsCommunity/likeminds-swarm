@@ -25,6 +25,7 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.HandleFunc(worker.TaskTriggerCommentAddedWebhook, processor.triggerCommentAddedWebhook)
 	mux.HandleFunc(worker.TaskTriggerCommentReactWebhook, processor.triggerCommentReactWebhook)
 	mux.HandleFunc(worker.TaskTriggerCommentTaggedWebhook, processor.triggerCommentTaggedWebhook)
+	mux.HandleFunc(worker.TaskTriggerCreatePost, processor.triggerModifyTopicsDataAgainstPosts)
 
 	return processor.server.Run(mux)
 }

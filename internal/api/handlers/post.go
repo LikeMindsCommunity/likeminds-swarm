@@ -1567,6 +1567,16 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// Add the post topics data in PostTopics collection
+	if postData.TopicIds != nil {
+		// Trigger post background tasks
+		err = handlers.taskDistributor.TriggerPostBackgroundTasks(postData.ID.Hex(),
+			enums.CreatePostBackgroundTasks, false, true)
+		if err != nil {
+			logging.Error("Error triggering comment tagged webhook", err)
+		}
+	}
+
 	// if custom creation timestamp is not used, create activities and send notifications
 	if !(createPostRequest.CreatedAt > 0 && float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
 		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
@@ -1904,6 +1914,16 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
+	// Update the post topics data
+	if postData.TopicIds != nil {
+		// Trigger post background tasks
+		err = handlers.taskDistributor.TriggerPostBackgroundTasks(postData.ID.Hex(),
+			enums.CreatePostBackgroundTasks, true, true)
+		if err != nil {
+			logging.Error("Error triggering comment tagged webhook", err)
+		}
+	}
+
 	// update post data in elastic search
 	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
@@ -2052,6 +2072,14 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
+		}
+
+		// Delete post topics data
+		// Trigger post background tasks
+		err = handlers.taskDistributor.TriggerPostBackgroundTasks(postData.ID.Hex(),
+			enums.CreatePostBackgroundTasks, true, false)
+		if err != nil {
+			logging.Error("Error triggering comment tagged webhook", err)
 		}
 	}
 
@@ -2504,4 +2532,49 @@ func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityI
 
 	handlers.cacheHelper.LRem(communityPostPinnedKey, 0, postID)
 	handlers.cacheHelper.Del(fmt.Sprintf("post_{}", postID))
+}
+
+// Create or update new post topics in PostTopics collection
+func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllExisting bool, recreatePostTopics bool) error {
+
+	if postId == "" {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	postObjectId, err := primitive.ObjectIDFromHex(postId)
+
+	if err != nil {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	if deleteAllExisting {
+		filter := gin.H{
+			"post_id": postObjectId,
+		}
+
+		if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
+			logging.Error("Error in deleting Post Topics")
+			return nil
+		}
+	}
+
+	postResults, err := handlers.postHelper.FindPostHelper(gin.H{"_id": postObjectId}, gin.H{})
+
+	if err != nil {
+		logging.Error("Error in fetching posts")
+		return nil
+	}
+
+	originalPost := postResults[0]
+
+	if len(originalPost.TopicIds) > 0 && recreatePostTopics {
+		var postTopicsMap = map[primitive.ObjectID][]primitive.ObjectID{
+			postObjectId: originalPost.TopicIds,
+		}
+		return handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(postTopicsMap, originalPost.CommunityId)
+	}
+
+	return nil
 }
