@@ -17,7 +17,7 @@ type WebhookPayload struct {
 // Webhook post payload structure
 type WebhookPostPayload struct {
 	Post        requests.PostResponse              `json:"post"`
-	Topics      map[string]requests.TopicResponse  `json:"topics"`
+	Topics      map[string]TopicResponse           `json:"topics"`
 	Widgets     map[string]requests.WidgetResponse `json:"widgets"`
 	PostCreator externalHelpers.MemberMeta         `json:"post_creator"`
 }

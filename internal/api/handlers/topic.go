@@ -8,7 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -21,12 +23,18 @@ import (
 )
 
 // Internal Method to parse topic for response
-func parseTopicResponse(topic *entities.Topic) requests.TopicResponse {
-	var response requests.TopicResponse
+func parseTopicResponse(topic *entities.Topic) responses.TopicResponse {
+	var response responses.TopicResponse
 
 	response.ID = topic.ID
 	response.Name = topic.Name
 	response.IsEnabled = topic.IsEnabled
+	response.Priority = topic.Priority
+	response.IsSearchable = topic.IsSearchable
+	response.ParentId = topic.ParentId
+	response.ParentName = topic.ParentName
+	response.Level = topic.Level
+	response.WidgetId = topic.WidgetId
 
 	return response
 }
@@ -54,8 +62,8 @@ func fetchTopicByID(helper interfaces.TopicHelper, topicId string, communityId i
 }
 
 // Internal Method to fetch topics using topic_ids and community_id
-func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int,
-	filterEnabled bool) ([]entities.Topic, error) {
+func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int, filterEnabled bool) ([]entities.Topic, error) {
+
 	// topic filter data
 	topicsFilterData := gin.H{
 		"_id": gin.H{
@@ -77,8 +85,183 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 	return topicResults, nil
 }
 
+// validate and update create topics request with default values
+func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, createTopicsRequest requests.CreateTopicsRequest, communityId int) ([]requests.CreateTopicRequest, error) {
+
+	// throw error if Names or Topics are empty
+	if len(createTopicsRequest.Names) == 0 || len(createTopicsRequest.Topics) == 0 {
+		return nil, fmt.Errorf("send names or topics to create new topics")
+	}
+
+	// Update Topics array with names if names are sent instead of topics meta
+	if len(createTopicsRequest.Names) > 0 && len(createTopicsRequest.Topics) == 0 {
+		createTopicsRequest.Topics = make([]requests.CreateTopicRequest, len(createTopicsRequest.Names))
+
+		for i, name := range createTopicsRequest.Names {
+			createTopicsRequest.Topics[i].Name = name
+		}
+
+	}
+
+	topicNames, parentIds := make([]string, len(createTopicsRequest.Topics)), []primitive.ObjectID{}
+
+	for i, topic := range createTopicsRequest.Topics {
+
+		// validate and update topic name
+		createTopicsRequest.Topics[i].Name = strings.Trim(topic.Name, " ")
+		if createTopicsRequest.Topics[i].Name == "" {
+			return nil, fmt.Errorf("can't Create Topic With Empty Name")
+		}
+
+		topicNames[i] = createTopicsRequest.Topics[i].Name
+
+		// get parent_id from the topic and convert it to ObjectID
+		if topic.ParentId != "" {
+			parentId, err := primitive.ObjectIDFromHex(topic.ParentId)
+			if err != nil {
+				return nil, fmt.Errorf("invalid Parent ID")
+			}
+
+			parentIds = append(parentIds, parentId)
+		}
+	}
+
+	// Check if any duplicate topic names are sent
+	duplicates := utils.GetDuplicatesFromSlice(topicNames)
+	if len(duplicates) > 0 {
+		return nil, fmt.Errorf(fmt.Sprintf("Duplicate Topic Names Sent: %v", duplicates))
+	}
+
+	// fetch and validate parent topics
+	parentTopics, err := fetchTopicsByIDs(topicHelper, parentIds, communityId, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(parentTopics) != len(parentIds) {
+		return nil, fmt.Errorf("invalid Parent topic ID/s Sent")
+	}
+
+	// update topics with default and parent data
+	for i, topic := range createTopicsRequest.Topics {
+
+		// set is_searchable to true if not sent
+		if topic.IsSearchable == nil {
+			ok := true
+			createTopicsRequest.Topics[i].IsSearchable = &ok
+		}
+
+		// set is_enabled to true if not sent
+		if topic.IsEnabled == nil {
+			ok := true
+			createTopicsRequest.Topics[i].IsSearchable = &ok
+		}
+
+		// update parent meta for topic
+		if createTopicsRequest.Topics[i].ParentId != "" {
+			createTopicsRequest.Topics[i].ParentName = parentTopics[i].Name
+			createTopicsRequest.Topics[i].Level = parentTopics[i].Level + 1
+			createTopicsRequest.Topics[i].AllParentIds = append(parentTopics[i].AllParentIds, parentTopics[i].ID) //TODO: Confirm if topic does not hvae all parentIds
+		}
+	}
+
+	// check if the topics already exists with the same parent
+	var conditions []bson.M
+
+	for _, topic := range createTopicsRequest.Topics {
+
+		// Convert parent_id to ObjectID
+		parentId, err := primitive.ObjectIDFromHex(topic.ParentId) // TODO: check if parent_id is null or not
+		if err != nil {
+			return nil, fmt.Errorf("invalid Parent ID")
+		}
+
+		condition := bson.M{
+			"$and": bson.A{
+				bson.M{"$toLower": "$name", "$eq": strings.ToLower(topic.Name)},
+				bson.M{"parent_id": parentId},
+			},
+		}
+		conditions = append(conditions, condition)
+	}
+
+	filter := gin.H{
+		"$or":          conditions,
+		"community_id": communityId,
+	}
+
+	// find if any existing topics exists
+	existingTopics, err := topicHelper.FindTopicHelper(filter, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// send error if the topic already exists
+	if len(existingTopics) > 0 {
+		return nil, fmt.Errorf(fmt.Sprintf("Topic %v already exists with Parent %v", existingTopics[0].Name, existingTopics[0].ParentName))
+	}
+
+	return createTopicsRequest.Topics, nil
+}
+
+// internal method to create topics after validation
+func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []requests.CreateTopicRequest, communityId int) ([]entities.Topic, error) {
+
+	// create topics using the helper method
+	topicIds, err := handlers.topicHelper.CreateManyTopicsHelper(topicsRequest, communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch newly created topic objects from db using IDs
+	topicsData, err := fetchTopicsByIDs(handlers.topicHelper, topicIds, communityId, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create Topic widget metadata if exists
+	for i, topicRequest := range topicsRequest {
+
+		if topicRequest.Metadata != nil {
+
+			// create widget from given metadata
+			widgetData, err := createWidget(handlers, false, topicsData[i].ID.Hex(), enums.WidgetParentEntityTypeTopic, topicRequest.Metadata, nil, communityId)
+			if err != nil {
+				return nil, err
+			}
+
+			setData := gin.H{
+				"widget_id": widgetData.ID,
+			}
+
+			// update topic with widget_id
+			err = handlers.topicHelper.UpdateTopicByIdHelper(topicsData[i].ID, setData, false)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	topicsIndexData := make(map[string]interface{})
+
+	// parse the topics data for ES indexing and API response
+	for _, topicData := range topicsData {
+		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(handlers.postHelper, &topicData, false)
+
+	}
+
+	// index topics data in elastic search
+	err = handlers.esHelper.InsertManyDocuments(topicsIndexData, constants.TopicIndexName)
+	if err != nil {
+		logging.Error(err.Error())
+	}
+
+	return topicsData, nil
+}
+
 // Exposed Method to Create Topics
 func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -92,127 +275,41 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 		return
 	}
 
-	// throw error if Names key is empty
-	if len(createTopicsRequest.Names) == 0 {
-		utils.GeneralAPIValidationError(c, "Send topic names to create new topics")
-		return
-	}
-
-	// parses the topic names from request and creates corresponding list
-	topicsList, lowerCaseTopicsList, err := parseAndValidateTopicsRequest(createTopicsRequest.Names)
+	// validate create topics request
+	topicsRequest, err := validateAndUpdateCreateTopicsRequest(handlers.topicHelper, createTopicsRequest, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// filter to find existing topics with same name
-	filter := gin.H{
-		"$expr": bson.M{
-			"$in": bson.A{
-				bson.M{
-					"$toLower": "$name",
-				},
-				lowerCaseTopicsList,
-			},
-		},
-		"community_id": communityId,
-	}
-
-	// find the existing topics with same name as in the request
-	existingTopics, err := handlers.topicHelper.FindTopicHelper(filter, gin.H{})
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// send error if the topic already exists
-	if len(existingTopics) > 0 {
-		utils.GeneralAPIValidationError(c, fmt.Sprintf(`Topic %q already exists.`, existingTopics[0].Name))
-		return
-	}
-
-	// create topics using the helper method
-	topicIds, err := handlers.topicHelper.CreateManyTopicsHelper(topicsList, true, communityId)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// convert topic_ids to object ids
-	objectTopicIds := helpers.TypecastIdsToObjectIds(topicIds)
-
-	// fetch newly created topic objects from db using IDs
-	topicsData, err := fetchTopicsByIDs(handlers.topicHelper, objectTopicIds, communityId, false)
+	// create topics using the validated request
+	topicsData, err := createTopicsAfterValidation(handlers, topicsRequest, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	topicsIndexData := make(map[string]interface{})
-	var topicsResponse []requests.TopicResponse
+	// parse the topics data for API response
+	topicsResponse := []responses.TopicResponse{}
 
-	// parse the topics data for ES indexing and API response
-	for _, topicData := range topicsData {
-		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(handlers.postHelper, &topicData, false)
-		topicsResponse = append(topicsResponse, parseTopicResponse(&topicData))
+	for _, topicsData := range topicsData {
+		topicsResponse = append(topicsResponse, parseTopicResponse(&topicsData))
 	}
 
-	// insert topics data in elastic search
-	err = handlers.esHelper.InsertManyDocuments(topicsIndexData, constants.TopicIndexName)
-	if err != nil {
-		logging.Error(err.Error())
-	}
-
-	// reponse data
-	response := gin.H{
-		"success": true,
-		"topics":  topicsResponse,
-	}
-
-	// return final response
-	c.JSON(http.StatusOK, response)
+	// generate final response
+	utils.GenerateSuccessResponse(c, gin.H{"topics": topicsResponse})
 }
 
-// parses and validates the create topics request
-func parseAndValidateTopicsRequest(topicNames []string) ([]string, []string, error) {
-	topicsList, lowerCaseTopicsList := []string{}, []string{}
-
-	// strip each name in the names array and check if there are any duplicate topic in the array
-	seen := map[string]bool{}
-
-	for i, name := range topicNames {
-
-		topicNames[i] = strings.Trim(name, " ")
-
-		if topicNames[i] == "" {
-			return nil, nil, fmt.Errorf("Can't Create Topic With Empty Name")
-		}
-
-		lowerCaseTopicName := strings.ToLower(topicNames[i])
-
-		if seen[lowerCaseTopicName] {
-			// Duplicate found
-			return nil, nil, fmt.Errorf("Can't create duplicate topics")
-		}
-
-		lowerCaseTopicsList = append(lowerCaseTopicsList, lowerCaseTopicName)
-		seen[lowerCaseTopicName] = true
-	}
-
-	topicsList = topicNames
-	return topicsList, lowerCaseTopicsList, nil
-}
-
-func processTopicSearchData(handlers *FeedHandlers, data map[string]interface{}) []requests.FetchTopicsResponse {
+func processTopicSearchData(data map[string]interface{}) []responses.FetchTopicsResponse {
 	topicDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
-	fetchTopicsResponse := []requests.FetchTopicsResponse{}
+	fetchTopicsResponse := []responses.FetchTopicsResponse{}
 
 	for _, data := range topicDetails {
 		topicData := data.(map[string]interface{})["_source"].(map[string]interface{})
 		topicData["_id"] = topicData["id"]
 
 		// convert the data to fetch topic response
-		var topic requests.FetchTopicsResponse
+		var topic responses.FetchTopicsResponse
 		b, _ := json.Marshal(topicData)
 		json.Unmarshal(b, &topic)
 
@@ -271,7 +368,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts)
 	response := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
 
-	finalResponse := processTopicSearchData(handlers, response)
+	finalResponse := processTopicSearchData(response)
 
 	// reponse data
 	finalParsedResponse := gin.H{
@@ -329,7 +426,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	// Validation of data change
 	if len(topicUpdateData["$set"].(gin.H)) > 0 {
 		// update topic using the helper method
-		err = handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData)
+		err = handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData, true)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return

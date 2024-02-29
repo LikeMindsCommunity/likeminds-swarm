@@ -17,6 +17,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -860,7 +861,7 @@ func parseFetchMultiplePostResponse(
 
 // Internal Method to parse topics response
 func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
-	communityId int) (map[string]requests.TopicResponse, error) {
+	communityId int) (map[string]responses.TopicResponse, error) {
 
 	// Fetch topics using topic Ids
 	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false)
@@ -868,7 +869,7 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 		return nil, err
 	}
 
-	topicsResponse := map[string]requests.TopicResponse{}
+	topicsResponse := map[string]responses.TopicResponse{}
 
 	// Parse all fetched topics Data
 	for _, topic := range topics {
@@ -990,7 +991,7 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 }
 
 // Internal Method to get topics Data from Posts response
-func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]requests.TopicResponse {
+func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]responses.TopicResponse {
 	topicIds := getTopicIdsFromPosts(response)
 
 	topicsData, _ := parseTopicsResponse(topicHelper, topicIds, communityId)

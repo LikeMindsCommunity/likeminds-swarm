@@ -162,7 +162,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	// Generate success response
-	utils.GenereateSuccessResponse(c, nil)
+	utils.GenerateSuccessResponse(c, nil)
 }
 
 // Exposed method to approve/reject a pending post under review
@@ -243,7 +243,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	}
 
 	// Generate success response
-	utils.GenereateSuccessResponse(c, nil)
+	utils.GenerateSuccessResponse(c, nil)
 
 }
 

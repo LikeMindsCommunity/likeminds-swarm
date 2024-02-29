@@ -5,4 +5,5 @@ const (
 	WidgetParentEntityTypePost    string = "post"
 	WidgetParentEntityTypeMessage string = "message"
 	WidgetParentEntityTypeUser    string = "user"
+	WidgetParentEntityTypeTopic   string = "topic"
 )
