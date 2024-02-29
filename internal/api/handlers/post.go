@@ -1829,7 +1829,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// strip text and check if it is empty
 	editPostRequest.Text = strings.TrimSpace(editPostRequest.Text)
 
-	if editPostRequest.Text == "" && len(editPostRequest.Attachments) == 0 {
+	if editPostRequest.Text == "" && editPostRequest.Heading == "" && len(editPostRequest.Attachments) == 0 {
 		utils.GeneralAPIValidationError(c, "Can't Edit post without content")
 		return
 	}
