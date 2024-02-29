@@ -1569,9 +1569,8 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// Add the post topics data in PostTopics collection
 	if postData.TopicIds != nil {
-		// Trigger post background tasks
-		err = handlers.taskDistributor.TriggerPostBackgroundTasks(postData.ID.Hex(),
-			enums.CreatePostBackgroundTasks, false, true)
+		// Trigger create post background tasks
+		err = handlers.taskDistributor.TriggerCreatePostBackgroundTasks(postData.ID.Hex())
 		if err != nil {
 			logging.Error("Error triggering comment tagged webhook", err)
 		}
@@ -1916,9 +1915,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// Update the post topics data
 	if postData.TopicIds != nil {
-		// Trigger post background tasks
-		err = handlers.taskDistributor.TriggerPostBackgroundTasks(postData.ID.Hex(),
-			enums.CreatePostBackgroundTasks, true, true)
+		// Trigger edit post background tasks
+		err = handlers.taskDistributor.TriggerEditPostBackgroundTasks(postData.ID.Hex())
 		if err != nil {
 			logging.Error("Error triggering comment tagged webhook", err)
 		}
@@ -2075,9 +2073,8 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		}
 
 		// Delete post topics data
-		// Trigger post background tasks
-		err = handlers.taskDistributor.TriggerPostBackgroundTasks(postData.ID.Hex(),
-			enums.CreatePostBackgroundTasks, true, false)
+		// Trigger delete post background tasks
+		err = handlers.taskDistributor.TriggerDeletePostBackgroundTasks(postData.ID.Hex())
 		if err != nil {
 			logging.Error("Error triggering comment tagged webhook", err)
 		}
@@ -2534,8 +2531,8 @@ func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityI
 	handlers.cacheHelper.Del(fmt.Sprintf("post_{}", postID))
 }
 
-// Create or update new post topics in PostTopics collection
-func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllExisting bool, recreatePostTopics bool) error {
+// Create new post topics in PostTopics collection
+func CreatePostTopics(handlers *FeedHandlers, postId string) error {
 
 	if postId == "" {
 		logging.Error("Invalid post ID!")
@@ -2549,15 +2546,62 @@ func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllEx
 		return nil
 	}
 
-	if deleteAllExisting {
-		filter := gin.H{
-			"post_id": postObjectId,
+	postResults, err := handlers.postHelper.FindPostHelper(gin.H{"_id": postObjectId}, gin.H{})
+
+	if err != nil {
+		logging.Error("Error in fetching posts")
+		return nil
+	}
+
+	originalPost := postResults[0]
+
+	if len(originalPost.TopicIds) > 0 {
+		// Fetch topics
+		topicResults, err := handlers.topicHelper.FindTopicHelper(gin.H{"_id": gin.H{"$in": originalPost.TopicIds}}, gin.H{})
+		if err != nil {
+			return err
 		}
 
-		if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
-			logging.Error("Error in deleting Post Topics")
-			return nil
+		var allTopicIds []primitive.ObjectID
+
+		for _, topicResult := range topicResults {
+			allTopicIds = append(allTopicIds, topicResult.AllParentIds...)
+			allTopicIds = append(allTopicIds, topicResult.ID)
 		}
+
+		if len(allTopicIds) > 0 {
+			var postTopicsMap = map[primitive.ObjectID][]primitive.ObjectID{
+				postObjectId: allTopicIds,
+			}
+			return handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(postTopicsMap, originalPost.CommunityId)
+		}
+	}
+
+	return nil
+}
+
+// Edit post topics in PostTopics collection
+func EditPostTopics(handlers *FeedHandlers, postId string) error {
+
+	if postId == "" {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	postObjectId, err := primitive.ObjectIDFromHex(postId)
+
+	if err != nil {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	filter := gin.H{
+		"post_id": postObjectId,
+	}
+
+	if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
+		logging.Error("Error in deleting Post Topics")
+		return nil
 	}
 
 	postResults, err := handlers.postHelper.FindPostHelper(gin.H{"_id": postObjectId}, gin.H{})
@@ -2569,11 +2613,53 @@ func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllEx
 
 	originalPost := postResults[0]
 
-	if len(originalPost.TopicIds) > 0 && recreatePostTopics {
-		var postTopicsMap = map[primitive.ObjectID][]primitive.ObjectID{
-			postObjectId: originalPost.TopicIds,
+	if len(originalPost.TopicIds) > 0 {
+		// Fetch topics
+		topicResults, err := handlers.topicHelper.FindTopicHelper(gin.H{"_id": gin.H{"$in": originalPost.TopicIds}}, gin.H{})
+		if err != nil {
+			return err
 		}
-		return handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(postTopicsMap, originalPost.CommunityId)
+
+		var allTopicIds []primitive.ObjectID
+
+		for _, topicResult := range topicResults {
+			allTopicIds = append(allTopicIds, topicResult.AllParentIds...)
+			allTopicIds = append(allTopicIds, topicResult.ID)
+		}
+
+		if len(allTopicIds) > 0 {
+			var postTopicsMap = map[primitive.ObjectID][]primitive.ObjectID{
+				postObjectId: allTopicIds,
+			}
+			return handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(postTopicsMap, originalPost.CommunityId)
+		}
+	}
+
+	return nil
+}
+
+// Delete post topics in PostTopics collection
+func DeletePostTopics(handlers *FeedHandlers, postId string) error {
+
+	if postId == "" {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	postObjectId, err := primitive.ObjectIDFromHex(postId)
+
+	if err != nil {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	filter := gin.H{
+		"post_id": postObjectId,
+	}
+
+	if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
+		logging.Error("Error in deleting Post Topics")
+		return nil
 	}
 
 	return nil

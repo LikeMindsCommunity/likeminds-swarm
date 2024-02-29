@@ -16,6 +16,8 @@ const (
 	TaskTriggerCommentReactWebhook    = "task:TriggerCommentReactWebhook"
 	TaskTriggerCommentTaggedWebhook   = "task:TriggerCommentTaggedWebhook"
 	TaskTriggerCreatePost             = "task:TaskTriggerCreatePost"
+	TaskTriggerEditPost               = "task:TaskTriggerEditPost"
+	TaskTriggerDeletePost             = "task:TaskTriggerDeletePost"
 )
 
 // Payload for the task to trigger post creation webhook
@@ -74,8 +76,6 @@ type PayloadTriggerCommentTaggedWebhook struct {
 	ApiKey    string   `json:"api_key"`
 }
 
-type PayloadModifyTopicsAgainstPost struct {
-	PostID             string `json:"post_id"`
-	DeleteAllExisting  bool   `json:"delete_all_existing"`
-	RecreatePostTopics bool   `json:"recreate_post_topics"`
+type PayloadPost struct {
+	PostID string `json:"post_id"`
 }
