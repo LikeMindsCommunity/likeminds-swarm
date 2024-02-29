@@ -1092,11 +1092,6 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 					},
 				},
 				{
-					"replies": gin.H{
-						"$eq": []interface{}{},
-					},
-				},
-				{
 					"level": gin.H{
 						"$eq": 0,
 					},
