@@ -66,6 +66,7 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 }
 
 func getPostIdsBasedOnTopicsFilter(handlers *FeedHandlers, topicIds []string) ([]primitive.ObjectID, error) {
+	var postObjectIdsList []primitive.ObjectID
 	postIdsFilterData := createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds)
 
 	// Fetch post ids using helper method
@@ -74,9 +75,11 @@ func getPostIdsBasedOnTopicsFilter(handlers *FeedHandlers, topicIds []string) ([
 		return nil, err
 	}
 
-	postIdsMap := postIdsResult[0]
-	postIdsList := postIdsMap["post_ids"]
-	postObjectIdsList, _ := postIdsList.([]primitive.ObjectID)
+	if len(postObjectIdsList) > 0 {
+		postIdsMap := postIdsResult[0]
+		postIdsList := postIdsMap["post_ids"]
+		postObjectIdsList, _ = postIdsList.([]primitive.ObjectID)
+	}
 
 	return postObjectIdsList, nil
 }

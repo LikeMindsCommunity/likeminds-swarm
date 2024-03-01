@@ -9,6 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -105,14 +106,27 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			return
 		}
 
-		if len(postObjectIdsList) > 0 {
-			pinnedPostFilterData["_id"] = gin.H{
-				"$in": postObjectIdsList,
+		if len(postObjectIdsList) == 0 {
+			finalParsedResponse := gin.H{
+				"posts":             []requests.PostResponse{},
+				"success":           true,
+				"topics":            map[string]responses.TopicResponse{},
+				"widgets":           map[string]requests.WidgetResponse{},
+				"reposted_posts":    map[string]requests.PostResponse{},
+				"filtered_comments": filtered_comments,
 			}
 
-			unpinnedPostFilterData["_id"] = gin.H{
-				"$in": postObjectIdsList,
-			}
+			// return final response
+			c.JSON(http.StatusOK, finalParsedResponse)
+			return
+		}
+
+		pinnedPostFilterData["_id"] = gin.H{
+			"$in": postObjectIdsList,
+		}
+
+		unpinnedPostFilterData["_id"] = gin.H{
+			"$in": postObjectIdsList,
 		}
 	}
 
