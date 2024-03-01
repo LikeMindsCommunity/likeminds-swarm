@@ -38,8 +38,8 @@ func (repository *postTopicsRepository) DeleteMany(filter map[string]interface{}
 }
 
 // Exposed Helper Method to perform Aggregation on Post Topics
-func (repository *postTopicsRepository) Aggregate(query []map[string]interface{}) ([]gin.H, error) {
-	return _aggregateDocumentsInDB(repository.db, PostTopicsCollection, query)
+func (repository *postTopicsRepository) Aggregate(query []map[string]interface{}) (*mongo.Cursor, error) {
+	return _aggregateDocumentsInDBReturnCursor(repository.db, PostTopicsCollection, query)
 }
 
 // Structure for Save Repository
