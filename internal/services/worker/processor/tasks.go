@@ -117,7 +117,7 @@ func (processor *RedisTaskProcessor) TriggerCreatePost(ctx context.Context, task
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	return handlers.CreatePostTopics(processor.feedHandlers, payload.PostID)
+	return handlers.CreateOrUpdatePostTopics(processor.feedHandlers, payload.PostID, false)
 }
 
 // Task to trigger edit post
@@ -128,7 +128,7 @@ func (processor *RedisTaskProcessor) TriggerEditPost(ctx context.Context, task *
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	return handlers.EditPostTopics(processor.feedHandlers, payload.PostID)
+	return handlers.CreateOrUpdatePostTopics(processor.feedHandlers, payload.PostID, true)
 }
 
 // Task to trigger delete post
