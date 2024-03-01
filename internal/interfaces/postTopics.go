@@ -16,6 +16,7 @@ type PostTopicsRepository interface {
 	CreateorUpdateMany(filterListWithUpdate [][]gin.H) error
 	Count(filter map[string]interface{}) (int64, error)
 	DeleteMany(filter map[string]interface{}) (int64, error)
+	Aggregate(query []map[string]interface{}) ([]gin.H, error)
 }
 
 // Interface for Post Topics Helper
@@ -26,4 +27,5 @@ type PostTopicsHelper interface {
 	UpdatePostTopicsByIdHelper(topicId primitive.ObjectID, update map[string]interface{}) error
 	CountPostTopicsHelper(filter map[string]interface{}) (int64, error)
 	DeletePostTopicsHelper(filter gin.H) error
+	AggregatePostTopicsHelper(query []map[string]interface{}) ([]gin.H, error)
 }

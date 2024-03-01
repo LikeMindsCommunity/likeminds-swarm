@@ -6,3 +6,5 @@ const (
 	GroupOrderTypeMostMessages     = 2
 	GroupOrderTypeMostParticipants = 3
 )
+
+const TopicsSplitterKeyWithAndValue = "#$AND$#"

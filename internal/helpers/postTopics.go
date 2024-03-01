@@ -128,6 +128,11 @@ func (helper *postTopicsHelper) CountPostTopicsHelper(filter map[string]interfac
 	return count, err
 }
 
+// Exposed Helper Method to perform Aggregration on Posts
+func (helper *postTopicsHelper) AggregatePostTopicsHelper(query []map[string]interface{}) ([]gin.H, error) {
+	return helper.postTopicsRepository.Aggregate(query)
+}
+
 // Structure for Post Topics Helper
 type postTopicsHelper struct {
 	postTopicsRepository interfaces.PostTopicsRepository

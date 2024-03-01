@@ -98,14 +98,21 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
-		topicObjectIds := helpers.ConvertIdsToObjectIds(topicIds)
+		postObjectIdsList, err := getPostIdsBasedOnTopicsFilter(handlers, topicIds)
 
-		pinnedPostFilterData["topic_ids"] = gin.H{
-			"$in": topicObjectIds,
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
 		}
 
-		unpinnedPostFilterData["topic_ids"] = gin.H{
-			"$in": topicObjectIds,
+		if len(postObjectIdsList) > 0 {
+			pinnedPostFilterData["_id"] = gin.H{
+				"$in": postObjectIdsList,
+			}
+
+			unpinnedPostFilterData["_id"] = gin.H{
+				"$in": postObjectIdsList,
+			}
 		}
 	}
 
