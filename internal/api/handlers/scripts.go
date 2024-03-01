@@ -156,3 +156,26 @@ func (handlers *FeedHandlers) InsertCommunityIDToAllComments() error {
 
 	return nil
 }
+
+// function to insert Post topics of all posts
+func (handlers *FeedHandlers) BackfillPostTopicsInDB() error {
+	fmt.Println("Starting BackfillPostTopicsInDB script!")
+	startTime := time.Now()
+
+	// fetch all comments
+	postsResults, err := handlers.postHelper.FindPostHelper(gin.H{}, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	for _, post := range postsResults {
+		// Create new data in post topics
+		if err := CreateOrUpdatePostTopics(handlers, post.ID.Hex(), true); err != nil {
+			log.Error(fmt.Sprintf("Error while creating post topics data for post: %s, %s", post.ID.Hex(), err.Error()))
+			continue
+		}
+	}
+	fmt.Printf("script: BackfillPostTopicsInDB, executed in %d\n", time.Since(startTime))
+
+	return nil
+}
