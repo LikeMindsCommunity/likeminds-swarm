@@ -1568,6 +1568,15 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// Add the post topics data in PostTopics collection
+	if postData.TopicIds != nil {
+		// Trigger create post background tasks
+		err = handlers.taskDistributor.TriggerCreatePostBackgroundTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error triggering create post background task", err)
+		}
+	}
+
 	// if custom creation timestamp is not used, create activities and send notifications
 	if !(createPostRequest.CreatedAt > 0 && float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
 		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
@@ -1830,7 +1839,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// strip text and check if it is empty
 	editPostRequest.Text = strings.TrimSpace(editPostRequest.Text)
 
-	if editPostRequest.Text == "" && len(editPostRequest.Attachments) == 0 {
+	if editPostRequest.Text == "" && editPostRequest.Heading == "" && len(editPostRequest.Attachments) == 0 {
 		utils.GeneralAPIValidationError(c, "Can't Edit post without content")
 		return
 	}
@@ -1903,6 +1912,15 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	// Update the post topics data
+	if postData.TopicIds != nil {
+		// Trigger edit post background tasks
+		err = handlers.taskDistributor.TriggerEditPostBackgroundTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error triggering edit post background task", err)
+		}
 	}
 
 	// update post data in elastic search
@@ -2053,6 +2071,13 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
+		}
+
+		// Delete post topics data
+		// Trigger delete post background tasks
+		err = handlers.taskDistributor.TriggerDeletePostBackgroundTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error triggering delete post background task", err)
 		}
 	}
 
@@ -2505,4 +2530,84 @@ func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityI
 
 	handlers.cacheHelper.LRem(communityPostPinnedKey, 0, postID)
 	handlers.cacheHelper.Del(fmt.Sprintf("post_{}", postID))
+}
+
+// Create new post topics in PostTopics collection
+func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllExisting bool) error {
+
+	if postId == "" {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	if deleteAllExisting {
+		DeletePostTopics(handlers, postId)
+	}
+
+	postObjectId, err := primitive.ObjectIDFromHex(postId)
+
+	if err != nil {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	postResults, err := handlers.postHelper.FindPostHelper(gin.H{"_id": postObjectId}, gin.H{})
+
+	if err != nil {
+		logging.Error("Error in fetching posts")
+		return nil
+	}
+
+	originalPost := postResults[0]
+
+	if len(originalPost.TopicIds) > 0 {
+		// Fetch topics
+		topicResults, err := handlers.topicHelper.FindTopicHelper(gin.H{"_id": gin.H{"$in": originalPost.TopicIds}}, gin.H{})
+		if err != nil {
+			return err
+		}
+
+		var allTopicIds []primitive.ObjectID
+
+		for _, topicResult := range topicResults {
+			allTopicIds = append(allTopicIds, topicResult.AllParentIds...)
+			allTopicIds = append(allTopicIds, topicResult.ID)
+		}
+
+		if len(allTopicIds) > 0 {
+			var postTopicsMap = map[primitive.ObjectID][]primitive.ObjectID{
+				postObjectId: allTopicIds,
+			}
+			return handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(postTopicsMap, originalPost.CommunityId)
+		}
+	}
+
+	return nil
+}
+
+// Delete post topics in PostTopics collection
+func DeletePostTopics(handlers *FeedHandlers, postId string) error {
+
+	if postId == "" {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	postObjectId, err := primitive.ObjectIDFromHex(postId)
+
+	if err != nil {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	filter := gin.H{
+		"post_id": postObjectId,
+	}
+
+	if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
+		logging.Error("Error in deleting Post Topics")
+		return nil
+	}
+
+	return nil
 }

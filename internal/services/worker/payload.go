@@ -1,6 +1,8 @@
 package worker
 
-import "github.com/nateshr/likeminds-swarm/internal/api/responses"
+import (
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+)
 
 // Task Names for each task type
 const (
@@ -13,6 +15,9 @@ const (
 	TaskTriggerCommentAddedWebhook    = "task:TriggerCommentAddedWebhook"
 	TaskTriggerCommentReactWebhook    = "task:TriggerCommentReactWebhook"
 	TaskTriggerCommentTaggedWebhook   = "task:TriggerCommentTaggedWebhook"
+	TaskTriggerCreatePost             = "task:TaskTriggerCreatePost"
+	TaskTriggerEditPost               = "task:TaskTriggerEditPost"
+	TaskTriggerDeletePost             = "task:TaskTriggerDeletePost"
 )
 
 // Payload for the task to trigger post creation webhook
@@ -69,4 +74,8 @@ type PayloadTriggerCommentTaggedWebhook struct {
 	CommentId string   `json:"comment_id"`
 	UserIds   []string `json:"user_ids"`
 	ApiKey    string   `json:"api_key"`
+}
+
+type PayloadPost struct {
+	PostID string `json:"post_id"`
 }
