@@ -1097,8 +1097,8 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 					},
 				},
 				{
-					"level": gin.H{
-						"$eq": 0,
+					"is_deleted": gin.H{
+						"$eq": false,
 					},
 				},
 			},
