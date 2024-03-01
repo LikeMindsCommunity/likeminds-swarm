@@ -7,6 +7,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
@@ -170,12 +171,25 @@ func GetSelfPostFilterQuery(page int, page_size int, search_type string, search 
 func ParseTopicIndexData(postHelper interfaces.PostHelper, Topic *entities.Topic, updatePostCount bool) searchElastic.TopicIndex {
 
 	topicIndex := searchElastic.TopicIndex{
-		Id:          Topic.ID.Hex(),
-		Name:        Topic.Name,
-		IsEnabled:   Topic.IsEnabled,
-		CommunityId: Topic.CommunityId,
-		CreatedAt:   Topic.CreatedAt,
-		UpdatedAt:   Topic.UpdatedAt,
+		Id:              Topic.ID.Hex(),
+		Name:            Topic.Name,
+		IsEnabled:       Topic.IsEnabled,
+		CommunityId:     Topic.CommunityId,
+		Priority:        Topic.Priority,
+		IsSearchable:    Topic.IsSearchable,
+		ParentName:      Topic.ParentName,
+		Level:           Topic.Level,
+		TotalChildCount: Topic.TotalChildCount,
+		CreatedAt:       Topic.CreatedAt,
+		UpdatedAt:       Topic.UpdatedAt,
+	}
+
+	if Topic.ParentId != primitive.NilObjectID {
+		topicIndex.ParentId = Topic.ParentId.Hex()
+	}
+
+	if Topic.WidgetId != primitive.NilObjectID {
+		topicIndex.WidgetId = Topic.WidgetId.Hex()
 	}
 
 	// if updatePostCount is true, then fetch the posts with topic id and update the count

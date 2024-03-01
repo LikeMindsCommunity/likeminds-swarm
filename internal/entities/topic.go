@@ -17,20 +17,31 @@ type Topic struct {
 	ParentId        primitive.ObjectID   `json:"parent_id" bson:"parent_id"`
 	ParentName      string               `json:"parent_name" bson:"parent_name"`
 	AllParentIds    []primitive.ObjectID `json:"all_parent_ids" bson:"all_parent_ids"`
-	TotalChildCount int                  `json:"total_child_count" bson:"total_child_count"`
 	Level           int                  `json:"level" bson:"level"`
+	WidgetId        primitive.ObjectID   `json:"widget_id" bson:"widget_id"`
+	TotalChildCount int                  `json:"total_child_count" bson:"total_child_count"`
 	CreatedAt       time.Time            `json:"created_at" bson:"created_at"`
 	UpdatedAt       time.Time            `json:"updated_at" bson:"updated_at"`
 }
 
 // Exposed Method to Create a New Topic Instance
-func NewTopic(name string, isEnabled bool, communityId int) Topic {
+func NewTopic(name string, isEnabled bool, priority float32, isSearchable bool, parentId primitive.ObjectID, parentName string,
+	allParentIds []primitive.ObjectID, level int, widgetId primitive.ObjectID, totalChildCount int, communityId int) Topic {
 	createdAt := time.Now()
+
 	return Topic{
-		Name:        name,
-		IsEnabled:   isEnabled,
-		CommunityId: communityId,
-		CreatedAt:   createdAt,
-		UpdatedAt:   createdAt,
+		Name:            name,
+		IsEnabled:       isEnabled,
+		Priority:        priority,
+		IsSearchable:    isSearchable,
+		ParentId:        parentId,
+		ParentName:      parentName,
+		AllParentIds:    allParentIds,
+		Level:           level,
+		WidgetId:        widgetId,
+		TotalChildCount: totalChildCount,
+		CommunityId:     communityId,
+		CreatedAt:       createdAt,
+		UpdatedAt:       createdAt,
 	}
 }

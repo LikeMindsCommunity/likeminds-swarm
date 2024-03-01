@@ -2,30 +2,31 @@ package requests
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
+type CreateTopicRequest struct {
+	Name         string                 `json:"name" binding:"required"`
+	Priority     float32                `json:"priority"`
+	IsSearchable *bool                  `json:"is_searchable"`
+	ParentId     string                 `json:"parent_id"`
+	IsEnabled    *bool                  `json:"is_enabled"`
+	Metadata     map[string]interface{} `json:"metadata"`
+
+	ParentName      string               `json:"-"` // For Internal use
+	AllParentIds    []primitive.ObjectID `json:"-"`
+	Level           int                  `json:"-"`
+	WidgetId        primitive.ObjectID   `json:"-"`
+	TotalChildCount int                  `json:"-"`
+}
+
 // Request Structure for Create Topic
 type CreateTopicsRequest struct {
-	Names []string `json:"names" binding:"required"`
+	Names  []string             `json:"names"`
+	Topics []CreateTopicRequest `json:"topics"`
 }
 
 // Request Structure for Edit Topic
 type EditTopicRequest struct {
 	Name      string `json:"name"`
 	IsEnabled bool   `json:"is_enabled"`
-}
-
-// Response Structure for Topic
-type TopicResponse struct {
-	ID        primitive.ObjectID `json:"_id"`
-	Name      string             `json:"name"`
-	IsEnabled bool               `json:"is_enabled"`
-}
-
-// Response Structure for fetched Indexed Topics Response
-type FetchTopicsResponse struct {
-	ID            primitive.ObjectID `json:"_id"`
-	Name          string             `json:"name"`
-	IsEnabled     bool               `json:"is_enabled"`
-	NumberOfPosts int                `json:"number_of_posts"`
 }
 
 // Request Structure for Fetch Topic

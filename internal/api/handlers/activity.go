@@ -9,6 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -18,13 +19,13 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool, uuid string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]requests.TopicResponse, map[string]requests.WidgetResponse, error) {
+	apiRevampV1Check bool, uuid string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
 
 	response := []interface{}{}
 	userDatas := map[string]externalHelpers.MemberMeta{}
-	topicDatas := map[string]requests.TopicResponse{}
+	topicDatas := map[string]responses.TopicResponse{}
 	widgetDatas := map[string]requests.WidgetResponse{}
 
 	if len(activities) == 0 {
@@ -129,11 +130,11 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 
 // Internal method to parse user profile activity list for uuid
 func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activity, apiRevampV1Check bool,
-	uuid string, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]requests.TopicResponse,
+	uuid string, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse,
 	map[string]requests.WidgetResponse, error) {
 
 	activitiesResponse, userDatas, topicsData, widgetsData := []interface{}{}, map[string]externalHelpers.MemberMeta{},
-		map[string]requests.TopicResponse{}, map[string]requests.WidgetResponse{}
+		map[string]responses.TopicResponse{}, map[string]requests.WidgetResponse{}
 
 	if len(activities) == 0 {
 		return activitiesResponse, userDatas, topicsData, widgetsData, nil
