@@ -1145,7 +1145,7 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 	commentsFilterData = append(commentsFilterData, gin.H{
 		"$sort": gin.H{
 			"likes_count": sortOrder,
-			"updated_at":  -1,
+			"created_at":  -1,
 		},
 	})
 
