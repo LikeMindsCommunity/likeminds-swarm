@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/response"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -126,6 +127,19 @@ func (helper *postTopicsHelper) CountPostTopicsHelper(filter map[string]interfac
 	count, err := helper.postTopicsRepository.Count(filter)
 
 	return count, err
+}
+
+// Exposed Helper Method to perform Aggregration on Posts
+func (helper *postTopicsHelper) AggregatePostTopicsHelper(query []map[string]interface{}) ([]response.PostIdsBasedonTopics, error) {
+	results, err := helper.postTopicsRepository.Aggregate(query)
+
+	var postIdsList []response.PostIdsBasedonTopics
+
+	if err = results.All(context.TODO(), &postIdsList); err != nil {
+		return postIdsList, fmt.Errorf("Error in conversion!")
+	}
+
+	return postIdsList, nil
 }
 
 // Structure for Post Topics Helper
