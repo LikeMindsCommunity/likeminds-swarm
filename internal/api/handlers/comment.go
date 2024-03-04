@@ -988,6 +988,9 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 
 	}
 
+	// Delete top liked comments data in post from cache
+	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, postData.CommunityId, postData.ID.Hex()))
+
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -1097,8 +1100,8 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 					},
 				},
 				{
-					"level": gin.H{
-						"$eq": 0,
+					"is_deleted": gin.H{
+						"$eq": false,
 					},
 				},
 			},
