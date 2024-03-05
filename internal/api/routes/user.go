@@ -11,6 +11,7 @@ func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 
 	userGroup.GET("/:user_id/save", handler.FetchUserSavedPosts)
 	userGroup.GET("/:user_id/post", handler.FetchUserCreatedPosts)
+	userGroup.GET("/:user_id/comment", handler.FetchUserComments)
 	userGroup.GET("/activity", handler.FetchUserActivity)
 	userGroup.GET("/:user_id/activity", handler.FetchUserProfileActivity)
 	userGroup.POST("/:user_id/activity", handler.ExternalCreateActivity)
