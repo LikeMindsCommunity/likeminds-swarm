@@ -2,7 +2,7 @@ package interfaces
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/response"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,5 +28,5 @@ type PostTopicsHelper interface {
 	UpdatePostTopicsByIdHelper(topicId primitive.ObjectID, update map[string]interface{}) error
 	CountPostTopicsHelper(filter map[string]interface{}) (int64, error)
 	DeletePostTopicsHelper(filter gin.H) error
-	AggregatePostTopicsHelper(query []map[string]interface{}) ([]response.PostIdsBasedonTopics, error)
+	AggregatePostTopicsHelper(query []map[string]interface{}) ([]responses.PostIdsBasedonTopics, error)
 }

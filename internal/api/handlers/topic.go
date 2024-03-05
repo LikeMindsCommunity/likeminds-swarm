@@ -16,7 +16,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -26,7 +25,7 @@ import (
 func parseTopicResponse(topic *entities.Topic) responses.TopicResponse {
 	var response responses.TopicResponse
 
-	response.ID = topic.ID
+	response.ID = topic.ID.Hex()
 	response.Name = topic.Name
 	response.IsEnabled = topic.IsEnabled
 	response.Priority = topic.Priority
@@ -259,6 +258,25 @@ func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []request
 		}
 	}
 
+	// Update Parent child count // TODO: Do in background
+	for _, topic := range topicsData {
+		if topic.ParentId != primitive.NilObjectID {
+
+			updateData := gin.H{
+				"$inc": gin.H{
+					"total_child_count": 1,
+				},
+			}
+
+			err := handlers.topicHelper.UpdateTopicByIdHelper(topic.ParentId, updateData, false)
+			if err != nil {
+				return nil, err
+			}
+
+			// TODO: Reindex parent topic
+		}
+	}
+
 	topicsIndexData := make(map[string]interface{})
 
 	// parse the topics data for ES indexing and API response
@@ -317,16 +335,16 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 	utils.GenerateSuccessResponse(c, gin.H{"topics": topicsResponse})
 }
 
-func processTopicSearchData(data map[string]interface{}) []responses.FetchTopicsResponse {
+func processTopicSearchData(data map[string]interface{}) []responses.TopicResponseWithMeta {
 	topicDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
-	fetchTopicsResponse := []responses.FetchTopicsResponse{}
+	fetchTopicsResponse := []responses.TopicResponseWithMeta{}
 
 	for _, data := range topicDetails {
 		topicData := data.(map[string]interface{})["_source"].(map[string]interface{})
 		topicData["_id"] = topicData["id"]
 
 		// convert the data to fetch topic response
-		var topic responses.FetchTopicsResponse
+		var topic responses.TopicResponseWithMeta
 		b, _ := json.Marshal(topicData)
 		json.Unmarshal(b, &topic)
 
@@ -336,34 +354,12 @@ func processTopicSearchData(data map[string]interface{}) []responses.FetchTopics
 	return fetchTopicsResponse
 }
 
-// Exposed Method to Fetch Topics for a Community
-func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
-	// parse fetch topic request
-	var fetchTopicRequest requests.FetchTopicRequest
-	err := c.BindQuery(&fetchTopicRequest)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
-	if communityId == externalHelpers.DefaultCommunityId {
-		return
-	}
-
-	// fetch pagination query params
-	page, pageSize, err := fetchPaginationParams(c)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
+func validateAndGetFetchTopicsFilterParams(fetchTopicRequest requests.FetchTopicRequest) (int, bool, bool, []string, []string, error) {
 
 	// fetch min_posts query param
-	minPosts, err := utils.ParseIntFromQueryParam(c.DefaultQuery("min_posts", "0"), 0)
+	minPosts, err := utils.ParseIntFromQueryParam(fetchTopicRequest.MinPosts, 0)
 	if err != nil {
-		utils.GeneralAPIValidationError(c, "Invalid value for min_posts")
-		return
+		return 0, false, false, nil, nil, err
 	}
 
 	if minPosts <= 0 {
@@ -380,21 +376,97 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		}
 	}
 
-	// dsl query to search topics
-	topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType,
-		fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts)
-	response := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
+	// validate order_by query param
+	orderByParams := []string{enums.OrderByAlphabeticalAsc}
+	if fetchTopicRequest.OrderBy != "" {
+		orderByParams := parseStringArrayParam(fetchTopicRequest.OrderBy)
+		for _, orderBy := range orderByParams {
+			isValid := enums.IsValidOrderByParam(orderBy)
+			if !isValid {
+				return 0, false, false, nil, nil, fmt.Errorf("Invalid value for order_by")
+			}
+		}
+	}
 
-	finalResponse := processTopicSearchData(response)
+	parentTopicsIds := parseStringArrayParam(fetchTopicRequest.ParentTopicIds)
 
-	// reponse data
-	finalParsedResponse := gin.H{
-		"success": true,
-		"topics":  finalResponse,
+	return minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, nil
+}
+
+// Exposed Method to Fetch Topics for a Community
+func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// parse fetch topic request
+	var fetchTopicRequest requests.FetchTopicRequest
+	err := c.BindQuery(&fetchTopicRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, err := validateAndGetFetchTopicsFilterParams(fetchTopicRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch pagination query params
+	page, pageSize, err := fetchPaginationParams(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	response := gin.H{
+		"topics":       []responses.TopicResponseWithMeta{},
+		"child_topics": map[string][]responses.TopicResponseWithMeta{},
+	}
+
+	if len(parentTopicsIds) > 0 {
+		parentTopicQuery := GetTopicIdsFilterQuery(parentTopicsIds, communityId)
+		esResponse := handlers.esHelper.ExecuteQuery(parentTopicQuery, constants.TopicIndexName)
+
+		parentTopics := processTopicSearchData(esResponse)
+		if len(parentTopics) != len(parentTopicsIds) {
+			utils.GeneralAPIValidationError(c, "Invalid Parent Topic Ids")
+			return
+		}
+
+		response["topics"] = parentTopics
+
+		for _, parentTopic := range parentTopics {
+
+			// fetch child topics of parent
+			topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType, fetchTopicRequest.Search,
+				communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, parentTopic.ID)
+			esResponse := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
+			childTopics := processTopicSearchData(esResponse)
+
+			// add child topics to the response
+			response["child_topics"].(map[string]interface{})[parentTopic.ID] = childTopics
+		}
+
+	} else {
+
+		// ES query to search topics
+		topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType,
+			fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, "")
+
+		// execute the query
+		esResponse := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
+
+		// process the response data and add it to response
+		response["topics"] = processTopicSearchData(esResponse)
 	}
 
 	// return final response
-	c.JSON(http.StatusOK, finalParsedResponse)
+	utils.GenerateSuccessResponse(c, response)
 }
 
 func validateEditTopicRequest(handlers *FeedHandlers, topicId string, editTopicRequest requests.EditTopicRequest,
@@ -632,7 +704,7 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	// delete topics from elastic search
 	err = handlers.esHelper.DeleteByQuery(getTopicsToBeDeletedQuery, constants.TopicIndexName)
 	if err != nil {
-		log.Error(err.Error())
+		logging.Error(err.Error())
 	}
 
 	err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs)

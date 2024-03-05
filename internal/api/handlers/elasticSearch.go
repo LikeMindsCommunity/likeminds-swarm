@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -205,8 +206,34 @@ func ParseTopicIndexData(postHelper interfaces.PostHelper, Topic *entities.Topic
 	return topicIndex
 }
 
+// Exposed method to fetch topics with topic id from elastic search
+func GetTopicIdsFilterQuery(topicIds []string, communityId int) string {
+	return fmt.Sprintf(`
+	{
+		"sort": [
+			{"updated_at": {"order": "desc"}}
+		],
+		"query": {
+			"bool": {
+				"must": [
+					{
+						"match": {"community_id": {"query": %d}}
+					},
+					{
+						"terms": {
+							"id" : %s
+						}
+					}
+				]
+			}
+		}
+	}`, communityId, topicIds)
+}
+
 // Exposed method to create topic search query
-func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool, isEnabled bool, minPosts int) string {
+func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool,
+	isEnabled bool, minPosts int, orderByParams []string, parentTopicId string) string {
+
 	from := pageSize * (page - 1)
 
 	communityQuery := ""
@@ -251,13 +278,35 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		}
 	}`, minPosts)
 
+	sortQuery := getSortQueryFromOrderByParams(orderByParams)
+
+	parentTopicQuery := ""
+	if parentTopicId != "" {
+		parentTopicQuery = fmt.Sprintf(`,{
+			"match": {
+				"parent_id": {
+					"query": "%s"
+				}
+			}
+		}`, parentTopicId)
+	}
+
+	levelQuery := ""
+	if parentTopicQuery == "" && searchQuery == "" {
+		levelQuery = `,{
+			"match": {
+				"level": {
+					"query": 0
+				}
+			}
+		}`
+	}
+
 	return fmt.Sprintf(`
 	{
 		"from": %d,
 		"size": %d,
-		"sort": [
-			{"name.raw": {"order": "asc"}}
-		],
+		"sort": [%s],
 		"query": {
 			"bool": {
 				"must": [
@@ -265,10 +314,35 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 					%s
 					%s
 					%s
+					%s
+					%s
 				]
 			}
 		}
-	}`, from, pageSize, communityQuery, isEnabledQuery, searchQuery, minPostsQuery)
+	}`, from, pageSize, sortQuery, communityQuery, isEnabledQuery, searchQuery, minPostsQuery, parentTopicQuery, levelQuery)
+}
+
+func getSortQueryFromOrderByParams(orderByParams []string) string {
+
+	orderByQuery := ""
+	for _, orderByParam := range orderByParams {
+
+		switch orderByParam {
+		case enums.OrderByAlphabeticalAsc:
+			orderByQuery += `{"name.raw": {"order": "asc"}}`
+		case enums.OrderByPriorityDesc:
+			orderByQuery += `{"priority": {"order": "desc"}}`
+		case enums.OrderByCreatedAtDesc:
+			orderByQuery += `{"created_at": {"order": "desc"}}`
+		case enums.OrderByNumberOfPostsDesc:
+			orderByQuery += `{"number_of_posts": {"order": "desc"}}`
+		}
+
+		orderByQuery += ","
+	}
+
+	orderByQuery = `{"updated_at": {"order": "desc}}`
+	return orderByQuery
 }
 
 // Exposed method to get topics by their ids
@@ -397,19 +471,18 @@ func GetWidgetsByParentEntityFilterQuery(communityId int, parentEntityId string,
 func UpdatePostCountInTopicsQuery(topicIds string, increment bool) string {
 	updatePostScript := ""
 	if increment {
-		updatePostScript = fmt.Sprintf(`
+		updatePostScript = `
 			"source": "ctx._source.number_of_posts += 1",
 			"lang":   "painless"
-		`)
+		`
 	} else {
-		updatePostScript = fmt.Sprintf(`
+		updatePostScript = `
 			"source": "ctx._source.number_of_posts -= 1",
 			"lang":   "painless"
-		`)
+		`
 	}
 
-	return fmt.Sprintf(`
-	{
+	return fmt.Sprintf(`{
 		"query": {
 			"bool": {
 				"must": {

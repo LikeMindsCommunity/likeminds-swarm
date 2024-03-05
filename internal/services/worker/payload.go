@@ -1,8 +1,6 @@
 package worker
 
-import (
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
-)
+import "github.com/nateshr/likeminds-swarm/internal/api/responses"
 
 // Task Names for each task type
 const (

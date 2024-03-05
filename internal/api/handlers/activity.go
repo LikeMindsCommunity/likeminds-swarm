@@ -264,7 +264,6 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 func getActivityUserData(activity entities.Activity) (map[string]interface{}, string) {
 	activityUserUID := activity.ActionBy[len(activity.ActionBy)-1]
 	activityUserData := map[string]interface{}{}
-	isSuccess := false
 
 	isSuccess, member_data := externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
 	if !isSuccess || len(member_data.Members) == 0 {
