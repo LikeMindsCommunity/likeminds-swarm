@@ -205,7 +205,9 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			return
 		}
 
-		finalParsedResponse["posts"] = updatedPostsWithComments
+		if len(updatedPostsWithComments) > 0 {
+			finalParsedResponse["posts"] = updatedPostsWithComments
+		}
 
 	}
 
