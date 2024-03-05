@@ -14,6 +14,7 @@ type TopicRepository interface {
 	CreateMany(documents []interface{}) ([]interface{}, error)
 	Find(filter map[string]interface{}, filterOpts *options.FindOptions) (*mongo.Cursor, error)
 	Update(filter map[string]interface{}, update map[string]interface{}) error
+	UpdateMany(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 	DeleteMany(filter map[string]interface{}) (int64, error)
 }
@@ -24,6 +25,7 @@ type TopicHelper interface {
 	CreateManyTopicsHelper(topicsRequest []requests.CreateTopicRequest, communityId int) ([]primitive.ObjectID, error)
 	FindTopicHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Topic, error)
 	UpdateTopicByIdHelper(topicId primitive.ObjectID, update map[string]interface{}, updateTimestamp bool) error
+	UpdateManyTopicsHelper(filter map[string]interface{}, update map[string]interface{}, shouldUpdateTimestamp bool) error
 	CountTopicHelper(filter map[string]interface{}) (int64, error)
 	DeleteTopicsHelper(topicIds []primitive.ObjectID) error
 }

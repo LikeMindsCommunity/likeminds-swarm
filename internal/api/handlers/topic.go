@@ -179,7 +179,7 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 
 		if topic.ParentId != "" {
 			// Convert parent_id to ObjectID
-			parentId, err = primitive.ObjectIDFromHex(topic.ParentId) // TODO: check if parent_id is null or not
+			parentId, err = primitive.ObjectIDFromHex(topic.ParentId)
 			if err != nil {
 				return nil, fmt.Errorf("invalid Parent ID")
 			}
@@ -258,22 +258,46 @@ func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []request
 		}
 	}
 
-	// Update Parent child count // TODO: Do in background
+	parentTopicsIds := []primitive.ObjectID{}
+
 	for _, topic := range topicsData {
 		if topic.ParentId != primitive.NilObjectID {
+			parentTopicsIds = append(parentTopicsIds, topic.ParentId)
+		}
+	}
 
-			updateData := gin.H{
-				"$inc": gin.H{
-					"total_child_count": 1,
-				},
-			}
+	// update parent topics with child count
+	if len(parentTopicsIds) > 0 {
 
-			err := handlers.topicHelper.UpdateTopicByIdHelper(topic.ParentId, updateData, false)
-			if err != nil {
-				return nil, err
-			}
+		filterData := bson.M{"_id": bson.M{
+			"$in": parentTopicsIds,
+		}}
 
-			// TODO: Reindex parent topic
+		updateData := bson.M{
+			"$inc": bson.M{
+				"total_child_count": 1,
+			},
+		}
+
+		// Update and fetch parent topics
+		handlers.topicHelper.UpdateManyTopicsHelper(filterData, updateData, false)
+
+		topics, err := handlers.topicHelper.FindTopicHelper(filterData, gin.H{})
+		if err != nil {
+			logging.Error("Error while fecthing data for reindexing | ", err.Error())
+		}
+
+		topicsIndexData := map[string]interface{}{}
+
+		// parse the topics data for ES indexing and API response
+		for _, topicData := range topics {
+			topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(handlers.postHelper, &topicData, false)
+		}
+
+		// index topics data in elastic search
+		err = handlers.esHelper.InsertManyDocuments(topicsIndexData, constants.TopicIndexName)
+		if err != nil {
+			logging.Error(err.Error())
 		}
 	}
 

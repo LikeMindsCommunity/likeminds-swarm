@@ -105,6 +105,22 @@ func (helper *topicHelper) UpdateTopicByIdHelper(topic_id primitive.ObjectID, up
 	return err
 }
 
+// Exposed Helper Method to Update Multiple Topics
+func (helper *topicHelper) UpdateManyTopicsHelper(filter map[string]interface{}, update map[string]interface{}, shouldUpdateTimestamp bool) error {
+	if shouldUpdateTimestamp {
+		if _, ok := update["$set"]; ok {
+			update["$set"].(gin.H)["updated_at"] = time.Now()
+		} else {
+			update["$set"] = gin.H{"updated_at": time.Now()}
+		}
+	}
+
+	// Update the documents in the collection
+	err := helper.topicRepository.UpdateMany(filter, update)
+
+	return err
+}
+
 func (helper *topicHelper) DeleteTopicsHelper(topic_ids []primitive.ObjectID) error {
 	// create a filter to delete topic instances with topic_ids
 	filter := gin.H{
