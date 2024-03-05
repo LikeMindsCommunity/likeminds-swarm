@@ -31,10 +31,16 @@ func parseTopicResponse(topic *entities.Topic) responses.TopicResponse {
 	response.IsEnabled = topic.IsEnabled
 	response.Priority = topic.Priority
 	response.IsSearchable = topic.IsSearchable
-	response.ParentId = topic.ParentId
 	response.ParentName = topic.ParentName
 	response.Level = topic.Level
-	response.WidgetId = topic.WidgetId
+
+	if topic.ParentId != primitive.NilObjectID {
+		response.ParentId = topic.ParentId.Hex()
+	}
+
+	if topic.WidgetId != primitive.NilObjectID {
+		response.WidgetId = topic.WidgetId.Hex()
+	}
 
 	return response
 }
@@ -89,7 +95,7 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, createTopicsRequest requests.CreateTopicsRequest, communityId int) ([]requests.CreateTopicRequest, error) {
 
 	// throw error if Names or Topics are empty
-	if len(createTopicsRequest.Names) == 0 || len(createTopicsRequest.Topics) == 0 {
+	if len(createTopicsRequest.Names) == 0 && len(createTopicsRequest.Topics) == 0 {
 		return nil, fmt.Errorf("send names or topics to create new topics")
 	}
 
@@ -154,7 +160,7 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 		// set is_enabled to true if not sent
 		if topic.IsEnabled == nil {
 			ok := true
-			createTopicsRequest.Topics[i].IsSearchable = &ok
+			createTopicsRequest.Topics[i].IsEnabled = &ok
 		}
 
 		// update parent meta for topic
@@ -170,15 +176,19 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 
 	for _, topic := range createTopicsRequest.Topics {
 
-		// Convert parent_id to ObjectID
-		parentId, err := primitive.ObjectIDFromHex(topic.ParentId) // TODO: check if parent_id is null or not
-		if err != nil {
-			return nil, fmt.Errorf("invalid Parent ID")
+		parentId := primitive.ObjectID{}
+
+		if topic.ParentId != "" {
+			// Convert parent_id to ObjectID
+			parentId, err = primitive.ObjectIDFromHex(topic.ParentId) // TODO: check if parent_id is null or not
+			if err != nil {
+				return nil, fmt.Errorf("invalid Parent ID")
+			}
 		}
 
 		condition := bson.M{
 			"$and": bson.A{
-				bson.M{"$toLower": "$name", "$eq": strings.ToLower(topic.Name)},
+				bson.M{"name": bson.M{"$regex": topic.Name, "$options": "i"}},
 				bson.M{"parent_id": parentId},
 			},
 		}
@@ -198,7 +208,10 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 
 	// send error if the topic already exists
 	if len(existingTopics) > 0 {
-		return nil, fmt.Errorf(fmt.Sprintf("Topic %v already exists with Parent %v", existingTopics[0].Name, existingTopics[0].ParentName))
+		if existingTopics[0].ParentName != "" {
+			return nil, fmt.Errorf(fmt.Sprintf("Topic %v already exists with a Parent %v", existingTopics[0].Name, existingTopics[0].ParentName))
+		}
+		return nil, fmt.Errorf(fmt.Sprintf("Topic %v already exists", existingTopics[0].Name))
 	}
 
 	return createTopicsRequest.Topics, nil
@@ -231,7 +244,9 @@ func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []request
 			}
 
 			setData := gin.H{
-				"widget_id": widgetData.ID,
+				"$set": gin.H{
+					"widget_id": widgetData.ID,
+				},
 			}
 
 			// update topic with widget_id
@@ -239,6 +254,8 @@ func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []request
 			if err != nil {
 				return nil, err
 			}
+
+			topicsData[i].WidgetId = widgetData.ID
 		}
 	}
 
@@ -380,8 +397,68 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 	c.JSON(http.StatusOK, finalParsedResponse)
 }
 
+func validateEditTopicRequest(handlers *FeedHandlers, topicId string, editTopicRequest requests.EditTopicRequest,
+	communityId int) (*entities.Topic, gin.H, error) {
+
+	// fetch topic using topic_id
+	topic, err := fetchTopicByID(handlers.topicHelper, topicId, communityId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// topic update data
+	topicUpdateData := gin.H{
+		"$set": gin.H{},
+	}
+
+	// strip text to check if it is empty
+	editTopicRequest.Name = strings.Trim(editTopicRequest.Name, " ")
+
+	// Update set object with name field, if changed
+	if len(editTopicRequest.Name) > 0 && topic.Name != editTopicRequest.Name {
+
+		// check if the topic name already exists
+		filter := gin.H{
+			"name":         editTopicRequest.Name,
+			"parent_id":    topic.ParentId,
+			"community_id": communityId,
+		}
+
+		// fetch topic using helper method
+		topicResults, err := handlers.topicHelper.FindTopicHelper(filter, gin.H{})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// send error if the topic already exists
+		if len(topicResults) > 0 {
+			return nil, nil, fmt.Errorf(fmt.Sprintf("Topic %v with this name already exists", editTopicRequest.Name))
+		}
+
+		topicUpdateData["$set"].(gin.H)["name"] = editTopicRequest.Name
+	}
+
+	// Update set object with is_enabled field, if changed
+	if editTopicRequest.IsEnabled != nil && *editTopicRequest.IsEnabled != topic.IsEnabled {
+		topicUpdateData["$set"].(gin.H)["is_enabled"] = editTopicRequest.IsEnabled
+	}
+
+	// Update set object with priority field, if changed
+	if topic.Priority != editTopicRequest.Priority {
+		topicUpdateData["$set"].(gin.H)["priority"] = editTopicRequest.Priority
+	}
+
+	// Update set object with is_searchable field, if changed
+	if editTopicRequest.IsSearchable != nil && *editTopicRequest.IsSearchable != topic.IsSearchable {
+		topicUpdateData["$set"].(gin.H)["is_searchable"] = editTopicRequest.IsSearchable
+	}
+
+	return topic, topicUpdateData, nil
+}
+
 // Exposed Method to Edit a Topic
 func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
+
 	// fetch url params
 	topicId := c.Param("topic_id")
 
@@ -398,35 +475,42 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		return
 	}
 
-	// fetch topic using topic_id
-	topic, err := fetchTopicByID(handlers.topicHelper, topicId, communityId)
+	topic, topicUpdateData, err := validateEditTopicRequest(handlers, topicId, editTopicRequest, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// topic update data
-	topicUpdateData := gin.H{
-		"$set": gin.H{},
-	}
+	// Update set object with widget_id field, if metadata is sent
+	if editTopicRequest.Metadata != nil {
 
-	// strip text to check if it is empty
-	editTopicRequest.Name = strings.Trim(editTopicRequest.Name, " ")
+		// check if the topic already has a widget
+		if topic.WidgetId != primitive.NilObjectID {
 
-	// Update set object with name field, if changed
-	if len(editTopicRequest.Name) > 0 && topic.Name != editTopicRequest.Name {
-		topicUpdateData["$set"].(gin.H)["name"] = editTopicRequest.Name
-	}
+			// update widget using the helper method
+			_, err := editWidget(handlers, topic.WidgetId.Hex(), topicId, enums.WidgetParentEntityTypeTopic, false, editTopicRequest.Metadata, nil, communityId)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+		} else {
 
-	// Update set object with is_enabled field, if changed
-	if topic.IsEnabled != editTopicRequest.IsEnabled {
-		topicUpdateData["$set"].(gin.H)["is_enabled"] = editTopicRequest.IsEnabled
+			// create widget from given metadata
+			widgetData, err := createWidget(handlers, false, topic.ID.Hex(), enums.WidgetParentEntityTypeTopic, editTopicRequest.Metadata, nil, communityId)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			topicUpdateData["$set"].(gin.H)["widget_id"] = widgetData.ID
+		}
 	}
 
 	// Validation of data change
 	if len(topicUpdateData["$set"].(gin.H)) > 0 {
+
 		// update topic using the helper method
-		err = handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData, true)
+		err := handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData, true)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -458,8 +542,43 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, deleteTopicsRequest requests.DeleteTopicsRequest,
+) ([]primitive.ObjectID, []primitive.ObjectID, error) {
+
+	// convert topic_ids to object ids
+	topicIDs := helpers.ConvertIdsToObjectIds(deleteTopicsRequest.TopicIds)
+
+	// send error if no topic ids are sent in the body
+	if len(topicIDs) <= 0 {
+		return nil, nil, fmt.Errorf("topic_ids can't be empty!")
+	}
+
+	// fetch all the topics by topic ids sent in request
+	topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Validation of Topics
+	if len(topics) != len(topicIDs) {
+		return nil, nil, fmt.Errorf("Invalid topic_ids sent")
+	}
+
+	widgetIds := []primitive.ObjectID{}
+
+	for _, topic := range topics {
+		// check if the topic has a widget
+		if topic.WidgetId != primitive.NilObjectID {
+			widgetIds = append(widgetIds, topic.WidgetId)
+		}
+	}
+
+	return topicIDs, widgetIds, nil
+}
+
 // Exposed Method to Delete Topics
 func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -473,25 +592,9 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		return
 	}
 
-	// convert topic_ids to object ids
-	topicIDs := helpers.ConvertIdsToObjectIds(deleteTopicsRequest.TopicIds)
-
-	// send error if no topic ids are sent in the body
-	if len(topicIDs) <= 0 {
-		utils.GeneralAPIValidationError(c, "topic_ids can't be empty!")
-		return
-	}
-
-	// fetch all the topics by topic ids sent in request
-	topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+	topicIDs, widgetIDs, err := validateDeleteTopicsRequest(handlers, communityId, deleteTopicsRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// Validation of Topics
-	if len(topics) != len(topicIDs) {
-		utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
 		return
 	}
 
@@ -500,6 +603,25 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	// delete the widgets for the topics
+	if len(widgetIDs) > 0 {
+
+		filter := gin.H{
+			"_id": gin.H{
+				"$in": widgetIDs,
+			},
+		}
+
+		count, err := handlers.widgetHelper.DeleteWidgetsHelper(filter)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+		if int(count) != len(widgetIDs) {
+			logging.Error(fmt.Sprintf("Only %v Widgets deleted out of %v", count, widgetIDs))
+		}
 	}
 
 	topicidsString := utils.ParseStringArrayToString(deleteTopicsRequest.TopicIds)

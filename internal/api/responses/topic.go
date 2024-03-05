@@ -9,10 +9,10 @@ type TopicResponse struct {
 	IsEnabled    bool               `json:"is_enabled"`
 	Priority     float32            `json:"priority"`
 	IsSearchable bool               `json:"is_searchable"`
-	ParentId     primitive.ObjectID `json:"parent_id,omitempty"`
-	ParentName   string             `json:"parent_name,omitempty"`
+	ParentId     string             `json:"parent_id"`
+	ParentName   string             `json:"parent_name"`
 	Level        int                `json:"level"`
-	WidgetId     primitive.ObjectID `json:"widget_id,omitempty"`
+	WidgetId     string             `json:"widget_id"`
 }
 
 // Response Structure for fetched Indexed Topics Response

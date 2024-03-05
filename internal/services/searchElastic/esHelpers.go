@@ -194,10 +194,6 @@ func (esHelper *esHelper) InsertManyDocuments(documents map[string]interface{}, 
 		return fmt.Errorf("Search(Elastic): insert many: response: %s", res.String())
 	}
 
-	fmt.Println(`
-	res: %w
-	`, res.String())
-
 	return nil
 }
 

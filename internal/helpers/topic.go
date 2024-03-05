@@ -34,10 +34,14 @@ func (helper *topicHelper) CreateManyTopicsHelper(topicsRequest []requests.Creat
 
 	for _, topic := range topicsRequest {
 
-		// Convert the parentId to ObjectID
-		parentId, err := primitive.ObjectIDFromHex(topic.ParentId)
-		if err != nil {
-			return nil, err
+		parentId, err := primitive.NilObjectID, error(nil)
+
+		if topic.ParentId != "" {
+			// Convert the parentId to ObjectID
+			parentId, err = primitive.ObjectIDFromHex(topic.ParentId)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		topics = append(topics, entities.NewTopic(topic.Name, *topic.IsEnabled, topic.Priority, *topic.IsSearchable, parentId, topic.ParentName, topic.AllParentIds, topic.Level, topic.WidgetId, topic.TotalChildCount, communityId))

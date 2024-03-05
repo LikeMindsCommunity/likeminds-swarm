@@ -25,8 +25,11 @@ type CreateTopicsRequest struct {
 
 // Request Structure for Edit Topic
 type EditTopicRequest struct {
-	Name      string `json:"name"`
-	IsEnabled bool   `json:"is_enabled"`
+	Name         string                 `json:"name"`
+	IsEnabled    *bool                  `json:"is_enabled"`
+	Priority     float32                `json:"priority"`
+	IsSearchable *bool                  `json:"is_searchable"`
+	Metadata     map[string]interface{} `json:"metadata"`
 }
 
 // Request Structure for Fetch Topic
