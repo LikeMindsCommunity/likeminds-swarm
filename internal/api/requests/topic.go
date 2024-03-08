@@ -3,18 +3,17 @@ package requests
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type CreateTopicRequest struct {
-	Name         string                 `json:"name" binding:"required"`
-	Priority     float32                `json:"priority"`
-	IsSearchable *bool                  `json:"is_searchable"`
-	ParentId     string                 `json:"parent_id"`
-	IsEnabled    *bool                  `json:"is_enabled"`
-	Metadata     map[string]interface{} `json:"metadata"`
-
-	ParentName      string               `json:"-"` // For Internal use
-	AllParentIds    []primitive.ObjectID `json:"-"` // For Internal use
-	Level           int                  `json:"-"` // For Internal use
-	WidgetId        primitive.ObjectID   `json:"-"` // For Internal use
-	TotalChildCount int                  `json:"-"` // For Internal use
+	Name            string                 `json:"name" binding:"required"`
+	Priority        float32                `json:"priority"`
+	IsSearchable    *bool                  `json:"is_searchable"`
+	ParentId        string                 `json:"parent_id"`
+	IsEnabled       *bool                  `json:"is_enabled"`
+	Metadata        map[string]interface{} `json:"metadata"`
+	ParentName      string                 `json:"-"` // For Internal use
+	AllParentIds    []primitive.ObjectID   `json:"-"` // For Internal use
+	Level           int                    `json:"-"` // For Internal use
+	WidgetId        primitive.ObjectID     `json:"-"` // For Internal use
+	TotalChildCount int                    `json:"-"` // For Internal use
 }
 
 // Request Structure for Create Topic
