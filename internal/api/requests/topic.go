@@ -36,7 +36,7 @@ type FetchTopicRequest struct {
 	Search         string `form:"search"`
 	SearchType     string `form:"search_type"`
 	IsEnabled      string `form:"is_enabled"`
-	MinPosts       string `json:"min_posts"`
+	MinPosts       string `form:"min_posts"`
 	ParentTopicIds string `form:"parent_topic_ids"`
 	OrderBy        string `form:"order_by"`
 }
