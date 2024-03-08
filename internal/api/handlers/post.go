@@ -2588,7 +2588,11 @@ func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllEx
 		return nil
 	}
 
-	originalPost := postResults[0]
+	var originalPost entities.Post
+
+	if len(postResults) > 0 {
+		originalPost = postResults[0]
+	}
 
 	if len(originalPost.TopicIds) > 0 {
 		// Fetch topics
