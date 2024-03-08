@@ -33,12 +33,12 @@ type EditTopicRequest struct {
 
 // Request Structure for Fetch Topic
 type FetchTopicRequest struct {
-	Search         string `form:"search"`
-	SearchType     string `form:"search_type"`
-	IsEnabled      string `form:"is_enabled"`
-	MinPosts       string `form:"min_posts"`
-	ParentTopicIds string `form:"parent_topic_ids"`
-	OrderBy        string `form:"order_by"`
+	Search     string `form:"search"`
+	SearchType string `form:"search_type"`
+	IsEnabled  string `form:"is_enabled"`
+	MinPosts   string `form:"min_posts"`
+	ParentIds  string `form:"parent_ids"`
+	OrderBy    string `form:"order_by"`
 }
 
 // Request Structure for Delete Topics

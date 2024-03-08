@@ -435,7 +435,7 @@ func validateFetchTopicsRequest(fetchTopicRequest requests.FetchTopicRequest) (i
 		}
 	}
 
-	parentTopicsIds := parseStringArrayParam(fetchTopicRequest.ParentTopicIds)
+	parentTopicsIds := parseStringArrayParam(fetchTopicRequest.ParentIds)
 
 	return minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, nil
 }
