@@ -2103,7 +2103,6 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 			logging.Error(err.Error())
 		}
 
-		// Delete post topics data
 		// Trigger delete post background tasks
 		err = handlers.taskDistributor.TriggerDeletePostBackgroundTasks(postData.ID.Hex())
 		if err != nil {

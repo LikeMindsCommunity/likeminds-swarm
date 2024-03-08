@@ -383,7 +383,7 @@ func processTopicSearchData(data map[string]interface{}) []responses.TopicRespon
 	return fetchTopicsResponse
 }
 
-func validateAndGetFetchTopicsFilterParams(fetchTopicRequest requests.FetchTopicRequest) (int, bool, bool, []string, []string, error) {
+func validateFetchTopicsRequest(fetchTopicRequest requests.FetchTopicRequest) (int, bool, bool, []string, []string, error) {
 
 	// fetch min_posts query param
 	minPosts, err := utils.ParseIntFromQueryParam(fetchTopicRequest.MinPosts, 0)
@@ -439,7 +439,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		return
 	}
 
-	minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, err := validateAndGetFetchTopicsFilterParams(fetchTopicRequest)
+	minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, err := validateFetchTopicsRequest(fetchTopicRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

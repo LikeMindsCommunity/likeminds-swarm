@@ -11,10 +11,10 @@ type CreateTopicRequest struct {
 	Metadata     map[string]interface{} `json:"metadata"`
 
 	ParentName      string               `json:"-"` // For Internal use
-	AllParentIds    []primitive.ObjectID `json:"-"`
-	Level           int                  `json:"-"`
-	WidgetId        primitive.ObjectID   `json:"-"`
-	TotalChildCount int                  `json:"-"`
+	AllParentIds    []primitive.ObjectID `json:"-"` // For Internal use
+	Level           int                  `json:"-"` // For Internal use
+	WidgetId        primitive.ObjectID   `json:"-"` // For Internal use
+	TotalChildCount int                  `json:"-"` // For Internal use
 }
 
 // Request Structure for Create Topic
