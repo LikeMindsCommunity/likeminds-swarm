@@ -959,25 +959,89 @@ func getWidgetIdsFromAttachments(attachments []entities.Attachment) []primitive.
 // Internal method to parse widget_ids from topics
 func getWidgetIdsFromTopics(response interface{}) []primitive.ObjectID {
 
-	uniqueWidgetIds := []primitive.ObjectID{}
-	tempWidgetIds := map[string]bool{}
+	uniqueWidgetIds, widgetsMap := []primitive.ObjectID{}, map[string]bool{}
 
-	if topics, ok := response.(gin.H)["topics"]; ok {
-		for _, topic := range topics.([]responses.TopicResponse) {
-			if topic.WidgetId != "" {
-				if _, exists := tempWidgetIds[topic.WidgetId]; !exists {
-					tempWidgetIds[topic.WidgetId] = true
-				}
-			}
-		}
+	if topic, ok := response.(gin.H)["topic"]; ok {
+		widgetsMap = typeAssertAndFetchWidgetIdsFromTopics(topic, widgetsMap)
 	}
 
-	for key := range tempWidgetIds {
+	if topics, ok := response.(gin.H)["topics"]; ok {
+		widgetsMap = typeAssertAndFetchWidgetIdsFromTopics(topics, widgetsMap)
+	}
+
+	if topics, ok := response.(gin.H)["child_topics"]; ok {
+		widgetsMap = typeAssertAndFetchWidgetIdsFromTopics(topics, widgetsMap)
+	}
+
+	// convert map to array
+	for key := range widgetsMap {
 		objectId, _ := primitive.ObjectIDFromHex(key)
 		uniqueWidgetIds = append(uniqueWidgetIds, objectId)
 	}
 
 	return uniqueWidgetIds
+}
+
+func typeAssertAndFetchWidgetIdsFromTopics(topics interface{}, widgetMap map[string]bool) map[string]bool {
+
+	switch topics := topics.(type) {
+	case responses.TopicResponse:
+		if topics.WidgetId != "" {
+			if _, exists := widgetMap[topics.WidgetId]; !exists {
+				widgetMap[topics.WidgetId] = true
+			}
+		}
+	case responses.TopicResponseWithMeta:
+		if topics.WidgetId != "" {
+			if _, exists := widgetMap[topics.WidgetId]; !exists {
+				widgetMap[topics.WidgetId] = true
+			}
+		}
+	case map[string]responses.TopicResponse:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	case []responses.TopicResponse:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	case map[string]responses.TopicResponseWithMeta:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	case map[string][]responses.TopicResponseWithMeta: // for child_topics
+		for _, topic := range topics {
+			for _, topic := range topic {
+				if topic.WidgetId != "" {
+					if _, exists := widgetMap[topic.WidgetId]; !exists {
+						widgetMap[topic.WidgetId] = true
+					}
+				}
+			}
+		}
+	case []responses.TopicResponseWithMeta:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	}
+
+	return widgetMap
 }
 
 // Internal Method to parse widget_ids from posts

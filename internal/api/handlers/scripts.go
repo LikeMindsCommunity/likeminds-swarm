@@ -5,6 +5,8 @@ import (
 	"time"
 
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -177,5 +179,39 @@ func (handlers *FeedHandlers) BackfillPostTopicsInDB() error {
 	}
 	fmt.Printf("script: BackfillPostTopicsInDB, executed in %d\n", time.Since(startTime))
 
+	return nil
+}
+
+// function to insert default values for fields in topics collection
+func (handlers *FeedHandlers) BackfillDefaultValuesForTopics() error {
+
+	fmt.Println("Starting InsertDefaultValuesForTopics script!")
+	startTime := time.Now()
+
+	// fields to be updated
+	fields := map[string]interface{}{
+		"priority":          0,
+		"is_searchable":     true,
+		"parent_id":         primitive.NilObjectID,
+		"parent_name":       "",
+		"all_parent_ids":    nil,
+		"level":             0,
+		"widget_id":         primitive.NilObjectID,
+		"total_child_count": 0,
+	}
+
+	// update fields with default values in topics collection if not exists
+	for key, defaultValue := range fields {
+
+		filter := bson.M{key: bson.M{"$exists": false}}
+		update := bson.M{"$set": bson.M{key: defaultValue}}
+
+		err := handlers.topicHelper.UpdateManyTopicsHelper(filter, update, false)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
+	fmt.Printf("script: InsertDefaultValuesForTopics, executed in %d\n", time.Since(startTime))
 	return nil
 }

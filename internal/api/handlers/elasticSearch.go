@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -227,7 +228,7 @@ func GetTopicIdsFilterQuery(topicIds []string, communityId int) string {
 				]
 			}
 		}
-	}`, communityId, topicIds)
+	}`, communityId, utils.ParseStringArrayToString(topicIds))
 }
 
 // Exposed method to create topic search query
@@ -260,13 +261,12 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 
 	searchQuery := ""
 	if search != "" && searchType != "" {
-		searchQuery = fmt.Sprintf(`,{
-			"match": {
-				"%s": {
-					"query": "%s",
-					"analyzer": "standard"
-				}
-			}
+		searchQuery = fmt.Sprintf(`,
+		{ 
+			"match": { "%s": { "query": "%s", "analyzer": "standard" } }
+		},
+		{ 
+			"match": { "is_searchable": { "query": true } }
 		}`, searchType, search)
 	}
 
@@ -341,7 +341,7 @@ func getSortQueryFromOrderByParams(orderByParams []string) string {
 		orderByQuery += ","
 	}
 
-	orderByQuery = `{"updated_at": {"order": "desc}}`
+	orderByQuery += `{"updated_at": {"order": "desc"}}`
 	return orderByQuery
 }
 
