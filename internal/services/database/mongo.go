@@ -134,6 +134,7 @@ func InitiateDB() *mongo.Database {
 				"fields": bson.D{{"community_id", 1},
 					{"name", 1},
 					{"is_enabled", 1},
+					{"parent_id", 1},
 				},
 			},
 			{
