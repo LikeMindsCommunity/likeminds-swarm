@@ -1067,7 +1067,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		"posts":    postIdsDataMap,
 	}
 
-	utils.GenereateSuccessResponse(c, finalResponse)
+	utils.GenerateSuccessResponse(c, finalResponse)
 }
 
 func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Post, c *gin.Context, headers map[string]string) {
