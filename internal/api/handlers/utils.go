@@ -125,7 +125,7 @@ func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned
 
 		if communityConfigurationResponse != nil {
 			externalEntities = externalHelpers.ExternalEntities{
-				communityConfigurationResponse.CommunityConfigurations,
+				CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
 			}
 		}
 

@@ -118,3 +118,15 @@ func ConvertObjectIdsToString(objectIds []primitive.ObjectID) string {
 
 	return utils.ParseStringArrayToString(topicIds)
 }
+
+// Helper method to convert array of Object IDs to string array
+func ConvertObjectIdsToStringArray(objectIds []primitive.ObjectID) []string {
+
+	stringIds := make([]string, len(objectIds))
+
+	for i, objectId := range objectIds {
+		stringIds[i] = objectId.Hex()
+	}
+
+	return stringIds
+}

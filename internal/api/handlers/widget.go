@@ -22,6 +22,7 @@ import (
 // Internal Method to create a new widget with indexing
 func createWidget(handlers *FeedHandlers, createdByLM bool, parentEntityID string, parentEntityType string,
 	metaData map[string]interface{}, lmMeta map[string]interface{}, communityId int) (*entities.Widget, error) {
+
 	// create Widget using the helper method
 	widgetId, err := handlers.widgetHelper.CreateWidgetHelper(createdByLM, parentEntityID, parentEntityType, metaData, lmMeta,
 		communityId)

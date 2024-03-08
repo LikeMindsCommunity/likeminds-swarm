@@ -19,6 +19,7 @@ const (
 	WidgetCollection         string = "customWidget"
 	PollVotesCollection      string = "pollVotes"
 	ConnectionFeedCollection string = "connectionFeed"
+	PostTopicsCollection     string = "postTopics"
 )
 
 // Internal Method to Insert a document in MongoDB
@@ -57,6 +58,36 @@ func _updateDocumentsInDB(db *mongo.Database, collectionName string, filter map[
 func _updateAllDocumentsInDB(db *mongo.Database, collectionName string, filter map[string]interface{}, update map[string]interface{}) error {
 	coll := db.Collection(collectionName)
 	_, err := coll.UpdateMany(context.TODO(), filter, update)
+
+	return err
+}
+
+// Internal Method to Update all filter document in MongoDB
+func _updateAllDocumentsInDBInBulk(db *mongo.Database, collectionName string, mapFilterWithUpdate [][]gin.H) error {
+	coll := db.Collection(collectionName)
+
+	models := []mongo.WriteModel{}
+
+	for _, filterListWithUpdate := range mapFilterWithUpdate {
+		var mongoModel mongo.WriteModel
+
+		if len(filterListWithUpdate) == 2 {
+			mongoModel = mongo.NewUpdateOneModel().SetFilter(filterListWithUpdate[0]).
+				SetUpdate(filterListWithUpdate[1]).
+				SetUpsert(true)
+		} else if len(filterListWithUpdate) == 1 {
+			mongoModel = mongo.NewUpdateOneModel().SetFilter(filterListWithUpdate[0]).
+				SetUpdate(map[string]interface{}{}).
+				SetUpsert(true)
+		}
+
+		models = append(models, mongoModel)
+	}
+
+	// Specifies that the bulk write is ordered
+	opts := options.BulkWrite().SetOrdered(true)
+
+	_, err := coll.BulkWrite(context.TODO(), models, opts)
 
 	return err
 }
