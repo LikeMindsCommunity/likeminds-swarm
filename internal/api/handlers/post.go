@@ -2332,6 +2332,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	versionCode := headers[utils.HeadersAcceptVersion]
+	platformCode := headers[utils.HeadersPlatformCode]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -2391,6 +2393,37 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
 	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
 	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+
+	// Get community configurations
+	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
+
+	var commentSortOrderVal int
+	filtered_comments := map[string]requests.CommentWithParentResponse{}
+
+	if universalFeedConfig.CommentSortOrder == enums.DescendingSortOrder {
+		commentSortOrderVal = -1
+	} else {
+		commentSortOrderVal = 1
+	}
+
+	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
+		var updatedPostsWithComments []requests.PostResponse
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
+			response.Posts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
+			versionCode, platformCode, apiRevampV1Check)
+
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		if len(updatedPostsWithComments) > 0 {
+			finalResponse["posts"] = updatedPostsWithComments
+		}
+
+	}
+
+	finalResponse["filtered_comments"] = filtered_comments
 
 	// return final response
 	c.JSON(http.StatusOK, finalResponse)
