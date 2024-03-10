@@ -860,7 +860,7 @@ func parseFetchMultiplePostResponse(
 }
 
 // Internal Method to parse topics response
-func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
+func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
 	communityId int) (map[string]responses.TopicResponse, error) {
 
 	// Fetch topics using topic Ids
@@ -1082,7 +1082,7 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]responses.TopicResponse {
 	topicIds := getTopicIdsFromPosts(response)
 
-	topicsData, _ := parseTopicsResponse(topicHelper, topicIds, communityId)
+	topicsData, _ := fetchAndParseTopicsForResponse(topicHelper, topicIds, communityId)
 
 	return topicsData
 }
@@ -1094,7 +1094,9 @@ func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{
 	widgetIds := getWidgetIdsFromPosts(response)
 
 	// get widget ids from topics
-	widgetIds = append(widgetIds, getWidgetIdsFromTopics(response)...)
+	topicWidgetIds := getWidgetIdsFromTopics(response)
+
+	widgetIds = append(widgetIds, topicWidgetIds...)
 
 	// fetch widget data from widget ids
 	widgetsData, _ := parseWidgetsResponse(handlers, widgetIds, communityId, uuid)

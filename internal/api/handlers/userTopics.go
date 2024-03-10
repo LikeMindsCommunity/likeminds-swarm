@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -12,9 +13,98 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+func fetchUserTopicsForUserIds(userTopicsHelper interfaces.UserTopicsHelper, userIds []string, communityId int,
+) (map[string][]primitive.ObjectID, []primitive.ObjectID, error) {
+
+	topicIds := []primitive.ObjectID{}
+
+	// fetch user topics
+	filterData := gin.H{
+		"user_id":   gin.H{"$in": userIds},
+		"community": communityId,
+	}
+
+	userTopics, err := userTopicsHelper.FindUserTopicsHelper(filterData, gin.H{})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	userTopicsMap := map[string][]primitive.ObjectID{}
+
+	for _, userTopic := range userTopics {
+
+		if _, ok := userTopicsMap[userTopic.UserID]; !ok {
+			userTopicsMap[userTopic.UserID] = []primitive.ObjectID{}
+		}
+
+		userTopicsMap[userTopic.UserID] = append(userTopicsMap[userTopic.UserID], userTopic.TopicID)
+		topicIds = append(topicIds, userTopic.TopicID)
+	}
+
+	return userTopicsMap, topicIds, nil
+}
+
+// Internal method to fetch user topics along with topics and widgets data
+func fetchUserTopicsForResponse(handlers *FeedHandlers, userIds []string, communityId int, userId string,
+) (map[string][]primitive.ObjectID, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
+
+	// fetch user topics
+	userTopicsMap, topicIds, err := fetchUserTopicsForUserIds(handlers.userTopicsHelper, userIds, communityId)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// fetch parsed topics
+	topicsMap, err := fetchAndParseTopicsForResponse(handlers.topicHelper, topicIds, communityId)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// fetch widgets
+	widgetsMap := getWidgetDataFromPostsAndTopics(handlers, gin.H{"topics": topicsMap}, communityId, userId)
+
+	return userTopicsMap, topicsMap, widgetsMap, nil
+}
+
 // Exposed Handler Method to fetch User Topics
 func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+
+	// validate community id
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		utils.GeneralAPIValidationError(c, "Invalid community id")
+		return
+	}
+
+	var futr requests.FetchUserTopicsRequest
+	if err := c.ShouldBindJSON(&futr); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	if len(futr.UUIDs) == 0 {
+		utils.GeneralAPIValidationError(c, "Please send uuids in request")
+		return
+	}
+
+	// fetch user topics along with topics and widgets data
+	userTopicsMap, topicsMap, widgetsMap, err := fetchUserTopicsForResponse(handlers, futr.UUIDs, communityId, userId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// final response
+	response := gin.H{
+		"user_topics": userTopicsMap,
+		"topics":      topicsMap,
+		"widgets":     widgetsMap,
+	}
+
+	utils.GenerateSuccessResponse(c, response)
 }
 
 func validateUpdateUserTopicsRequest(topicHelper interfaces.TopicHelper, userTopicsHelper interfaces.UserTopicsHelper,

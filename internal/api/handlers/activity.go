@@ -120,7 +120,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	}
 
 	// Parse topicsData from topicIds
-	topicDatas, _ = parseTopicsResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
+	topicDatas, _ = fetchAndParseTopicsForResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
 
 	// Parse widgetsData from widgetIds
 	widgetDatas, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, uuid)
@@ -253,7 +253,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	}
 
 	// Parse topicsData from topicIds
-	topicsData, _ = parseTopicsResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
+	topicsData, _ = fetchAndParseTopicsForResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
 
 	// Parse widgetsData from widgetIds
 	widgetsData, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, userId)
