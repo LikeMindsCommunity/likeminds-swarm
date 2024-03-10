@@ -20,6 +20,7 @@ const (
 	PollVotesCollection      string = "pollVotes"
 	ConnectionFeedCollection string = "connectionFeed"
 	PostTopicsCollection     string = "postTopics"
+	UserTopicsCollection     string = "userTopics"
 )
 
 // Internal Method to Insert a document in MongoDB
