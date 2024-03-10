@@ -21,22 +21,21 @@ func (helper *UserTopicsHelper) CreateUserTopicHelper(userId string, topicId pri
 }
 
 // Exposed Helper Method to Create many User Topic Instances
-func (helper *UserTopicsHelper) CreateManyUserTopicsHelper(userTopicsRequest []map[string]interface{}, communityId int,
+func (helper *UserTopicsHelper) CreateUsersTopicsHelper(usersTopicIds map[string][]primitive.ObjectID, communityId int,
 ) ([]primitive.ObjectID, error) {
 
 	var userTopics []interface{}
 
-	for _, userTopic := range userTopicsRequest {
+	for userId, topic := range usersTopicIds {
 
-		userId := userTopic["user_id"].(string)
-		topicId := userTopic["topic_id"].(primitive.ObjectID)
-
-		userTopics = append(userTopics, entities.NewUserTopic(userId, topicId, communityId))
+		for _, topic := range topic {
+			userTopics = append(userTopics, entities.NewUserTopic(userId, topic, communityId))
+		}
 	}
 
-	userTopicIds, err := helper.UserTopicsRepository.CreateMany(userTopics)
+	userTopics, err := helper.UserTopicsRepository.CreateMany(userTopics)
 
-	return TypecastIdsToObjectIds(userTopicIds), err
+	return TypecastIdsToObjectIds(userTopics), err
 }
 
 // Exposed Helper Method to Find User Topics

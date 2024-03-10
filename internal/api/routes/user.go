@@ -20,4 +20,6 @@ func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	userGroup.PATCH("/:user_id/connection", handler.UpdateConnection)
 	userGroup.GET("/:user_id/meta", handler.FetchUserFeedMeta)
 	userGroup.DELETE("/", handler.DeleteUserData)
+	userGroup.GET("/topics", handler.FetchUsersTopics)
+	userGroup.PATCH("/:user_id/topics", handler.UpdateUserTopics)
 }

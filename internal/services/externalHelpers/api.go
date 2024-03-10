@@ -25,6 +25,7 @@ const DefaultStatusCode = -1
 
 type APIClient struct {
 	CaravanServiceBaseURL string
+	KettleServiceBaseURL  string
 	HTTPClient            *http.Client
 }
 
@@ -52,10 +53,22 @@ func GetCaravanServiceBaseUrl() string {
 	return CaravanServiceBaseURL
 }
 
+// Exposed Method to Get Kettle service URL
+func GetKettleServiceBaseUrl() string {
+	KettleServiceBaseURL := environment.GoDotEnvVariable("KETTLE_SERVICE_URL")
+
+	if len(KettleServiceBaseURL) == 0 {
+		KettleServiceBaseURL = "https://betaauth.likeminds.community"
+	}
+
+	return KettleServiceBaseURL
+}
+
 // Exposed Method to Create New API Client
 func NewAPIClient() *APIClient {
 	return &APIClient{
 		CaravanServiceBaseURL: GetCaravanServiceBaseUrl(),
+		KettleServiceBaseURL:  GetKettleServiceBaseUrl(),
 		HTTPClient: &http.Client{
 			Timeout: time.Minute,
 		},

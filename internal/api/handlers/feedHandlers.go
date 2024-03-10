@@ -23,6 +23,7 @@ type FeedHandlers struct {
 	cacheHelper          cache.Helper
 	taskDistributor      distributor.FeedTaskDistributor
 	postTopicsHelper     interfaces.PostTopicsHelper
+	userTopicsHelper     interfaces.UserTopicsHelper
 }
 
 // Exposed Method to get an instance for Feed Handlers
@@ -40,7 +41,8 @@ func NewFeedHandlers(
 	esHelper searchElastic.EsHelper,
 	cacheHelper cache.Helper,
 	taskDistributor distributor.FeedTaskDistributor,
-	postTopicsHelper interfaces.PostTopicsHelper) *FeedHandlers {
+	postTopicsHelper interfaces.PostTopicsHelper,
+	userTopicsHelper interfaces.UserTopicsHelper) *FeedHandlers {
 
 	return &FeedHandlers{
 		likeHelper:           likeHelper,
@@ -57,5 +59,6 @@ func NewFeedHandlers(
 		cacheHelper:          cacheHelper,
 		taskDistributor:      taskDistributor,
 		postTopicsHelper:     postTopicsHelper,
+		userTopicsHelper:     userTopicsHelper,
 	}
 }

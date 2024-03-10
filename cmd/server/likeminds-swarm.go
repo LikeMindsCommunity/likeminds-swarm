@@ -76,6 +76,7 @@ func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redi
 	pollVotesRepository := repositories.NewPollVotesRepository(dbClient)
 	connectionFeedRepository := repositories.NewConnectionFeedRepository(dbClient)
 	postTopicsRepository := repositories.NewPostTopicsRepository(dbClient)
+	userTopicsRepository := repositories.NewUserTopicsRepository(dbClient)
 
 	// Dependency injection of Cache & ES
 	cacheHelper := cache.NewCacheHelper(redisClient)
@@ -93,13 +94,15 @@ func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redi
 	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
 	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
 	postTopicsHelper := helpers.NewPostTopicsHelper(postTopicsRepository)
+	userTopicsHelper := helpers.NewUserTopicsHelper(userTopicsRepository)
 
 	// initiate task distributor for background tasks
 	feedTaskDistributor := distributor.NewTaskDistributor()
 
 	// return feed handlers
 	return handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper, activityHelper,
-		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor, postTopicsHelper)
+		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor,
+		postTopicsHelper, userTopicsHelper)
 }
 
 // Main Method
