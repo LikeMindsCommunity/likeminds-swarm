@@ -254,14 +254,14 @@ func deleteUserTopicsByTopicIds(userTopicsHelper interfaces.UserTopicsHelper, to
 	}
 
 	// Invalidate Kettle Cache for user topics
-	externalHelpers.InvalidateKettleCache(userTopicsKeyPattern)
+	go externalHelpers.InvalidateKettleCache(userTopicsKeyPattern)
 
 	for _, topicId := range topicIds {
 		topicsMetaKeyPattern = append(topicsMetaKeyPattern, fmt.Sprintf("%d_%s_topic_meta", communityId, topicId.Hex())) //TODO: move to constants
 	}
 
 	// Invalidate Kettle Cache for topics meta
-	externalHelpers.InvalidateKettleCache(topicsMetaKeyPattern)
+	go externalHelpers.InvalidateKettleCache(topicsMetaKeyPattern)
 
 	return nil
 }

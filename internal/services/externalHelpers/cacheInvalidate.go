@@ -15,7 +15,7 @@ func InvalidateKettleCache(keyPatterns []string) {
 	}
 
 	requestBody := map[string]interface{}{
-		"key_pattern": keyPatterns,
+		"key_patterns": keyPatterns,
 	}
 
 	// Send request to disable webhook

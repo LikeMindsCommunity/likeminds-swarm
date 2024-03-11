@@ -82,6 +82,7 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 	// Validation of data change
 	if len(widgetUpdateData["$set"].(gin.H)) > 0 {
+
 		// update widget using the helper method
 		err := handlers.widgetHelper.UpdateWidgetByIdHelper(widget.ID, widgetUpdateData)
 		if err != nil {
@@ -99,6 +100,9 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 		if err != nil {
 			fmt.Println(err.Error())
 		}
+
+		// Invalidate kettle cache
+		go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_widget_meta", communityId, widget.ID.Hex())}) //TODO : Add to constants
 	}
 
 	return widget, nil
@@ -504,34 +508,46 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 	// fetch widget using widget_id
 	widget, err := fetchWidgetByID(handlers.widgetHelper, widgetId, false, communityId)
 	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
+		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// delete widget using helper method
-	err = handlers.widgetHelper.DeleteWidgetByIdHelper(widget.ID)
+	// delete widget and related data
+	err = deleteWidgetById(handlers.widgetHelper, handlers.esHelper, communityId, widget.ID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
+	// generate success response
+	utils.GenerateSuccessResponse(c, nil)
+}
+
+// method to delete widget by Id and its related data
+func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, communityId int,
+	widgetId primitive.ObjectID) error {
+
+	// delete widget using helper method
+	err := widgetHelper.DeleteWidgetByIdHelper(widgetId)
+	if err != nil {
+		return err
+	}
+
 	// delete widget data from elastic search
-	err = handlers.esHelper.DeleteDocument(c, widget.ID.Hex(), constants.WidgetIndexName)
+	err = esHelper.DeleteDocument(widgetId.Hex(), constants.WidgetIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
-	// reponse data
-	response := gin.H{
-		"success": true,
-	}
+	// Invalidate kettle cache
+	go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_widget_meta", communityId, widgetId.Hex())}) //TODO : Add to constants
 
-	// return final response
-	c.JSON(http.StatusOK, response)
+	return nil
 }
 
-// method to delete widgets by Ids along with Indexed data
-func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, widgetIds []primitive.ObjectID,
+// method to delete widgets by Ids and its related data
+func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper,
+	widgetIds []primitive.ObjectID, communityId int,
 ) error {
 
 	// Delete the documents from the collection
@@ -563,6 +579,15 @@ func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchEla
 	if err != nil {
 		logging.Error(err.Error())
 	}
+
+	// Invalidate kettle cache
+	keyPatternsForWidgetsMeta := []string{}
+
+	for _, widgetId := range widgetIds {
+		keyPatternsForWidgetsMeta = append(keyPatternsForWidgetsMeta, fmt.Sprintf("%d_%s_widget_meta", communityId, widgetId.Hex())) // TODO:
+	}
+
+	go externalHelpers.InvalidateKettleCache(keyPatternsForWidgetsMeta)
 
 	return nil
 }

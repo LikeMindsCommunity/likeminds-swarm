@@ -136,7 +136,7 @@ func (esHelper *esHelper) IndexDocument(document interface{}, documentId string,
 }
 
 // Exposed method to delete an existing document in ElasticSearch
-func (esHelper *esHelper) DeleteDocument(ctx context.Context, documentId string, index string) error {
+func (esHelper *esHelper) DeleteDocument(documentId string, index string) error {
 
 	err := esHelper.CreateIndex(index)
 	if err != nil {
@@ -148,7 +148,7 @@ func (esHelper *esHelper) DeleteDocument(ctx context.Context, documentId string,
 		DocumentID: documentId,
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, esHelper.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), esHelper.timeout)
 	defer cancel()
 
 	res, err := req.Do(ctx, esHelper.esClient)

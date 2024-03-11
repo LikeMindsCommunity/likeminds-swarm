@@ -2127,7 +2127,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// delete post data in elastic search
-	err = handlers.esHelper.DeleteDocument(c, postData.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.DeleteDocument(postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}

@@ -606,45 +606,63 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		return
 	}
 
-	// Update set object with widget_id field, if metadata is sent
-	if editTopicRequest.Metadata != nil {
+	// Edit topic
+	updatedTopic, err := editTopic(handlers, topicUpdateData, editTopicRequest.Metadata, topic, communityId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	response := gin.H{
+		"topic":   parseTopicResponse(updatedTopic),
+		"widgets": gin.H{},
+	}
+
+	// Fetch widget data from response if exists
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, "")
+
+	// return final response
+	utils.GenerateSuccessResponse(c, response)
+}
+
+func editTopic(handlers *FeedHandlers, topicUpdateData gin.H, metadata map[string]interface{}, topic *entities.Topic,
+	communityId int) (*entities.Topic, error) {
+
+	// update topic metadata
+	if metadata != nil {
 
 		// check if the topic already has a widget
 		if topic.WidgetId != primitive.NilObjectID {
 
 			// update widget using the helper method
-			_, err := editWidget(handlers, topic.WidgetId.Hex(), topicId, enums.WidgetParentEntityTypeTopic, false, editTopicRequest.Metadata, nil, communityId)
+			_, err := editWidget(handlers, topic.WidgetId.Hex(), topic.ID.Hex(), enums.WidgetParentEntityTypeTopic, false, metadata, nil, communityId)
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
+				return nil, err
 			}
 		} else {
 
 			// create widget from given metadata
-			widgetData, err := createWidget(handlers, false, topic.ID.Hex(), enums.WidgetParentEntityTypeTopic, editTopicRequest.Metadata, nil, communityId)
+			widgetData, err := createWidget(handlers, false, topic.ID.Hex(), enums.WidgetParentEntityTypeTopic, metadata, nil, communityId)
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
+				return nil, err
 			}
 
 			topicUpdateData["$set"].(gin.H)["widget_id"] = widgetData.ID
 		}
 	}
 
-	// Validation of data change
+	// update topic if there is any data to update
 	if len(topicUpdateData["$set"].(gin.H)) > 0 {
 
-		// update topic using the helper method
 		err := handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData, true)
 		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
+			return nil, err
 		}
 
 		topic, err = fetchTopicByID(handlers.topicHelper, topic.ID.Hex(), communityId)
 		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return
+			// utils.GeneralAPIValidationError(c, err.Error())
+			return nil, err
 		}
 
 		// update topic data in elastic search
@@ -652,21 +670,12 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		if err != nil {
 			logging.Error(err.Error())
 		}
+
+		// invalidate kettle cache for the topic
+		go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_topic_meta", communityId, topic.ID.Hex())}) //TODO: move to constants
 	}
 
-	response := gin.H{
-		"topic":   gin.H{},
-		"widgets": gin.H{},
-	}
-
-	// Fetch Updated topic Response
-	response["topic"] = parseTopicResponse(topic)
-
-	// Fetch widget data if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, "")
-
-	// return final response
-	utils.GenerateSuccessResponse(c, response)
+	return topic, nil
 }
 
 func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, deleteTopicsRequest requests.DeleteTopicsRequest,
@@ -758,7 +767,7 @@ func deleteTopicsAndRelatedData(communityId int, handlers *FeedHandlers, topicId
 
 	// delete the widgets for the topics
 	if len(widgetIds) > 0 {
-		err := deleteWidgetsByIds(handlers.widgetHelper, handlers.esHelper, widgetIds)
+		err := deleteWidgetsByIds(handlers.widgetHelper, handlers.esHelper, widgetIds, communityId)
 		if err != nil {
 			logging.Error(err.Error())
 		}
