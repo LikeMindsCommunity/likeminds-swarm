@@ -210,8 +210,9 @@ func addTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userId strin
 		return err
 	}
 
-	// Invalidate Kettle Cache for user topics //TODO: move to constants
-	go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_user_topics", communityId, userId)})
+	// Invalidate Kettle Cache for user topics
+	cachekey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, communityId, userId)
+	go externalHelpers.InvalidateKettleCache([]string{cachekey})
 
 	return nil
 }
@@ -249,18 +250,18 @@ func deleteUserTopicsByTopicIds(userTopicsHelper interfaces.UserTopicsHelper, to
 
 	userTopicsKeyPattern, topicsMetaKeyPattern := []string{}, []string{}
 
-	for _, userId := range userIds {
-		userTopicsKeyPattern = append(userTopicsKeyPattern, fmt.Sprintf("%d_%s_user_topics", communityId, userId)) //TODO: move to constants
-	}
-
 	// Invalidate Kettle Cache for user topics
+	for _, userId := range userIds {
+		cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, communityId, userId)
+		userTopicsKeyPattern = append(userTopicsKeyPattern, cacheKey)
+	}
 	go externalHelpers.InvalidateKettleCache(userTopicsKeyPattern)
 
-	for _, topicId := range topicIds {
-		topicsMetaKeyPattern = append(topicsMetaKeyPattern, fmt.Sprintf("%d_%s_topic_meta", communityId, topicId.Hex())) //TODO: move to constants
-	}
-
 	// Invalidate Kettle Cache for topics meta
+	for _, topicId := range topicIds {
+		cacheKey := fmt.Sprintf(externalHelpers.TopicMetaCacheKeyKettle, communityId, topicId.Hex())
+		topicsMetaKeyPattern = append(topicsMetaKeyPattern, cacheKey)
+	}
 	go externalHelpers.InvalidateKettleCache(topicsMetaKeyPattern)
 
 	return nil
@@ -283,8 +284,9 @@ func deleteUserTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userI
 		return err
 	}
 
-	// Invalidate Kettle Cache for user topics //TODO: move to constants
-	go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_user_topics", communityId, userId)})
+	// Invalidate Kettle Cache for user topics
+	cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, communityId, userId)
+	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 
 	return nil
 }

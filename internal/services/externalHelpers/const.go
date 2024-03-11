@@ -95,3 +95,10 @@ const (
 	%v
 	</code>`
 )
+
+// Kettle Cache Constants
+const (
+	WidgetMetaCacheKeyKettle = "%d_%s_widget_meta" // community_id, widget_id
+	TopicMetaCacheKeyKettle  = "%d_%s_topic_meta"  // community_id, topic_id
+	UserTopicsCacheKeyKettle = "%d_%s_user_topics" // community_id, user_id
+)

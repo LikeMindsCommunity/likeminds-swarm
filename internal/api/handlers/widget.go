@@ -101,8 +101,9 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 			fmt.Println(err.Error())
 		}
 
-		// Invalidate kettle cache
-		go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_widget_meta", communityId, widget.ID.Hex())}) //TODO : Add to constants
+		// Invalidate kettle cache for widget meta
+		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, communityId, widget.ID.Hex())
+		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 	}
 
 	return widget, nil
@@ -539,8 +540,9 @@ func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElast
 		fmt.Println(err.Error())
 	}
 
-	// Invalidate kettle cache
-	go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_widget_meta", communityId, widgetId.Hex())}) //TODO : Add to constants
+	// Invalidate kettle cache for widget meta
+	cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
+	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 
 	return nil
 }
@@ -580,11 +582,12 @@ func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchEla
 		logging.Error(err.Error())
 	}
 
-	// Invalidate kettle cache
+	// Invalidate kettle cache keys for widgets meta
 	keyPatternsForWidgetsMeta := []string{}
 
 	for _, widgetId := range widgetIds {
-		keyPatternsForWidgetsMeta = append(keyPatternsForWidgetsMeta, fmt.Sprintf("%d_%s_widget_meta", communityId, widgetId.Hex())) // TODO:
+		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
+		keyPatternsForWidgetsMeta = append(keyPatternsForWidgetsMeta, cacheKey)
 	}
 
 	go externalHelpers.InvalidateKettleCache(keyPatternsForWidgetsMeta)
