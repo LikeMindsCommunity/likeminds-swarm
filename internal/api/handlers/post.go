@@ -1511,7 +1511,7 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 	// Update posts count in topics index
 	if len(postData.TopicIds) > 0 {
 
-		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(postData.TopicIds)
 		updatePostCountInTopicQuery := UpdatePostCountInTopicsQuery(stringTopicIds, true)
 
 		err = handlers.esHelper.UpdateByQuery(updatePostCountInTopicQuery, constants.TopicIndexName)
@@ -2055,7 +2055,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 
 	// update the count of posts in added topics
 	if len(addedTopicIds) > 0 {
-		stringTopicIds := helpers.ConvertObjectIdsToString(addedTopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(addedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, true), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
@@ -2064,7 +2064,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 
 	// update the count of posts in removed topics
 	if len(removedTopicIds) > 0 {
-		stringTopicIds := helpers.ConvertObjectIdsToString(removedTopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(removedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
@@ -2163,7 +2163,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 	// update the count of posts in topics
 	if len(postData.TopicIds) > 0 {
-		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(postData.TopicIds)
 		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
@@ -2548,7 +2548,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	// parsing of chatroom ids
-	excludedChatroomIds := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
+	excludedChatroomIds := utils.ParseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
 	parsedExcludedChatroomIds, _ := json.Marshal(excludedChatroomIds)
 
 	// dsl query to search posts

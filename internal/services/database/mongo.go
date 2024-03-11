@@ -176,6 +176,14 @@ func InitiateDB() *mongo.Database {
 					{"topic_id", 1},
 				},
 			},
+			{
+				"collectionName": "userTopics",
+				"fields": bson.D{
+					{"user_id", 1},
+					{"community_id", 1},
+					{"topic_id", 1},
+				},
+			},
 		}
 
 		for _, indexValue := range indexData {

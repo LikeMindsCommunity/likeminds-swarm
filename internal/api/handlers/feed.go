@@ -71,10 +71,10 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// Parse topic Ids string array
-	topicIds := parseStringArrayParam(universalFeedRequest.TopicIds)
+	topicIds := utils.ParseStringArrayParam(universalFeedRequest.TopicIds)
 
 	// Parse widget ids string array
-	widgetIds := parseStringArrayParam(universalFeedRequest.WidgetIds)
+	widgetIds := utils.ParseStringArrayParam(universalFeedRequest.WidgetIds)
 
 	// fetch pagination query params
 	page, _, err := fetchPaginationParams(c)
@@ -486,19 +486,19 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	if (exploreFeedRequest.OrderType == constants.GroupOrderTypeNewest ||
 		exploreFeedRequest.OrderType == constants.GroupOrderTypeMostParticipants) &&
 		len(exploreFeedRequest.ChatroomIDs) > 0 {
-		chatroomIds = parseIntArrayParam(exploreFeedRequest.ChatroomIDs)
+		chatroomIds = utils.ParseIntArrayParam(exploreFeedRequest.ChatroomIDs)
 	} else
 
 	// Order by Recently active chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeRecentlyActive {
 		chatroomIds = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, communityId,
-			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
+			utils.ParseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
 	} else
 
 	// Order by Most messaged chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeMostMessages {
 		chatroomIds = getChatroomsBasedOnMostMessages(c, handlers.postHelper, communityId,
-			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
+			utils.ParseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
 	}
 
 	postData := getPostCountInChatrooms(handlers.postHelper, chatroomIds)
@@ -555,7 +555,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	feedroomId, _ := strconv.Atoi(groupFeedRequest.FeedroomId)
 
 	// Parse topic Ids string array
-	topicIds := parseStringArrayParam(groupFeedRequest.TopicIds)
+	topicIds := utils.ParseStringArrayParam(groupFeedRequest.TopicIds)
 
 	// fetch pagination query params
 	page, _, err := fetchPaginationParams(c)

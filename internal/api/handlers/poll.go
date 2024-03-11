@@ -543,7 +543,7 @@ func (handlers *FeedHandlers) GetPollVotes(c *gin.Context) {
 	}
 
 	// Parse votes Ids string array
-	voteIds := parseStringArrayParam(getPollVotesRequest.Votes)
+	voteIds := utils.ParseStringArrayParam(getPollVotesRequest.Votes)
 
 	// Fetch poll widget using poll Id
 	pollWidget, err := fetchWidgetByID(handlers.widgetHelper, pollId, true, communityId)

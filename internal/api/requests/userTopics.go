@@ -2,7 +2,7 @@ package requests
 
 // struct to validate request to fetch user topics
 type FetchUserTopicsRequest struct {
-	UUIDs []string `json:"uuids" binding:"required"`
+	UUIDs string `form:"uuids" binding:"required"`
 }
 
 // struct to validate request to update user topics

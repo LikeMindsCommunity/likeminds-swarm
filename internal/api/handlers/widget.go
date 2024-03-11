@@ -14,7 +14,8 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -38,7 +39,7 @@ func createWidget(handlers *FeedHandlers, createdByLM bool, parentEntityID strin
 	// insert widget data in elastic search
 	err = handlers.esHelper.IndexDocument(ParseWidgetIndexData(widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
 	if err != nil {
-		log.Error(err.Error())
+		logging.Error(err.Error())
 	}
 
 	return widgetData, nil
@@ -305,7 +306,7 @@ func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.Fet
 
 	if fetchWidgetRequest.WidgetIds != "" {
 
-		widgetObjectIds := helpers.ConvertIdsToObjectIds(parseStringArrayParam(fetchWidgetRequest.WidgetIds))
+		widgetObjectIds := helpers.ConvertIdsToObjectIds(utils.ParseStringArrayParam(fetchWidgetRequest.WidgetIds))
 		filter = gin.H{
 			"_id": gin.H{
 				"$in": widgetObjectIds,
@@ -527,4 +528,41 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, response)
+}
+
+// method to delete widgets by Ids along with Indexed data
+func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, widgetIds []primitive.ObjectID,
+) error {
+
+	// Delete the documents from the collection
+	filter := gin.H{
+		"_id": gin.H{
+			"$in": widgetIds,
+		},
+	}
+
+	count, err := widgetHelper.DeleteWidgetsHelper(filter)
+	if err != nil {
+		return err
+	}
+
+	if int(count) != len(widgetIds) {
+		logging.Error(fmt.Sprintf("Only %v Widgets deleted out of %v", count, widgetIds))
+	}
+
+	// Delete widget data from elastic search
+	deleteWidgetsQuery := fmt.Sprintf(`{
+		"query": {
+			"terms": {
+				"_id": %s
+			}
+		}
+	}`, helpers.ParseObjectIdsToString(widgetIds))
+
+	err = esHelper.DeleteByQuery(deleteWidgetsQuery, constants.WidgetIndexName)
+	if err != nil {
+		logging.Error(err.Error())
+	}
+
+	return nil
 }

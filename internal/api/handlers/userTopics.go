@@ -6,10 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -19,9 +22,11 @@ func fetchUserTopicsForUserIds(userTopicsHelper interfaces.UserTopicsHelper, use
 	topicIds := []primitive.ObjectID{}
 
 	// fetch user topics
-	filterData := gin.H{
-		"user_id":   gin.H{"$in": userIds},
-		"community": communityId,
+	filterData := bson.M{
+		"user_id": bson.M{
+			"$in": userIds,
+		},
+		"community_id": communityId,
 	}
 
 	userTopics, err := userTopicsHelper.FindUserTopicsHelper(filterData, gin.H{})
@@ -42,6 +47,27 @@ func fetchUserTopicsForUserIds(userTopicsHelper interfaces.UserTopicsHelper, use
 	}
 
 	return userTopicsMap, topicIds, nil
+}
+
+func fetchUserTopicsByTopicIdsAndUserId(userTopicsHelper interfaces.UserTopicsHelper, userId string, communityId int, topicIds []primitive.ObjectID,
+) ([]entities.UserTopic, error) {
+
+	// validate if user does not already have the topics
+	filterData := gin.H{
+		"user_id": userId,
+		"topic_id": gin.H{
+			"$in": topicIds,
+		},
+		"community_id": communityId,
+	}
+
+	userTopics, err := userTopicsHelper.FindUserTopicsHelper(filterData, gin.H{})
+	if err != nil {
+		logging.Error("Error fetching user topics: ", err)
+		return nil, err
+	}
+
+	return userTopics, nil
 }
 
 // Internal method to fetch user topics along with topics and widgets data
@@ -80,18 +106,19 @@ func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 	}
 
 	var futr requests.FetchUserTopicsRequest
-	if err := c.ShouldBindJSON(&futr); err != nil {
+	if err := c.BindQuery(&futr); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	if len(futr.UUIDs) == 0 {
+	uuids := utils.ParseStringArrayParam(futr.UUIDs)
+	if len(uuids) == 0 {
 		utils.GeneralAPIValidationError(c, "Please send uuids in request")
 		return
 	}
 
 	// fetch user topics along with topics and widgets data
-	userTopicsMap, topicsMap, widgetsMap, err := fetchUserTopicsForResponse(handlers, futr.UUIDs, communityId, userId)
+	userTopicsMap, topicsMap, widgetsMap, err := fetchUserTopicsForResponse(handlers, uuids, communityId, userId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -145,37 +172,24 @@ func validateUpdateUserTopicsRequest(topicHelper interfaces.TopicHelper, userTop
 	}
 
 	// validate if user does not already have the topics
-	filterData := gin.H{
-		"user_id":   uuid,
-		"topic_id":  gin.H{"$in": topicsToAdd},
-		"community": communityId,
-	}
-
-	userTopics, err := userTopicsHelper.FindUserTopicsHelper(filterData, gin.H{})
+	userTopics, err := fetchUserTopicsByTopicIdsAndUserId(userTopicsHelper, uuid, communityId, topicsToAdd)
 	if err != nil {
-		logging.Error("Error fetching user topics: ", err)
 		return nil, nil, err
 	}
 
 	if len(userTopics) > 0 {
-		return nil, nil, fmt.Errorf("User already has topics: ", topicsToAdd)
+		return nil, nil, fmt.Errorf(fmt.Sprintf("User already has topics: %v", helpers.ParseObjectIdsToStringArray(topicsToAdd)))
 	}
 
 	// validate if user has the topics to remove
-	filterData = gin.H{
-		"user_id":   uuid,
-		"topic_id":  gin.H{"$in": topicsToRemove},
-		"community": communityId,
-	}
-
-	userTopics, err = userTopicsHelper.FindUserTopicsHelper(filterData, gin.H{})
+	userTopics, err = fetchUserTopicsByTopicIdsAndUserId(userTopicsHelper, uuid, communityId, topicsToRemove)
 	if err != nil {
 		logging.Error("Error fetching user topics: ", err)
 		return nil, nil, err
 	}
 
 	if len(userTopics) != len(topicsToRemove) {
-		return nil, nil, fmt.Errorf("User does not have topics: ", topicsToRemove)
+		return nil, nil, fmt.Errorf(fmt.Sprintf("User does not have topics: %v", helpers.ParseObjectIdsToStringArray(topicsToRemove)))
 	}
 
 	return topicsToAdd, topicsToRemove, nil
@@ -197,21 +211,71 @@ func addTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userId strin
 	}
 
 	// Invalidate Kettle Cache for user topics //TODO: move to constants
-	go externalHelpers.InvalidateKettleCache(fmt.Sprintf("%d_%s_user_topics", communityId, userId))
+	go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_user_topics", communityId, userId)})
+
+	return nil
+}
+
+// internal method to delete user topics by topicIds and related tasks
+func deleteUserTopicsByTopicIds(userTopicsHelper interfaces.UserTopicsHelper, topicIds []primitive.ObjectID,
+	communityId int,
+) error {
+
+	// fetch user Topics for the topic ids
+	filterData := gin.H{
+		"topic_id": gin.H{
+			"$in": topicIds,
+		},
+		"community_id": communityId,
+	}
+
+	userTopics, err := userTopicsHelper.FindUserTopicsHelper(filterData, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	// fetch user ids
+	userIds := []string{}
+
+	for _, userTopic := range userTopics {
+		userIds = append(userIds, userTopic.UserID)
+	}
+
+	// remove user topics
+	err = userTopicsHelper.DeleteUserTopicsHelper(filterData)
+	if err != nil {
+		return err
+	}
+
+	userTopicsKeyPattern, topicsMetaKeyPattern := []string{}, []string{}
+
+	for _, userId := range userIds {
+		userTopicsKeyPattern = append(userTopicsKeyPattern, fmt.Sprintf("%d_%s_user_topics", communityId, userId)) //TODO: move to constants
+	}
+
+	// Invalidate Kettle Cache for user topics
+	externalHelpers.InvalidateKettleCache(userTopicsKeyPattern)
+
+	for _, topicId := range topicIds {
+		topicsMetaKeyPattern = append(topicsMetaKeyPattern, fmt.Sprintf("%d_%s_topic_meta", communityId, topicId.Hex())) //TODO: move to constants
+	}
+
+	// Invalidate Kettle Cache for topics meta
+	externalHelpers.InvalidateKettleCache(topicsMetaKeyPattern)
 
 	return nil
 }
 
 // Internal method to delete topics for a user
-func deleteTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userId string, topicsToRemove []primitive.ObjectID,
+func deleteUserTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userId string, topicsToRemove []primitive.ObjectID,
 	communityId int,
 ) error {
 
 	// remove user topics
 	filterData := gin.H{
-		"user_id":   userId,
-		"topic_id":  gin.H{"$in": topicsToRemove},
-		"community": communityId,
+		"user_id":      userId,
+		"topic_id":     gin.H{"$in": topicsToRemove},
+		"community_id": communityId,
 	}
 
 	err := userTopicsHelper.DeleteUserTopicsHelper(filterData)
@@ -220,7 +284,7 @@ func deleteTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userId st
 	}
 
 	// Invalidate Kettle Cache for user topics //TODO: move to constants
-	go externalHelpers.InvalidateKettleCache(fmt.Sprintf("%d_%s_user_topics", communityId, userId))
+	go externalHelpers.InvalidateKettleCache([]string{fmt.Sprintf("%d_%s_user_topics", communityId, userId)})
 
 	return nil
 }
@@ -269,7 +333,7 @@ func (handlers *FeedHandlers) UpdateUserTopics(c *gin.Context) {
 
 	// remove topics for user
 	if len(topicsToRemove) > 0 {
-		err = deleteTopicsForUser(handlers.userTopicsHelper, uuid, topicsToRemove, communityId)
+		err = deleteUserTopicsForUser(handlers.userTopicsHelper, uuid, topicsToRemove, communityId)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, "Error removing topics for user")
 			return
