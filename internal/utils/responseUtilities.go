@@ -8,11 +8,12 @@ import (
 
 // Error Messages
 const (
-	NotAuthorizedError      = "You are not authorized to perform this operation."
-	InvalidRequestError     = "Invalid request."
-	InvalidPostIDError      = "Invalid post_id sent."
-	InvalidCommentIDError   = "Invalid comment_id sent."
-	NsfwContentInImageError = "This post could not be submitted as %simage/s seems to contain NSFW content."
+	NotAuthorizedError         = "You are not authorized to perform this operation."
+	InvalidRequestError        = "Invalid request."
+	InvalidPostIDError         = "Invalid post_id sent."
+	InvalidCommentIDError      = "Invalid comment_id sent."
+	NsfwContentInImageError    = "This post could not be submitted as %simage/s seems to contain NSFW content."
+	ErrorGuestAccessNotAllowed = "Guest access is not allowed!"
 )
 
 // Exposed Method to send General Validation Error in API Response

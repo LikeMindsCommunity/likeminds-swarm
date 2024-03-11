@@ -10,6 +10,7 @@ const (
 	HeadersApiKey        string = "x-api-key"
 	HeadersAcceptVersion string = "x-accept-version"
 	HeadersApiVersion    string = "x-api-version"
+	HeaderMemberRole     string = "x-member-role"
 )
 
 const (
@@ -21,4 +22,10 @@ const (
 	HomeFeedRoute      string = "route://feed?type=universal"
 	PostDetailRoute    string = "route://post_detail?post_id=%s"
 	CommentDetailRoute string = "route://post_detail?post_id=%s&comment_id=%s"
+)
+
+// Member Roles
+const (
+	GuestRole         string = "GUEST"
+	DefaultMemberRole string = ""
 )
