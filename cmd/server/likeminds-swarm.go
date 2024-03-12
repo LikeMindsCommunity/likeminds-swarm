@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	AppVersion     string = "1.14.0" // Application Version
+	AppVersion     string = "1.15.0" // Application Version
 	GinPortAddress string = ":8080"  // Gin Port Address
 )
 
@@ -75,6 +75,7 @@ func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redi
 	widgetRepository := repositories.NewWidgetRepository(dbClient)
 	pollVotesRepository := repositories.NewPollVotesRepository(dbClient)
 	connectionFeedRepository := repositories.NewConnectionFeedRepository(dbClient)
+	postTopicsRepository := repositories.NewPostTopicsRepository(dbClient)
 
 	// Dependency injection of Cache & ES
 	cacheHelper := cache.NewCacheHelper(redisClient)
@@ -91,13 +92,14 @@ func injectDependenciesAndGetHandler(dbClient *mongo.Database, redisClient *redi
 	widgetHepler := helpers.NewWidgetHelper(widgetRepository)
 	pollVotesHelper := helpers.NewPollVotesHelper(pollVotesRepository)
 	connectionFeedHelper := helpers.NewConnectionFeedHelper(connectionFeedRepository)
+	postTopicsHelper := helpers.NewPostTopicsHelper(postTopicsRepository)
 
 	// initiate task distributor for background tasks
 	feedTaskDistributor := distributor.NewTaskDistributor()
 
 	// return feed handlers
 	return handlers.NewFeedHandlers(likeHelper, commentHelper, postHelper, pendingPostHelper, saveHelper, activityHelper,
-		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor)
+		topicHelper, widgetHepler, pollVotesHelper, connectionFeedHelper, esHelper, cacheHelper, feedTaskDistributor, postTopicsHelper)
 }
 
 // Main Method

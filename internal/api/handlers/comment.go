@@ -610,7 +610,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			}
 
 			if activityID != nil {
-				handlers.CreateAlsoCommentedActivity(activityID, postData, headers)
+				handlers.CreateAlsoCommentedActivity(activityID, postData, headers, ctaData)
 				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
 			}
 		}
@@ -646,6 +646,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
+
+	// Delete top liked comments data in post from cache
+	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId))
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -985,6 +988,9 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 
 	}
 
+	// Delete top liked comments data in post from cache
+	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, postData.CommunityId, postData.ID.Hex()))
+
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -1062,7 +1068,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		"posts":    postIdsDataMap,
 	}
 
-	utils.GenereateSuccessResponse(c, finalResponse)
+	utils.GenerateSuccessResponse(c, finalResponse)
 }
 
 func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Post, c *gin.Context, headers map[string]string) {
@@ -1149,11 +1155,9 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 	}
 }
 
-// Internal Method to get top n comments against posts based on sorting key, sort order
-func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}, communityId int) (map[string]interface{}, []string, error) {
-	postsTopComments := map[string]interface{}{}
+// Internal method to create mongo query to get top comments based on likes
+func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}) []map[string]interface{} {
 	commentsFilterData := []map[string]interface{}{}
-	allCommentsIds := []string{}
 
 	// Add match logic
 	commentsFilterData = append(commentsFilterData, gin.H{
@@ -1165,8 +1169,13 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 					},
 				},
 				{
-					"replies": gin.H{
-						"$eq": []interface{}{},
+					"level": gin.H{
+						"$eq": 0,
+					},
+				},
+				{
+					"is_deleted": gin.H{
+						"$eq": false,
 					},
 				},
 			},
@@ -1210,7 +1219,7 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 	commentsFilterData = append(commentsFilterData, gin.H{
 		"$sort": gin.H{
 			"likes_count": sortOrder,
-			"updated_at":  -1,
+			"created_at":  -1,
 		},
 	})
 
@@ -1233,6 +1242,16 @@ func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primiti
 			},
 		},
 	})
+
+	return commentsFilterData
+}
+
+// Internal Method to get top n comments against posts based on sorting key, sort order
+func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}, communityId int) (map[string]interface{}, []string, error) {
+	postsTopComments := map[string]interface{}{}
+	allCommentsIds := []string{}
+
+	commentsFilterData := createTopCommentsBasedOnLikesQuery(postIds, sortOrder, commentsCount)
 
 	// fetch post using helper method
 	commentResults, err := handlers.commentHelper.AggregateTopCommentsHelper(commentsFilterData)

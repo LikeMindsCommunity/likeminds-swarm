@@ -72,6 +72,15 @@ func (helper *widgetHelper) DeleteWidgetByIdHelper(widgetId primitive.ObjectID) 
 	return err
 }
 
+// Exposed Helper Method to delete widgets
+func (helper *widgetHelper) DeleteWidgetsHelper(filter map[string]interface{}) (int64, error) {
+
+	// Delete the documents from the collection
+	count, err := helper.widgetRepository.DeleteMany(filter)
+
+	return count, err
+}
+
 // Exposed Helper Method to Fetch Widget Count
 func (helper *widgetHelper) CountWidgetHelper(filter map[string]interface{}) (int64, error) {
 	// Parse the object IDs

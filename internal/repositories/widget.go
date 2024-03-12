@@ -26,6 +26,12 @@ func (repository *widgetRepository) Delete(filter map[string]interface{}) error 
 	return _deleteDocumentInDB(repository.db, WidgetCollection, filter)
 }
 
+// Exposed Helper Method to Delete mulitple widgets
+func (repository *widgetRepository) DeleteMany(filter map[string]interface{}) (int64, error) {
+	deletedCount, err := _deleteManyDocumentsInDB(repository.db, WidgetCollection, filter)
+	return deletedCount, err
+}
+
 // Exposed Helper Method to Fetch Widget Count
 func (repository *widgetRepository) Count(filter map[string]interface{}) (int64, error) {
 	return _countDocumentsInDB(repository.db, WidgetCollection, filter)

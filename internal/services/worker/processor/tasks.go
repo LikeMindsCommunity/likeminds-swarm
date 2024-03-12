@@ -108,3 +108,36 @@ func (processor *RedisTaskProcessor) triggerCommentTaggedWebhook(ctx context.Con
 
 	return handlers.TriggerCommentTaggedWebhook(processor.feedHandlers, payload.ApiKey, payload.CommentId, payload.UserIds)
 }
+
+// Task to trigger create post
+func (processor *RedisTaskProcessor) TriggerCreatePost(ctx context.Context, task *asynq.Task) error {
+
+	payload := worker.PayloadPost{}
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return handlers.CreateOrUpdatePostTopics(processor.feedHandlers, payload.PostID, false)
+}
+
+// Task to trigger edit post
+func (processor *RedisTaskProcessor) TriggerEditPost(ctx context.Context, task *asynq.Task) error {
+
+	payload := worker.PayloadPost{}
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return handlers.CreateOrUpdatePostTopics(processor.feedHandlers, payload.PostID, true)
+}
+
+// Task to trigger delete post
+func (processor *RedisTaskProcessor) TriggerDeletePost(ctx context.Context, task *asynq.Task) error {
+
+	payload := worker.PayloadPost{}
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return handlers.DeletePostTopics(processor.feedHandlers, payload.PostID)
+}

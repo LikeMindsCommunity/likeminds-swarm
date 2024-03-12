@@ -17,6 +17,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -860,7 +861,7 @@ func parseFetchMultiplePostResponse(
 
 // Internal Method to parse topics response
 func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
-	communityId int) (map[string]requests.TopicResponse, error) {
+	communityId int) (map[string]responses.TopicResponse, error) {
 
 	// Fetch topics using topic Ids
 	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false)
@@ -868,7 +869,7 @@ func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitiv
 		return nil, err
 	}
 
-	topicsResponse := map[string]requests.TopicResponse{}
+	topicsResponse := map[string]responses.TopicResponse{}
 
 	// Parse all fetched topics Data
 	for _, topic := range topics {
@@ -955,6 +956,94 @@ func getWidgetIdsFromAttachments(attachments []entities.Attachment) []primitive.
 	return finalWidgetIds
 }
 
+// Internal method to parse widget_ids from topics
+func getWidgetIdsFromTopics(response interface{}) []primitive.ObjectID {
+
+	uniqueWidgetIds, widgetsMap := []primitive.ObjectID{}, map[string]bool{}
+
+	if topic, ok := response.(gin.H)["topic"]; ok {
+		widgetsMap = typeAssertAndFetchWidgetIdsFromTopics(topic, widgetsMap)
+	}
+
+	if topics, ok := response.(gin.H)["topics"]; ok {
+		widgetsMap = typeAssertAndFetchWidgetIdsFromTopics(topics, widgetsMap)
+	}
+
+	if topics, ok := response.(gin.H)["child_topics"]; ok {
+		widgetsMap = typeAssertAndFetchWidgetIdsFromTopics(topics, widgetsMap)
+	}
+
+	// convert map to array
+	for key := range widgetsMap {
+		objectId, _ := primitive.ObjectIDFromHex(key)
+		uniqueWidgetIds = append(uniqueWidgetIds, objectId)
+	}
+
+	return uniqueWidgetIds
+}
+
+func typeAssertAndFetchWidgetIdsFromTopics(topics interface{}, widgetMap map[string]bool) map[string]bool {
+
+	switch topics := topics.(type) {
+	case responses.TopicResponse:
+		if topics.WidgetId != "" {
+			if _, exists := widgetMap[topics.WidgetId]; !exists {
+				widgetMap[topics.WidgetId] = true
+			}
+		}
+	case responses.TopicResponseWithMeta:
+		if topics.WidgetId != "" {
+			if _, exists := widgetMap[topics.WidgetId]; !exists {
+				widgetMap[topics.WidgetId] = true
+			}
+		}
+	case map[string]responses.TopicResponse:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	case []responses.TopicResponse:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	case map[string]responses.TopicResponseWithMeta:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	case map[string][]responses.TopicResponseWithMeta: // for child_topics
+		for _, topic := range topics {
+			for _, topic := range topic {
+				if topic.WidgetId != "" {
+					if _, exists := widgetMap[topic.WidgetId]; !exists {
+						widgetMap[topic.WidgetId] = true
+					}
+				}
+			}
+		}
+	case []responses.TopicResponseWithMeta:
+		for _, topic := range topics {
+			if topic.WidgetId != "" {
+				if _, exists := widgetMap[topic.WidgetId]; !exists {
+					widgetMap[topic.WidgetId] = true
+				}
+			}
+		}
+	}
+
+	return widgetMap
+}
+
 // Internal Method to parse widget_ids from posts
 func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 	uniqueWidgetIds := []primitive.ObjectID{}
@@ -990,7 +1079,7 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 }
 
 // Internal Method to get topics Data from Posts response
-func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]requests.TopicResponse {
+func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]responses.TopicResponse {
 	topicIds := getTopicIdsFromPosts(response)
 
 	topicsData, _ := parseTopicsResponse(topicHelper, topicIds, communityId)
@@ -999,9 +1088,15 @@ func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interfac
 }
 
 // Internal Method to get widget Data from Posts response
-func getWidgetDataFromPosts(handlers *FeedHandlers, response interface{}, communityId int, uuid string) map[string]requests.WidgetResponse {
+func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{}, communityId int, uuid string) map[string]requests.WidgetResponse {
+
+	// get widget ids from posts
 	widgetIds := getWidgetIdsFromPosts(response)
 
+	// get widget ids from topics
+	widgetIds = append(widgetIds, getWidgetIdsFromTopics(response)...)
+
+	// fetch widget data from widget ids
 	widgetsData, _ := parseWidgetsResponse(handlers, widgetIds, communityId, uuid)
 
 	return widgetsData
@@ -1453,7 +1548,7 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 
 	postRequest.Text = strings.Trim(postRequest.Text, " ")
 
-	if postRequest.Text == "" && len(postRequest.Attachments) == 0 {
+	if postRequest.Text == "" && postRequest.Heading == "" && len(postRequest.Attachments) == 0 {
 		return nil, fmt.Errorf("can't create post without content")
 	}
 
@@ -1567,6 +1662,15 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
+	// Add the post topics data in PostTopics collection
+	if postData.TopicIds != nil {
+		// Trigger create post background tasks
+		err = handlers.taskDistributor.TriggerCreatePostBackgroundTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error triggering create post background task", err)
+		}
+	}
+
 	// if custom creation timestamp is not used, create activities and send notifications
 	if !(createPostRequest.CreatedAt > 0 && float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
 		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
@@ -1608,7 +1712,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-		response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
+		response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, headers[utils.HeadersMemberId])
 		response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
 			createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	}
@@ -1711,7 +1815,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers, parsedResponse, communityId, headers[utils.HeadersMemberId])
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, parsedResponse, communityId, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
 		fetchPostQueryRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
@@ -1761,7 +1865,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 	response["post"] = fetchPostData
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -1829,7 +1933,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// strip text and check if it is empty
 	editPostRequest.Text = strings.TrimSpace(editPostRequest.Text)
 
-	if editPostRequest.Text == "" && len(editPostRequest.Attachments) == 0 {
+	if editPostRequest.Text == "" && editPostRequest.Heading == "" && len(editPostRequest.Attachments) == 0 {
 		utils.GeneralAPIValidationError(c, "Can't Edit post without content")
 		return
 	}
@@ -1904,6 +2008,15 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
+	// Update the post topics data
+	if postData.TopicIds != nil {
+		// Trigger edit post background tasks
+		err = handlers.taskDistributor.TriggerEditPostBackgroundTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error triggering edit post background task", err)
+		}
+	}
+
 	// update post data in elastic search
 	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
@@ -1920,7 +2033,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPosts(handlers, response, communityId, headers[utils.HeadersMemberId])
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -2052,6 +2165,12 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
+		}
+
+		// Trigger delete post background tasks
+		err = handlers.taskDistributor.TriggerDeletePostBackgroundTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error triggering delete post background task", err)
 		}
 	}
 
@@ -2277,6 +2396,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	versionCode := headers[utils.HeadersAcceptVersion]
+	platformCode := headers[utils.HeadersPlatformCode]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -2334,8 +2455,39 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["widgets"] = getWidgetDataFromPosts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
+	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
 	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+
+	// Get community configurations
+	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
+
+	var commentSortOrderVal int
+	filtered_comments := map[string]requests.CommentWithParentResponse{}
+
+	if universalFeedConfig.CommentSortOrder == enums.DescendingSortOrder {
+		commentSortOrderVal = -1
+	} else {
+		commentSortOrderVal = 1
+	}
+
+	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
+		var updatedPostsWithComments []requests.PostResponse
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
+			response.Posts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
+			versionCode, platformCode, apiRevampV1Check)
+
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		if len(updatedPostsWithComments) > 0 {
+			finalResponse["posts"] = updatedPostsWithComments
+		}
+
+	}
+
+	finalResponse["filtered_comments"] = filtered_comments
 
 	// return final response
 	c.JSON(http.StatusOK, finalResponse)
@@ -2412,7 +2564,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -2468,7 +2620,7 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -2504,4 +2656,88 @@ func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityI
 
 	handlers.cacheHelper.LRem(communityPostPinnedKey, 0, postID)
 	handlers.cacheHelper.Del(fmt.Sprintf("post_{}", postID))
+}
+
+// Create new post topics in PostTopics collection
+func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllExisting bool) error {
+
+	if postId == "" {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	if deleteAllExisting {
+		DeletePostTopics(handlers, postId)
+	}
+
+	postObjectId, err := primitive.ObjectIDFromHex(postId)
+
+	if err != nil {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	postResults, err := handlers.postHelper.FindPostHelper(gin.H{"_id": postObjectId}, gin.H{})
+
+	if err != nil {
+		logging.Error("Error in fetching posts")
+		return nil
+	}
+
+	var originalPost entities.Post
+
+	if len(postResults) > 0 {
+		originalPost = postResults[0]
+	}
+
+	if len(originalPost.TopicIds) > 0 {
+		// Fetch topics
+		topicResults, err := handlers.topicHelper.FindTopicHelper(gin.H{"_id": gin.H{"$in": originalPost.TopicIds}}, gin.H{})
+		if err != nil {
+			return err
+		}
+
+		var allTopicIds []primitive.ObjectID
+
+		for _, topicResult := range topicResults {
+			allTopicIds = append(allTopicIds, topicResult.AllParentIds...)
+			allTopicIds = append(allTopicIds, topicResult.ID)
+		}
+
+		if len(allTopicIds) > 0 {
+			var postTopicsMap = map[primitive.ObjectID][]primitive.ObjectID{
+				postObjectId: allTopicIds,
+			}
+			return handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(postTopicsMap, originalPost.CommunityId)
+		}
+	}
+
+	return nil
+}
+
+// Delete post topics in PostTopics collection
+func DeletePostTopics(handlers *FeedHandlers, postId string) error {
+
+	if postId == "" {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	postObjectId, err := primitive.ObjectIDFromHex(postId)
+
+	if err != nil {
+		logging.Error("Invalid post ID!")
+		return nil
+	}
+
+	filter := gin.H{
+		"post_id": postObjectId,
+	}
+
+	if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
+		logging.Error("Error in deleting Post Topics")
+		return nil
+	}
+
+	return nil
 }
