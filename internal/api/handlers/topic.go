@@ -607,7 +607,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	}
 
 	// Edit topic
-	updatedTopic, err := editTopic(handlers, topicUpdateData, editTopicRequest.Metadata, topic, communityId)
+	updatedTopic, err := editTopicInternal(handlers, topicUpdateData, editTopicRequest.Metadata, topic, communityId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -625,7 +625,8 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	utils.GenerateSuccessResponse(c, response)
 }
 
-func editTopic(handlers *FeedHandlers, topicUpdateData gin.H, metadata map[string]interface{}, topic *entities.Topic,
+// Internal Method to Edit a Topic
+func editTopicInternal(handlers *FeedHandlers, topicUpdateData gin.H, metadata map[string]interface{}, topic *entities.Topic,
 	communityId int) (*entities.Topic, error) {
 
 	// update topic metadata
@@ -672,7 +673,7 @@ func editTopic(handlers *FeedHandlers, topicUpdateData gin.H, metadata map[strin
 		}
 
 		// invalidate kettle cache for topic meta
-		cacheKey := fmt.Sprintf(externalHelpers.TopicMetaCacheKeyKettle, communityId, topic.ID.Hex())
+		cacheKey := fmt.Sprintf(externalHelpers.TopicMetaCacheKeyKettle, topic.ID.Hex())
 		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 	}
 
@@ -768,7 +769,7 @@ func deleteTopicsAndRelatedData(communityId int, handlers *FeedHandlers, topicId
 
 	// delete the widgets for the topics
 	if len(widgetIds) > 0 {
-		err := deleteWidgetsByIds(handlers.widgetHelper, handlers.esHelper, widgetIds, communityId)
+		err := deleteWidgetsByIds(handlers.widgetHelper, handlers.esHelper, widgetIds)
 		if err != nil {
 			logging.Error(err.Error())
 		}

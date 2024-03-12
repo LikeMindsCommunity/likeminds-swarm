@@ -102,7 +102,7 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 		}
 
 		// Invalidate kettle cache for widget meta
-		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, communityId, widget.ID.Hex())
+		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, widget.ID.Hex())
 		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 	}
 
@@ -514,7 +514,7 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 	}
 
 	// delete widget and related data
-	err = deleteWidgetById(handlers.widgetHelper, handlers.esHelper, communityId, widget.ID)
+	err = deleteWidgetById(handlers.widgetHelper, handlers.esHelper, widget.ID)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -525,8 +525,7 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 }
 
 // method to delete widget by Id and its related data
-func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, communityId int,
-	widgetId primitive.ObjectID) error {
+func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, widgetId primitive.ObjectID) error {
 
 	// delete widget using helper method
 	err := widgetHelper.DeleteWidgetByIdHelper(widgetId)
@@ -541,7 +540,7 @@ func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElast
 	}
 
 	// Invalidate kettle cache for widget meta
-	cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
+	cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, widgetId.Hex())
 	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 
 	return nil
@@ -549,7 +548,7 @@ func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElast
 
 // method to delete widgets by Ids and its related data
 func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper,
-	widgetIds []primitive.ObjectID, communityId int,
+	widgetIds []primitive.ObjectID,
 ) error {
 
 	// Delete the documents from the collection
@@ -586,7 +585,7 @@ func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchEla
 	keyPatternsForWidgetsMeta := []string{}
 
 	for _, widgetId := range widgetIds {
-		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
+		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, widgetId.Hex())
 		keyPatternsForWidgetsMeta = append(keyPatternsForWidgetsMeta, cacheKey)
 	}
 

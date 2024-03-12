@@ -36,7 +36,7 @@ const FetchUserConnectionsEndPoint = "/api/community_member/%s/connection"
 const SendMailEndpoint = "/api/external_service_apis/send_email"
 const PushReportEndpoint = "/api/community/report"
 const CommunityWebhooksEndpoint = "/api/webhook"
-const KettleCacheDeleteEndpoint = "/api/cache"
+const KettleCacheDeleteEndpoint = "/cache"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
@@ -98,7 +98,7 @@ const (
 
 // Kettle Cache Constants
 const (
-	WidgetMetaCacheKeyKettle = "%d_%s_widget_meta" // community_id, widget_id
-	TopicMetaCacheKeyKettle  = "%d_%s_topic_meta"  // community_id, topic_id
-	UserTopicsCacheKeyKettle = "%d_%s_user_topics" // community_id, user_id
+	WidgetMetaCacheKeyKettle = "%s_widget_meta" // widget_id
+	TopicMetaCacheKeyKettle  = "%s_topic_meta"  // topic_id
+	UserTopicsCacheKeyKettle = "%s_user_topics" // user_id
 )

@@ -211,7 +211,7 @@ func addTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userId strin
 	}
 
 	// Invalidate Kettle Cache for user topics
-	cachekey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, communityId, userId)
+	cachekey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, userId)
 	go externalHelpers.InvalidateKettleCache([]string{cachekey})
 
 	return nil
@@ -252,14 +252,14 @@ func deleteUserTopicsByTopicIds(userTopicsHelper interfaces.UserTopicsHelper, to
 
 	// Invalidate Kettle Cache for user topics
 	for _, userId := range userIds {
-		cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, communityId, userId)
+		cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, userId)
 		userTopicsKeyPattern = append(userTopicsKeyPattern, cacheKey)
 	}
 	go externalHelpers.InvalidateKettleCache(userTopicsKeyPattern)
 
 	// Invalidate Kettle Cache for topics meta
 	for _, topicId := range topicIds {
-		cacheKey := fmt.Sprintf(externalHelpers.TopicMetaCacheKeyKettle, communityId, topicId.Hex())
+		cacheKey := fmt.Sprintf(externalHelpers.TopicMetaCacheKeyKettle, topicId.Hex())
 		topicsMetaKeyPattern = append(topicsMetaKeyPattern, cacheKey)
 	}
 	go externalHelpers.InvalidateKettleCache(topicsMetaKeyPattern)
@@ -285,7 +285,7 @@ func deleteUserTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userI
 	}
 
 	// Invalidate Kettle Cache for user topics
-	cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, communityId, userId)
+	cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, userId)
 	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 
 	return nil
