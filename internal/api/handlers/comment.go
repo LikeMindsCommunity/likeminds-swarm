@@ -1021,6 +1021,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		"user_id":      userId,
 		"community_id": communityId,
 		"is_deleted":   false,
+		"level":        0,
 	}
 
 	// filter options
