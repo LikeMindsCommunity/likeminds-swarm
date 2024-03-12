@@ -9,6 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -211,7 +212,7 @@ func addTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userId strin
 	}
 
 	// Invalidate Kettle Cache for user topics
-	cachekey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, userId)
+	cachekey := fmt.Sprintf(cache.UserTopicsCacheKeyKettle, communityId, userId)
 	go externalHelpers.InvalidateKettleCache([]string{cachekey})
 
 	return nil
@@ -252,14 +253,14 @@ func deleteUserTopicsByTopicIds(userTopicsHelper interfaces.UserTopicsHelper, to
 
 	// Invalidate Kettle Cache for user topics
 	for _, userId := range userIds {
-		cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, userId)
+		cacheKey := fmt.Sprintf(cache.UserTopicsCacheKeyKettle, communityId, userId)
 		userTopicsKeyPattern = append(userTopicsKeyPattern, cacheKey)
 	}
 	go externalHelpers.InvalidateKettleCache(userTopicsKeyPattern)
 
 	// Invalidate Kettle Cache for topics meta
 	for _, topicId := range topicIds {
-		cacheKey := fmt.Sprintf(externalHelpers.TopicMetaCacheKeyKettle, topicId.Hex())
+		cacheKey := fmt.Sprintf(cache.TopicMetaCacheKeyKettle, communityId, topicId.Hex())
 		topicsMetaKeyPattern = append(topicsMetaKeyPattern, cacheKey)
 	}
 	go externalHelpers.InvalidateKettleCache(topicsMetaKeyPattern)
@@ -285,7 +286,7 @@ func deleteUserTopicsForUser(userTopicsHelper interfaces.UserTopicsHelper, userI
 	}
 
 	// Invalidate Kettle Cache for user topics
-	cacheKey := fmt.Sprintf(externalHelpers.UserTopicsCacheKeyKettle, userId)
+	cacheKey := fmt.Sprintf(cache.UserTopicsCacheKeyKettle, communityId, userId)
 	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 
 	return nil

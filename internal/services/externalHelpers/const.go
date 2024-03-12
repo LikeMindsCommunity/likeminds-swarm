@@ -66,11 +66,6 @@ const (
 	FeedMetadataUniversalFeedCommentCountKey     = "comment_count"
 )
 
-const (
-	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
-	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
-)
-
 // Inferdo API related constants
 const (
 	InferdoApiHeaderHost   = "nsfw-image-classification1.p.rapidapi.com"
@@ -94,11 +89,4 @@ const (
 	<code>
 	%v
 	</code>`
-)
-
-// Kettle Cache Constants
-const (
-	WidgetMetaCacheKeyKettle = "%s_widget_meta" // widget_id
-	TopicMetaCacheKeyKettle  = "%s_topic_meta"  // topic_id
-	UserTopicsCacheKeyKettle = "%s_user_topics" // user_id
 )

@@ -13,6 +13,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
@@ -102,7 +103,7 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 		}
 
 		// Invalidate kettle cache for widget meta
-		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, widget.ID.Hex())
+		cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widget.ID.Hex())
 		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 	}
 
@@ -514,7 +515,7 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 	}
 
 	// delete widget and related data
-	err = deleteWidgetById(handlers.widgetHelper, handlers.esHelper, widget.ID)
+	err = deleteWidgetById(handlers.widgetHelper, handlers.esHelper, widget.ID, communityId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -525,7 +526,7 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 }
 
 // method to delete widget by Id and its related data
-func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, widgetId primitive.ObjectID) error {
+func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, widgetId primitive.ObjectID, communityId int) error {
 
 	// delete widget using helper method
 	err := widgetHelper.DeleteWidgetByIdHelper(widgetId)
@@ -540,7 +541,7 @@ func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElast
 	}
 
 	// Invalidate kettle cache for widget meta
-	cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, widgetId.Hex())
+	cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
 	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 
 	return nil
@@ -548,7 +549,7 @@ func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElast
 
 // method to delete widgets by Ids and its related data
 func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper,
-	widgetIds []primitive.ObjectID,
+	widgetIds []primitive.ObjectID, communityId int,
 ) error {
 
 	// Delete the documents from the collection
@@ -585,7 +586,7 @@ func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchEla
 	keyPatternsForWidgetsMeta := []string{}
 
 	for _, widgetId := range widgetIds {
-		cacheKey := fmt.Sprintf(externalHelpers.WidgetMetaCacheKeyKettle, widgetId.Hex())
+		cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
 		keyPatternsForWidgetsMeta = append(keyPatternsForWidgetsMeta, cacheKey)
 	}
 

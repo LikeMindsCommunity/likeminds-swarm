@@ -13,6 +13,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
@@ -677,7 +678,7 @@ func editTopicInternal(handlers *FeedHandlers, topicUpdateData gin.H, metadata m
 		}
 
 		// invalidate kettle cache for topic meta
-		cacheKey := fmt.Sprintf(externalHelpers.TopicMetaCacheKeyKettle, topic.ID.Hex())
+		cacheKey := fmt.Sprintf(cache.TopicMetaCacheKeyKettle, communityId, topic.ID.Hex())
 		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 	}
 
@@ -773,7 +774,7 @@ func deleteTopicsAndRelatedData(communityId int, handlers *FeedHandlers, topicId
 
 	// delete the widgets for the topics
 	if len(widgetIds) > 0 {
-		err := deleteWidgetsByIds(handlers.widgetHelper, handlers.esHelper, widgetIds)
+		err := deleteWidgetsByIds(handlers.widgetHelper, handlers.esHelper, widgetIds, communityId)
 		if err != nil {
 			logging.Error(err.Error())
 		}
