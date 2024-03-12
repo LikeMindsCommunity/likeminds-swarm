@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -212,7 +213,7 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 
 		condition := bson.M{
 			"$and": bson.A{
-				bson.M{"name": bson.M{"$regex": topic.Name, "$options": "i"}},
+				bson.M{"name": bson.M{"$regex": fmt.Sprintf("^%s$", regexp.QuoteMeta(topic.Name)), "$options": "i"}},
 				bson.M{"parent_id": parentId},
 			},
 		}
