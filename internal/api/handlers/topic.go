@@ -37,6 +37,10 @@ func parseTopicResponse(topic *entities.Topic) responses.TopicResponse {
 		response.ParentId = topic.ParentId.Hex()
 	}
 
+	if len(topic.AllParentIds) > 0 {
+		response.AllParentIds = helpers.ParseObjectIdsToStringArray(topic.AllParentIds)
+	}
+
 	if topic.WidgetId != primitive.NilObjectID {
 		response.WidgetId = topic.WidgetId.Hex()
 	}
