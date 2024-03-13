@@ -18,7 +18,6 @@ type UserTopicsRepository interface {
 }
 
 type UserTopicsHelper interface {
-	CreateUserTopicHelper(userId string, topicId primitive.ObjectID, communityId int) (primitive.ObjectID, error)
 	CreateUsersTopicsHelper(usersTopicIds map[string][]primitive.ObjectID, communityId int) ([]primitive.ObjectID, error)
 	FindUserTopicsHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.UserTopic, error)
 	UpdateManyUserTopicsHelper(filter map[string]interface{}, update map[string]interface{}) error

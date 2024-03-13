@@ -9,17 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Exposed Helper Method to Create single User Topic Instance
-func (helper *UserTopicsHelper) CreateUserTopicHelper(userId string, topicId primitive.ObjectID, communityId int,
-) (primitive.ObjectID, error) {
-
-	userTopic := entities.NewUserTopic(userId, topicId, communityId)
-
-	userTopicId, err := helper.UserTopicsRepository.Create(userTopic)
-
-	return userTopicId.(primitive.ObjectID), err
-}
-
 // Exposed Helper Method to Create many User Topic Instances
 func (helper *UserTopicsHelper) CreateUsersTopicsHelper(usersTopicIds map[string][]primitive.ObjectID, communityId int,
 ) ([]primitive.ObjectID, error) {
