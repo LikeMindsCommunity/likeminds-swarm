@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"regexp"
 	"strings"
 
@@ -15,8 +14,10 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -36,6 +37,10 @@ func parseTopicResponse(topic *entities.Topic) responses.TopicResponse {
 
 	if topic.ParentId != primitive.NilObjectID {
 		response.ParentId = topic.ParentId.Hex()
+	}
+
+	if len(topic.AllParentIds) > 0 {
+		response.AllParentIds = helpers.ParseObjectIdsToStringArray(topic.AllParentIds)
 	}
 
 	if topic.WidgetId != primitive.NilObjectID {
@@ -309,9 +314,11 @@ func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []request
 	// parse parent topics data for ES indexing
 	if len(parentTopicsIds) > 0 {
 
-		filterData := bson.M{"_id": bson.M{
-			"$in": parentTopicsIds,
-		}}
+		filterData := bson.M{
+			"_id": bson.M{
+				"$in": parentTopicsIds,
+			},
+		}
 		topics, err := handlers.topicHelper.FindTopicHelper(filterData, gin.H{})
 		if err != nil {
 			logging.Error("Error while fecthing data for reindexing | ", err.Error())
@@ -427,7 +434,7 @@ func validateFetchTopicsRequest(fetchTopicRequest requests.FetchTopicRequest) (i
 	// validate order_by query param
 	orderByParams := []string{enums.OrderByAlphabeticalAsc}
 	if fetchTopicRequest.OrderBy != "" {
-		orderByParams = parseStringArrayParam(fetchTopicRequest.OrderBy)
+		orderByParams = utils.ParseStringArrayParam(fetchTopicRequest.OrderBy)
 		for _, orderBy := range orderByParams {
 			isValid := enums.IsValidOrderByParam(orderBy)
 			if !isValid {
@@ -436,7 +443,8 @@ func validateFetchTopicsRequest(fetchTopicRequest requests.FetchTopicRequest) (i
 		}
 	}
 
-	parentTopicsIds := parseStringArrayParam(fetchTopicRequest.ParentIds)
+	// split parent_ids query param
+	parentTopicsIds := utils.ParseStringArrayParam(fetchTopicRequest.ParentIds)
 
 	return minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, nil
 }
@@ -604,45 +612,64 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		return
 	}
 
-	// Update set object with widget_id field, if metadata is sent
-	if editTopicRequest.Metadata != nil {
+	// Edit topic
+	updatedTopic, err := editTopicInternal(handlers, topicUpdateData, editTopicRequest.Metadata, topic, communityId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	response := gin.H{
+		"topic":   parseTopicResponse(updatedTopic),
+		"widgets": gin.H{},
+	}
+
+	// Fetch widget data from response if exists
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, "")
+
+	// return final response
+	utils.GenerateSuccessResponse(c, response)
+}
+
+// Internal Method to Edit a Topic
+func editTopicInternal(handlers *FeedHandlers, topicUpdateData gin.H, metadata map[string]interface{}, topic *entities.Topic,
+	communityId int) (*entities.Topic, error) {
+
+	// update topic metadata
+	if metadata != nil {
 
 		// check if the topic already has a widget
 		if topic.WidgetId != primitive.NilObjectID {
 
 			// update widget using the helper method
-			_, err := editWidget(handlers, topic.WidgetId.Hex(), topicId, enums.WidgetParentEntityTypeTopic, false, editTopicRequest.Metadata, nil, communityId)
+			_, err := editWidget(handlers, topic.WidgetId.Hex(), topic.ID.Hex(), enums.WidgetParentEntityTypeTopic, false, metadata, nil, communityId)
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
+				return nil, err
 			}
 		} else {
 
 			// create widget from given metadata
-			widgetData, err := createWidget(handlers, false, topic.ID.Hex(), enums.WidgetParentEntityTypeTopic, editTopicRequest.Metadata, nil, communityId)
+			widgetData, err := createWidget(handlers, false, topic.ID.Hex(), enums.WidgetParentEntityTypeTopic, metadata, nil, communityId)
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
+				return nil, err
 			}
 
 			topicUpdateData["$set"].(gin.H)["widget_id"] = widgetData.ID
 		}
 	}
 
-	// Validation of data change
+	// update topic if there is any data to update
 	if len(topicUpdateData["$set"].(gin.H)) > 0 {
 
-		// update topic using the helper method
 		err := handlers.topicHelper.UpdateTopicByIdHelper(topic.ID, topicUpdateData, true)
 		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
+			return nil, err
 		}
 
 		topic, err = fetchTopicByID(handlers.topicHelper, topic.ID.Hex(), communityId)
 		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return
+			// utils.GeneralAPIValidationError(c, err.Error())
+			return nil, err
 		}
 
 		// update topic data in elastic search
@@ -650,21 +677,13 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		if err != nil {
 			logging.Error(err.Error())
 		}
+
+		// invalidate kettle cache for topic meta
+		cacheKey := fmt.Sprintf(cache.TopicMetaCacheKeyKettle, communityId, topic.ID.Hex())
+		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 	}
 
-	response := gin.H{
-		"topic":   gin.H{},
-		"widgets": gin.H{},
-	}
-
-	// Fetch Updated topic Response
-	response["topic"] = parseTopicResponse(topic)
-
-	// Fetch widget data if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, "")
-
-	// return final response
-	utils.GenerateSuccessResponse(c, response)
+	return topic, nil
 }
 
 func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, deleteTopicsRequest requests.DeleteTopicsRequest,
@@ -734,94 +753,115 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		return
 	}
 
-	// delete the topics from db
-	err = handlers.topicHelper.DeleteTopicsHelper(topicIDs)
+	// delete topics and related data
+	err = deleteTopicsAndRelatedData(communityId, handlers, topicIDs, parentIds, widgetIDs)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// update the child count of parent topics
-	if len(parentIds) > 0 {
+	// return success response
+	utils.GenerateSuccessResponse(c, gin.H{})
+}
 
-		for _, parentId := range parentIds {
-			updateData := gin.H{
-				"$inc": gin.H{
-					"total_child_count": -1,
-				},
-			}
+func deleteTopicsAndRelatedData(communityId int, handlers *FeedHandlers, topicIds []primitive.ObjectID, parentIds []primitive.ObjectID, widgetIds []primitive.ObjectID,
+) error {
 
-			err := handlers.topicHelper.UpdateTopicByIdHelper(parentId, updateData, false)
-			if err != nil {
-				logging.Error(err.Error())
-			}
-		}
-
-		parentTopics, err := fetchTopicsByIDs(handlers.topicHelper, parentIds, communityId, false)
-		if err != nil {
-			logging.Error(err.Error())
-		}
-
-		// parse the topics data for ES indexing
-		topicsIndexData := map[string]interface{}{}
-		for _, topicData := range parentTopics {
-			topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(handlers.postHelper, &topicData, false)
-		}
-
-		// index topics data in elastic search
-		err = handlers.esHelper.InsertManyDocuments(topicsIndexData, constants.TopicIndexName)
-		if err != nil {
-			logging.Error(err.Error())
-		}
+	// delete the topics from db
+	err := deleteTopicsbyIds(handlers.topicHelper, handlers.esHelper, topicIds)
+	if err != nil {
+		return err
 	}
 
 	// delete the widgets for the topics
-	if len(widgetIDs) > 0 {
-
-		filter := gin.H{
-			"_id": gin.H{
-				"$in": widgetIDs,
-			},
-		}
-
-		count, err := handlers.widgetHelper.DeleteWidgetsHelper(filter)
+	if len(widgetIds) > 0 {
+		err := deleteWidgetsByIds(handlers.widgetHelper, handlers.esHelper, widgetIds, communityId)
 		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
-		if int(count) != len(widgetIDs) {
-			logging.Error(fmt.Sprintf("Only %v Widgets deleted out of %v", count, widgetIDs))
+			logging.Error(err.Error())
 		}
 	}
 
-	topicidsString := utils.ParseStringArrayToString(deleteTopicsRequest.TopicIds)
+	// pull the topics from posts and update the post in ES index
+	err = pullTopicIdsFromPosts(handlers, topicIds)
+	if err != nil {
+		return err
+	}
+
+	// decrement the child count of parent topics
+	if len(parentIds) > 0 {
+		decrementChildCountForParentTopics(handlers.topicHelper, handlers.esHelper, handlers.postHelper, parentIds, communityId)
+	}
+
+	// Delete user topic connections for topicIds
+	err = deleteUserTopicsByTopicIds(handlers.userTopicsHelper, topicIds, communityId)
+	if err != nil {
+		logging.Error(err.Error())
+	}
+
+	return nil
+}
+
+func deleteTopicsbyIds(topicHelper interfaces.TopicHelper, esHelper searchElastic.EsHelper, topicIds []primitive.ObjectID,
+) error {
+
+	err := topicHelper.DeleteTopicsHelper(topicIds)
+	if err != nil {
+		return err
+	}
+
+	topicidsString := helpers.ParseObjectIdsToString(topicIds)
 
 	// query to get topics to be deleted
 	getTopicsToBeDeletedQuery := GetTopicsByIdQuery(topicidsString)
 
 	// delete topics from elastic search
-	err = handlers.esHelper.DeleteByQuery(getTopicsToBeDeletedQuery, constants.TopicIndexName)
+	err = esHelper.DeleteByQuery(getTopicsToBeDeletedQuery, constants.TopicIndexName)
 	if err != nil {
 		logging.Error(err.Error())
 	}
 
-	err = deleteTopicsFromPostsAndUpdatePost(handlers, topicIDs)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// response data
-	response := gin.H{
-		"success": true,
-	}
-
-	// return final response
-	c.JSON(http.StatusOK, response)
+	return nil
 }
 
-// deletes topics from posts and update the post in ES index
-func deleteTopicsFromPostsAndUpdatePost(handlers *FeedHandlers, topicIDs []primitive.ObjectID) error {
+func decrementChildCountForParentTopics(topicHelper interfaces.TopicHelper, esHelper searchElastic.EsHelper, postHelper interfaces.PostHelper,
+	parentIds []primitive.ObjectID, communityId int,
+) error {
+
+	for _, parentId := range parentIds {
+		updateData := gin.H{
+			"$inc": gin.H{
+				"total_child_count": -1,
+			},
+		}
+
+		err := topicHelper.UpdateTopicByIdHelper(parentId, updateData, false)
+		if err != nil {
+			logging.Error(err.Error())
+		}
+	}
+
+	parentTopics, err := fetchTopicsByIDs(topicHelper, parentIds, communityId, false)
+	if err != nil {
+		logging.Error(err.Error())
+	}
+
+	// parse the topics data for ES indexing
+	topicsIndexData := map[string]interface{}{}
+	for _, topicData := range parentTopics {
+		topicsIndexData[topicData.ID.Hex()] = ParseTopicIndexData(postHelper, &topicData, false)
+	}
+
+	// index topics data in elastic search
+	err = esHelper.InsertManyDocuments(topicsIndexData, constants.TopicIndexName)
+	if err != nil {
+		logging.Error(err.Error())
+	}
+
+	return nil
+}
+
+// pull topic_ids from posts and update the post in ES index
+func pullTopicIdsFromPosts(handlers *FeedHandlers, topicIDs []primitive.ObjectID) error {
 
 	// Create a filter to find posts to be updated
 	filter := bson.M{

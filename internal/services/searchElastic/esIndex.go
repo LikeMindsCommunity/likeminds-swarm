@@ -33,6 +33,7 @@ type TopicIndex struct {
 	IsSearchable    bool      `json:"is_searchable"`
 	ParentId        string    `json:"parent_id"`
 	ParentName      string    `json:"parent_name"`
+	AllParentIds    []string  `json:"all_parent_ids"`
 	Level           int       `json:"level"`
 	WidgetId        string    `json:"widget_id"`
 	TotalChildCount int       `json:"total_child_count"`

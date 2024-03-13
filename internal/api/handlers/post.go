@@ -860,7 +860,7 @@ func parseFetchMultiplePostResponse(
 }
 
 // Internal Method to parse topics response
-func parseTopicsResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
+func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
 	communityId int) (map[string]responses.TopicResponse, error) {
 
 	// Fetch topics using topic Ids
@@ -1082,7 +1082,7 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]responses.TopicResponse {
 	topicIds := getTopicIdsFromPosts(response)
 
-	topicsData, _ := parseTopicsResponse(topicHelper, topicIds, communityId)
+	topicsData, _ := fetchAndParseTopicsForResponse(topicHelper, topicIds, communityId)
 
 	return topicsData
 }
@@ -1094,7 +1094,9 @@ func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{
 	widgetIds := getWidgetIdsFromPosts(response)
 
 	// get widget ids from topics
-	widgetIds = append(widgetIds, getWidgetIdsFromTopics(response)...)
+	topicWidgetIds := getWidgetIdsFromTopics(response)
+
+	widgetIds = append(widgetIds, topicWidgetIds...)
 
 	// fetch widget data from widget ids
 	widgetsData, _ := parseWidgetsResponse(handlers, widgetIds, communityId, uuid)
@@ -1509,7 +1511,7 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 	// Update posts count in topics index
 	if len(postData.TopicIds) > 0 {
 
-		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(postData.TopicIds)
 		updatePostCountInTopicQuery := UpdatePostCountInTopicsQuery(stringTopicIds, true)
 
 		err = handlers.esHelper.UpdateByQuery(updatePostCountInTopicQuery, constants.TopicIndexName)
@@ -2053,7 +2055,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 
 	// update the count of posts in added topics
 	if len(addedTopicIds) > 0 {
-		stringTopicIds := helpers.ConvertObjectIdsToString(addedTopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(addedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, true), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
@@ -2062,7 +2064,7 @@ func updatePostCountInTopics(handlers *FeedHandlers, editRequestTopicIds []strin
 
 	// update the count of posts in removed topics
 	if len(removedTopicIds) > 0 {
-		stringTopicIds := helpers.ConvertObjectIdsToString(removedTopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(removedTopicIds)
 		err := handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
@@ -2125,7 +2127,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// delete post data in elastic search
-	err = handlers.esHelper.DeleteDocument(c, postData.ID.Hex(), constants.PostIndexName)
+	err = handlers.esHelper.DeleteDocument(postData.ID.Hex(), constants.PostIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -2161,7 +2163,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 	// update the count of posts in topics
 	if len(postData.TopicIds) > 0 {
-		stringTopicIds := helpers.ConvertObjectIdsToString(postData.TopicIds)
+		stringTopicIds := helpers.ParseObjectIdsToString(postData.TopicIds)
 		err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 		if err != nil {
 			logging.Error(err.Error())
@@ -2546,7 +2548,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	// parsing of chatroom ids
-	excludedChatroomIds := parseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
+	excludedChatroomIds := utils.ParseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
 	parsedExcludedChatroomIds, _ := json.Marshal(excludedChatroomIds)
 
 	// dsl query to search posts

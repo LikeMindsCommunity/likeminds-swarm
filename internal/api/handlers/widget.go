@@ -13,8 +13,10 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -38,7 +40,7 @@ func createWidget(handlers *FeedHandlers, createdByLM bool, parentEntityID strin
 	// insert widget data in elastic search
 	err = handlers.esHelper.IndexDocument(ParseWidgetIndexData(widgetData), widgetData.ID.Hex(), constants.WidgetIndexName)
 	if err != nil {
-		log.Error(err.Error())
+		logging.Error(err.Error())
 	}
 
 	return widgetData, nil
@@ -81,6 +83,7 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 	// Validation of data change
 	if len(widgetUpdateData["$set"].(gin.H)) > 0 {
+
 		// update widget using the helper method
 		err := handlers.widgetHelper.UpdateWidgetByIdHelper(widget.ID, widgetUpdateData)
 		if err != nil {
@@ -98,6 +101,10 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 		if err != nil {
 			fmt.Println(err.Error())
 		}
+
+		// Invalidate kettle cache for widget meta
+		cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widget.ID.Hex())
+		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
 	}
 
 	return widget, nil
@@ -305,7 +312,7 @@ func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.Fet
 
 	if fetchWidgetRequest.WidgetIds != "" {
 
-		widgetObjectIds := helpers.ConvertIdsToObjectIds(parseStringArrayParam(fetchWidgetRequest.WidgetIds))
+		widgetObjectIds := helpers.ConvertIdsToObjectIds(utils.ParseStringArrayParam(fetchWidgetRequest.WidgetIds))
 		filter = gin.H{
 			"_id": gin.H{
 				"$in": widgetObjectIds,
@@ -503,28 +510,87 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 	// fetch widget using widget_id
 	widget, err := fetchWidgetByID(handlers.widgetHelper, widgetId, false, communityId)
 	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
+		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// delete widget using helper method
-	err = handlers.widgetHelper.DeleteWidgetByIdHelper(widget.ID)
+	// delete widget and related data
+	err = deleteWidgetById(handlers.widgetHelper, handlers.esHelper, widget.ID, communityId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
+	// generate success response
+	utils.GenerateSuccessResponse(c, nil)
+}
+
+// method to delete widget by Id and its related data
+func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper, widgetId primitive.ObjectID, communityId int) error {
+
+	// delete widget using helper method
+	err := widgetHelper.DeleteWidgetByIdHelper(widgetId)
+	if err != nil {
+		return err
+	}
+
 	// delete widget data from elastic search
-	err = handlers.esHelper.DeleteDocument(c, widget.ID.Hex(), constants.WidgetIndexName)
+	err = esHelper.DeleteDocument(widgetId.Hex(), constants.WidgetIndexName)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
-	// reponse data
-	response := gin.H{
-		"success": true,
+	// Invalidate kettle cache for widget meta
+	cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
+	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
+
+	return nil
+}
+
+// method to delete widgets by Ids and its related data
+func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchElastic.EsHelper,
+	widgetIds []primitive.ObjectID, communityId int,
+) error {
+
+	// Delete the documents from the collection
+	filter := gin.H{
+		"_id": gin.H{
+			"$in": widgetIds,
+		},
 	}
 
-	// return final response
-	c.JSON(http.StatusOK, response)
+	count, err := widgetHelper.DeleteWidgetsHelper(filter)
+	if err != nil {
+		return err
+	}
+
+	if int(count) != len(widgetIds) {
+		logging.Error(fmt.Sprintf("Only %v Widgets deleted out of %v", count, widgetIds))
+	}
+
+	// Delete widget data from elastic search
+	deleteWidgetsQuery := fmt.Sprintf(`{
+		"query": {
+			"terms": {
+				"_id": %s
+			}
+		}
+	}`, helpers.ParseObjectIdsToString(widgetIds))
+
+	err = esHelper.DeleteByQuery(deleteWidgetsQuery, constants.WidgetIndexName)
+	if err != nil {
+		logging.Error(err.Error())
+	}
+
+	// Invalidate kettle cache keys for widgets meta
+	keyPatternsForWidgetsMeta := []string{}
+
+	for _, widgetId := range widgetIds {
+		cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
+		keyPatternsForWidgetsMeta = append(keyPatternsForWidgetsMeta, cacheKey)
+	}
+
+	go externalHelpers.InvalidateKettleCache(keyPatternsForWidgetsMeta)
+
+	return nil
 }

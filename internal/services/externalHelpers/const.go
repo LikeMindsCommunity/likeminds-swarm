@@ -5,10 +5,11 @@ const POSTMethod = 1
 const PUTMethod = 2
 const DELETEMethod = 3
 
-type ServiceType int
+type ServiceType string
 
 const (
-	CaravanService ServiceType = iota
+	CaravanService ServiceType = "caravan"
+	KettleService  ServiceType = "kettle"
 )
 
 type RequestType int
@@ -35,6 +36,7 @@ const FetchUserConnectionsEndPoint = "/api/community_member/%s/connection"
 const SendMailEndpoint = "/api/external_service_apis/send_email"
 const PushReportEndpoint = "/api/community/report"
 const CommunityWebhooksEndpoint = "/api/webhook"
+const KettleCacheDeleteEndpoint = "/cache"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
@@ -62,11 +64,6 @@ const (
 	FeedMetadataUniversalFeedCommentSortKey      = "comment_sort_order_key"
 	FeedMetadataUniversalFeedCommentSortOrderKey = "comment_sort_order"
 	FeedMetadataUniversalFeedCommentCountKey     = "comment_count"
-)
-
-const (
-	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
-	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
 )
 
 // Inferdo API related constants

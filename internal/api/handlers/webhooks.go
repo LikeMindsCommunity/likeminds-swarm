@@ -22,7 +22,7 @@ func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*resp
 	}
 
 	// Fetch topics for the post
-	topics, err := parseTopicsResponse(handlers.topicHelper, post.Topics, post.CommunityId)
+	topics, err := fetchAndParseTopicsForResponse(handlers.topicHelper, post.Topics, post.CommunityId)
 	if err != nil {
 		return nil, err
 	}

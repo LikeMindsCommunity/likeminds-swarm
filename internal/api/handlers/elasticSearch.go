@@ -5,6 +5,7 @@ import (
 
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
@@ -188,6 +189,10 @@ func ParseTopicIndexData(postHelper interfaces.PostHelper, Topic *entities.Topic
 
 	if Topic.ParentId != primitive.NilObjectID {
 		topicIndex.ParentId = Topic.ParentId.Hex()
+	}
+
+	if Topic.AllParentIds != nil {
+		topicIndex.AllParentIds = helpers.ParseObjectIdsToStringArray(Topic.AllParentIds)
 	}
 
 	if Topic.WidgetId != primitive.NilObjectID {
