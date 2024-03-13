@@ -25,5 +25,5 @@ func InvalidateKettleCache(keyPatterns []string) {
 		return
 	}
 
-	logging.Info("Sent request for kettle Cache deletion for keys: ", keyPatterns)
+	logging.Info("Sent request for kettle cache deletion for keys: ", keyPatterns)
 }
