@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -13,9 +14,11 @@ import (
 )
 
 // Exposed Helper Method to Create Topic Instance
-func (helper *topicHelper) CreateTopicHelper(name string, is_enabled bool, community_id int) (interface{}, error) {
+func (helper *topicHelper) CreateTopicHelper(name string, is_enabled bool, priority float32, isSearchable bool, parentId primitive.ObjectID, parentName string,
+	allParentIds []primitive.ObjectID, level int, widgetId primitive.ObjectID, totalChildCount int, communityId int) (interface{}, error) {
+
 	// Create a new Topic Document
-	topic := entities.NewTopic(name, is_enabled, community_id)
+	topic := entities.NewTopic(name, is_enabled, priority, isSearchable, parentId, parentName, allParentIds, level, widgetId, totalChildCount, communityId)
 
 	// Insert the document in the collection
 	topicId, err := helper.topicRepository.Create(topic)
@@ -24,17 +27,36 @@ func (helper *topicHelper) CreateTopicHelper(name string, is_enabled bool, commu
 }
 
 // Exposed Helper Method to Create Topic Instances
-func (helper *topicHelper) CreateManyTopicsHelper(names []string, is_enabled bool, community_id int) ([]interface{}, error) {
+func (helper *topicHelper) CreateManyTopicsHelper(topicsRequest []requests.CreateTopicRequest, communityId int) ([]primitive.ObjectID, error) {
+
 	// Create new topic documents
 	var topics []interface{}
-	for _, name := range names {
-		topics = append(topics, entities.NewTopic(name, is_enabled, community_id))
+
+	for _, topic := range topicsRequest {
+
+		parentId, err := primitive.NilObjectID, error(nil)
+
+		if topic.ParentId != "" {
+			// Convert the parentId to ObjectID
+			parentId, err = primitive.ObjectIDFromHex(topic.ParentId)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		topics = append(topics, entities.NewTopic(topic.Name, *topic.IsEnabled, topic.Priority, *topic.IsSearchable, parentId, topic.ParentName, topic.AllParentIds, topic.Level, topic.WidgetId, topic.TotalChildCount, communityId))
 	}
 
 	// Insert the documents in the collection
 	topicIds, err := helper.topicRepository.CreateMany(topics)
+	if err != nil {
+		return nil, err
+	}
 
-	return topicIds, err
+	// convert topic_ids to object ids
+	objectTopicIds := TypecastIdsToObjectIds(topicIds)
+
+	return objectTopicIds, nil
 }
 
 // Exposed Helper Method to Find Topics
@@ -63,18 +85,38 @@ func (helper *topicHelper) FindTopicHelper(filter map[string]interface{}, filter
 }
 
 // Exposed Helper Method to Update Topics
-func (helper *topicHelper) UpdateTopicByIdHelper(topic_id primitive.ObjectID, update map[string]interface{}) error {
+func (helper *topicHelper) UpdateTopicByIdHelper(topic_id primitive.ObjectID, update map[string]interface{}, updateTimestamp bool) error {
 	setData := gin.H{}
 
 	// Create set filter
 	if _, ok := update["$set"]; ok {
 		setData = update["$set"].(gin.H)
 	}
-	setData["updated_at"] = time.Now()
+
+	if updateTimestamp {
+		setData["updated_at"] = time.Now()
+	}
+
 	update["$set"] = setData
 
 	// Update the document in the collection
 	err := helper.topicRepository.Update(gin.H{"_id": topic_id}, update)
+
+	return err
+}
+
+// Exposed Helper Method to Update Multiple Topics
+func (helper *topicHelper) UpdateManyTopicsHelper(filter map[string]interface{}, update map[string]interface{}, shouldUpdateTimestamp bool) error {
+	if shouldUpdateTimestamp {
+		if _, ok := update["$set"]; ok {
+			update["$set"].(gin.H)["updated_at"] = time.Now()
+		} else {
+			update["$set"] = gin.H{"updated_at": time.Now()}
+		}
+	}
+
+	// Update the documents in the collection
+	err := helper.topicRepository.UpdateMany(filter, update)
 
 	return err
 }

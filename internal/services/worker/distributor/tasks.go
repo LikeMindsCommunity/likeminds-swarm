@@ -219,3 +219,75 @@ func (distributor *RedisTaskDistributor) TriggerCommentTaggedWebhook(commentId s
 
 	return nil
 }
+
+// Task Distributor for "task:TaskTriggerCreatePost"
+func (distributor *RedisTaskDistributor) TriggerCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+
+	if postId == "" {
+		return fmt.Errorf("Missing Post ID!")
+	}
+
+	payload := worker.PayloadPost{
+		PostID: postId,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerCreatePost, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TaskTriggerEditPost"
+func (distributor *RedisTaskDistributor) TriggerEditPostBackgroundTasks(postId string, opts ...asynq.Option) error {
+
+	if postId == "" {
+		return fmt.Errorf("Missing Post ID!")
+	}
+
+	payload := worker.PayloadPost{
+		PostID: postId,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerEditPost, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TaskTriggerDeletePost"
+func (distributor *RedisTaskDistributor) TriggerDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+
+	if postId == "" {
+		return fmt.Errorf("Missing Post ID!")
+	}
+
+	payload := worker.PayloadPost{
+		PostID: postId,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerDeletePost, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}

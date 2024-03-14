@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/response"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -77,10 +77,10 @@ func (helper *commentHelper) CountCommentHelper(filter map[string]interface{}) (
 }
 
 // Exposed Helper Method to perform Aggregation on Comments
-func (helper *commentHelper) AggregateTopCommentsHelper(query []map[string]interface{}) ([]response.TopCommentsAggregationQueryResponse, error) {
+func (helper *commentHelper) AggregateTopCommentsHelper(query []map[string]interface{}) ([]responses.TopCommentsAggregationQueryResponse, error) {
 	results, err := helper.commentRepository.Aggregate(query)
 
-	var commentResultsList []response.TopCommentsAggregationQueryResponse
+	var commentResultsList []responses.TopCommentsAggregationQueryResponse
 
 	if err = results.All(context.TODO(), &commentResultsList); err != nil {
 		return nil, fmt.Errorf("Error in conversion!")

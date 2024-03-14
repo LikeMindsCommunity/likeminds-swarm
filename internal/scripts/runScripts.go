@@ -27,6 +27,14 @@ func RunScripts(handlers *handlers.FeedHandlers, scriptName string) {
 	case "addCommunityIdToComments":
 		addCommunityIdToComments(handlers)
 
+	// Run the script to add community id to all comments
+	case "backfillPostTopics":
+		backfillPostTopics(handlers)
+
+	// Run the script to backfill topics data with default values
+	case "backfillTopicsData":
+		backfillTopicsDataWithDefaultValues(handlers)
+
 	// If the script is not found
 	default:
 		log.Fatal(fmt.Sprintf(`Scripts: Script '%s' not found`, scriptName))
@@ -67,4 +75,25 @@ func addCommunityIdToComments(handlers *handlers.FeedHandlers) {
 		return
 	}
 	log.Info("Scripts: addCommunityIdToAllComments completed successfully")
+}
+
+func backfillPostTopics(handlers *handlers.FeedHandlers) {
+	err := handlers.BackfillPostTopicsInDB()
+	if err != nil {
+		log.Error(fmt.Sprintf("Scripts: Error running backfillPostTopics: %s", err.Error()))
+		return
+	}
+
+	log.Info("Scripts: backfillPostTopics completed successfully")
+}
+
+func backfillTopicsDataWithDefaultValues(handlers *handlers.FeedHandlers) {
+
+	err := handlers.BackfillDefaultValuesForTopics()
+	if err != nil {
+		log.Error(fmt.Sprintf("Scripts: Error running backfillTopicsDataWithDefaultValues: %s", err.Error()))
+		return
+	}
+
+	log.Info("Scripts: backfillTopicsDataWithDefaultValues completed successfully")
 }

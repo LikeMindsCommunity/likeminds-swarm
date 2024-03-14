@@ -46,7 +46,7 @@ func CustomAPIErrorWithMeta(c *gin.Context, statusCode int, errorMessage string,
 }
 
 // Exposed Method to send successfull API Response
-func GenereateSuccessResponse(c *gin.Context, dataResponse gin.H) {
+func GenerateSuccessResponse(c *gin.Context, dataResponse gin.H) {
 
 	if dataResponse == nil {
 		dataResponse = gin.H{}

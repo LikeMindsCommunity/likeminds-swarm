@@ -26,6 +26,11 @@ func (repository *topicRepository) Update(filter map[string]interface{}, update 
 	return _updateDocumentsInDB(repository.db, TopicCollection, filter, update)
 }
 
+// Exposed Helper Method to Update Many Topics
+func (repository *topicRepository) UpdateMany(filter map[string]interface{}, update map[string]interface{}) error {
+	return _updateAllDocumentsInDB(repository.db, TopicCollection, filter, update)
+}
+
 // Exposed Helper Method to Fetch Topics Count
 func (repository *topicRepository) Count(filter map[string]interface{}) (int64, error) {
 	return _countDocumentsInDB(repository.db, TopicCollection, filter)

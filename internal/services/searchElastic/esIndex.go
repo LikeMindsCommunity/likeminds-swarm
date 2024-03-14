@@ -26,13 +26,21 @@ type PostIndex struct {
 
 // Struct for Elasticsearch Topic Index fields
 type TopicIndex struct {
-	Id            string    `json:"id"`
-	Name          string    `json:"name"`
-	IsEnabled     bool      `json:"is_enabled"`
-	CommunityId   int       `json:"community_id"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	NumberOfPosts int       `json:"number_of_posts"`
+	Id              string    `json:"id"`
+	Name            string    `json:"name"`
+	IsEnabled       bool      `json:"is_enabled"`
+	Priority        float32   `json:"priority"`
+	IsSearchable    bool      `json:"is_searchable"`
+	ParentId        string    `json:"parent_id"`
+	ParentName      string    `json:"parent_name"`
+	AllParentIds    []string  `json:"all_parent_ids"`
+	Level           int       `json:"level"`
+	WidgetId        string    `json:"widget_id"`
+	TotalChildCount int       `json:"total_child_count"`
+	CommunityId     int       `json:"community_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	NumberOfPosts   int       `json:"number_of_posts"`
 }
 
 // Struct for Elasticsearch Widget Index fields

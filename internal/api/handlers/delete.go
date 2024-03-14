@@ -73,7 +73,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 
 			// update the count of posts in topics
 			if len(post.TopicIds) > 0 {
-				stringTopicIds := helpers.ConvertObjectIdsToString(post.TopicIds)
+				stringTopicIds := helpers.ParseObjectIdsToString(post.TopicIds)
 				err = handlers.esHelper.UpdateByQuery(UpdatePostCountInTopicsQuery(stringTopicIds, false), constants.TopicIndexName)
 				if err != nil {
 					log.Error(err.Error())

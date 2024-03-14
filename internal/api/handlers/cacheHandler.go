@@ -45,5 +45,5 @@ func (handlers *FeedHandlers) DeleteCache(c *gin.Context) {
 
 	logging.Info("Successfully deleted cache key: ", dcr.CacheKey)
 
-	utils.GenereateSuccessResponse(c, nil)
+	utils.GenerateSuccessResponse(c, nil)
 }

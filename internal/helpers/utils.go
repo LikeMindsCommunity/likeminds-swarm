@@ -108,7 +108,7 @@ func TypecastIdsToObjectIds(ids []interface{}) []primitive.ObjectID {
 }
 
 // Helper method to convert array of Object IDs to string format
-func ConvertObjectIdsToString(objectIds []primitive.ObjectID) string {
+func ParseObjectIdsToString(objectIds []primitive.ObjectID) string {
 
 	topicIds := make([]string, len(objectIds))
 
@@ -117,4 +117,16 @@ func ConvertObjectIdsToString(objectIds []primitive.ObjectID) string {
 	}
 
 	return utils.ParseStringArrayToString(topicIds)
+}
+
+// Helper method to convert array of Object IDs to string array
+func ParseObjectIdsToStringArray(objectIds []primitive.ObjectID) []string {
+
+	stringIds := make([]string, len(objectIds))
+
+	for i, objectId := range objectIds {
+		stringIds[i] = objectId.Hex()
+	}
+
+	return stringIds
 }

@@ -95,7 +95,7 @@ func fetchCommunityWebhooks(cacheHelper cache.Helper, apiKey string) []Community
 
 		// Save data to cache
 		logging.Info("Saving community webhooks to cache for ApiKey: ", apiKey)
-		cacheHelper.Set(webhooksCacheKey, webhooksByteValues, CommunityWebhooksCacheTTTLInHours*time.Hour)
+		cacheHelper.Set(webhooksCacheKey, webhooksByteValues, cache.CommunityWebhooksCacheTTTLInHours*time.Hour)
 	}
 
 	return communityWebhooks

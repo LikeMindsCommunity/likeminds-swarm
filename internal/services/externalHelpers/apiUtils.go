@@ -71,6 +71,8 @@ func GetRequestResponse(serviceType ServiceType, url string, requestType Request
 	switch serviceType {
 	case CaravanService:
 		baseUrl = client.CaravanServiceBaseURL
+	case KettleService:
+		baseUrl = client.KettleServiceBaseURL
 	}
 
 	switch requestType {

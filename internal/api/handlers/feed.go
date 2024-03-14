@@ -9,6 +9,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -70,10 +71,10 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// Parse topic Ids string array
-	topicIds := parseStringArrayParam(universalFeedRequest.TopicIds)
+	topicIds := utils.ParseStringArrayParam(universalFeedRequest.TopicIds)
 
 	// Parse widget ids string array
-	widgetIds := parseStringArrayParam(universalFeedRequest.WidgetIds)
+	widgetIds := utils.ParseStringArrayParam(universalFeedRequest.WidgetIds)
 
 	// fetch pagination query params
 	page, _, err := fetchPaginationParams(c)
@@ -98,14 +99,34 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
-		topicObjectIds := helpers.ConvertIdsToObjectIds(topicIds)
+		postObjectIdsList, err := getPostIdsBasedOnTopicsFilter(handlers, topicIds)
 
-		pinnedPostFilterData["topic_ids"] = gin.H{
-			"$in": topicObjectIds,
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
 		}
 
-		unpinnedPostFilterData["topic_ids"] = gin.H{
-			"$in": topicObjectIds,
+		if len(postObjectIdsList) == 0 {
+			finalParsedResponse := gin.H{
+				"posts":             []requests.PostResponse{},
+				"success":           true,
+				"topics":            map[string]responses.TopicResponse{},
+				"widgets":           map[string]requests.WidgetResponse{},
+				"reposted_posts":    map[string]requests.PostResponse{},
+				"filtered_comments": filtered_comments,
+			}
+
+			// return final response
+			c.JSON(http.StatusOK, finalParsedResponse)
+			return
+		}
+
+		pinnedPostFilterData["_id"] = gin.H{
+			"$in": postObjectIdsList,
+		}
+
+		unpinnedPostFilterData["_id"] = gin.H{
+			"$in": postObjectIdsList,
 		}
 	}
 
@@ -184,7 +205,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// Get community configurations
@@ -205,7 +226,9 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			return
 		}
 
-		finalParsedResponse["posts"] = updatedPostsWithComments
+		if len(updatedPostsWithComments) > 0 {
+			finalParsedResponse["posts"] = updatedPostsWithComments
+		}
 
 	}
 
@@ -463,19 +486,19 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 	if (exploreFeedRequest.OrderType == constants.GroupOrderTypeNewest ||
 		exploreFeedRequest.OrderType == constants.GroupOrderTypeMostParticipants) &&
 		len(exploreFeedRequest.ChatroomIDs) > 0 {
-		chatroomIds = parseIntArrayParam(exploreFeedRequest.ChatroomIDs)
+		chatroomIds = utils.ParseIntArrayParam(exploreFeedRequest.ChatroomIDs)
 	} else
 
 	// Order by Recently active chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeRecentlyActive {
 		chatroomIds = getChatroomsBasedOnRecentActivity(c, handlers.postHelper, communityId,
-			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
+			utils.ParseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
 	} else
 
 	// Order by Most messaged chatroom on top
 	if exploreFeedRequest.OrderType == constants.GroupOrderTypeMostMessages {
 		chatroomIds = getChatroomsBasedOnMostMessages(c, handlers.postHelper, communityId,
-			parseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
+			utils.ParseIntArrayParam(exploreFeedRequest.ExcludedChatroomIDs), page, pageSize)
 	}
 
 	postData := getPostCountInChatrooms(handlers.postHelper, chatroomIds)
@@ -532,7 +555,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	feedroomId, _ := strconv.Atoi(groupFeedRequest.FeedroomId)
 
 	// Parse topic Ids string array
-	topicIds := parseStringArrayParam(groupFeedRequest.TopicIds)
+	topicIds := utils.ParseStringArrayParam(groupFeedRequest.TopicIds)
 
 	// fetch pagination query params
 	page, _, err := fetchPaginationParams(c)
@@ -625,7 +648,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -767,7 +790,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPosts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -817,5 +840,5 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	}
 
 	// return final response
-	utils.GenereateSuccessResponse(c, finalResponse)
+	utils.GenerateSuccessResponse(c, finalResponse)
 }
