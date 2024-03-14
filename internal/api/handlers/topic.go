@@ -575,8 +575,8 @@ func validateEditTopicRequest(handlers *FeedHandlers, topicId string, editTopicR
 	}
 
 	// Update set object with priority field, if changed
-	if topic.Priority != editTopicRequest.Priority {
-		topicUpdateData["$set"].(gin.H)["priority"] = editTopicRequest.Priority
+	if editTopicRequest.Priority != nil && (topic.Priority != *editTopicRequest.Priority) {
+		topicUpdateData["$set"].(gin.H)["priority"] = *editTopicRequest.Priority
 	}
 
 	// Update set object with is_searchable field, if changed
