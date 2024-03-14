@@ -189,7 +189,7 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 			createTopicsRequest.Topics[i].Level = parentTopic.Level + 1
 
 			if parentTopic.ParentId != primitive.NilObjectID {
-				createTopicsRequest.Topics[i].AllParentIds = append(parentTopic.AllParentIds, parentTopic.ParentId)
+				createTopicsRequest.Topics[i].AllParentIds = append(parentTopic.AllParentIds, parentTopic.ID)
 			} else {
 				createTopicsRequest.Topics[i].AllParentIds = append([]primitive.ObjectID{}, parentTopic.ID)
 			}
