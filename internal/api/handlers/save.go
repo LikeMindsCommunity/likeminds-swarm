@@ -193,7 +193,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	savedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, postResults, userId, isCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check,
-		handlers.cacheHelper, utils.DefaultMemberRole)
+		handlers.cacheHelper, utils.DefaultRole)
 
 	response := parseFetchMultiplePostResponse(handlers.postHelper, savedPostResponse, saveCount)
 
@@ -227,7 +227,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 		var updatedPostsWithComments []requests.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
 			response.Posts, userId, isCm, communityId, commentSortOrderVal,
-			universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check, utils.DefaultMemberRole)
+			universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())

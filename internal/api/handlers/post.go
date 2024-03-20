@@ -1336,7 +1336,7 @@ func FetchSinglePostResponse(handlers *FeedHandlers, postId string) (*requests.P
 	}
 
 	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
-		handlers.widgetHelper, *postData, postData.UserId, false, "", "", false, handlers.cacheHelper, utils.DefaultMemberRole)
+		handlers.widgetHelper, *postData, postData.UserId, false, "", "", false, handlers.cacheHelper, utils.DefaultRole)
 
 	return &postResponse, nil
 }
@@ -1370,7 +1370,7 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 	for _, post := range postsLists {
 		postResponse[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
 			handlers.topicHelper, handlers.widgetHelper, post, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper,
-			utils.DefaultMemberRole)
+			utils.DefaultRole)
 	}
 
 	return postResponse, nil
@@ -2451,7 +2451,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	createdPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, postResults, userId, isCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check,
-		handlers.cacheHelper, utils.DefaultMemberRole)
+		handlers.cacheHelper, utils.DefaultRole)
 
 	response := parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse, postsCount)
 
@@ -2485,7 +2485,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		var updatedPostsWithComments []requests.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
 			response.Posts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
-			versionCode, platformCode, apiRevampV1Check, utils.DefaultMemberRole)
+			versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
@@ -2523,7 +2523,7 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 
 	postResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, postList, userId, isCm, versionCode, platformCode,
-		apiRevampV1Check, handlers.cacheHelper, utils.DefaultMemberRole)
+		apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
 
 	return postResponse
 }

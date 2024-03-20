@@ -26,6 +26,6 @@ const (
 
 // Member Roles
 const (
-	GuestRole         string = "GUEST"
-	DefaultMemberRole string = ""
+	GuestRole   string = "GUEST"
+	DefaultRole string = ""
 )

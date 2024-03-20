@@ -242,7 +242,7 @@ func FetchSingleCommentWithParentResponse(handlers *FeedHandlers, commentId stri
 		return nil, err
 	}
 
-	response := parseCommentWithParentResponse(handlers, *comment, comment.UserId, false, "", "", false, utils.DefaultMemberRole)
+	response := parseCommentWithParentResponse(handlers, *comment, comment.UserId, false, "", "", false, utils.DefaultRole)
 
 	return &response, nil
 }
@@ -407,10 +407,10 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, headers[utils.HeadersMemberId],
 		isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, handlers.cacheHelper,
-		utils.DefaultMemberRole)
+		utils.DefaultRole)
 	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
 		commentData, repliesResponse, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check, handlers.cacheHelper, utils.DefaultMemberRole)
+		headers[utils.HeadersPlatformCode], apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
 
 	// return final response
 	c.JSON(http.StatusOK, gin.H{
@@ -453,7 +453,7 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 
 	// Fetch comments using comment_ids
 	comments, err := fetchMultipleCommentsData(handlers, commentIds, communityId, headers[utils.HeadersMemberId], paramIsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultMemberRole)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -650,7 +650,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultMemberRole)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultRole)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -737,7 +737,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultMemberRole)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultRole)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -905,7 +905,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, newCommentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions,
 		headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, false, utils.DefaultMemberRole)
+		apiRevampV1Check, false, utils.DefaultRole)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -1047,7 +1047,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 	}
 
 	fetchCommentsResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, headers[utils.HeadersMemberId],
-		isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, handlers.cacheHelper, utils.DefaultMemberRole)
+		isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
 
 	// Fetch post ids
 	var postIds []string
