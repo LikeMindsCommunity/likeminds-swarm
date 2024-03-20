@@ -293,7 +293,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 		// If postIdForComment is not empty, fetch post data along with comment data
 		if postIdForComment != "" {
 			commentData, err := fetchCommentData(&handler, entityID.Hex(), postIdForComment, nil, userId, false,
-				"", "", apiRevampV1Check, true)
+				"", "", apiRevampV1Check, true, utils.DefaultRole)
 			if err != nil {
 				return nil, err
 			}
@@ -303,7 +303,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 		} else {
 
 			commentData, err := fetchMultipleCommentsData(&handler, []string{entityID.Hex()}, communityID, "", false, "", "",
-				apiRevampV1Check)
+				apiRevampV1Check, utils.DefaultRole)
 			if err != nil {
 				return nil, err
 			}

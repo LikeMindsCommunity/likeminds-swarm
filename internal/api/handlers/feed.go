@@ -63,6 +63,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
+	memberRole := headers[utils.HeaderMemberRole]
 
 	err := c.BindQuery(&universalFeedRequest)
 	if err != nil {
@@ -171,7 +172,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pinnedPostResults, headers[utils.HeadersMemberId],
 			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check, handlers.cacheHelper)
+			apiRevampV1Check, handlers.cacheHelper, memberRole)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -188,7 +189,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
 		universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, handlers.cacheHelper)
+		apiRevampV1Check, handlers.cacheHelper, memberRole)
 
 	response = append(response, unpinnedPostResponse...)
 
@@ -219,7 +220,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
 		var updatedPostsWithComments []requests.PostResponse
-		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts, userId, universalFeedRequest.IsCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check)
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts, userId, universalFeedRequest.IsCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
+			versionCode, platformCode, apiRevampV1Check, memberRole)
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
@@ -614,7 +616,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pinnedPostResults, headers[utils.HeadersMemberId],
 			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check, handlers.cacheHelper)
+			apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -631,7 +633,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
 		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, handlers.cacheHelper)
+		apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
 
 	response = append(response, unpinnedPostResponse...)
 
@@ -775,7 +777,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	connectionFeedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
 		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, connectionFeedPostResults, headers[utils.HeadersMemberId],
 		connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, handlers.cacheHelper)
+		apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
 
 	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, connectionFeedPostResponse, -1)
 

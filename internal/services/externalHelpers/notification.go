@@ -3,7 +3,8 @@ package externalHelpers
 import (
 	"fmt"
 
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,16 +28,17 @@ func SendNotification(member_ids []string, title string, sub_title string, route
 	}
 
 	headers := gin.H{
-		"Content-Type":    ContentTypeHeader,
-		"x-member-id":     SwarmServiceHeader,
-		"x-platform-code": platform_code,
-		"x-version-code":  version_code,
+		"Content-Type":            ContentTypeHeader,
+		utils.HeadersMemberId:     SwarmServiceHeader,
+		utils.HeadersPlatformCode: platform_code,
+		utils.HeadersVersionCode:  version_code,
+		utils.HeadersSdkSource:    utils.SdkSourceFeed,
 	}
 
 	//Send Request
 	respBytes, _, err := GetRequestResponse(CaravanService, SendNotificationEndPoint, POSTRequestRawBody, headers, nil, postBody)
 	if respBytes == nil {
-		log.Error(fmt.Sprintf("An Error Occured %v", err))
+		logging.Error(fmt.Sprintf("An Error Occured %v", err))
 	}
 
 	// Printing output
