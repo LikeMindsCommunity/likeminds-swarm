@@ -833,6 +833,10 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	}
 
 	commentsCount, err := handlers.commentHelper.CountCommentHelper(commentFilterData)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// response data
 	finalResponse := gin.H{

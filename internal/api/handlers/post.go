@@ -2145,6 +2145,25 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		return
 	}
 
+	// soft delete post comments
+	commentUpdateData := gin.H{
+		"$set": gin.H{
+			"is_deleted":    true,
+			"delete_reason": constants.CommentDeleteReasonForPostDelete,
+			"deleted_by":    headers[utils.HeadersMemberId],
+		},
+	}
+
+	commentFilter := gin.H{
+		"post_id":    postData.ID,
+		"is_deleted": false,
+	}
+
+	err = handlers.commentHelper.UpdateManyCommentsHelper(commentFilter, commentUpdateData)
+	if err != nil {
+		logging.Error("Error updating post comments: ", err.Error())
+	}
+
 	// if repost, remove repost data from original post's repost widget
 	if postData.IsRepost {
 		deleteOriginalPostRepostWidgetData(handlers, postData)
@@ -2333,7 +2352,7 @@ func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.Obj
 		return
 	}
 
-	postCommentIds := [](primitive.ObjectID){}
+	postCommentIds := []primitive.ObjectID{}
 
 	for _, comment := range comments {
 		postCommentIds = append(postCommentIds, comment.ID)
