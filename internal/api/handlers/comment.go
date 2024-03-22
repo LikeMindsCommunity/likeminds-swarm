@@ -1076,6 +1076,10 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		"posts":    postIdsDataMap,
 	}
 
+	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
+	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
+	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+
 	utils.GenerateSuccessResponse(c, finalResponse)
 }
 
