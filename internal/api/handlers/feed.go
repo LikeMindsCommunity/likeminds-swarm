@@ -830,9 +830,14 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		"user_id":      userId,
 		"is_deleted":   false,
 		"community_id": communityId,
+		"level":        0,
 	}
 
 	commentsCount, err := handlers.commentHelper.CountCommentHelper(commentFilterData)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// response data
 	finalResponse := gin.H{

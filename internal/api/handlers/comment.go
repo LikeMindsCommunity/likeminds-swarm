@@ -629,10 +629,12 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			logging.Error("Error triggering comment added webhook", err)
 		}
 
-		// trigger comment tagged webhook
-		err = handlers.taskDistributor.TriggerCommentTaggedWebhook(commentId.(primitive.ObjectID).Hex(), taggedMembers, headers[utils.HeadersApiKey])
-		if err != nil {
-			logging.Error("Error triggering comment tagged webhook", err)
+		if len(taggedMembers) > 0 {
+			// trigger comment tagged webhook
+			err = handlers.taskDistributor.TriggerCommentTaggedWebhook(commentId.(primitive.ObjectID).Hex(), taggedMembers, headers[utils.HeadersApiKey])
+			if err != nil {
+				logging.Error("Error triggering comment tagged webhook", err)
+			}
 		}
 	}
 
@@ -883,10 +885,12 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			logging.Error("Error triggering comment added webhook", err)
 		}
 
-		// trigger comment tagged webhook
-		err = handlers.taskDistributor.TriggerCommentTaggedWebhook(newCommentId.(primitive.ObjectID).Hex(), taggedMembers, headers[utils.HeadersApiKey])
-		if err != nil {
-			logging.Error("Error triggering comment tagged webhook", err)
+		if len(taggedMembers) > 0 {
+			// trigger comment tagged webhook
+			err = handlers.taskDistributor.TriggerCommentTaggedWebhook(newCommentId.(primitive.ObjectID).Hex(), taggedMembers, headers[utils.HeadersApiKey])
+			if err != nil {
+				logging.Error("Error triggering comment tagged webhook", err)
+			}
 		}
 	}
 
@@ -1075,6 +1079,10 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		"comments": fetchCommentsResponse,
 		"posts":    postIdsDataMap,
 	}
+
+	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
+	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
+	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	utils.GenerateSuccessResponse(c, finalResponse)
 }

@@ -64,6 +64,18 @@ func (helper *commentHelper) UpdateCommentByIdHelper(commentId primitive.ObjectI
 	return err
 }
 
+// Exposed Helper Method to Update Many Comments
+func (helper *commentHelper) UpdateManyCommentsHelper(filter map[string]interface{}, update map[string]interface{}) error {
+	err := convertHexIdsToObjectIds(filter, []string{"_id", "post_id"})
+	if err != nil {
+		return err
+	}
+
+	err = helper.commentRepository.UpdateMany(filter, update)
+
+	return err
+}
+
 // Exposed Helper Method to Count Comments
 func (helper *commentHelper) CountCommentHelper(filter map[string]interface{}) (int64, error) {
 	err := convertHexIdsToObjectIds(filter, []string{"_id", "post_id"})

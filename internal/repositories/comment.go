@@ -21,6 +21,11 @@ func (repository *commentRepository) Update(filter map[string]interface{}, updat
 	return _updateDocumentsInDB(repository.db, CommentCollection, filter, update)
 }
 
+// Exposed Repository Method to Update Many Comments
+func (repository *commentRepository) UpdateMany(filter map[string]interface{}, update map[string]interface{}) error {
+	return _updateAllDocumentsInDB(repository.db, CommentCollection, filter, update)
+}
+
 // Exposed Repository Method to Find Comment Count
 func (repository *commentRepository) Count(filter map[string]interface{}) (int64, error) {
 	return _countDocumentsInDB(repository.db, CommentCollection, filter)
