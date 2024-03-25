@@ -110,7 +110,7 @@ func (processor *RedisTaskProcessor) triggerCommentTaggedWebhook(ctx context.Con
 }
 
 // Task to trigger create post
-func (processor *RedisTaskProcessor) TriggerCreatePost(ctx context.Context, task *asynq.Task) error {
+func (processor *RedisTaskProcessor) createPostBackgroundTasks(ctx context.Context, task *asynq.Task) error {
 
 	payload := worker.PayloadPost{}
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
@@ -121,7 +121,7 @@ func (processor *RedisTaskProcessor) TriggerCreatePost(ctx context.Context, task
 }
 
 // Task to trigger edit post
-func (processor *RedisTaskProcessor) TriggerEditPost(ctx context.Context, task *asynq.Task) error {
+func (processor *RedisTaskProcessor) editPostBackgroundTasks(ctx context.Context, task *asynq.Task) error {
 
 	payload := worker.PayloadPost{}
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
@@ -132,7 +132,7 @@ func (processor *RedisTaskProcessor) TriggerEditPost(ctx context.Context, task *
 }
 
 // Task to trigger delete post
-func (processor *RedisTaskProcessor) TriggerDeletePost(ctx context.Context, task *asynq.Task) error {
+func (processor *RedisTaskProcessor) deletePostBackgroundTasks(ctx context.Context, task *asynq.Task) error {
 
 	payload := worker.PayloadPost{}
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {

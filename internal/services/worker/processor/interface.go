@@ -18,4 +18,7 @@ type FeedTaskProcessor interface {
 	triggerCommentAddedWebhook(ctx context.Context, task *asynq.Task) error
 	triggerCommentReactWebhook(ctx context.Context, task *asynq.Task) error
 	triggerCommentTaggedWebhook(ctx context.Context, task *asynq.Task) error
+	createPostBackgroundTasks(ctx context.Context, task *asynq.Task) error
+	editPostBackgroundTasks(ctx context.Context, task *asynq.Task) error
+	deletePostBackgroundTasks(ctx context.Context, task *asynq.Task) error
 }
