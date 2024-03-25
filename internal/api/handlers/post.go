@@ -1690,9 +1690,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// Add the post topics data in PostTopics collection
 	if postData.TopicIds != nil {
 		// Trigger create post background tasks
-		err = handlers.taskDistributor.TriggerCreatePostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.EnqueueCreatePostBackgroundTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering create post background task", err)
+			logging.Error("Error enqueuing create post background task", err)
 		}
 	}
 
@@ -2038,9 +2038,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// Update the post topics data
 	if postData.TopicIds != nil {
 		// Trigger edit post background tasks
-		err = handlers.taskDistributor.TriggerEditPostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.EnqueueEditPostBackgroundTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering edit post background task", err)
+			logging.Error("Error enqueing edit post background task", err)
 		}
 	}
 
@@ -2214,9 +2214,9 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		}
 
 		// Trigger delete post background tasks
-		err = handlers.taskDistributor.TriggerDeletePostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.EnqueueDeletePostBackgroundTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering delete post background task", err)
+			logging.Error("Error enqueing delete post background task", err)
 		}
 	}
 

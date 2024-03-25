@@ -221,10 +221,10 @@ func (distributor *RedisTaskDistributor) TriggerCommentTaggedWebhook(commentId s
 }
 
 // Task Distributor for "task:TaskTriggerCreatePost"
-func (distributor *RedisTaskDistributor) TriggerCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) EnqueueCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
-		return fmt.Errorf("Missing Post ID!")
+		return fmt.Errorf("missing Post ID")
 	}
 
 	payload := worker.PayloadPost{
@@ -245,10 +245,10 @@ func (distributor *RedisTaskDistributor) TriggerCreatePostBackgroundTasks(postId
 }
 
 // Task Distributor for "task:TaskTriggerEditPost"
-func (distributor *RedisTaskDistributor) TriggerEditPostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) EnqueueEditPostBackgroundTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
-		return fmt.Errorf("Missing Post ID!")
+		return fmt.Errorf("missing Post ID")
 	}
 
 	payload := worker.PayloadPost{
@@ -269,10 +269,10 @@ func (distributor *RedisTaskDistributor) TriggerEditPostBackgroundTasks(postId s
 }
 
 // Task Distributor for "task:TaskTriggerDeletePost"
-func (distributor *RedisTaskDistributor) TriggerDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) EnqueueDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
-		return fmt.Errorf("Missing Post ID!")
+		return fmt.Errorf("missing Post ID")
 	}
 
 	payload := worker.PayloadPost{
