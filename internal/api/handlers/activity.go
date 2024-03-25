@@ -13,6 +13,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -621,7 +622,10 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 		}
 
 		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			err = handlers.taskDistributor.EnqueueSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			if err != nil {
+				logging.Error("Failed to enqueue send notification : ", err)
+			}
 		}
 	}
 }
@@ -735,7 +739,10 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	if activityID != nil {
-		SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+		err = handlers.taskDistributor.EnqueueSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+		if err != nil {
+			logging.Error("Failed to enqueue send notification : ", err)
+		}
 	}
 
 	// 	// return final response

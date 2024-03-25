@@ -25,9 +25,10 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.HandleFunc(worker.TaskTriggerCommentAddedWebhook, processor.triggerCommentAddedWebhook)
 	mux.HandleFunc(worker.TaskTriggerCommentReactWebhook, processor.triggerCommentReactWebhook)
 	mux.HandleFunc(worker.TaskTriggerCommentTaggedWebhook, processor.triggerCommentTaggedWebhook)
-	mux.HandleFunc(worker.TaskTriggerCreatePost, processor.createPostBackgroundTasks)
-	mux.HandleFunc(worker.TaskTriggerEditPost, processor.editPostBackgroundTasks)
-	mux.HandleFunc(worker.TaskTriggerDeletePost, processor.deletePostBackgroundTasks)
+	mux.HandleFunc(worker.TaskCreatePostBackgroundTasks, processor.createPostBackgroundTasks)
+	mux.HandleFunc(worker.TaskEditPostBackgroundTasks, processor.editPostBackgroundTasks)
+	mux.HandleFunc(worker.TaskDeletePostBackgroundTasks, processor.deletePostBackgroundTasks)
+	mux.HandleFunc(worker.TaskSendNotification, processor.sendNotification)
 
 	return processor.server.Run(mux)
 }

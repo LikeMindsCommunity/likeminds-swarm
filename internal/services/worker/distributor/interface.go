@@ -3,6 +3,7 @@ package distributor
 import (
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // FeedTaskDistributor | Interface for feed background task distributor
@@ -18,4 +19,5 @@ type FeedTaskDistributor interface {
 	EnqueueCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error
 	EnqueueEditPostBackgroundTasks(postId string, opts ...asynq.Option) error
 	EnqueueDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error
+	EnqueueSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error
 }

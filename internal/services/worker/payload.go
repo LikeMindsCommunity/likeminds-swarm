@@ -1,6 +1,9 @@
 package worker
 
-import "github.com/nateshr/likeminds-swarm/internal/api/responses"
+import (
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 // Task Names for each task type
 const (
@@ -13,9 +16,10 @@ const (
 	TaskTriggerCommentAddedWebhook    = "task:TriggerCommentAddedWebhook"
 	TaskTriggerCommentReactWebhook    = "task:TriggerCommentReactWebhook"
 	TaskTriggerCommentTaggedWebhook   = "task:TriggerCommentTaggedWebhook"
-	TaskTriggerCreatePost             = "task:TaskTriggerCreatePost"
-	TaskTriggerEditPost               = "task:TaskTriggerEditPost"
-	TaskTriggerDeletePost             = "task:TaskTriggerDeletePost"
+	TaskCreatePostBackgroundTasks     = "task:CreatePostBackgroundTasks"
+	TaskEditPostBackgroundTasks       = "task:EditPostBackgroundTasks"
+	TaskDeletePostBackgroundTasks     = "task:DeletePostBackgroundTasks"
+	TaskSendNotification              = "task:SendNotification"
 )
 
 // Payload for the task to trigger post creation webhook
@@ -76,4 +80,11 @@ type PayloadTriggerCommentTaggedWebhook struct {
 
 type PayloadPost struct {
 	PostID string `json:"post_id"`
+}
+
+// Payload for send notification task
+type PayloadSendNotification struct {
+	ActivityID   primitive.ObjectID `json:"activity_id"`
+	PlatformCode string             `json:"platform_code"`
+	VersionCode  string             `json:"version_code"`
 }

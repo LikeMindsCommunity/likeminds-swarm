@@ -141,3 +141,14 @@ func (processor *RedisTaskProcessor) deletePostBackgroundTasks(ctx context.Conte
 
 	return handlers.DeletePostTopics(processor.feedHandlers, payload.PostID)
 }
+
+// Task to send notification
+func (processor *RedisTaskProcessor) sendNotification(ctx context.Context, task *asynq.Task) error {
+
+	payload := worker.PayloadSendNotification{}
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return handlers.SendNotification(*processor.feedHandlers, payload.ActivityID, payload.PlatformCode, payload.VersionCode)
+}

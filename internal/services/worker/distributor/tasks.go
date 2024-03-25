@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Task Distributor for "task:SendWebhookRequestWithPayload"
@@ -236,7 +237,7 @@ func (distributor *RedisTaskDistributor) EnqueueCreatePostBackgroundTasks(postId
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerCreatePost, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskCreatePostBackgroundTasks, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}
@@ -260,7 +261,7 @@ func (distributor *RedisTaskDistributor) EnqueueEditPostBackgroundTasks(postId s
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerEditPost, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskEditPostBackgroundTasks, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}
@@ -284,7 +285,33 @@ func (distributor *RedisTaskDistributor) EnqueueDeletePostBackgroundTasks(postId
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerDeletePost, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskDeletePostBackgroundTasks, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TaskSendNotification"
+func (distributor *RedisTaskDistributor) EnqueueSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error {
+
+	if activityID == primitive.NilObjectID || platformCode == "" || versionCode == "" {
+		return fmt.Errorf("missing activity ID, platform code or version code")
+	}
+
+	payload := worker.PayloadSendNotification{
+		ActivityID:   activityID,
+		PlatformCode: platformCode,
+		VersionCode:  versionCode,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskSendNotification, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}

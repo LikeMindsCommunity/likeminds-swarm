@@ -21,4 +21,5 @@ type FeedTaskProcessor interface {
 	createPostBackgroundTasks(ctx context.Context, task *asynq.Task) error
 	editPostBackgroundTasks(ctx context.Context, task *asynq.Task) error
 	deletePostBackgroundTasks(ctx context.Context, task *asynq.Task) error
+	sendNotification(ctx context.Context, task *asynq.Task) error
 }
