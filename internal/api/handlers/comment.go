@@ -603,7 +603,10 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			}
 
 			if activityID != nil {
-				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+				if err != nil {
+					logging.Error("Failed to enqueue send notification : ", err)
+				}
 			}
 
 		}
@@ -619,7 +622,11 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 			if activityID != nil {
 				handlers.CreateAlsoCommentedActivity(activityID, postData, headers, ctaData)
-				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+
+				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+				if err != nil {
+					logging.Error("Failed to enqueue send notification : ", err)
+				}
 			}
 		}
 
@@ -858,7 +865,10 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			}
 
 			if activityID != nil {
-				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+				if err != nil {
+					logging.Error("Failed to enqueue send notification : ", err)
+				}
 			}
 
 		}
@@ -874,7 +884,10 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 			}
 
 			if activityID != nil {
-				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+				if err != nil {
+					logging.Error("Failed to enqueue send notification : ", err)
+				}
 			}
 
 		}
@@ -995,7 +1008,10 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 		}
 
 		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			if err != nil {
+				logging.Error("Failed to enqueue send notification : ", err)
+			}
 		}
 
 	}

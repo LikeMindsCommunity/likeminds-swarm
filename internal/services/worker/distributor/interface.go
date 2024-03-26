@@ -3,6 +3,7 @@ package distributor
 import (
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // FeedTaskDistributor | Interface for feed background task distributor
@@ -15,7 +16,8 @@ type FeedTaskDistributor interface {
 	TriggerCommentAddedWebhook(commentId string, apiKey string, opts ...asynq.Option) error
 	TriggerCommentReactWebhook(commentId string, userId string, apiKey string, opts ...asynq.Option) error
 	TriggerCommentTaggedWebhook(commentId string, userIds []string, apiKey string, opts ...asynq.Option) error
-	TriggerCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error
-	TriggerEditPostBackgroundTasks(postId string, opts ...asynq.Option) error
-	TriggerDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error
+	AsyncCreatePostTasks(postId string, opts ...asynq.Option) error
+	AsyncEditPostTasks(postId string, opts ...asynq.Option) error
+	AsyncDeletePostTasks(postId string, opts ...asynq.Option) error
+	AsyncSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error
 }

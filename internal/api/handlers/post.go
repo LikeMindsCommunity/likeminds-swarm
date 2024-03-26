@@ -1448,7 +1448,10 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 		}
 
 		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			if err != nil {
+				logging.Error("Failed to enqueue send notification : ", err)
+			}
 		}
 	}
 
@@ -1466,12 +1469,14 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 			activityID, err := handlers.CreateActivity(communityId, []string{userId}, member, constants.Post,
 				postData.ID, userId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
 			if err != nil {
-				// utils.GeneralAPIInternalError(c, err.Error())
 				return err
 			}
 
 			if activityID != nil {
-				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+				if err != nil {
+					logging.Error("Failed to enqueue send notification : ", err)
+				}
 			}
 
 		}
@@ -1690,9 +1695,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// Add the post topics data in PostTopics collection
 	if postData.TopicIds != nil {
 		// Trigger create post background tasks
-		err = handlers.taskDistributor.TriggerCreatePostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.AsyncCreatePostTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering create post background task", err)
+			logging.Error("Error enqueuing create post background task", err)
 		}
 	}
 
@@ -2038,9 +2043,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// Update the post topics data
 	if postData.TopicIds != nil {
 		// Trigger edit post background tasks
-		err = handlers.taskDistributor.TriggerEditPostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.AsyncEditPostTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering edit post background task", err)
+			logging.Error("Error enqueing edit post background task", err)
 		}
 	}
 
@@ -2201,7 +2206,10 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		}
 
 		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			if err != nil {
+				logging.Error("Failed to enqueue send notification : ", err)
+			}
 		}
 	}
 
@@ -2214,9 +2222,9 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		}
 
 		// Trigger delete post background tasks
-		err = handlers.taskDistributor.TriggerDeletePostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.AsyncDeletePostTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering delete post background task", err)
+			logging.Error("Error enqueing delete post background task", err)
 		}
 	}
 
