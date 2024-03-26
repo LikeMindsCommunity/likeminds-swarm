@@ -632,17 +632,17 @@ func validateReceivers(activity *entities.Activity) *entities.Activity {
 }
 
 // SendNotification | method to send notification for activity
-func SendNotification(activityID primitive.ObjectID, handlers FeedHandlers, platformCode string, versionCode string) {
+func SendNotification(handlers FeedHandlers, activityID primitive.ObjectID, platformCode string, versionCode string) error {
 
 	activity, err := fetchActivity(handlers.activityHelper, activityID.Hex())
 	if err != nil {
-		return
+		return fmt.Errorf("failed to fetch activity: %w", err)
 	}
 
 	// Don't send notification when action done by the entity creator
 	activity = validateReceivers(activity)
 	if len(activity.ActionBy) == 0 {
-		return
+		return fmt.Errorf("no valid receivers found")
 	}
 
 	switch activity.Action {
@@ -677,4 +677,6 @@ func SendNotification(activityID primitive.ObjectID, handlers FeedHandlers, plat
 	case constants.CreateCommentPermitRemoved:
 		sendCreateCommentPermissionRemovedActionNotification(activity, handlers, platformCode, versionCode)
 	}
+
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Task Distributor for "task:SendWebhookRequestWithPayload"
@@ -221,10 +222,10 @@ func (distributor *RedisTaskDistributor) TriggerCommentTaggedWebhook(commentId s
 }
 
 // Task Distributor for "task:TaskTriggerCreatePost"
-func (distributor *RedisTaskDistributor) TriggerCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) AsyncCreatePostTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
-		return fmt.Errorf("Missing Post ID!")
+		return fmt.Errorf("missing Post ID")
 	}
 
 	payload := worker.PayloadPost{
@@ -236,7 +237,7 @@ func (distributor *RedisTaskDistributor) TriggerCreatePostBackgroundTasks(postId
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerCreatePost, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncCreatePostTasks, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}
@@ -245,10 +246,10 @@ func (distributor *RedisTaskDistributor) TriggerCreatePostBackgroundTasks(postId
 }
 
 // Task Distributor for "task:TaskTriggerEditPost"
-func (distributor *RedisTaskDistributor) TriggerEditPostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) AsyncEditPostTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
-		return fmt.Errorf("Missing Post ID!")
+		return fmt.Errorf("missing Post ID")
 	}
 
 	payload := worker.PayloadPost{
@@ -260,7 +261,7 @@ func (distributor *RedisTaskDistributor) TriggerEditPostBackgroundTasks(postId s
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerEditPost, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncEditPostTasks, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}
@@ -269,10 +270,10 @@ func (distributor *RedisTaskDistributor) TriggerEditPostBackgroundTasks(postId s
 }
 
 // Task Distributor for "task:TaskTriggerDeletePost"
-func (distributor *RedisTaskDistributor) TriggerDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) AsyncDeletePostTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
-		return fmt.Errorf("Missing Post ID!")
+		return fmt.Errorf("missing Post ID")
 	}
 
 	payload := worker.PayloadPost{
@@ -284,7 +285,33 @@ func (distributor *RedisTaskDistributor) TriggerDeletePostBackgroundTasks(postId
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskTriggerDeletePost, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncDeletePostTasks, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TaskSendNotification"
+func (distributor *RedisTaskDistributor) AsyncSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error {
+
+	if activityID == primitive.NilObjectID {
+		return fmt.Errorf("missing activity ID")
+	}
+
+	payload := worker.PayloadSendNotification{
+		ActivityID:   activityID,
+		PlatformCode: platformCode,
+		VersionCode:  versionCode,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncSendNotification, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}

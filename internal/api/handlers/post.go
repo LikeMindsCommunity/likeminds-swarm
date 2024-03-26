@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -913,10 +912,22 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	}
 
 	if posts, ok := response.(gin.H)["posts"]; ok {
-		for _, post := range posts.([]requests.PostResponse) {
-			for _, topicId := range post.Topics {
-				if _, exists := tempTopicIds[topicId]; !exists {
-					tempTopicIds[topicId] = true
+
+		switch posts := posts.(type) {
+		case []requests.PostResponse:
+			for _, post := range posts {
+				for _, topicId := range post.Topics {
+					if _, exists := tempTopicIds[topicId]; !exists {
+						tempTopicIds[topicId] = true
+					}
+				}
+			}
+		case map[string]requests.PostResponse:
+			for _, post := range posts {
+				for _, topicId := range post.Topics {
+					if _, exists := tempTopicIds[topicId]; !exists {
+						tempTopicIds[topicId] = true
+					}
 				}
 			}
 		}
@@ -1060,12 +1071,26 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 	}
 
 	if posts, ok := response.(gin.H)["posts"]; ok {
-		for _, post := range posts.([]requests.PostResponse) {
-			widgetIds := getWidgetIdsFromAttachments(post.Attachments)
 
-			for _, widgetId := range widgetIds {
-				if _, exists := tempWidgetIds[widgetId]; !exists {
-					tempWidgetIds[widgetId] = true
+		switch posts := posts.(type) {
+		case []requests.PostResponse:
+			for _, post := range posts {
+				widgetIds := getWidgetIdsFromAttachments(post.Attachments)
+
+				for _, widgetId := range widgetIds {
+					if _, exists := tempWidgetIds[widgetId]; !exists {
+						tempWidgetIds[widgetId] = true
+					}
+				}
+			}
+		case map[string]requests.PostResponse:
+			for _, post := range posts {
+				widgetIds := getWidgetIdsFromAttachments(post.Attachments)
+
+				for _, widgetId := range widgetIds {
+					if _, exists := tempWidgetIds[widgetId]; !exists {
+						tempWidgetIds[widgetId] = true
+					}
 				}
 			}
 		}
@@ -1116,7 +1141,7 @@ func getPostIdsFromReposts(response interface{}) []string {
 	uniquePostIds := []string{}
 	tempPostIds := map[string]bool{}
 
-	// extraxct from single post {}
+	// extract from single post {}
 	if post, ok := response.(gin.H)["post"]; ok {
 		postData := post.(requests.FetchPostResponse)
 		if postData.IsRepost {
@@ -1125,25 +1150,16 @@ func getPostIdsFromReposts(response interface{}) []string {
 	}
 
 	// extract from multiple posts []
-	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf([]requests.PostResponse{}) {
-		if posts, ok := response.(gin.H)["posts"]; ok {
-			for _, post := range posts.([]requests.PostResponse) {
+	if posts, ok := response.(gin.H)["posts"]; ok {
+		switch posts := posts.(type) {
+		case []requests.PostResponse:
+			for _, post := range posts {
 				if post.IsRepost {
 					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
 				}
 			}
-		}
-	}
-
-	//extract from multiple posts map[string]requests.PostResponse
-	if reflect.TypeOf(response.(gin.H)["posts"]) == reflect.TypeOf(map[string]requests.PostResponse{}) {
-		if posts, ok := response.(gin.H)["posts"]; ok {
-			postsMap := posts.(map[string]requests.PostResponse)
-			postsList := make([]requests.PostResponse, 0, len(postsMap))
-			for _, post := range postsMap {
-				postsList = append(postsList, post)
-			}
-			for _, post := range postsList {
+		case map[string]requests.PostResponse:
+			for _, post := range posts {
 				if post.IsRepost {
 					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
 				}
@@ -1432,7 +1448,10 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 		}
 
 		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			if err != nil {
+				logging.Error("Failed to enqueue send notification : ", err)
+			}
 		}
 	}
 
@@ -1450,12 +1469,14 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 			activityID, err := handlers.CreateActivity(communityId, []string{userId}, member, constants.Post,
 				postData.ID, userId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
 			if err != nil {
-				// utils.GeneralAPIInternalError(c, err.Error())
 				return err
 			}
 
 			if activityID != nil {
-				SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+				if err != nil {
+					logging.Error("Failed to enqueue send notification : ", err)
+				}
 			}
 
 		}
@@ -1674,9 +1695,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// Add the post topics data in PostTopics collection
 	if postData.TopicIds != nil {
 		// Trigger create post background tasks
-		err = handlers.taskDistributor.TriggerCreatePostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.AsyncCreatePostTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering create post background task", err)
+			logging.Error("Error enqueuing create post background task", err)
 		}
 	}
 
@@ -2022,9 +2043,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// Update the post topics data
 	if postData.TopicIds != nil {
 		// Trigger edit post background tasks
-		err = handlers.taskDistributor.TriggerEditPostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.AsyncEditPostTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering edit post background task", err)
+			logging.Error("Error enqueing edit post background task", err)
 		}
 	}
 
@@ -2129,6 +2150,25 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		return
 	}
 
+	// soft delete post comments
+	commentUpdateData := gin.H{
+		"$set": gin.H{
+			"is_deleted":    true,
+			"delete_reason": constants.CommentDeleteReasonForPostDelete,
+			"deleted_by":    headers[utils.HeadersMemberId],
+		},
+	}
+
+	commentFilter := gin.H{
+		"post_id":    postData.ID,
+		"is_deleted": false,
+	}
+
+	err = handlers.commentHelper.UpdateManyCommentsHelper(commentFilter, commentUpdateData)
+	if err != nil {
+		logging.Error("Error updating post comments: ", err.Error())
+	}
+
 	// if repost, remove repost data from original post's repost widget
 	if postData.IsRepost {
 		deleteOriginalPostRepostWidgetData(handlers, postData)
@@ -2166,7 +2206,10 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		}
 
 		if activityID != nil {
-			SendNotification(activityID.(primitive.ObjectID), *handlers, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode])
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			if err != nil {
+				logging.Error("Failed to enqueue send notification : ", err)
+			}
 		}
 	}
 
@@ -2179,9 +2222,9 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 		}
 
 		// Trigger delete post background tasks
-		err = handlers.taskDistributor.TriggerDeletePostBackgroundTasks(postData.ID.Hex())
+		err = handlers.taskDistributor.AsyncDeletePostTasks(postData.ID.Hex())
 		if err != nil {
-			logging.Error("Error triggering delete post background task", err)
+			logging.Error("Error enqueing delete post background task", err)
 		}
 	}
 
@@ -2317,7 +2360,7 @@ func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.Obj
 		return
 	}
 
-	postCommentIds := [](primitive.ObjectID){}
+	postCommentIds := []primitive.ObjectID{}
 
 	for _, comment := range comments {
 		postCommentIds = append(postCommentIds, comment.ID)
