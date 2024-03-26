@@ -16,10 +16,10 @@ const (
 	TaskTriggerCommentAddedWebhook    = "task:TriggerCommentAddedWebhook"
 	TaskTriggerCommentReactWebhook    = "task:TriggerCommentReactWebhook"
 	TaskTriggerCommentTaggedWebhook   = "task:TriggerCommentTaggedWebhook"
-	TaskCreatePostBackgroundTasks     = "task:CreatePostBackgroundTasks"
-	TaskEditPostBackgroundTasks       = "task:EditPostBackgroundTasks"
-	TaskDeletePostBackgroundTasks     = "task:DeletePostBackgroundTasks"
-	TaskSendNotification              = "task:SendNotification"
+	TaskAsyncCreatePostTasks          = "task:AsyncCreatePostTasks"
+	TaskAsyncEditPostTasks            = "task:AsyncEditPostTasks"
+	TaskAsyncDeletePostTasks          = "task:AsnycDeletePostTasks"
+	TaskAsyncSendNotification         = "task:AsyncSendNotification"
 )
 
 // Payload for the task to trigger post creation webhook

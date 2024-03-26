@@ -222,7 +222,7 @@ func (distributor *RedisTaskDistributor) TriggerCommentTaggedWebhook(commentId s
 }
 
 // Task Distributor for "task:TaskTriggerCreatePost"
-func (distributor *RedisTaskDistributor) EnqueueCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) AsyncCreatePostTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
 		return fmt.Errorf("missing Post ID")
@@ -237,7 +237,7 @@ func (distributor *RedisTaskDistributor) EnqueueCreatePostBackgroundTasks(postId
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskCreatePostBackgroundTasks, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncCreatePostTasks, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}
@@ -246,7 +246,7 @@ func (distributor *RedisTaskDistributor) EnqueueCreatePostBackgroundTasks(postId
 }
 
 // Task Distributor for "task:TaskTriggerEditPost"
-func (distributor *RedisTaskDistributor) EnqueueEditPostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) AsyncEditPostTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
 		return fmt.Errorf("missing Post ID")
@@ -261,7 +261,7 @@ func (distributor *RedisTaskDistributor) EnqueueEditPostBackgroundTasks(postId s
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskEditPostBackgroundTasks, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncEditPostTasks, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}
@@ -270,7 +270,7 @@ func (distributor *RedisTaskDistributor) EnqueueEditPostBackgroundTasks(postId s
 }
 
 // Task Distributor for "task:TaskTriggerDeletePost"
-func (distributor *RedisTaskDistributor) EnqueueDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) AsyncDeletePostTasks(postId string, opts ...asynq.Option) error {
 
 	if postId == "" {
 		return fmt.Errorf("missing Post ID")
@@ -285,7 +285,7 @@ func (distributor *RedisTaskDistributor) EnqueueDeletePostBackgroundTasks(postId
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskDeletePostBackgroundTasks, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncDeletePostTasks, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}
@@ -294,10 +294,10 @@ func (distributor *RedisTaskDistributor) EnqueueDeletePostBackgroundTasks(postId
 }
 
 // Task Distributor for "task:TaskSendNotification"
-func (distributor *RedisTaskDistributor) EnqueueSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error {
+func (distributor *RedisTaskDistributor) AsyncSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error {
 
-	if activityID == primitive.NilObjectID || platformCode == "" || versionCode == "" {
-		return fmt.Errorf("missing activity ID, platform code or version code")
+	if activityID == primitive.NilObjectID {
+		return fmt.Errorf("missing activity ID")
 	}
 
 	payload := worker.PayloadSendNotification{
@@ -311,7 +311,7 @@ func (distributor *RedisTaskDistributor) EnqueueSendNotification(activityID prim
 		return fmt.Errorf("failed to marshal task payload: %w", err)
 	}
 
-	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskSendNotification, jsonPayload, opts...)
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncSendNotification, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
 	}

@@ -16,8 +16,8 @@ type FeedTaskDistributor interface {
 	TriggerCommentAddedWebhook(commentId string, apiKey string, opts ...asynq.Option) error
 	TriggerCommentReactWebhook(commentId string, userId string, apiKey string, opts ...asynq.Option) error
 	TriggerCommentTaggedWebhook(commentId string, userIds []string, apiKey string, opts ...asynq.Option) error
-	EnqueueCreatePostBackgroundTasks(postId string, opts ...asynq.Option) error
-	EnqueueEditPostBackgroundTasks(postId string, opts ...asynq.Option) error
-	EnqueueDeletePostBackgroundTasks(postId string, opts ...asynq.Option) error
-	EnqueueSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error
+	AsyncCreatePostTasks(postId string, opts ...asynq.Option) error
+	AsyncEditPostTasks(postId string, opts ...asynq.Option) error
+	AsyncDeletePostTasks(postId string, opts ...asynq.Option) error
+	AsyncSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error
 }

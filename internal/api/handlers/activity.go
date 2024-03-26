@@ -622,7 +622,7 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 		}
 
 		if activityID != nil {
-			err = handlers.taskDistributor.EnqueueSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 			if err != nil {
 				logging.Error("Failed to enqueue send notification : ", err)
 			}
@@ -739,7 +739,7 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	if activityID != nil {
-		err = handlers.taskDistributor.EnqueueSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+		err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			logging.Error("Failed to enqueue send notification : ", err)
 		}

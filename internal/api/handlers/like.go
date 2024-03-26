@@ -236,7 +236,7 @@ func createUserPostLikeActivity(handlers *FeedHandlers, postData *entities.Post,
 	}
 
 	if activityID != nil {
-		err = handlers.taskDistributor.EnqueueSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+		err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			logging.Error("Failed to enqueue send notification : ", err)
 		}
@@ -456,7 +456,7 @@ func createUserCommentLikeActivity(handlers *FeedHandlers, postData *entities.Po
 	}
 
 	if activityID != nil {
-		err = handlers.taskDistributor.EnqueueSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+		err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
 		if err != nil {
 			logging.Error("Failed to enqueue send notification : ", err)
 		}
