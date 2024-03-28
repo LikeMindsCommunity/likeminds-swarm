@@ -425,7 +425,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	var parsedWidgets []requests.WidgetResponse
 
 	// fetch widgets from DB or ES
-	if constants.FetchWidgetsFromDb {
+	if fetchWidgetRequest.WidgetIds != "" {
 
 		// fetch widgets from DB
 		parsedWidgets, err = fetchWidgetsFromDB(handlers, &fetchWidgetRequest, communityId,
