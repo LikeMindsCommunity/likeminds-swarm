@@ -20,7 +20,7 @@ func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalE
 	feedMetadataPostVariableValue, isFetched := communityConfiguration.Value[externalHelpers.PostCommunityConfigurationKey]
 
 	if !isFetched {
-		feedMetadataPostVariableValue = externalHelpers.DefaultFeedMetadataPostVariableValue
+		feedMetadataPostVariableValue = externalHelpers.DefaultMetadataPostVariableValue
 	}
 
 	postFeedMetadataValues = utils.CapitalizeFirstLetter(feedMetadataPostVariableValue.(string))
