@@ -58,8 +58,8 @@ const (
 )
 
 const (
-	DefaultFeedMetadataPostVariableValue    = "post"
-	DefaultFeedMetadataCommentVariableValue = "comment"
+	DefaultMetadataPostVariableValue    = "post"
+	DefaultMetadataCommentVariableValue = "comment"
 )
 
 const (

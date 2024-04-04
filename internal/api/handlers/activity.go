@@ -22,8 +22,8 @@ import (
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	apiRevampV1Check bool, uuid string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
-	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
-	var commentMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
+	var postMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
+	var commentMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
 
 	response := []interface{}{}
 	userDatas := map[string]externalHelpers.MemberMeta{}
@@ -143,8 +143,8 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 		return activitiesResponse, userDatas, topicsData, widgetsData, nil
 	}
 
-	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
-	var commentMetatadataValue string = externalHelpers.DefaultFeedMetadataCommentVariableValue
+	var postMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
+	var commentMetatadataValue string = externalHelpers.DefaultMetadataCommentVariableValue
 
 	postMetatadataValue = externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 	commentMetatadataValue = externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
