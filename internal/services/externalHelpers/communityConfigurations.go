@@ -124,6 +124,29 @@ func GetFeedPostVariableOrDefault(cacheHelper cache.Helper, userId string, commu
 	return postFeedMetadataValues
 }
 
+func GetFeedCommentVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
+	var commentFeedMetadataValues string = DefaultFeedMetadataCommentVariableValue
+
+	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
+
+	if communityConfigurationResponse != nil {
+		externalEntities := ExternalEntities{
+			communityConfigurationResponse.CommunityConfigurations,
+		}
+
+		communityConfiguration, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
+			FeedMetadataCommunityConfigurationType)
+
+		feedMetadataCommentVariableValue, isFetched := communityConfiguration.Value[CommentCommunityConfigurationKey]
+
+		if isFetched {
+			commentFeedMetadataValues = feedMetadataCommentVariableValue.(string)
+		}
+	}
+
+	return commentFeedMetadataValues
+}
+
 func GetUniversalFeedConfigurationsData(cacheHelper cache.Helper, userId string, communityId int) *UniversalFeedConfigurations {
 	// Default Universal Feed Configurations
 	universalFeedConfigurations := UniversalFeedConfigurations{}

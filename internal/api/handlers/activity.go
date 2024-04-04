@@ -23,6 +23,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	apiRevampV1Check bool, uuid string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
+	var commentMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
 
 	response := []interface{}{}
 	userDatas := map[string]externalHelpers.MemberMeta{}
@@ -34,6 +35,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	}
 
 	postMetatadataValue = externalHelpers.GetFeedPostVariableOrDefault(handler.cacheHelper, uuid, activities[0].CommunityID)
+	commentMetatadataValue = externalHelpers.GetFeedCommentVariableOrDefault(handler.cacheHelper, uuid, activities[0].CommunityID)
 
 	userIds := [](string){}
 	topicIds := []primitive.ObjectID{}
@@ -65,7 +67,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityText, err := getActivityText(activityUserData, activityEntityData, activity, postMetatadataValue)
+		activityText, err := getActivityText(activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue)
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -142,8 +144,10 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	}
 
 	var postMetatadataValue string = externalHelpers.DefaultFeedMetadataPostVariableValue
+	var commentMetatadataValue string = externalHelpers.DefaultFeedMetadataCommentVariableValue
 
 	postMetatadataValue = externalHelpers.GetFeedPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
+	commentMetatadataValue = externalHelpers.GetFeedCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 
 	userIds := [](string){uuid}
 	topicIds := []primitive.ObjectID{}
@@ -199,7 +203,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 			postData = activityEntityData
 		}
 
-		activityText := getUserProfileActivityText(uuid, userId, activity.Action, userDatas, postMetatadataValue)
+		activityText := getUserProfileActivityText(uuid, userId, activity.Action, userDatas, postMetatadataValue, commentMetatadataValue)
 
 		// Make user activity response
 		activityResponse := requests.UserActivityResponse{
@@ -316,7 +320,8 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 	return nil, nil
 }
 
-func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEntityData interface{}, activity entities.Activity, postFeedMetadatValue string) (string, error) {
+func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEntityData interface{}, activity entities.Activity,
+	postFeedMetadatValue string, commentFeedMetadaValue string) (string, error) {
 	activityText := ""
 
 	switch activity.Action {
@@ -329,11 +334,11 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		return activityText, nil
 
 	case constants.CreateCommentPermitAdded:
-		activityText += fmt.Sprintf("You now have the permission to add comments on the %ss. Start engaging now.", postFeedMetadatValue)
+		activityText += fmt.Sprintf("You now have the permission to add %ss on the %ss. Start engaging now.", commentFeedMetadaValue, postFeedMetadatValue)
 		return activityText, nil
 
 	case constants.CreateCommentPermitRemoved:
-		activityText += fmt.Sprintf("Your permission to add comments and replies to the %ss has been removed.", postFeedMetadatValue)
+		activityText += fmt.Sprintf("Your permission to add %ss and replies to the %ss has been removed.", commentFeedMetadaValue, postFeedMetadatValue)
 		return activityText, nil
 
 	case constants.CMDeletedPost:
@@ -360,7 +365,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " commented on your"
+		activityText += fmt.Sprintf(" left a %s on your", commentFeedMetadaValue)
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
@@ -380,7 +385,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " liked your comment"
+		activityText += fmt.Sprintf(" liked your %s", commentFeedMetadaValue)
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
@@ -390,7 +395,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " replied on your comment"
+		activityText += fmt.Sprintf(" replied on your %s", commentFeedMetadaValue)
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
@@ -408,7 +413,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 	case constants.TaggedInPostComment:
 		activityText += getUserRoute(activityByUserData)
 
-		activityText += " tagged you in their comment"
+		activityText += fmt.Sprintf(" tagged you in their %s", commentFeedMetadaValue)
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
@@ -418,7 +423,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " also commented on"
+		activityText += fmt.Sprintf(" also left a %s on", commentFeedMetadaValue)
 
 		activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
 		if activityEntityOwnerUserID != "" {
@@ -435,13 +440,13 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 // Internal Method to fetch user profile activity text
 func getUserProfileActivityText(uuid string, userId string, action constants.ActivityAction,
-	userDatas map[string]externalHelpers.MemberMeta, postFeedMetadatValue string) string {
+	userDatas map[string]externalHelpers.MemberMeta, postFeedMetadatValue string, commentMetatadataValue string) string {
 
 	userRoute := getUserRoute(userDatas[uuid])
 
 	switch action {
 	case constants.CommentOnPost:
-		return (userRoute + " commented on this " + postFeedMetadatValue)
+		return (userRoute + fmt.Sprintf(" left a %s on this ", commentMetatadataValue) + postFeedMetadatValue)
 
 	case constants.LikeOnPost:
 		return (userRoute + " liked this " + postFeedMetadatValue)

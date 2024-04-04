@@ -48,6 +48,7 @@ const SwarmServiceHeader = "swarm-service"
 
 const (
 	PostCommunityConfigurationKey          = "post"
+	CommentCommunityConfigurationKey       = "comment"
 	UniversalFeedCommunityConfigurationKey = "universal_feed"
 )
 
@@ -57,7 +58,8 @@ const (
 )
 
 const (
-	DefaultFeedMetadataPostVariableValue = "post"
+	DefaultFeedMetadataPostVariableValue    = "post"
+	DefaultFeedMetadataCommentVariableValue = "comment"
 )
 
 const (
