@@ -101,7 +101,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	return &communityConfigurationResponse, nil
 }
 
-func GetFeedPostVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
+func GetPostVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
 	var postFeedMetadataValues string = DefaultFeedMetadataPostVariableValue
 
 	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
@@ -124,7 +124,7 @@ func GetFeedPostVariableOrDefault(cacheHelper cache.Helper, userId string, commu
 	return postFeedMetadataValues
 }
 
-func GetFeedCommentVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
+func GetCommentVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
 	var commentFeedMetadataValues string = DefaultFeedMetadataCommentVariableValue
 
 	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)

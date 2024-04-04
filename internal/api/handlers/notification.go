@@ -14,11 +14,11 @@ import (
 func sendPendingPostApprovalNotification(handlers FeedHandlers, recieverUUID string, communityId int, postId string) {
 
 	// Fetch post variable value
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, recieverUUID, communityId)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, recieverUUID, communityId)
 
 	receivers := recieverUUID
 	category := constants.FeedCategory
-	subCategory := constants.PendingPostApprovedSubCategory
+	subCategory := fmt.Sprintf(constants.PendingPostApprovedSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue))
 	title := fmt.Sprintf(constants.PendingPostApprovedTitle, postMetatadataValue)
 	subTitle := fmt.Sprintf(constants.PendingPostApprovedSubTitle, postMetatadataValue)
 	route := fmt.Sprintf(utils.PostDetailRoute, postId)
@@ -31,11 +31,11 @@ func sendPendingPostApprovalNotification(handlers FeedHandlers, recieverUUID str
 func sendPendingPostRejectionNotification(handlers FeedHandlers, recieverUUID string, communityId int) {
 
 	// Fetch post variable value
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, recieverUUID, communityId)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, recieverUUID, communityId)
 
 	receivers := recieverUUID
 	category := constants.FeedCategory
-	subCategory := constants.PendingPostRejectedSubCategory
+	subCategory := fmt.Sprintf(constants.PendingPostRejectedSubCategory, postMetatadataValue)
 	title := fmt.Sprintf(constants.PendingPostRejectedTitle, postMetatadataValue)
 	subTitle := fmt.Sprintf(constants.PendingPostRejectedSubTitle, postMetatadataValue)
 	route := constants.PlaceholderHomeRoute // placeholder route
@@ -49,8 +49,8 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
-	commentMetatadataValue := externalHelpers.GetFeedCommentVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -69,8 +69,8 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
-	commentMetatadataValue := externalHelpers.GetFeedCommentVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -89,7 +89,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -108,7 +108,7 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 	platform_code string, version_code string) {
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	category := constants.FeedCategory
@@ -132,7 +132,7 @@ func sendPostDeleteActionNotification(activity *entities.Activity, handlers Feed
 	}
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
 
 	receivers := activity.ActionOn
 	route := activity.CTA
@@ -155,6 +155,9 @@ func sendCommentDeleteActionNotification(activity *entities.Activity, handlers F
 		return
 	}
 
+	// Fetch community configurations
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	receivers := activity.ActionOn
 	route := activity.CTA
 	category := constants.FeedCategory
@@ -163,9 +166,9 @@ func sendCommentDeleteActionNotification(activity *entities.Activity, handlers F
 	subTitle := ""
 
 	if comment_data.Level == 0 {
-		subCategory = constants.ModerationCommentDeleteSubCategory
-		title = constants.CommentDeletedTitle
-		subTitle = fmt.Sprintf(constants.ModerationCommentDeleteSubTitle, comment_data.DeleteReason)
+		subCategory = fmt.Sprintf(constants.ModerationCommentDeleteSubCategory, commentMetatadataValue)
+		title = fmt.Sprintf(constants.CommentDeletedTitle, utils.CapitalizeFirstLetter(commentMetatadataValue))
+		subTitle = fmt.Sprintf(constants.ModerationCommentDeleteSubTitle, commentMetatadataValue, comment_data.DeleteReason)
 	}
 
 	if comment_data.Level > 0 {
@@ -203,7 +206,7 @@ func sendPostTagActionNotification(activity *entities.Activity, handlers FeedHan
 	member := memberData.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UserUniqueId, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, member.UserUniqueId, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
@@ -243,9 +246,12 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 		return
 	}
 
+	// Fetch community configurations
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, activity.ActionOn, activity.CommunityID)
+
 	if comment_data.Level == 0 {
-		subCategory = constants.CommentTagSubCategory
-		subTitle = fmt.Sprintf(constants.CommentTagSubTitle, member.Name)
+		subCategory = fmt.Sprintf(constants.CommentTagSubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue))
+		subTitle = fmt.Sprintf(constants.CommentTagSubTitle, member.Name, commentMetatadataValue)
 	}
 
 	if comment_data.Level > 0 {
@@ -305,8 +311,8 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		}
 
 		// Fetch community configurations
-		postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
-		commentMetatadataValue := externalHelpers.GetFeedCommentVariableOrDefault(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
+		postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
+		commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, latestCommentUserID, activity.CommunityID)
 
 		// notification params
 		receivers := activity.ActionOn
@@ -344,15 +350,15 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	member := member_data.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
-	commentMetatadataValue := externalHelpers.GetFeedCommentVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
 	title := fmt.Sprintf(constants.CommentTitle, utils.CapitalizeFirstLetter(commentMetatadataValue))
 	route := activity.CTA
 	category := constants.FeedCategory
-	subCategory := fmt.Sprintf(constants.PostCommentSubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue))
+	subCategory := fmt.Sprintf(constants.PostCommentSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue), utils.CapitalizeFirstLetter(commentMetatadataValue))
 	subTitle := ""
 
 	// Fetch comments count
@@ -392,12 +398,15 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 
 	member := member_data.Members[0]
 
+	// Fetch community configurations
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+
 	// notification params
 	receivers := activity.ActionOn
 	title := constants.ReplyTitle
 	route := activity.CTA
 	category := constants.FeedCategory
-	subCategory := constants.CommentReplySubCategory
+	subCategory := fmt.Sprintf(constants.CommentReplySubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue))
 	subTitle := ""
 
 	// Fetch comments count
@@ -414,11 +423,11 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 	commentReplyUserCount := len(activity.ActionBy)
 
 	if commentReplyUserCount == 1 {
-		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelOne, member.Name)
+		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelOne, member.Name, commentMetatadataValue)
 	} else if commentReplyUserCount == 2 {
-		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelTwo, member.Name)
+		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelTwo, member.Name, commentMetatadataValue)
 	} else if commentReplyUserCount > 2 {
-		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelThree, member.Name, commentCount-1)
+		subTitle = fmt.Sprintf(constants.CommentReplySubTitleLevelThree, member.Name, commentCount-1, commentMetatadataValue)
 	}
 
 	// send notification
@@ -472,7 +481,7 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	member := member_data.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
@@ -480,7 +489,7 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
-	subCategory := constants.PostLikedSubCategory
+	subCategory := fmt.Sprintf(constants.PostLikedSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue))
 
 	if likesCount == 1 {
 		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name, postMetatadataValue)
@@ -527,20 +536,23 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 
 	member := member_data.Members[0]
 
+	// Fetch community configurations
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+
 	// notification params
 	receivers := activity.ActionOn
 	title := constants.LikeTitle
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
-	subCategory := constants.CommentLikedSubCategory
+	subCategory := fmt.Sprintf(constants.CommentLikedSubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue))
 
 	if likesCount == 1 {
-		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelOne, member.Name)
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelOne, member.Name, commentMetatadataValue)
 	} else if likesCount == 2 {
-		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelTwo, member.Name)
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelTwo, member.Name, commentMetatadataValue)
 	} else if likesCount > 2 {
-		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelThree, member.Name, likesCount-1)
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelThree, member.Name, likesCount-1, commentMetatadataValue)
 	}
 
 	// send notification
@@ -583,7 +595,7 @@ func sendRepostPostActionNotification(activity *entities.Activity, handlers Feed
 	member := member_data.Members[0]
 
 	// Fetch community configurations
-	postMetatadataValue := externalHelpers.GetFeedPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
@@ -591,7 +603,7 @@ func sendRepostPostActionNotification(activity *entities.Activity, handlers Feed
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
-	subCategory := constants.RepostOnPostSubCategory
+	subCategory := fmt.Sprintf(constants.RepostOnPostSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue))
 
 	if repostCount == 1 {
 		subTitle = fmt.Sprintf(constants.PostRepostedSubTitleLevelOne, member.Name, postMetatadataValue)
