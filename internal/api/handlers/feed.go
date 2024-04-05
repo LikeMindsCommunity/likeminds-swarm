@@ -799,6 +799,47 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	c.JSON(http.StatusOK, finalParsedResponse)
 }
 
+func getPostsLikeAgainstUserCountQuery(userId string) []map[string]interface{} {
+	postLikesFilterData := []map[string]interface{}{}
+
+	// Add lookup logic
+	postLikesFilterData = append(postLikesFilterData, gin.H{
+		"$lookup": gin.H{
+			"from": "like",
+			"let": gin.H{
+				"postId": "$_id",
+			},
+			"pipeline": []gin.H{
+				{
+					"$match": gin.H{
+						"$expr": gin.H{
+							"$eq": []string{"$entity_id", "$$postId"},
+						},
+						"is_deleted": false,
+						"liked_by":   userId,
+					},
+				},
+			},
+			"as": "likes_data",
+		},
+	})
+
+	// Add group logic
+	postLikesFilterData = append(postLikesFilterData, gin.H{
+		"$group": gin.H{
+			"_id": "",
+			"total_likes_count": gin.H{
+				"$sum": gin.H{
+					"$size": "$likes_data",
+				},
+			},
+		},
+	})
+
+	return postLikesFilterData
+
+}
+
 // Exposed Method to fetch user feed meta
 func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	// fetch url params and headers
@@ -839,11 +880,28 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		return
 	}
 
+	// Get user post likes count data
+	var userPostLikesCount int32
+	userPostLikesFilterData := getPostsLikeAgainstUserCountQuery(userId)
+
+	userPostLikesCountData, err := handlers.postHelper.AggregatePostHelper(userPostLikesFilterData)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	if len(userPostLikesCountData) > 0 {
+		if userPostLikesCountMap, ok := userPostLikesCountData[0]["total_likes_count"]; ok {
+			userPostLikesCount = userPostLikesCountMap.(int32)
+		}
+	}
+
 	// response data
 	finalResponse := gin.H{
-		"posts_count":    postsCount,
-		"comments_count": commentsCount,
-		"success":        true,
+		"posts_count":      postsCount,
+		"comments_count":   commentsCount,
+		"posts_like_count": userPostLikesCount,
+		"success":          true,
 	}
 
 	// return final response
