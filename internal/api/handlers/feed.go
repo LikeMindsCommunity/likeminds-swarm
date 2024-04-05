@@ -847,6 +847,25 @@ func getPostLikesCountAgainstUserQuery(userId string) []map[string]interface{} {
 
 }
 
+func getPostLikesCountAgainstUser(postHelper interfaces.PostHelper, userId string) (int32, error) {
+	var userPostLikesCount int32
+
+	userPostLikesFilterData := getPostLikesCountAgainstUserQuery(userId)
+
+	userPostLikesCountData, err := postHelper.AggregatePostHelper(userPostLikesFilterData)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(userPostLikesCountData) > 0 {
+		if userPostLikesCountMap, ok := userPostLikesCountData[0]["total_likes_count"]; ok {
+			userPostLikesCount = userPostLikesCountMap.(int32)
+		}
+	}
+
+	return userPostLikesCount, nil
+}
+
 // Exposed Method to fetch user feed meta
 func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	// fetch url params and headers
@@ -888,19 +907,10 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	}
 
 	// Get user post likes count data
-	var userPostLikesCount int32
-	userPostLikesFilterData := getPostLikesCountAgainstUserQuery(userId)
-
-	userPostLikesCountData, err := handlers.postHelper.AggregatePostHelper(userPostLikesFilterData)
+	userPostLikesCount, err := getPostLikesCountAgainstUser(handlers.postHelper, userId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
-	}
-
-	if len(userPostLikesCountData) > 0 {
-		if userPostLikesCountMap, ok := userPostLikesCountData[0]["total_likes_count"]; ok {
-			userPostLikesCount = userPostLikesCountMap.(int32)
-		}
 	}
 
 	// response data
@@ -908,7 +918,6 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		"posts_count":      postsCount,
 		"comments_count":   commentsCount,
 		"posts_like_count": userPostLikesCount,
-		"success":          true,
 	}
 
 	// return final response
