@@ -799,8 +799,15 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	c.JSON(http.StatusOK, finalParsedResponse)
 }
 
-func getPostsLikeAgainstUserCountQuery(userId string) []map[string]interface{} {
+func getPostLikesCountAgainstUserQuery(userId string) []map[string]interface{} {
 	postLikesFilterData := []map[string]interface{}{}
+
+	// Add filter logic
+	postLikesFilterData = append(postLikesFilterData, gin.H{
+		"$match": gin.H{
+			"is_deleted": false,
+		},
+	})
 
 	// Add lookup logic
 	postLikesFilterData = append(postLikesFilterData, gin.H{
@@ -815,8 +822,7 @@ func getPostsLikeAgainstUserCountQuery(userId string) []map[string]interface{} {
 						"$expr": gin.H{
 							"$eq": []string{"$entity_id", "$$postId"},
 						},
-						"is_deleted": false,
-						"liked_by":   userId,
+						"liked_by": userId,
 					},
 				},
 			},
@@ -882,7 +888,7 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 
 	// Get user post likes count data
 	var userPostLikesCount int32
-	userPostLikesFilterData := getPostsLikeAgainstUserCountQuery(userId)
+	userPostLikesFilterData := getPostLikesCountAgainstUserQuery(userId)
 
 	userPostLikesCountData, err := handlers.postHelper.AggregatePostHelper(userPostLikesFilterData)
 	if err != nil {
