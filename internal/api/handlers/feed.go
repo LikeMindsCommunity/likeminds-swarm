@@ -822,7 +822,8 @@ func getPostLikesCountAgainstUserQuery(userId string) []map[string]interface{} {
 						"$expr": gin.H{
 							"$eq": []string{"$entity_id", "$$postId"},
 						},
-						"liked_by": userId,
+						"is_deleted": false,
+						"liked_by":   userId,
 					},
 				},
 			},
