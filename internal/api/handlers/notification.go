@@ -56,7 +56,7 @@ func sendCreateCommentPermissionRemovedActionNotification(activity *entities.Act
 	category := constants.FeedCategory
 	subCategory := fmt.Sprintf(constants.CommentPermissionRemovedSubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue))
 	title := constants.PermissionUpdatedTitle
-	subTitle := fmt.Sprintf(constants.CommentPermissionRemovedSubTitle, commentMetatadataValue, postMetatadataValue)
+	subTitle := fmt.Sprintf(constants.CommentPermissionRemovedSubTitle, utils.GetPluralOfString(commentMetatadataValue), utils.GetPluralOfString(postMetatadataValue))
 	route := constants.PlaceholderHomeRoute // placeholder route
 
 	// send notification
@@ -76,7 +76,7 @@ func sendCreateCommentPermissionAddedActionNotification(activity *entities.Activ
 	category := constants.FeedCategory
 	subCategory := fmt.Sprintf(constants.CommentPermissionAddedSubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue))
 	title := constants.PermissionUpdatedTitle
-	subTitle := fmt.Sprintf(constants.CommentPermissionAddedSubTitle, commentMetatadataValue, postMetatadataValue)
+	subTitle := fmt.Sprintf(constants.CommentPermissionAddedSubTitle, utils.GetPluralOfString(commentMetatadataValue), utils.GetPluralOfString(postMetatadataValue))
 	route := activity.CTA
 
 	// send notification
@@ -95,7 +95,7 @@ func sendCreatePostPermissionRemovedActionNotification(activity *entities.Activi
 	category := constants.FeedCategory
 	subCategory := fmt.Sprintf(constants.PostPermissionRemovedSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue))
 	title := constants.PermissionUpdatedTitle
-	subTitle := fmt.Sprintf(constants.PostPermissionRemovedSubTitle, postMetatadataValue)
+	subTitle := fmt.Sprintf(constants.PostPermissionRemovedSubTitle, utils.GetPluralOfString(postMetatadataValue))
 	route := "route://home" // placeholder route
 
 	// send notification
@@ -327,9 +327,11 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		if postCommentUsersCount == 1 {
 			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelOne, commentOwner, commentMetatadataValue, postOwner, postMetatadataValue)
 		} else if postCommentUsersCount == 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, commentMetatadataValue, postOwner, postMetatadataValue)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelTwo, commentOwner, utils.GetPluralOfString(commentMetatadataValue),
+				postOwner, postMetatadataValue)
 		} else if postCommentUsersCount > 2 {
-			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, commentMetatadataValue, postOwner, postMetatadataValue)
+			subTitle = fmt.Sprintf(constants.AlsoCommentSubTitleLevelThree, commentOwner, len(activity.ActionBy)-1, utils.GetPluralOfString(commentMetatadataValue),
+				postOwner, postMetatadataValue)
 		}
 
 		// send notification
@@ -377,9 +379,11 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	if postCommentUsersCount == 1 {
 		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelOne, member.Name, commentMetatadataValue, postMetatadataValue)
 	} else if postCommentUsersCount == 2 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name, commentMetatadataValue, postMetatadataValue)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelTwo, member.Name, utils.GetPluralOfString(commentMetatadataValue),
+			postMetatadataValue)
 	} else if postCommentUsersCount > 2 {
-		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1, commentMetatadataValue, postMetatadataValue)
+		subTitle = fmt.Sprintf(constants.PostCommentSubTitleLevelThree, member.Name, commentCount-1, utils.GetPluralOfString(commentMetatadataValue),
+			postMetatadataValue)
 	}
 
 	// send notification

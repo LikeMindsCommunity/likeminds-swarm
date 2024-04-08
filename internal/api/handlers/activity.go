@@ -326,19 +326,21 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 	switch activity.Action {
 	case constants.CreatePostPermitAdded:
-		activityText += fmt.Sprintf("You now have the permission to create %ss in the community. Start posting now.", postFeedMetadatValue)
+		activityText += fmt.Sprintf("You now have the permission to create %s in the community. Start posting now.", utils.GetPluralOfString(postFeedMetadatValue))
 		return activityText, nil
 
 	case constants.CreatePostPermitRemoved:
-		activityText += fmt.Sprintf("Your permission to create %ss in the community has been removed.", postFeedMetadatValue)
+		activityText += fmt.Sprintf("Your permission to create %s in the community has been removed.", utils.GetPluralOfString(postFeedMetadatValue))
 		return activityText, nil
 
 	case constants.CreateCommentPermitAdded:
-		activityText += fmt.Sprintf("You now have the permission to add %ss on the %ss. Start engaging now.", commentFeedMetadaValue, postFeedMetadatValue)
+		activityText += fmt.Sprintf("You now have the permission to add %s on the %s. Start engaging now.", utils.GetPluralOfString(commentFeedMetadaValue),
+			utils.GetPluralOfString(postFeedMetadatValue))
 		return activityText, nil
 
 	case constants.CreateCommentPermitRemoved:
-		activityText += fmt.Sprintf("Your permission to add %ss and replies to the %ss has been removed.", commentFeedMetadaValue, postFeedMetadatValue)
+		activityText += fmt.Sprintf("Your permission to add %s and replies to the %s has been removed.", utils.GetPluralOfString(commentFeedMetadaValue),
+			utils.GetPluralOfString(postFeedMetadatValue))
 		return activityText, nil
 
 	case constants.CMDeletedPost:
