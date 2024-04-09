@@ -1,13 +1,20 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Function that capitalizes the string
 func CapitalizeFirstLetter(str string) string {
 	return strings.ToUpper(string(str[0])) + strings.ToLower(string(str[1:]))
+}
+
+// Function that fetches the plural of a singular string
+func GetPluralOfString(str string) string {
+	return fmt.Sprintf("%ss", str)
 }
 
 // GetDuplicatesFromSlice returns a slice of duplicate strings from the input slice
