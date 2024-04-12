@@ -679,6 +679,11 @@ func validateAndUpdatePostAttachments(handlers *FeedHandlers, communityId int, a
 				return fmt.Errorf(errorMessage)
 			}
 
+		case enums.RepostWidget:
+			if !isEditRequest {
+				return fmt.Errorf("send valid attachment_type in attachment")
+			}
+
 		default:
 			return fmt.Errorf("send valid attachment_type in attachment")
 		}
@@ -820,7 +825,7 @@ func validateRepostPostAttachment(postData *entities.Post, editPostRequest reque
 	return false
 }
 
-func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID string) error {
+func validateUserAndPostForRepost(handlers *FeedHandlers, userID string, originalPostID string, communityId int) error {
 	postFilterData := gin.H{
 		"_id": originalPostID,
 	}
@@ -829,12 +834,20 @@ func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID
 		return fmt.Errorf("original post not found for repost")
 	}
 
-	if userID == postResults[0].UserId {
-		return fmt.Errorf("can not repost self post")
-	}
-
 	if getIsRepostedByUser(handlers.widgetHelper, userID, postResults[0]) {
 		return fmt.Errorf("can not repost one post multiple times")
+	}
+
+	if postResults[0].IsDeleted {
+		return fmt.Errorf("can not repost a deleted post")
+	}
+
+	if communityId != postResults[0].CommunityId {
+		return fmt.Errorf("invalid post")
+	}
+
+	if postResults[0].IsRepost {
+		return fmt.Errorf("can not repost a repost")
 	}
 
 	return nil
@@ -1590,7 +1603,7 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 
 	if postRequest.IsRepost {
 		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
-		err := validateUserForRepost(handlers, userId, originalPostID)
+		err := validateUserAndPostForRepost(handlers, userId, originalPostID, communityId)
 		if err != nil {
 			return nil, err
 		}
