@@ -330,8 +330,9 @@ func processAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 }
 
 // Internal Method to parse Post Attachments
-func parsePostAttachments(attachments []entities.Attachment, versionCode string,
-	platformCode string, apiRevampV1Check bool) []entities.Attachment {
+func parsePostAttachments(attachments []entities.Attachment, versionCode string, platformCode string, apiRevampV1Check bool,
+) []entities.Attachment {
+
 	parsedAttachments := []entities.Attachment{}
 	feedLinkMediaCheck := utils.CheckVersionInverted(utils.FeedLinkMediaVersion, versionCode, platformCode)
 	feedVideoAndDocumentMediaCheck := utils.CheckVersionInverted(utils.FeedVideoAndDocumentMediaVersions, versionCode, platformCode)
@@ -1156,15 +1157,18 @@ func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{
 	return widgetsData
 }
 
-func getOriginalPostForReposts(handlers *FeedHandlers, response interface{}, communityId int, userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) map[string]requests.PostResponse {
-	postIds := getPostIdsFromReposts(response)
+func getOriginalPostForReposts(handlers *FeedHandlers, response interface{}, communityId int, userId string, isCm bool,
+	versionCode string, platformCode string, apiRevampV1Check bool,
+) map[string]requests.PostResponse {
+
+	postIds := getPostIdsFromReposts(response, apiRevampV1Check)
 
 	postsData, _ := fetchMultiplePostsData(handlers, postIds, communityId, userId, isCm, versionCode, platformCode, apiRevampV1Check)
 
 	return postsData
 }
 
-func getPostIdsFromReposts(response interface{}) []string {
+func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string {
 	uniquePostIds := []string{}
 	tempPostIds := map[string]bool{}
 
@@ -1182,13 +1186,21 @@ func getPostIdsFromReposts(response interface{}) []string {
 		case []requests.PostResponse:
 			for _, post := range posts {
 				if post.IsRepost {
-					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					if apiRevampV1Check {
+						tempPostIds[string(post.Attachments[0].MetaData.EntityID.Hex())] = true
+					} else {
+						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					}
 				}
 			}
 		case map[string]requests.PostResponse:
 			for _, post := range posts {
 				if post.IsRepost {
-					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					if apiRevampV1Check {
+						tempPostIds[string(post.Attachments[0].MetaData.EntityID.Hex())] = true
+					} else {
+						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					}
 				}
 			}
 		}
@@ -1213,7 +1225,9 @@ func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostReq
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, post entities.Post,
-	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string) requests.PostResponse {
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
+) requests.PostResponse {
+
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 
