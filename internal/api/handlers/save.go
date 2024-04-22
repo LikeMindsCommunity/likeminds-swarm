@@ -208,8 +208,8 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
 	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// Get community configurations
 	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)

@@ -330,8 +330,9 @@ func processAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 }
 
 // Internal Method to parse Post Attachments
-func parsePostAttachments(attachments []entities.Attachment, versionCode string,
-	platformCode string, apiRevampV1Check bool) []entities.Attachment {
+func parsePostAttachments(attachments []entities.Attachment, versionCode string, platformCode string, apiRevampV1Check bool,
+) []entities.Attachment {
+
 	parsedAttachments := []entities.Attachment{}
 	feedLinkMediaCheck := utils.CheckVersionInverted(utils.FeedLinkMediaVersion, versionCode, platformCode)
 	feedVideoAndDocumentMediaCheck := utils.CheckVersionInverted(utils.FeedVideoAndDocumentMediaVersions, versionCode, platformCode)
@@ -679,6 +680,11 @@ func validateAndUpdatePostAttachments(handlers *FeedHandlers, communityId int, a
 				return fmt.Errorf(errorMessage)
 			}
 
+		case enums.RepostWidget:
+			if !isEditRequest {
+				return fmt.Errorf("send valid attachment_type in attachment")
+			}
+
 		default:
 			return fmt.Errorf("send valid attachment_type in attachment")
 		}
@@ -820,7 +826,7 @@ func validateRepostPostAttachment(postData *entities.Post, editPostRequest reque
 	return false
 }
 
-func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID string) error {
+func validateUserAndPostForRepost(handlers *FeedHandlers, userID string, originalPostID string, communityId int) error {
 	postFilterData := gin.H{
 		"_id": originalPostID,
 	}
@@ -829,12 +835,20 @@ func validateUserForRepost(handlers *FeedHandlers, userID string, originalPostID
 		return fmt.Errorf("original post not found for repost")
 	}
 
-	if userID == postResults[0].UserId {
-		return fmt.Errorf("can not repost self post")
-	}
-
 	if getIsRepostedByUser(handlers.widgetHelper, userID, postResults[0]) {
 		return fmt.Errorf("can not repost one post multiple times")
+	}
+
+	if postResults[0].IsDeleted {
+		return fmt.Errorf("can not repost a deleted post")
+	}
+
+	if communityId != postResults[0].CommunityId {
+		return fmt.Errorf("invalid post")
+	}
+
+	if postResults[0].IsRepost {
+		return fmt.Errorf("can not repost a repost")
 	}
 
 	return nil
@@ -1055,45 +1069,59 @@ func typeAssertAndFetchWidgetIdsFromTopics(topics interface{}, widgetMap map[str
 	return widgetMap
 }
 
+func typeAssertAndFetchWidgetIdsFromPosts(posts interface{}, widgetMap map[primitive.ObjectID]bool) map[primitive.ObjectID]bool {
+	switch posts := posts.(type) {
+	case []requests.PostResponse:
+		for _, post := range posts {
+			widgetIds := getWidgetIdsFromAttachments(post.Attachments)
+
+			for _, widgetId := range widgetIds {
+				if _, exists := widgetMap[widgetId]; !exists {
+					widgetMap[widgetId] = true
+				}
+			}
+		}
+	case map[string]requests.PostResponse:
+		for _, post := range posts {
+			widgetIds := getWidgetIdsFromAttachments(post.Attachments)
+
+			for _, widgetId := range widgetIds {
+				if _, exists := widgetMap[widgetId]; !exists {
+					widgetMap[widgetId] = true
+				}
+			}
+		}
+	case requests.PostResponse:
+		widgetIds := getWidgetIdsFromAttachments(posts.Attachments)
+
+		for _, widgetId := range widgetIds {
+			if _, exists := widgetMap[widgetId]; !exists {
+				widgetMap[widgetId] = true
+			}
+		}
+	}
+
+	return widgetMap
+}
+
 // Internal Method to parse widget_ids from posts
 func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 	uniqueWidgetIds := []primitive.ObjectID{}
 	tempWidgetIds := map[primitive.ObjectID]bool{}
 
+	// Widgets for single post
 	if post, ok := response.(gin.H)["post"]; ok {
-		widgetIds := getWidgetIdsFromAttachments(post.(requests.FetchPostResponse).Attachments)
-
-		for _, widgetId := range widgetIds {
-			if _, exists := tempWidgetIds[widgetId]; !exists {
-				tempWidgetIds[widgetId] = true
-			}
-		}
+		tempWidgetIds = typeAssertAndFetchWidgetIdsFromPosts(post, tempWidgetIds)
 	}
 
+	// Widgets for multiple posts
 	if posts, ok := response.(gin.H)["posts"]; ok {
+		tempWidgetIds = typeAssertAndFetchWidgetIdsFromPosts(posts, tempWidgetIds)
+	}
 
-		switch posts := posts.(type) {
-		case []requests.PostResponse:
-			for _, post := range posts {
-				widgetIds := getWidgetIdsFromAttachments(post.Attachments)
-
-				for _, widgetId := range widgetIds {
-					if _, exists := tempWidgetIds[widgetId]; !exists {
-						tempWidgetIds[widgetId] = true
-					}
-				}
-			}
-		case map[string]requests.PostResponse:
-			for _, post := range posts {
-				widgetIds := getWidgetIdsFromAttachments(post.Attachments)
-
-				for _, widgetId := range widgetIds {
-					if _, exists := tempWidgetIds[widgetId]; !exists {
-						tempWidgetIds[widgetId] = true
-					}
-				}
-			}
-		}
+	// Widgets for reposted post
+	if repostedPosts, ok := response.(gin.H)["reposted_posts"]; ok {
+		tempWidgetIds = typeAssertAndFetchWidgetIdsFromPosts(repostedPosts, tempWidgetIds)
 	}
 
 	for key := range tempWidgetIds {
@@ -1129,15 +1157,18 @@ func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{
 	return widgetsData
 }
 
-func getOriginalPostForReposts(handlers *FeedHandlers, response interface{}, communityId int, userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) map[string]requests.PostResponse {
-	postIds := getPostIdsFromReposts(response)
+func getOriginalPostForReposts(handlers *FeedHandlers, response interface{}, communityId int, userId string, isCm bool,
+	versionCode string, platformCode string, apiRevampV1Check bool,
+) map[string]requests.PostResponse {
+
+	postIds := getPostIdsFromReposts(response, apiRevampV1Check)
 
 	postsData, _ := fetchMultiplePostsData(handlers, postIds, communityId, userId, isCm, versionCode, platformCode, apiRevampV1Check)
 
 	return postsData
 }
 
-func getPostIdsFromReposts(response interface{}) []string {
+func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string {
 	uniquePostIds := []string{}
 	tempPostIds := map[string]bool{}
 
@@ -1155,13 +1186,21 @@ func getPostIdsFromReposts(response interface{}) []string {
 		case []requests.PostResponse:
 			for _, post := range posts {
 				if post.IsRepost {
-					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					if apiRevampV1Check {
+						tempPostIds[string(post.Attachments[0].MetaData.EntityID.Hex())] = true
+					} else {
+						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					}
 				}
 			}
 		case map[string]requests.PostResponse:
 			for _, post := range posts {
 				if post.IsRepost {
-					tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					if apiRevampV1Check {
+						tempPostIds[string(post.Attachments[0].MetaData.EntityID.Hex())] = true
+					} else {
+						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+					}
 				}
 			}
 		}
@@ -1186,7 +1225,9 @@ func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostReq
 // Internal Method to parse post for response
 func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
 	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, post entities.Post,
-	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string) requests.PostResponse {
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
+) requests.PostResponse {
+
 	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
 	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
 
@@ -1590,7 +1631,7 @@ func validateCreatePostRequest(handlers *FeedHandlers, headers map[string]string
 
 	if postRequest.IsRepost {
 		originalPostID := getOriginalPostIDFromRepostRequest(*postRequest)
-		err := validateUserForRepost(handlers, userId, originalPostID)
+		err := validateUserAndPostForRepost(handlers, userId, originalPostID, communityId)
 		if err != nil {
 			return nil, err
 		}
@@ -1742,9 +1783,9 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-		response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, createPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 		response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
 			createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, createPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 	}
 
 	// return final response
@@ -1845,9 +1886,9 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, parsedResponse, communityId, fetchPostQueryRequest.UserIsCm, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
 		fetchPostQueryRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, parsedResponse, communityId, fetchPostQueryRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -1896,8 +1937,8 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 	response["post"] = fetchPostData
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -2065,8 +2106,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, editPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, editPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -2509,8 +2550,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
 	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// Get community configurations
 	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
@@ -2618,8 +2659,8 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -2674,8 +2715,8 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
