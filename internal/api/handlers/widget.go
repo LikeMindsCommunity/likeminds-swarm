@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -112,7 +113,7 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 // Internal Method to fetch pollVotes Data Map for poll options
 func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map[string]interface{},
-	communityId int, uuid string) (gin.H, error) {
+	communityId int, uniqueVotersOnPoll int64, uuid string) (gin.H, error) {
 	pollVotesData := []gin.H{}
 	parsedPollVotesData := gin.H{}
 	var err error
@@ -122,7 +123,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 	if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil) {
 		// Fetch poll Votes Data
-		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uuid)
+		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, uuid)
 		if err != nil {
 			return parsedPollVotesData, err
 		}
@@ -140,11 +141,17 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
-	communityId int, uuid string) map[string]interface{} {
+	communityId int, userIsCm bool, uuid string, parentEntityId string) map[string]interface{} {
 	// If option exists in LM Meta, it is a poll widget
 	if _, exists := lmMeta["options"]; exists {
+		uniqueVotersOnPoll, err := getUniqueVotersOnPoll(handlers, entityId, communityId)
+		if err != nil {
+			fmt.Println("err: ", err)
+			return lmMeta
+		}
+
 		// fetch poll votes data
-		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, communityId, uuid)
+		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, communityId, uniqueVotersOnPoll, uuid)
 		if err != nil {
 			return lmMeta
 		}
@@ -154,13 +161,20 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		convertedOptions, _ := json.Marshal(lmMeta["options"])
 		_ = json.Unmarshal(convertedOptions, &options)
 
+		//if the user has voted on atleast on of the options
+		atLeastOneSelected := false
+
 		// Merge option data with votes data
 		for _, option := range options {
 			if optionId, exists := option["_id"]; exists {
+
 				voteData := parsedPollVotesData[optionId.(string)]
 
 				if voteData != nil {
 					for key, value := range voteData.(gin.H) {
+						if key == "is_selected" && value == true {
+							atLeastOneSelected = true
+						}
 						option[key] = value
 					}
 				} else {
@@ -172,20 +186,57 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		}
 
 		lmMeta["options"] = options
+
+		//fetch post to get creator
+		post, err := fetchPost(handlers.postHelper, parentEntityId, communityId)
+		if err != nil {
+			return lmMeta
+		}
+
+		toShowResults := false
+
+		//logic to set the value of to show results
+		if userIsCm || metaData["expiry_time"].(float64) <= float64(time.Now().UnixMilli()) || uuid == post.UserId {
+			toShowResults = true
+		} else if metaData["poll_type"] == enums.InstantPollType && atLeastOneSelected {
+			toShowResults = true
+		} else {
+			toShowResults = false
+
+			//set default values to hide the actual results
+			for _, option := range options {
+				option["vote_count"] = 0
+				option["percentage"] = 0
+			}
+		}
+
+		//Updates the pollAnswerText as per the number of unique members that voted on this poll
+		switch uniqueVotersOnPoll {
+		case 0:
+			lmMeta["poll_answer_text"] = "Be the first to vote"
+
+		case 1:
+			lmMeta["poll_answer_text"] = "1 member voted on this poll"
+
+		default:
+			lmMeta["poll_answer_text"] = fmt.Sprintf(`%d members voted on this poll`, uniqueVotersOnPoll)
+		}
+
+		lmMeta["to_show_results"] = toShowResults
 	}
 
 	return lmMeta
 }
 
 // Internal Method to parse Widget for response
-func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, uuid string) requests.WidgetResponse {
+func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, uuid string) requests.WidgetResponse {
 	var response requests.WidgetResponse
 
 	response.ID = widget.ID
 	response.ParentEntityID = widget.ParentEntityID
 	response.ParentEntityType = widget.ParentEntityType
 	response.MetaData = widget.MetaData
-	response.LMMeta = parseLMMeta(handlers, widget.ID.Hex(), widget.MetaData, widget.LMMeta, communityId, uuid)
+	response.LMMeta = parseLMMeta(handlers, widget.ID.Hex(), widget.MetaData, widget.LMMeta, communityId, userIsCM, uuid, widget.ParentEntityID)
 
 	response.CreatedAt = int(widget.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(widget.UpdatedAt.UnixMilli())
@@ -260,7 +311,7 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 		return
 	}
 
-	widgetResponse := parseWidgetResponse(handlers, widgetData, communityId, headers[utils.HeadersMemberId])
+	widgetResponse := parseWidgetResponse(handlers, widgetData, communityId, createWidgetRequest.UserIsCM, headers[utils.HeadersMemberId])
 
 	// response data
 	response := gin.H{
@@ -272,7 +323,8 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}, communityId int, uuid string) []requests.WidgetResponse {
+func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}, communityId int,
+	userIsCm bool, uuid string) []requests.WidgetResponse {
 	widgetDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
 	var widgetList []entities.Widget
 
@@ -292,14 +344,14 @@ func processWidgetSearchData(handlers *FeedHandlers, data map[string]interface{}
 
 	// Parse all fetched Widget Data
 	for _, widget := range widgetList {
-		widgetResponse = append(widgetResponse, parseWidgetResponse(handlers, &widget, communityId, uuid))
+		widgetResponse = append(widgetResponse, parseWidgetResponse(handlers, &widget, communityId, userIsCm, uuid))
 	}
 
 	return widgetResponse
 }
 
 // internal method to fetch widgets from DB
-func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.FetchWidgetRequest, communityId int,
+func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.FetchWidgetRequest, communityId int, userIsCm bool,
 	uuid string, page int, pageSize int) ([]requests.WidgetResponse, error) {
 
 	var filter gin.H
@@ -351,7 +403,7 @@ func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.Fet
 	// Parse all fetched Widget Data
 	widgetResponse := []requests.WidgetResponse{}
 	for _, widget := range widgetResults {
-		widgetResponse = append(widgetResponse, parseWidgetResponse(handlers, &widget, communityId, uuid))
+		widgetResponse = append(widgetResponse, parseWidgetResponse(handlers, &widget, communityId, userIsCm, uuid))
 	}
 
 	return widgetResponse, nil
@@ -360,7 +412,7 @@ func fetchWidgetsFromDB(handlers *FeedHandlers, fetchWidgetRequest *requests.Fet
 
 // internal method to fetch widgets from ES
 func fetchParsedWidgetsFromES(handlers *FeedHandlers, fetchWidgetRequest *requests.FetchWidgetRequest, communityId int,
-	uuid string, page int, pageSize int) ([]requests.WidgetResponse, error) {
+	userIsCm bool, uuid string, page int, pageSize int) ([]requests.WidgetResponse, error) {
 
 	widgetQuery := ""
 
@@ -391,7 +443,7 @@ func fetchParsedWidgetsFromES(handlers *FeedHandlers, fetchWidgetRequest *reques
 
 	// Execute ES query
 	esResponse := handlers.esHelper.ExecuteQuery(widgetQuery, constants.WidgetIndexName)
-	parsedWidgets := processWidgetSearchData(handlers, esResponse, communityId, uuid)
+	parsedWidgets := processWidgetSearchData(handlers, esResponse, communityId, userIsCm, uuid)
 
 	return parsedWidgets, nil
 }
@@ -400,6 +452,13 @@ func fetchParsedWidgetsFromES(handlers *FeedHandlers, fetchWidgetRequest *reques
 func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
+
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
+
+	if paramIsCm == "true" {
+		isCm = true
+	}
 
 	// parse fetch Widget request
 	var fetchWidgetRequest requests.FetchWidgetRequest
@@ -428,7 +487,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	if fetchWidgetRequest.WidgetIds != "" {
 
 		// fetch widgets from DB
-		parsedWidgets, err = fetchWidgetsFromDB(handlers, &fetchWidgetRequest, communityId,
+		parsedWidgets, err = fetchWidgetsFromDB(handlers, &fetchWidgetRequest, communityId, isCm,
 			headers[utils.HeadersMemberId], page, pageSize)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
@@ -438,7 +497,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	} else {
 
 		// fetch widgets from ES index
-		parsedWidgets, err = fetchParsedWidgetsFromES(handlers, &fetchWidgetRequest, communityId,
+		parsedWidgets, err = fetchParsedWidgetsFromES(handlers, &fetchWidgetRequest, communityId, isCm,
 			headers[utils.HeadersMemberId], page, pageSize)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
@@ -483,7 +542,7 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	}
 
 	// Fetch Updated Widget Response
-	widgetResponse := parseWidgetResponse(handlers, widget, communityId, headers[utils.HeadersMemberId])
+	widgetResponse := parseWidgetResponse(handlers, widget, communityId, editWidgetRequest.UserIsCM, headers[utils.HeadersMemberId])
 
 	// reponse data
 	response := gin.H{

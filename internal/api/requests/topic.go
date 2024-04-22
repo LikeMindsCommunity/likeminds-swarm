@@ -14,12 +14,14 @@ type CreateTopicRequest struct {
 	Level           int                    `json:"-"` // For Internal use
 	WidgetId        primitive.ObjectID     `json:"-"` // For Internal use
 	TotalChildCount int                    `json:"-"` // For Internal use
+	UserIsCM        bool                   `json:"user_is_cm"`
 }
 
 // Request Structure for Create Topic
 type CreateTopicsRequest struct {
-	Names  []string             `json:"names"`
-	Topics []CreateTopicRequest `json:"topics"`
+	Names    []string             `json:"names"`
+	Topics   []CreateTopicRequest `json:"topics"`
+	UserIsCM bool                 `json:"user_is_cm"`
 }
 
 // Request Structure for Edit Topic
@@ -29,6 +31,7 @@ type EditTopicRequest struct {
 	Priority     *float32               `json:"priority"`
 	IsSearchable *bool                  `json:"is_searchable"`
 	Metadata     map[string]interface{} `json:"metadata"`
+	UserIsCM     bool                   `json:"user_is_cm"`
 }
 
 // Request Structure for Fetch Topic

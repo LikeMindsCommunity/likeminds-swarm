@@ -384,7 +384,7 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 	response["topics"] = topicsResponse
 
 	// parse widget data if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, "")
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, createTopicsRequest.UserIsCM, "")
 
 	// generate final response
 	utils.GenerateSuccessResponse(c, response)
@@ -466,6 +466,13 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		return
 	}
 
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
+
+	if paramIsCm == "true" {
+		isCm = true
+	}
+
 	minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, err := validateFetchTopicsRequest(fetchTopicRequest)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -522,7 +529,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		response["topics"] = processTopicSearchData(esResponse)
 	}
 
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, "")
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCm, "")
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)
@@ -625,7 +632,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	}
 
 	// Fetch widget data from response if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, "")
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, editTopicRequest.UserIsCM, "")
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)

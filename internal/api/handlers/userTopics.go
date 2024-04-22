@@ -72,7 +72,7 @@ func fetchUserTopicsByTopicIdsAndUserId(userTopicsHelper interfaces.UserTopicsHe
 }
 
 // Internal method to fetch user topics along with topics and widgets data
-func fetchUserTopicsForResponse(handlers *FeedHandlers, userIds []string, communityId int, userId string,
+func fetchUserTopicsForResponse(handlers *FeedHandlers, userIds []string, communityId int, userIsCm bool, userId string,
 ) (map[string][]primitive.ObjectID, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	// fetch user topics
@@ -88,7 +88,7 @@ func fetchUserTopicsForResponse(handlers *FeedHandlers, userIds []string, commun
 	}
 
 	// fetch widgets
-	widgetsMap := getWidgetDataFromPostsAndTopics(handlers, gin.H{"topics": topicsMap}, communityId, userId)
+	widgetsMap := getWidgetDataFromPostsAndTopics(handlers, gin.H{"topics": topicsMap}, communityId, userIsCm, userId)
 
 	return userTopicsMap, topicsMap, widgetsMap, nil
 }
@@ -98,6 +98,12 @@ func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
+	paramIsCm := c.Query("user_is_cm")
+	isCm := false
+
+	if paramIsCm == "true" {
+		isCm = true
+	}
 
 	// validate community id
 	communityId := externalHelpers.GetCommunityId(c)
@@ -119,7 +125,7 @@ func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 	}
 
 	// fetch user topics along with topics and widgets data
-	userTopicsMap, topicsMap, widgetsMap, err := fetchUserTopicsForResponse(handlers, uuids, communityId, userId)
+	userTopicsMap, topicsMap, widgetsMap, err := fetchUserTopicsForResponse(handlers, uuids, communityId, isCm, userId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

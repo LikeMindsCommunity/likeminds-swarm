@@ -879,7 +879,7 @@ func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds
 }
 
 // Internal Method to parse widgets response
-func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int,
+func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int, userIsCM bool,
 	uuid string) (map[string]requests.WidgetResponse, error) {
 
 	// Fetch widgets using widget Ids
@@ -892,7 +892,7 @@ func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID
 
 	// Parse all fetched widgets Data
 	for _, widget := range widgets {
-		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(handlers, &widget, communityId, uuid)
+		widgetsResponse[widget.ID.Hex()] = parseWidgetResponse(handlers, &widget, communityId, userIsCM, uuid)
 	}
 
 	return widgetsResponse, nil
@@ -1113,7 +1113,7 @@ func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interfac
 }
 
 // Internal Method to get widget Data from Posts response
-func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{}, communityId int, uuid string) map[string]requests.WidgetResponse {
+func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{}, communityId int, userIsCM bool, uuid string) map[string]requests.WidgetResponse {
 
 	// get widget ids from posts
 	widgetIds := getWidgetIdsFromPosts(response)
@@ -1124,7 +1124,7 @@ func getWidgetDataFromPostsAndTopics(handlers *FeedHandlers, response interface{
 	widgetIds = append(widgetIds, topicWidgetIds...)
 
 	// fetch widget data from widget ids
-	widgetsData, _ := parseWidgetsResponse(handlers, widgetIds, communityId, uuid)
+	widgetsData, _ := parseWidgetsResponse(handlers, widgetIds, communityId, userIsCM, uuid)
 
 	return widgetsData
 }
@@ -1742,7 +1742,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-		response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, headers[utils.HeadersMemberId])
+		response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, createPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 		response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
 			createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	}
@@ -1845,7 +1845,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, parsedResponse, communityId, headers[utils.HeadersMemberId])
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, parsedResponse, communityId, fetchPostQueryRequest.UserIsCm, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
 		fetchPostQueryRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
@@ -1896,7 +1896,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 	response["post"] = fetchPostData
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, headers[utils.HeadersMemberId])
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -2065,7 +2065,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, headers[utils.HeadersMemberId])
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, editPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -2509,7 +2509,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, headers[utils.HeadersMemberId])
+	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
 	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// Get community configurations
@@ -2618,7 +2618,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response
@@ -2674,7 +2674,7 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	// return final response

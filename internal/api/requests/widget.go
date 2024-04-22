@@ -7,11 +7,13 @@ type CreateWidgetRequest struct {
 	ParentEntityID   string                 `json:"parent_entity_id" binding:"required"`
 	ParentEntityType string                 `json:"parent_entity_type" binding:"required"`
 	MetaData         map[string]interface{} `json:"metadata"`
+	UserIsCM         bool                   `json:"user_is_cm"`
 }
 
 // Request Structure for Edit Custom Widget
 type EditWidgetRequest struct {
 	MetaData map[string]interface{} `json:"metadata"`
+	UserIsCM bool                   `json:"user_is_cm"`
 }
 
 // Request Structure for Fetch Custom Widget

@@ -26,6 +26,7 @@ type MemberMeta struct {
 	UUID            string        `json:"uuid"`
 	IsGuest         bool          `json:"is_guest"`
 	CustomTitle     string        `json:"custom_title"`
+	State           int           `json:"state"`
 	SDKClientInfo   SDKClientInfo `json:"sdk_client_info"`
 	IsDeleted       bool          `json:"is_deleted"`
 	QuestionAnswers []interface{} `json:"question_answers"`
