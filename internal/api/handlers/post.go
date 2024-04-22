@@ -1099,6 +1099,15 @@ func typeAssertAndFetchWidgetIdsFromPosts(posts interface{}, widgetMap map[primi
 				widgetMap[widgetId] = true
 			}
 		}
+
+	case requests.FetchPostResponse:
+		widgetIds := getWidgetIdsFromAttachments(posts.Attachments)
+
+		for _, widgetId := range widgetIds {
+			if _, exists := widgetMap[widgetId]; !exists {
+				widgetMap[widgetId] = true
+			}
+		}
 	}
 
 	return widgetMap
