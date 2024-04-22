@@ -19,9 +19,8 @@ type CreateTopicRequest struct {
 
 // Request Structure for Create Topic
 type CreateTopicsRequest struct {
-	Names    []string             `json:"names"`
-	Topics   []CreateTopicRequest `json:"topics"`
-	UserIsCM bool                 `json:"user_is_cm"`
+	Names  []string             `json:"names"`
+	Topics []CreateTopicRequest `json:"topics"`
 }
 
 // Request Structure for Edit Topic
@@ -31,7 +30,6 @@ type EditTopicRequest struct {
 	Priority     *float32               `json:"priority"`
 	IsSearchable *bool                  `json:"is_searchable"`
 	Metadata     map[string]interface{} `json:"metadata"`
-	UserIsCM     bool                   `json:"user_is_cm"`
 }
 
 // Request Structure for Fetch Topic

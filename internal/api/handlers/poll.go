@@ -65,6 +65,8 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	pollId := c.Param("poll_id")
 
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -131,7 +133,7 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 		return
 	}
 
-	widgetResponse := parseWidgetResponse(handlers, pollWidget, communityId, createPollOptionRequest.UserIsCm, headers[utils.HeadersMemberId])
+	widgetResponse := parseWidgetResponse(handlers, pollWidget, communityId, isCM, headers[utils.HeadersMemberId])
 
 	// response data
 	response := gin.H{

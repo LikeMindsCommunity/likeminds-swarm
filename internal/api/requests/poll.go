@@ -2,8 +2,7 @@ package requests
 
 // Request Structure for Create Poll Option
 type CreatePollOptionRequest struct {
-	Text     string `json:"text" binding:"required"`
-	UserIsCm bool   `json:"user_is_cm"`
+	Text string `json:"text" binding:"required"`
 }
 
 // Request Structure for Create Vote on Poll

@@ -342,6 +342,9 @@ func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []request
 // Exposed Method to Create Topics
 func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 
+	//fetch headers
+	headers := utils.GetHeaders(c)
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -383,8 +386,10 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 
 	response["topics"] = topicsResponse
 
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+
 	// parse widget data if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, createTopicsRequest.UserIsCM, "")
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCM, "")
 
 	// generate final response
 	utils.GenerateSuccessResponse(c, response)
@@ -452,6 +457,9 @@ func validateFetchTopicsRequest(fetchTopicRequest requests.FetchTopicRequest) (i
 // Exposed Method to Fetch Topics for a Community
 func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 
+	//fetch headers
+	headers := utils.GetHeaders(c)
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -466,12 +474,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		return
 	}
 
-	paramIsCm := c.Query("user_is_cm")
-	isCm := false
-
-	if paramIsCm == "true" {
-		isCm = true
-	}
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
 
 	minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, err := validateFetchTopicsRequest(fetchTopicRequest)
 	if err != nil {
@@ -529,7 +532,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		response["topics"] = processTopicSearchData(esResponse)
 	}
 
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCm, "")
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCM, "")
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)
@@ -597,6 +600,9 @@ func validateEditTopicRequest(handlers *FeedHandlers, topicId string, editTopicR
 // Exposed Method to Edit a Topic
 func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 
+	//fetch headers
+	headers := utils.GetHeaders(c)
+
 	// fetch url params
 	topicId := c.Param("topic_id")
 
@@ -631,8 +637,10 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		"widgets": gin.H{},
 	}
 
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+
 	// Fetch widget data from response if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, editTopicRequest.UserIsCM, "")
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCM, "")
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)

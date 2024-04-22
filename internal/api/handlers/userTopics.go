@@ -98,12 +98,8 @@ func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
-	paramIsCm := c.Query("user_is_cm")
-	isCm := false
 
-	if paramIsCm == "true" {
-		isCm = true
-	}
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
 
 	// validate community id
 	communityId := externalHelpers.GetCommunityId(c)
@@ -125,7 +121,7 @@ func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 	}
 
 	// fetch user topics along with topics and widgets data
-	userTopicsMap, topicsMap, widgetsMap, err := fetchUserTopicsForResponse(handlers, uuids, communityId, isCm, userId)
+	userTopicsMap, topicsMap, widgetsMap, err := fetchUserTopicsForResponse(handlers, uuids, communityId, isCM, userId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -305,6 +301,8 @@ func (handlers *FeedHandlers) UpdateUserTopics(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	uuid := c.Param("user_id")
 
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+
 	// validate community id
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -319,7 +317,7 @@ func (handlers *FeedHandlers) UpdateUserTopics(c *gin.Context) {
 	}
 
 	// validate if user is authorized to perform this action
-	if !uutr.UserIsCM && userId != uuid {
+	if !isCM && userId != uuid {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this action")
 		return
 	}

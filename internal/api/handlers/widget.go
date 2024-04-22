@@ -311,7 +311,9 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 		return
 	}
 
-	widgetResponse := parseWidgetResponse(handlers, widgetData, communityId, createWidgetRequest.UserIsCM, headers[utils.HeadersMemberId])
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+
+	widgetResponse := parseWidgetResponse(handlers, widgetData, communityId, isCM, headers[utils.HeadersMemberId])
 
 	// response data
 	response := gin.H{
@@ -453,12 +455,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
 
-	paramIsCm := c.Query("user_is_cm")
-	isCm := false
-
-	if paramIsCm == "true" {
-		isCm = true
-	}
+	isCm := utils.IsAdminRole(headers[utils.HeaderMemberRole])
 
 	// parse fetch Widget request
 	var fetchWidgetRequest requests.FetchWidgetRequest
@@ -541,8 +538,10 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 		return
 	}
 
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+
 	// Fetch Updated Widget Response
-	widgetResponse := parseWidgetResponse(handlers, widget, communityId, editWidgetRequest.UserIsCM, headers[utils.HeadersMemberId])
+	widgetResponse := parseWidgetResponse(handlers, widget, communityId, isCM, headers[utils.HeadersMemberId])
 
 	// reponse data
 	response := gin.H{
