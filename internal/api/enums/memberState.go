@@ -1,12 +1,12 @@
 package enums
 
 const (
-	ADMIN  int = 1
+	CM     int = 1
 	MEMBER int = 4
 	GUEST  int = 0
 )
 
-// checks whether the member state is ADMIN or not
-func IsAdmin(state int) bool {
-	return state == ADMIN
+// checks whether the member state is CM or not
+func IsCM(state int) bool {
+	return state == CM
 }

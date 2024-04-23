@@ -65,7 +65,7 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	pollId := c.Param("poll_id")
 
-	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)

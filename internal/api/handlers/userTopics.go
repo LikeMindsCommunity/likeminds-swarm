@@ -99,7 +99,7 @@ func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
 
-	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
 
 	// validate community id
 	communityId := externalHelpers.GetCommunityId(c)
@@ -301,7 +301,7 @@ func (handlers *FeedHandlers) UpdateUserTopics(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	uuid := c.Param("user_id")
 
-	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
 
 	// validate community id
 	communityId := externalHelpers.GetCommunityId(c)
