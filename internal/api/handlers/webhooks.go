@@ -27,16 +27,16 @@ func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*resp
 		return nil, err
 	}
 
-	// Fetch widgets for the post
-	widgets, err := parseWidgetsResponse(handlers, getWidgetIdsFromAttachments(post.Attachments), post.CommunityId, post.UserId)
-	if err != nil {
-		return nil, err
-	}
-
 	// Fetch post creator data
 	_, usersMeta := externalHelpers.FetchMemberMeta([]string{post.UserId}, post.UserId, post.CommunityId)
 	if len(usersMeta.Members) == 0 {
 		return nil, fmt.Errorf("error fetching post creator data for post id: %s", postId)
+	}
+
+	// Fetch widgets for the post
+	widgets, err := parseWidgetsResponse(handlers, getWidgetIdsFromAttachments(post.Attachments), post.CommunityId, enums.IsCM(usersMeta.Members[0].State), post.UserId)
+	if err != nil {
+		return nil, err
 	}
 
 	postPayload := responses.WebhookPostPayload{

@@ -27,5 +27,11 @@ const (
 // Member Roles
 const (
 	GuestRole   string = "GUEST"
+	CMRole      string = "CM"
 	DefaultRole string = ""
 )
+
+// checks whether the member is CM or not based on member role received in header
+func IsCMRole(memberRole string) bool {
+	return memberRole == CMRole
+}

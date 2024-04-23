@@ -20,7 +20,7 @@ import (
 
 // Internal Method to parse User activity list
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool, uuid string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
+	apiRevampV1Check bool, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	var postMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
 	var commentMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
@@ -34,8 +34,8 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		return response, userDatas, topicDatas, widgetDatas, nil
 	}
 
-	postMetatadataValue = externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, uuid, activities[0].CommunityID)
-	commentMetatadataValue = externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, uuid, activities[0].CommunityID)
+	postMetatadataValue = externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
+	commentMetatadataValue = externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 
 	userIds := [](string){}
 	topicIds := []primitive.ObjectID{}
@@ -48,7 +48,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	}
 
 	// Fetch Members Meta map
-	success, userDatas := externalHelpers.FetchMemberMetaMap(userIds, uuid, activities[0].CommunityID)
+	success, userDatas := externalHelpers.FetchMemberMetaMap(userIds, userId, activities[0].CommunityID)
 	if !success {
 		return nil, nil, nil, nil, fmt.Errorf("error while fetching user meta")
 	}
@@ -62,7 +62,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		}
 
 		activityEntityData, err := getEntityData(handler, activity.EntityType, activity.EntityID, activity.CommunityID,
-			apiRevampV1Check, uuid, "")
+			apiRevampV1Check, userId, "")
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -126,7 +126,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	topicDatas, _ = fetchAndParseTopicsForResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
 
 	// Parse widgetsData from widgetIds
-	widgetDatas, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, uuid)
+	widgetDatas, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, enums.IsCM(userDatas[userId].State), userId)
 
 	return response, userDatas, topicDatas, widgetDatas, nil
 }
@@ -261,7 +261,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	topicsData, _ = fetchAndParseTopicsForResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
 
 	// Parse widgetsData from widgetIds
-	widgetsData, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, userId)
+	widgetsData, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, enums.IsCM(userDatas[userId].State), userId)
 
 	return activitiesResponse, userDatas, topicsData, widgetsData, nil
 }

@@ -8,5 +8,4 @@ type FetchUserTopicsRequest struct {
 // struct to validate request to update user topics
 type UpdateUserTopicsRequest struct {
 	TopicIds map[string]bool `json:"topic_ids" binding:"required"`
-	UserIsCM bool            `json:"user_is_cm"`
 }
