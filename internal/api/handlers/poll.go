@@ -65,6 +65,8 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	pollId := c.Param("poll_id")
 
+	isCM := utils.IsAdminRole(headers[utils.HeaderMemberRole])
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -131,7 +133,7 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 		return
 	}
 
-	widgetResponse := parseWidgetResponse(handlers, pollWidget, communityId, headers[utils.HeadersMemberId])
+	widgetResponse := parseWidgetResponse(handlers, pollWidget, communityId, isCM, headers[utils.HeadersMemberId])
 
 	// response data
 	response := gin.H{
@@ -208,10 +210,16 @@ func voteOnPollValidation(createVoteOnPollRequest requests.CreateVoteOnPollReque
 
 	votesLength := len(createVoteOnPollRequest.Votes)
 
+	finalMultipleSelectNumber, ok := multipleSelectNumber.(int32)
+
+	if !ok {
+		finalMultipleSelectNumber = int32(multipleSelectNumber.(float64))
+	}
+
 	// Check if invalid number of options are selected while voting
-	if (multipleSelectState == enums.ExactlySelectStateType && multipleSelectNumber.(int32) != int32(votesLength)) ||
-		(multipleSelectState == enums.AtMaxSelectStateType && multipleSelectNumber.(float64) < float64(votesLength)) ||
-		(multipleSelectState == enums.AtLeastSelectStateType && multipleSelectNumber.(float64) > float64(votesLength)) {
+	if (multipleSelectState == enums.ExactlySelectStateType && finalMultipleSelectNumber != int32(votesLength)) ||
+		(multipleSelectState == enums.AtMaxSelectStateType && finalMultipleSelectNumber < int32(votesLength)) ||
+		(multipleSelectState == enums.AtLeastSelectStateType && finalMultipleSelectNumber > int32(votesLength)) {
 		return pollWidget, pollVotes, fmt.Errorf("invalid number of options selected")
 	}
 
@@ -350,12 +358,7 @@ func getUniqueVotersOnPoll(handlers *FeedHandlers, pollId string, communityId in
 }
 
 // Internal Method to fetch poll votes data using aggregation
-func getPollVotesDataUsingAggregation(handlers *FeedHandlers, pollId string, communityId int, uuid string) ([]gin.H, error) {
-	uniqueVotersOnPoll, err := getUniqueVotersOnPoll(handlers, pollId, communityId)
-	if err != nil {
-		return nil, err
-	}
-
+func getPollVotesDataUsingAggregation(handlers *FeedHandlers, pollId string, communityId int, uniqueVotersOnPoll int64, uuid string) ([]gin.H, error) {
 	pollVotesDataFilterData := []map[string]interface{}{}
 
 	// Add match logic
