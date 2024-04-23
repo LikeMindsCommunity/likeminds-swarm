@@ -1,5 +1,6 @@
 package enums
 
+// these integer mappings are referenced from caravan
 const (
 	CM     int = 1
 	MEMBER int = 4
