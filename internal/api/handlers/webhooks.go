@@ -34,7 +34,7 @@ func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*resp
 	}
 
 	// Fetch widgets for the post
-	widgets, err := parseWidgetsResponse(handlers, getWidgetIdsFromAttachments(post.Attachments), post.CommunityId, enums.IsAdmin(usersMeta.Members[0].State), post.UserId)
+	widgets, err := parseWidgetsResponse(handlers, getWidgetIdsFromAttachments(post.Attachments), post.CommunityId, enums.IsCM(usersMeta.Members[0].State), post.UserId)
 	if err != nil {
 		return nil, err
 	}

@@ -126,7 +126,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	topicDatas, _ = fetchAndParseTopicsForResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
 
 	// Parse widgetsData from widgetIds
-	widgetDatas, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, enums.IsAdmin(userDatas[userId].State), userId)
+	widgetDatas, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, enums.IsCM(userDatas[userId].State), userId)
 
 	return response, userDatas, topicDatas, widgetDatas, nil
 }
@@ -261,7 +261,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	topicsData, _ = fetchAndParseTopicsForResponse(handler.topicHelper, topicIds, activities[0].CommunityID)
 
 	// Parse widgetsData from widgetIds
-	widgetsData, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, enums.IsAdmin(userDatas[userId].State), userId)
+	widgetsData, _ = parseWidgetsResponse(&handler, widgetIds, activities[0].CommunityID, enums.IsCM(userDatas[userId].State), userId)
 
 	return activitiesResponse, userDatas, topicsData, widgetsData, nil
 }
