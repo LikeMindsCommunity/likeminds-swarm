@@ -14,7 +14,6 @@ type CreateTopicRequest struct {
 	Level           int                    `json:"-"` // For Internal use
 	WidgetId        primitive.ObjectID     `json:"-"` // For Internal use
 	TotalChildCount int                    `json:"-"` // For Internal use
-	UserIsCM        bool                   `json:"user_is_cm"`
 }
 
 // Request Structure for Create Topic

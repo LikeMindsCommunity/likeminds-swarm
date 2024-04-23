@@ -161,71 +161,78 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		convertedOptions, _ := json.Marshal(lmMeta["options"])
 		_ = json.Unmarshal(convertedOptions, &options)
 
-		//if the user has voted on atleast on of the options
-		atLeastOneSelected := false
-
-		// Merge option data with votes data
-		for _, option := range options {
-			if optionId, exists := option["_id"]; exists {
-
-				voteData := parsedPollVotesData[optionId.(string)]
-
-				if voteData != nil {
-					for key, value := range voteData.(gin.H) {
-						if key == "is_selected" && value == true {
-							atLeastOneSelected = true
-						}
-						option[key] = value
-					}
-				} else {
-					option["vote_count"] = 0
-					option["is_selected"] = false
-					option["percentage"] = 0
-				}
-			}
-		}
-
-		lmMeta["options"] = options
-
 		//fetch post to get creator
 		post, err := fetchPost(handlers.postHelper, parentEntityId, communityId)
 		if err != nil {
 			return lmMeta
 		}
 
-		toShowResults := false
-
-		//logic to set the value of to show results
-		if userIsCm || metaData["expiry_time"].(float64) <= float64(time.Now().UnixMilli()) || uuid == post.UserId {
-			toShowResults = true
-		} else if metaData["poll_type"] == enums.InstantPollType && atLeastOneSelected {
-			toShowResults = true
-		} else {
-			toShowResults = false
-
-			//set default values to hide the actual results
-			for _, option := range options {
-				option["vote_count"] = 0
-				option["percentage"] = 0
-			}
-		}
+		updatedOptions, toShowResults := parsePollResults(userIsCm, metaData["expiry_time"].(float64), uuid, post.UserId, metaData["poll_type"].(string), options, parsedPollVotesData)
+		lmMeta["options"] = updatedOptions
+		lmMeta["to_show_results"] = toShowResults
 
 		//Updates the pollAnswerText as per the number of unique members that voted on this poll
-		switch uniqueVotersOnPoll {
-		case 0:
-			lmMeta["poll_answer_text"] = "Be the first to vote"
-
-		case 1:
-			lmMeta["poll_answer_text"] = "1 member voted on this poll"
-
-		default:
-			lmMeta["poll_answer_text"] = fmt.Sprintf(`%d members voted on this poll`, uniqueVotersOnPoll)
-		}
-
-		lmMeta["to_show_results"] = toShowResults
+		lmMeta["poll_answer_text"] = getAnswerTextForPoll(uniqueVotersOnPoll)
 	}
 
 	return lmMeta
+}
+
+// Internal Method to parse the poll results and handle results visibility
+func parsePollResults(userIsCm bool, pollExpiryTime float64, uuid string, postCreatorId string, pollType string, options []gin.H, parsedPollVotesData gin.H) ([]gin.H, bool) {
+	//if the user has voted on atleast one of the options
+	atLeastOneSelected := false
+
+	// Merge option data with votes data
+	for _, option := range options {
+		if optionId, exists := option["_id"]; exists {
+
+			voteData := parsedPollVotesData[optionId.(string)]
+
+			if voteData != nil {
+				for key, value := range voteData.(gin.H) {
+					if key == "is_selected" && value == true {
+						atLeastOneSelected = true
+					}
+					option[key] = value
+				}
+			} else {
+				option["vote_count"] = 0
+				option["is_selected"] = false
+				option["percentage"] = 0
+			}
+		}
+	}
+
+	//logic to handle the visibility of poll's results
+	if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || uuid == postCreatorId {
+		return options, true
+	} else if pollType == enums.InstantPollType && atLeastOneSelected {
+		return options, true
+	} else {
+		//set default values to hide the actual results
+		for _, option := range options {
+			option["vote_count"] = 0
+			option["percentage"] = 0
+		}
+
+		return options, false
+	}
+}
+
+// Internal Method to get answer text for poll based on the unique voters on the poll
+func getAnswerTextForPoll(uniqueVotersOnPoll int64) string {
+
+	switch uniqueVotersOnPoll {
+	case 0:
+		return "Be the first to vote"
+
+	case 1:
+		return "1 member voted on this poll"
+
+	default:
+		return fmt.Sprintf(`%d members voted on this poll`, uniqueVotersOnPoll)
+	}
 }
 
 // Internal Method to parse Widget for response
