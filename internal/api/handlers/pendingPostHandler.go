@@ -11,11 +11,27 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// Internal Method to parse pending post for response
+func parsePendingPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
+	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, pendingPost entities.PendingPost,
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
+) requests.FetchPostResponse {
+
+	postResponse := parsePostResponse(likeHelper, commentHelper, saveHelper, topicHelper, widgetHelper,
+		pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper, memberRole)
+
+	postResponse.IsPendingPost = true
+	postResponse.PostStatus = pendingPost.PostType
+
+	return parseFetchPostResponse(likeHelper, commentHelper, postResponse, nil)
+}
 
 // Internal Method to fetch pending post using post_id and community_id
 func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string, communityId int) (*entities.PendingPost, error) {
@@ -81,7 +97,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 	// Create pending post
 	postId, err := handlers.pendingPostHelper.CreatePendingPostHelper(postRequest.Text, postRequest.Heading, communityId,
 		userId, postRequest.Attachments, postRequest.ChatroomID, postRequest.TempID, postRequest.ParsedTopicIds, "",
-		postRequest.Visibility, false, postRequest.CreatedAt, enums.UnderReview)
+		postRequest.Visibility, false, postRequest.CreatedAt, enums.UnderReview, postRequest.UUIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +111,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 
 	err = handlers.pendingPostHelper.EditPendingPostHelper(postId.(primitive.ObjectID), postRequest.Text,
 		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false,
-		enums.UnderReview)
+		enums.UnderReview, postRequest.UUIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +147,9 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	memberRole := headers[utils.HeaderMemberRole]
+	versionCode := headers[utils.HeadersVersionCode]
+	platformCode := headers[utils.HeadersPlatformCode]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -155,14 +174,28 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// create pending post using internal method
 	cppr.PostType = constants.PendingPostEntityType
-	_, err = createPostAfterValidation(handlers, userId, communityId, &cppr)
+	postData, err := createPostAfterValidation(handlers, userId, communityId, &cppr)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// Generate success response
-	utils.GenerateSuccessResponse(c, nil)
+	// fetch post response data
+	pendingPostData, err := fetchPendingPost(handlers.pendingPostHelper, postData.ID.Hex(), communityId)
+	if err == nil {
+		response := gin.H{
+			"post": parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
+				handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, *pendingPostData, headers[utils.HeadersMemberId], cppr.UserIsCm,
+				versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole),
+		}
+		response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, cppr.UserIsCm,
+			apiRevampV1Check, true, true, true)
+
+		// Generate success response
+		utils.GenerateSuccessResponse(c, response)
+	} else {
+		utils.GeneralAPIValidationError(c, utils.PendingPostCreationError)
+	}
 }
 
 // Exposed method to approve/reject a pending post under review

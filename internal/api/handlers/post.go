@@ -918,9 +918,13 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	tempTopicIds := map[primitive.ObjectID]bool{}
 
 	if post, ok := response.(gin.H)["post"]; ok {
-		for _, topicId := range post.(requests.FetchPostResponse).Topics {
-			if _, exists := tempTopicIds[topicId]; !exists {
-				tempTopicIds[topicId] = true
+
+		switch post := post.(type) {
+		case requests.FetchPostResponse:
+			for _, topicId := range post.Topics {
+				if _, exists := tempTopicIds[topicId]; !exists {
+					tempTopicIds[topicId] = true
+				}
 			}
 		}
 	}
@@ -1183,9 +1187,12 @@ func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string
 
 	// extract from single post {}
 	if post, ok := response.(gin.H)["post"]; ok {
-		postData := post.(requests.FetchPostResponse)
-		if postData.IsRepost {
-			tempPostIds[postData.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+
+		switch postData := post.(type) {
+		case requests.FetchPostResponse:
+			if postData.IsRepost {
+				tempPostIds[postData.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+			}
 		}
 	}
 
@@ -1220,6 +1227,19 @@ func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string
 	}
 
 	return uniquePostIds
+}
+
+// Internal method of adding topics, reposted_posts, widgets data in response
+func addMetadataInResponse(handlers *FeedHandlers, response gin.H, communityId int, memberId string, platformCode string,
+	versionCode string, userIsCM bool, apiRevampV1Check bool, addTopicsData bool, addRespostedPostsData bool,
+	addWidgetsData bool) gin.H {
+
+	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, memberId, userIsCM,
+		versionCode, platformCode, apiRevampV1Check)
+	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, userIsCM, memberId)
+
+	return response
 }
 
 func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostRequest) string {
@@ -1285,6 +1305,8 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 		response.UserId = ""
 
 	}
+
+	response.IsPendingPost = false
 
 	return response
 }

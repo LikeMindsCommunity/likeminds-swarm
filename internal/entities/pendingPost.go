@@ -14,6 +14,7 @@ type PendingPost struct {
 	UserId      string             `json:"user_id" bson:"user_id"`
 	CommunityID int                `json:"community_id" bson:"community_id"`
 	IsDeleted   bool               `json:"is_deleted" bson:"is_deleted"`
+	UUIDs       []string           `json:"uuids" bson:"uuids"`
 	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
 }
@@ -21,7 +22,7 @@ type PendingPost struct {
 // Exposed Method to Create a New Pending Post
 func NewPendingPost(text string, heading string, communityId int, userId string, attachments []Attachment,
 	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, isRepost bool, createdAt int, postType string) PendingPost {
+	visibility string, isRepost bool, createdAt int, postType string, UUIDs []string) PendingPost {
 
 	post := NewPost(text, heading, communityId, userId, attachments, chatroomId, tempId, topicIds, originalAuthorUUID,
 		visibility, isRepost, createdAt)
@@ -35,6 +36,7 @@ func NewPendingPost(text string, heading string, communityId int, userId string,
 		IsDeleted:   false,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
+		UUIDs:       UUIDs,
 	}
 
 	return pendingPostEntity

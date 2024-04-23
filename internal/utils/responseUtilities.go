@@ -14,6 +14,7 @@ const (
 	InvalidCommentIDError      = "Invalid comment_id sent."
 	NsfwContentInImageError    = "This post could not be submitted as %simage/s seems to contain NSFW content."
 	ErrorGuestAccessNotAllowed = "Guest access is not allowed."
+	PendingPostCreationError   = "Some error occurred in creation of pending post."
 )
 
 // Exposed Method to send General Validation Error in API Response
