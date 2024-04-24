@@ -28,7 +28,7 @@ func parsePendingPostResponse(likeHelper interfaces.LikeHelper, commentHelper in
 		pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper, memberRole)
 
 	postResponse.IsPendingPost = true
-	postResponse.PostStatus = pendingPost.PostType
+	postResponse.PostStatus = pendingPost.Status
 
 	return parseFetchPostResponse(likeHelper, commentHelper, postResponse, nil)
 }
@@ -83,8 +83,8 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 
 	// parse post data from pending posts
 	for _, pendingPost := range pendingPostLists {
-		postResponse[pendingPost.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			handlers.topicHelper, handlers.widgetHelper, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
+		postResponse[pendingPost.ID.Hex()] = parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
+			handlers.topicHelper, handlers.widgetHelper, pendingPost, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole).PostResponse
 	}
 
 	return postResponse, nil
@@ -174,7 +174,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// create pending post using internal method
 	cppr.PostType = constants.PendingPostEntityType
-	postData, err := createPostAfterValidation(handlers, userId, communityId, &cppr)
+	postData, err := createPostAfterValidation(handlers, userId, communityId, &cppr, headers)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -201,6 +201,8 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 // Exposed method to approve/reject a pending post under review
 func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
 	pendingPostId := c.Param("pending_post_id")
 
 	// validation of api_key
@@ -226,7 +228,8 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	filterData := gin.H{
 		"_id":          pendingPostId,
 		"community_id": communityId,
-		"post_type":    enums.UnderReview,
+		"status":       enums.UnderReview,
+		"is_deleted":   false,
 	}
 
 	pendingPostsData, err := handlers.pendingPostHelper.FindPendingPostHelper(filterData, nil)
@@ -244,28 +247,60 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 	updateBody := gin.H{
 		"$set": gin.H{
-			"status":     arpr.Status,
-			"is_deleted": true,
+			"status":         arpr.Status,
+			"normal_post_id": "",
 		},
 	}
+
+	var postData *entities.Post
 
 	// If status is approved, call Create post API internally
 	if arpr.Status == enums.Approved {
 
-		postData, err := createPostFromPendingPost(handlers, pendingPostData)
+		postData, err = createNormalPostFromPendingPost(handlers, pendingPostData, headers)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
-		// Send Approval notification
-		sendPendingPostApprovalNotification(*handlers, postData.UserId, communityId, postData.ID.Hex())
+		ctaData := gin.H{
+			"entity_type": constants.PostEntityType,
+			"post_id":     postData.ID.Hex(),
+		}
+
+		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.Post,
+			postData.ID, postData.UserId, constants.AcceptPendingPost, ctaData, false, false, primitive.NilObjectID)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		if activityID != nil {
+			// Send Approval notification
+			sendPendingPostApprovalNotification(*handlers, postData.UserId, communityId, postData.ID.Hex())
+		}
 
 	} else {
+		ctaData := gin.H{
+			"entity_type": constants.PendingPostEntityType,
+			"post_id":     pendingPostData.ID.Hex(),
+		}
 
-		// Send Rejection notification
-		sendPendingPostRejectionNotification(*handlers, pendingPostData.UserId, communityId)
+		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.PendingPost,
+			pendingPostData.ID, pendingPostData.UserId, constants.RejectPendingPost, ctaData, false, false, primitive.NilObjectID)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 
+		if activityID != nil {
+			// Send Rejection notification
+			sendPendingPostRejectionNotification(*handlers, pendingPostData.UserId, communityId)
+		}
+	}
+
+	if postData != nil {
+		updateBody["$set"].(gin.H)["normal_post_id"] = postData.ID
 	}
 
 	// Update status of pending post
@@ -280,7 +315,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 }
 
-func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost) (*entities.Post, error) {
+func createNormalPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost, headers map[string]string) (*entities.Post, error) {
 
 	// Create attachments
 	requestAttachments := []requests.Attachment{}
@@ -304,13 +339,15 @@ func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.
 		ChatroomID:     pendingPostData.PostData.ChatroomId,
 		ParsedTopicIds: pendingPostData.PostData.TopicIds,
 		OriginalAuthor: pendingPostData.PostData.OriginalAuthorUUID,
+		UUIDs:          pendingPostData.UUIDs,
 		Visibility:     pendingPostData.PostData.Visibility,
 		TempID:         pendingPostData.PostData.TempId,
+		IsRepost:       pendingPostData.PostData.IsRepost,
 	}
 
 	// create post using internal method
 	cpr.PostType = constants.PostEntityType
-	postData, err := createPostAfterValidation(handlers, pendingPostData.UserId, pendingPostData.CommunityID, &cpr)
+	postData, err := createPostAfterValidation(handlers, pendingPostData.UserId, pendingPostData.CommunityID, &cpr, headers)
 	if err != nil {
 		return nil, err
 	}

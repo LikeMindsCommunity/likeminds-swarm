@@ -1490,6 +1490,9 @@ func fetchPostsWithTopicID(postHelper interfaces.PostHelper, topicId primitive.O
 func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers, userId string, communityId int,
 	headers map[string]string, postRequest requests.CreatePostRequest, postData *entities.Post) error {
 
+	platformCode := headers[utils.HeadersPlatformCode]
+	versionCode := headers[utils.HeadersVersionCode]
+
 	// create activity for repost
 	if postRequest.IsRepost {
 		originalPostID := getOriginalPostIDFromRepostRequest(postRequest)
@@ -1520,7 +1523,7 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 		}
 
 		if activityID != nil {
-			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
 			if err != nil {
 				logging.Error("Failed to enqueue send notification : ", err)
 			}
@@ -1558,7 +1561,7 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 }
 
 func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+	postRequest *requests.CreatePostRequest, headers map[string]string) (*entities.Post, error) {
 
 	// create post using the helper method
 	postId, err := handlers.postHelper.CreatePostHelper(postRequest.Text, postRequest.Heading,
@@ -1625,12 +1628,15 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 		updateOriginalPostWidgetForRepost(handlers, originalPostID, postData.ID, userId)
 	}
 
+	// Task after creation of normal post
+	tasksAfterPostCreation(handlers, postData, *postRequest, userId, communityId, headers)
+
 	return postData, nil
 }
 
 // Internal method to create normal or pending post after validation of request
 func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+	postRequest *requests.CreatePostRequest, headers map[string]string) (*entities.Post, error) {
 
 	postData, err := &entities.Post{}, error(nil)
 
@@ -1638,7 +1644,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	if postRequest.PostType == constants.PendingPostEntityType {
 		postData, err = createPendingPostAfterValidation(handlers, userId, communityId, postRequest)
 	} else {
-		postData, err = createNormalPostAfterValidation(handlers, userId, communityId, postRequest)
+		postData, err = createNormalPostAfterValidation(handlers, userId, communityId, postRequest, headers)
 	}
 
 	return postData, err
@@ -1758,41 +1764,10 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// create normal post using internal method
 	createPostRequest.PostType = constants.PostEntityType
-	postData, err := createPostAfterValidation(handlers, userId, communityId, &createPostRequest)
+	postData, err := createPostAfterValidation(handlers, userId, communityId, &createPostRequest, headers)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
-	}
-
-	// Add the post topics data in PostTopics collection
-	if postData.TopicIds != nil {
-		// Trigger create post background tasks
-		err = handlers.taskDistributor.AsyncCreatePostTasks(postData.ID.Hex())
-		if err != nil {
-			logging.Error("Error enqueuing create post background task", err)
-		}
-	}
-
-	// if custom creation timestamp is not used, create activities and send notifications
-	if !(createPostRequest.CreatedAt > 0 && float64(createPostRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
-		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, createPostRequest, postData)
-		if err != nil {
-			logging.Error(fmt.Sprint("Error while creating activities and sending notifications after post creation: ", err.Error()))
-		}
-
-		// trigger post creation webhook
-		err = handlers.taskDistributor.TriggerPostCreationWebhook(postData.ID.Hex(), headers[utils.HeadersApiKey])
-		if err != nil {
-			logging.Error("Error while triggering post creation webhook: ", err.Error())
-		}
-
-		// trigger post tagged webhook
-		if len(createPostRequest.UUIDs) > 0 {
-			err = handlers.taskDistributor.TriggerPostTaggedWebhook(postData.ID.Hex(), createPostRequest.UUIDs, headers[utils.HeadersApiKey])
-			if err != nil {
-				logging.Error("Error while triggering post tagged webhook: ", err.Error())
-			}
-		}
 	}
 
 	// filter options for pagination
@@ -1821,6 +1796,43 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// return final response
 	c.JSON(http.StatusOK, response)
+}
+
+func tasksAfterPostCreation(handlers *FeedHandlers, postData *entities.Post, postRequest requests.CreatePostRequest, userId string,
+	communityId int, headers map[string]string) {
+
+	apiKey := headers[utils.HeadersApiKey]
+
+	// Add the post topics data in PostTopics collection
+	if postData.TopicIds != nil {
+		// Trigger create post background tasks
+		err := handlers.taskDistributor.AsyncCreatePostTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error enqueuing create post background task", err)
+		}
+	}
+
+	// if custom creation timestamp is not used, create activities and send notifications
+	if !(postRequest.CreatedAt > 0 && float64(postRequest.CreatedAt) <= float64(time.Now().UnixMilli())) {
+		err := createActivitiesAndSendNotificationAfterPostCreation(handlers, userId, communityId, headers, postRequest, postData)
+		if err != nil {
+			logging.Error(fmt.Sprint("Error while creating activities and sending notifications after post creation: ", err.Error()))
+		}
+
+		// trigger post creation webhook
+		err = handlers.taskDistributor.TriggerPostCreationWebhook(postData.ID.Hex(), apiKey)
+		if err != nil {
+			logging.Error("Error while triggering post creation webhook: ", err.Error())
+		}
+
+		// trigger post tagged webhook
+		if len(postRequest.UUIDs) > 0 {
+			err = handlers.taskDistributor.TriggerPostTaggedWebhook(postData.ID.Hex(), postRequest.UUIDs, apiKey)
+			if err != nil {
+				logging.Error("Error while triggering post tagged webhook: ", err.Error())
+			}
+		}
+	}
 }
 
 // Exposed Method to fetch multiple posts from post_ids

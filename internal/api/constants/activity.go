@@ -29,6 +29,9 @@ const (
 
 	// User | user entity
 	User EntityType = 2
+
+	// PendingPost | Pending post entity
+	PendingPost EntityType = 3
 )
 
 // ActivityAction | constants for activity actions
@@ -80,6 +83,12 @@ const (
 
 	// RepostOnPost | repost on post
 	RepostOnPost ActivityAction = 13
+
+	// AcceptPendingPost | Accepted the pending post
+	AcceptPendingPost ActivityAction = 14
+
+	// AcceptPendingPost | Rejected the pending post
+	RejectPendingPost ActivityAction = 15
 )
 
 // ActivityCacheKey | cache key for activity instance

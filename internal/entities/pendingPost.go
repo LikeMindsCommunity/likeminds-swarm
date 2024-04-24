@@ -10,7 +10,7 @@ import (
 type PendingPost struct {
 	ID          primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	PostData    Post               `json:"post_data" bson:"post_data"`
-	PostType    string             `json:"post_type" bson:"post_type"`
+	Status      string             `json:"status" bson:"status"`
 	UserId      string             `json:"user_id" bson:"user_id"`
 	CommunityID int                `json:"community_id" bson:"community_id"`
 	IsDeleted   bool               `json:"is_deleted" bson:"is_deleted"`
@@ -22,7 +22,7 @@ type PendingPost struct {
 // Exposed Method to Create a New Pending Post
 func NewPendingPost(text string, heading string, communityId int, userId string, attachments []Attachment,
 	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, isRepost bool, createdAt int, postType string, UUIDs []string) PendingPost {
+	visibility string, isRepost bool, createdAt int, status string, UUIDs []string) PendingPost {
 
 	post := NewPost(text, heading, communityId, userId, attachments, chatroomId, tempId, topicIds, originalAuthorUUID,
 		visibility, isRepost, createdAt)
@@ -30,7 +30,7 @@ func NewPendingPost(text string, heading string, communityId int, userId string,
 	// create pending post entity
 	pendingPostEntity := PendingPost{
 		PostData:    post,
-		PostType:    postType,
+		Status:      status,
 		UserId:      userId,
 		CommunityID: communityId,
 		IsDeleted:   false,
