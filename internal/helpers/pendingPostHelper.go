@@ -58,7 +58,6 @@ func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, tex
 	err := helper.pendingPostRepository.Update(gin.H{"_id": id}, updateBody)
 
 	return err
-
 }
 
 // Exposed Helper Method to Find Pending Post
