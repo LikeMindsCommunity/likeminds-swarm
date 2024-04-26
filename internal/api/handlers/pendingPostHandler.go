@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -385,4 +387,145 @@ func updateWidgetsForNewlyCreatePostFromPendingPost(handlers *FeedHandlers, post
 	}
 
 	return nil
+}
+
+// Exposed Method to edit a Post
+func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+	platformCode := headers[utils.HeadersPlatformCode]
+	versionCode := headers[utils.HeadersVersionCode]
+	pendingPostId := c.Param("pending_post_id")
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	memberRole := headers[utils.HeaderMemberRole]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var editPendingPostRequest requests.EditPendingPostRequest
+	if err := c.ShouldBindJSON(&editPendingPostRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch pending post data
+	pendingPostData, err := fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Check if the pending post id is already approved or not
+	if pendingPostData.Status == enums.Approved {
+		utils.GeneralAPIValidationError(c, "Cannot update an approved post")
+		return
+	}
+
+	// Check if user is post creator
+	if pendingPostData.UserId != headers[utils.HeadersMemberId] {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// validation of attachment objects
+	err = validateAndUpdatePostAttachments(handlers, communityId, editPendingPostRequest.Attachments, apiRevampV1Check,
+		true, pendingPostData.PostData.IsRepost)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// validates a respost's post attachement in edit request
+	if pendingPostData.PostData.IsRepost && !validateRepostPostAttachment(&pendingPostData.PostData, editPendingPostRequest.EditPostRequest) {
+		utils.GeneralAPIValidationError(c, "Cannot update repost's post attachment")
+		return
+	}
+
+	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
+	if len(editPendingPostRequest.Attachments) > 0 {
+		errorMeta, err := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId,
+			&editPendingPostRequest.Attachments, &pendingPostData.PostData.Attachments)
+		if errorMeta != nil {
+			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, err.Error(), errorMeta)
+			return
+		}
+	}
+
+	// strip text and check if it is empty
+	editPendingPostRequest.Text = strings.TrimSpace(editPendingPostRequest.Text)
+
+	if editPendingPostRequest.Text == "" && editPendingPostRequest.Heading == "" && len(editPendingPostRequest.Attachments) == 0 {
+		utils.GeneralAPIValidationError(c, "Can't Edit post without content")
+		return
+	}
+
+	topicIDs := pendingPostData.PostData.TopicIds
+
+	// fetch all the topics sent in the edit post body
+	if editPendingPostRequest.TopicIds != nil {
+		// convert topic_ids to object ids
+		topicIDs = helpers.ConvertIdsToObjectIds(editPendingPostRequest.TopicIds)
+
+		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		// Validation of Topics
+		if len(topics) != len(topicIDs) {
+			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
+			return
+		}
+	}
+
+	// process attachments for widgets
+	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PostEntityType, editPendingPostRequest.Attachments,
+		pendingPostId, communityId, headers[utils.HeadersMemberId])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// check the visibility of the pending post
+	if editPendingPostRequest.Visibility == "" {
+		editPendingPostRequest.Visibility = enums.PublicVisibility
+	}
+
+	if editPendingPostRequest.Visibility != enums.PrivateVisibility && editPendingPostRequest.Visibility != enums.PublicVisibility {
+		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
+		return
+	}
+
+	// update post data using helper method
+	err = handlers.pendingPostHelper.EditPendingPostHelper(pendingPostData.ID, editPendingPostRequest.Text, editPendingPostRequest.Heading, updatedAttachments,
+		topicIDs, editPendingPostRequest.Visibility, true, pendingPostData.Status, editPendingPostRequest.UUIDs)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// fetch pending post response data
+	pendingPostData, err = fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
+	if err == nil {
+		response := gin.H{
+			"post": parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
+				handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, *pendingPostData, headers[utils.HeadersMemberId], false,
+				versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole),
+		}
+
+		response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
+			apiRevampV1Check, true, true, true)
+
+		// Generate success response
+		utils.GenerateSuccessResponse(c, response)
+	} else {
+		utils.GeneralAPIValidationError(c, utils.PendingPostCreationError)
+	}
 }

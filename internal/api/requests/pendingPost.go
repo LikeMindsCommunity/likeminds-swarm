@@ -4,3 +4,8 @@ package requests
 type ApproveRejectPendingPostRequest struct {
 	Status string `json:"status"`
 }
+
+type EditPendingPostRequest struct {
+	EditPostRequest
+	UUIDs []string `json:"uuids"`
+}
