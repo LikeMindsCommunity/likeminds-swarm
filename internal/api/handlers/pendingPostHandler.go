@@ -427,6 +427,12 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 		return
 	}
 
+	// Check if the pending post id is already approved or not
+	if pendingPostData.IsDeleted {
+		utils.GeneralAPIValidationError(c, "Cannot update a deleted post")
+		return
+	}
+
 	// Check if user is post creator
 	if pendingPostData.UserId != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
