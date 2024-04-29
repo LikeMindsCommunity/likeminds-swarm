@@ -155,6 +155,9 @@ func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned
 		if !is_owner && !is_cm {
 			output_menu_items = GetNotIsOwnerNotIsCmCommentMenuItems(isEditEnabled, externalEntities)
 		}
+
+	case constants.PendingPostEntityType:
+		output_menu_items = GetPendingPostMenuItems(isEditEnabled, externalEntities)
 	}
 
 	return output_menu_items

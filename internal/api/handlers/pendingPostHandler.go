@@ -26,8 +26,13 @@ func parsePendingPostResponse(likeHelper interfaces.LikeHelper, commentHelper in
 	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
 ) requests.FetchPostResponse {
 
+	memberRole = utils.GuestRole
+
 	postResponse := parsePostResponse(likeHelper, commentHelper, saveHelper, topicHelper, widgetHelper,
 		pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper, memberRole)
+
+	postResponse.MenuItems = getEntityMenuItems(constants.PendingPostEntityType, isCm,
+		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, versionCode, platformCode, userId, pendingPost.PostData.CommunityId, cacheHelper)
 
 	postResponse.IsPendingPost = true
 	postResponse.PostStatus = pendingPost.Status
