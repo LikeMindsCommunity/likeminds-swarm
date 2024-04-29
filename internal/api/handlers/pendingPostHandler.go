@@ -35,6 +35,20 @@ func parsePendingPostResponse(likeHelper interfaces.LikeHelper, commentHelper in
 	return parseFetchPostResponse(likeHelper, commentHelper, postResponse, nil)
 }
 
+// Internal Method to parse multiple pending posts for response
+func parseMultiplePendingPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
+	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, pendingPosts []entities.PendingPost, userId string,
+	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string) []requests.FetchPostResponse {
+	response := []requests.FetchPostResponse{}
+
+	for _, pendingPost := range pendingPosts {
+		response = append(response, parsePendingPostResponse(likeHelper, commentHelper, saveHelper, topicHelper, widgetHelper,
+			pendingPost, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper, memberRole))
+	}
+
+	return response
+}
+
 // Internal Method to fetch pending post using post_id and community_id
 func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string, communityId int) (*entities.PendingPost, error) {
 
@@ -53,7 +67,7 @@ func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string,
 
 	// validation of post_id
 	if len(results) == 0 {
-		return nil, fmt.Errorf("invalid pending_post_id sent")
+		return nil, fmt.Errorf("Invalid pending_post_id")
 	}
 
 	return &results[0], nil
@@ -532,6 +546,165 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 		// Generate success response
 		utils.GenerateSuccessResponse(c, response)
 	} else {
-		utils.GeneralAPIValidationError(c, utils.PendingPostCreationError)
+		utils.GeneralAPIValidationError(c, utils.PendingPostUpdationError)
 	}
+}
+
+// Exposed Method to fetch a pending post using pending_post_id
+func (handlers *FeedHandlers) FetchPendingPost(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	pendingPostId := c.Param("pending_post_id")
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	userId := headers[utils.HeadersMemberId]
+	memberRole := headers[utils.HeaderMemberRole]
+	platformCode := headers[utils.HeadersPlatformCode]
+	versionCode := headers[utils.HeadersVersionCode]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// fetch pending post data
+	pendingPostData, err := fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	if pendingPostData.UserId != userId && memberRole != utils.AdminRole {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	response := gin.H{
+		"post": parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
+			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, *pendingPostData, headers[utils.HeadersMemberId], false,
+			versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole),
+	}
+
+	response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
+		apiRevampV1Check, true, true, true)
+
+	// Generate success response
+	utils.GenerateSuccessResponse(c, response)
+}
+
+// Exposed Method to fetch all the pending posts created by a User
+func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
+	// fetch url params and headers
+	headers := utils.GetHeaders(c)
+	userId := c.Param("user_id")
+	isCm := false
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	versionCode := headers[utils.HeadersAcceptVersion]
+	platformCode := headers[utils.HeadersPlatformCode]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// post filter data
+	postFilterData := gin.H{
+		"user_id":      userId,
+		"is_deleted":   false,
+		"community_id": communityId,
+		"status":       enums.UnderReview,
+	}
+
+	// filter options
+	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch pending post using helper method
+	pendingPostResults, err := handlers.pendingPostHelper.FindPendingPostHelper(postFilterData, postFilterOptions)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	pendingPostsResultsCount, err := handlers.pendingPostHelper.CountPendingPostHelper(postFilterData)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	pendingPostResponse := parseMultiplePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
+		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pendingPostResults, userId, isCm,
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check,
+		handlers.cacheHelper, utils.DefaultRole)
+
+	// response data
+	response := gin.H{
+		"posts":       pendingPostResponse,
+		"total_count": pendingPostsResultsCount,
+	}
+
+	response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
+		apiRevampV1Check, true, true, true)
+
+	// return final response
+	utils.GenerateSuccessResponse(c, response)
+}
+
+// Exposed Method to delete a pending post
+func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	pendingPostId := c.Param("pending_post_id")
+
+	userId := headers[utils.HeadersMemberId]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var deletePostRequest requests.DeletePostRequest
+	if err := c.ShouldBindJSON(&deletePostRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch pending post using helper method
+	postData, err := fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// validation of user permission
+	if userId != postData.UserId {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// update data
+	updateData := gin.H{
+		"$set": gin.H{
+			"is_deleted":    true,
+			"delete_reason": deletePostRequest.DeleteReason,
+			"deleted_by":    userId,
+		},
+	}
+
+	// update post using the helper method
+	err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(postData.ID, updateData)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	utils.GenerateSuccessResponse(c, nil)
 }

@@ -30,4 +30,6 @@ func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup.POST("/pending", handler.CreatePendingPostForReview)
 	postGroup.PATCH("/pending/:pending_post_id", handler.ApproveOrRejectPendingPost)
 	postGroup.PUT("/pending/:pending_post_id", handler.EditPendingPost)
+	postGroup.GET("/pending/:pending_post_id", handler.FetchPendingPost)
+	postGroup.DELETE("/pending/:pending_post_id", handler.DeletePendingPost)
 }
