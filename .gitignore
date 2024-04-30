@@ -1,3 +1,6 @@
+# Custom files
+likeminds-swarm.go
+
 # IDE files to ignore
 .vscode
 .DS_Store

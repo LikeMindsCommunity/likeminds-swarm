@@ -349,8 +349,7 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 		}
 
 		// Parse post response and append to Comment's post_data
-		parsePostResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper,
-			*postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
+		parsePostResponse := parsePostResponse(handlers, *postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
 		fetchCommentResponse.Post = &parsePostResponse
 	}
 	return fetchCommentResponse, nil

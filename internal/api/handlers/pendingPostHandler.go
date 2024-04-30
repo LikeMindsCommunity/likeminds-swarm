@@ -67,8 +67,8 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 
 	// parse post data from pending posts
 	for _, pendingPost := range pendingPostLists {
-		postResponse[pendingPost.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			handlers.topicHelper, handlers.widgetHelper, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
+		postResponse[pendingPost.ID.Hex()] = parsePostResponse(handlers, pendingPost.PostData, userId, isCm,
+			versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
 	}
 
 	return postResponse, nil

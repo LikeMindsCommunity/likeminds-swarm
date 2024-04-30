@@ -329,51 +329,25 @@ func processAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 	return updatedAttachments, nil
 }
 
-// Internal Method to parse Post Attachments
-func parsePostAttachments(attachments []entities.Attachment, versionCode string, platformCode string, apiRevampV1Check bool,
+// Internal Method to parse post & comment attachments
+func parseAttachments(attachments []entities.Attachment, apiRevampV1Check bool,
 ) []entities.Attachment {
-
-	parsedAttachments := []entities.Attachment{}
-	feedLinkMediaCheck := utils.CheckVersionInverted(utils.FeedLinkMediaVersion, versionCode, platformCode)
-	feedVideoAndDocumentMediaCheck := utils.CheckVersionInverted(utils.FeedVideoAndDocumentMediaVersions, versionCode, platformCode)
-	newAttachmentMeta := entities.AttachmentMeta{
-		Url: constants.AttachmentNotFoundImageUrl,
-	}
-
-	for _, attachment := range attachments {
-		showUpdateAppImage := false
-
-		if feedLinkMediaCheck && attachment.AttachmentType == enums.LinkWidget {
-			showUpdateAppImage = true
-		}
-
-		if feedVideoAndDocumentMediaCheck && (attachment.AttachmentType == enums.VideoWidget || attachment.AttachmentType == enums.DocumentWidget) {
-			showUpdateAppImage = true
-		}
-
-		if showUpdateAppImage {
-			attachment.AttachmentType = enums.ImageWidget
-			attachment.AttachmentMeta = &newAttachmentMeta
-		}
-
-		parsedAttachments = append(parsedAttachments, attachment)
-	}
 
 	// Api revamp check for attachments
 	if apiRevampV1Check {
-		for i := range parsedAttachments {
+		for i := range attachments {
 
 			// Update attachment_type from type and remove attachment_type
-			parsedAttachments[i].Type = enums.NewAttachmentTypeFromInt(parsedAttachments[i].AttachmentType)
-			parsedAttachments[i].AttachmentType = 0
+			attachments[i].Type = enums.NewAttachmentTypeFromInt(attachments[i].AttachmentType)
+			attachments[i].AttachmentType = 0
 
 			// Update attachment_meta from meta_data and remove attachment_meta
-			parsedAttachments[i].MetaData = parsedAttachments[i].AttachmentMeta
-			parsedAttachments[i].AttachmentMeta = nil
+			attachments[i].MetaData = attachments[i].AttachmentMeta
+			attachments[i].AttachmentMeta = nil
 		}
 	}
 
-	return parsedAttachments
+	return attachments
 }
 
 func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post) int32 {
@@ -1232,13 +1206,12 @@ func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostReq
 }
 
 // Internal Method to parse post for response
-func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, post entities.Post,
-	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
+func parsePostResponse(handlers *FeedHandlers, post entities.Post, userId string, isCm bool, versionCode string, platformCode string,
+	apiRevampV1Check bool, memberRole string,
 ) requests.PostResponse {
 
-	likes_count, _ := fetchEntityLikesCount(likeHelper, post.ID.Hex(), constants.PostEntityType)
-	replies_count, _ := fetchPostCommentsCount(commentHelper, post.ID.Hex())
+	likes_count, _ := fetchEntityLikesCount(handlers.likeHelper, post.ID.Hex(), constants.PostEntityType)
+	replies_count, _ := fetchPostCommentsCount(handlers.commentHelper, post.ID.Hex())
 
 	var response requests.PostResponse
 
@@ -1252,22 +1225,21 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
 	response.UUID = post.UserId
-	response.Attachments = parsePostAttachments(post.Attachments, versionCode, platformCode, apiRevampV1Check)
+	response.Attachments = parseAttachments(post.Attachments, apiRevampV1Check)
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
-	response.RepostCount = getPostRepostCount(widgetHelper, post)
+	response.RepostCount = getPostRepostCount(handlers.widgetHelper, post)
 	response.IsDeleted = post.IsDeleted
 	response.IsEdited = post.IsEdited
 	response.IsRepost = post.IsRepost
-	response.IsRepostedByUser = getIsRepostedByUser(widgetHelper, userId, post)
-	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, post.ID.Hex(),
-		constants.PostEntityType, userId)
-	response.IsSaved = fetchUserSavedStatusByPostId(saveHelper, post.ID.Hex(), userId)
+	response.IsRepostedByUser = getIsRepostedByUser(handlers.widgetHelper, userId, post)
+	response.IsLiked = fetchUserLikedStatusByEntity(handlers.likeHelper, post.ID.Hex(), constants.PostEntityType, userId)
+	response.IsSaved = fetchUserSavedStatusByPostId(handlers.saveHelper, post.ID.Hex(), userId)
 	response.MenuItems = []requests.MenuResponse{}
 
 	if memberRole != utils.GuestRole {
-		response.MenuItems = getEntityMenuItems(constants.PostEntityType, isCm,
-			userId == post.UserId, post.IsPinned, versionCode, platformCode, userId, post.CommunityId, cacheHelper)
+		response.MenuItems = getEntityMenuItems(constants.PostEntityType, isCm, userId == post.UserId, post.IsPinned,
+			versionCode, platformCode, userId, post.CommunityId, handlers.cacheHelper)
 	}
 
 	if post.IsDeleted {
@@ -1290,14 +1262,15 @@ func parsePostResponse(likeHelper interfaces.LikeHelper, commentHelper interface
 }
 
 // Internal Method to parse multiple post for response
-func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, posts []entities.Post, userId string,
-	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string) []requests.PostResponse {
+func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, userId string, isCm bool, versionCode string, platformCode string,
+	apiRevampV1Check bool, memberRole string,
+) []requests.PostResponse {
+
 	response := []requests.PostResponse{}
 
 	for _, post := range posts {
-		response = append(response, parsePostResponse(likeHelper, commentHelper, saveHelper, topicHelper, widgetHelper,
-			post, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper, memberRole))
+		response = append(response, parsePostResponse(handlers, post, userId, isCm, versionCode, platformCode,
+			apiRevampV1Check, memberRole))
 	}
 
 	return response
@@ -1305,7 +1278,9 @@ func parseMultiplePostResponse(likeHelper interfaces.LikeHelper, commentHelper i
 
 // Internal Method to parse response for fetch post api
 func parseFetchPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	parsedPost requests.PostResponse, replies []requests.CommentResponse) requests.FetchPostResponse {
+	parsedPost requests.PostResponse, replies []requests.CommentResponse,
+) requests.FetchPostResponse {
+
 	var response requests.FetchPostResponse
 
 	response.PostResponse = parsedPost
@@ -1381,14 +1356,9 @@ func fetchPostData(handlers *FeedHandlers, postId string, communityId int,
 		return nil, err
 	}
 
-	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, *postData, memberId, isCm, versionCode, platformCode,
-		apiRevampV1Check, handlers.cacheHelper, memberRole)
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentResults, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper,
-		memberRole)
-	fetchPostResponse := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper,
-		postResponse, repliesResponse)
+	postResponse := parsePostResponse(handlers, *postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
+	fetchPostResponse := parseFetchPostResponse(handlers.likeHelper, handlers.commentHelper, postResponse, repliesResponse)
 
 	return fetchPostResponse, nil
 }
@@ -1401,8 +1371,7 @@ func FetchSinglePostResponse(handlers *FeedHandlers, postId string) (*requests.P
 		return nil, err
 	}
 
-	postResponse := parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper, handlers.topicHelper,
-		handlers.widgetHelper, *postData, postData.UserId, false, "", "", false, handlers.cacheHelper, utils.DefaultRole)
+	postResponse := parsePostResponse(handlers, *postData, postData.UserId, false, "", "", false, utils.DefaultRole)
 
 	return &postResponse, nil
 }
@@ -1434,9 +1403,7 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 
 	// parse post response data for each post
 	for _, post := range postsLists {
-		postResponse[post.ID.Hex()] = parsePostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			handlers.topicHelper, handlers.widgetHelper, post, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper,
-			utils.DefaultRole)
+		postResponse[post.ID.Hex()] = parsePostResponse(handlers, post, userId, isCm, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
 	}
 
 	return postResponse, nil
@@ -2541,10 +2508,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		return
 	}
 
-	createdPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, postResults, userId, isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check,
-		handlers.cacheHelper, utils.DefaultRole)
+	createdPostResponse := parseMultiplePostResponse(handlers, postResults, userId, isCm, headers[utils.HeadersVersionCode],
+		headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
 	response := parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse, postsCount)
 
@@ -2614,9 +2579,8 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 		postList = append(postList, post)
 	}
 
-	postResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, postList, userId, isCm, versionCode, platformCode,
-		apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
+	postResponse := parseMultiplePostResponse(handlers, postList, userId, isCm, versionCode, platformCode,
+		apiRevampV1Check, utils.DefaultRole)
 
 	return postResponse
 }
