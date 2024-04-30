@@ -88,7 +88,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId, userId)
 	if err != nil {
 		return nil, err

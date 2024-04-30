@@ -189,9 +189,10 @@ func fetchComment(helper interfaces.CommentHelper, commentId string, postId stri
 }
 
 // Internal Method to parse comment for response
-func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	comment entities.Comment, userId string, isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string) responses.CommentResponse {
+func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper, comment entities.Comment,
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
+) responses.CommentResponse {
+
 	likesCount, _ := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
 	var response responses.CommentResponse
 
@@ -200,6 +201,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.Text = comment.Text
 	response.Level = comment.Level
 	response.CommunityId = comment.CommunityId
+	response.Attachments = ParseAttachmentsforResponse(comment.Attachments, apiRevampV1Check)
 	response.PostId = comment.PostId
 	response.UserId = comment.UserId
 	response.UUID = comment.UserId

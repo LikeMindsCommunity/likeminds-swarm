@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 
 	"github.com/gin-gonic/gin"
@@ -25,330 +23,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-// Internal Method to process poll attachment data
-func processPollCustomAttachmentData(metaData map[string]interface{}) map[string]interface{} {
-	if _, exists := metaData["is_anonymous"]; !exists {
-		metaData["is_anonymous"] = false
-	}
-
-	if _, exists := metaData["allow_add_option"]; !exists {
-		metaData["allow_add_option"] = false
-	}
-
-	if _, exists := metaData["poll_type"]; !exists {
-		metaData["poll_type"] = enums.InstantPollType
-	}
-
-	if _, exists := metaData["multiple_select_state"]; !exists {
-		metaData["multiple_select_state"] = enums.ExactlySelectStateType
-	}
-
-	if _, exists := metaData["multiple_select_number"]; !exists {
-		metaData["multiple_select_number"] = 1
-	}
-
-	return metaData
-}
-
-// Internal Method to process meta data before widget creation
-func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData map[string]interface{},
-	lmMeta map[string]interface{}, uuid string) (map[string]interface{}, map[string]interface{}, error) {
-	switch attachment.AttachmentType {
-	case enums.PollWidget:
-		// create poll options
-		pollOptionObjects, err := createPollOptionObjects(attachment.AttachmentMeta.Options, uuid)
-		if err != nil {
-			return metaData, lmMeta, err
-		}
-
-		lmMeta["options"] = pollOptionObjects
-		delete(metaData, "options")
-
-	default:
-		if len(lmMeta) == 0 {
-			lmMeta = nil
-		}
-	}
-
-	return metaData, lmMeta, nil
-}
-
-// Internal Method to process meta data before widget edition
-func processMetaBeforeWidgetEdition(attachment requests.Attachment, metaData map[string]interface{},
-	existingMetaData map[string]interface{}) map[string]interface{} {
-	updatedMetaData := existingMetaData
-
-	if attachment.AttachmentType == enums.PollWidget {
-		if _, exists := metaData["title"]; exists {
-			updatedMetaData["title"] = metaData["title"]
-		}
-	} else {
-		updatedMetaData = metaData
-	}
-
-	delete(updatedMetaData, "entity_id")
-
-	return updatedMetaData
-}
-
-// updateOriginalPostWidgetForRepost | updates original post's repost widget data for a new repost
-func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID string, repostID interface{}, repostCreatorUserID string) {
-
-	postFilterData := gin.H{
-		"_id": originalPostID,
-	}
-	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
-	if err != nil {
-		return
-	}
-
-	if len(postResults) <= 0 {
-		return
-	}
-	originalPost := postResults[0]
-
-	originalPostRepostWidgetData := getRepostWidgetDataFromPost(originalPost)
-	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
-		//get respost widget id, update respost widget data
-		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
-
-		widgetFilter := gin.H{
-			"_id": repostWidgetID,
-		}
-		repostWidgets, err := handlers.widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
-		if err != nil {
-			return
-		}
-
-		if len(repostWidgets) <= 0 {
-			return
-		}
-
-		repostWidgetData := repostWidgets[0]
-		repostWidgetMetadata := repostWidgetData.MetaData
-		repostWidgetMetadataReposts := repostWidgetMetadata["reposts"]
-		repostWidgetMetadataRepostsMap, ok := repostWidgetMetadataReposts.(map[string]interface{})
-		if !ok {
-			return
-		}
-		repostWidgetMetadataRepostsMap[repostCreatorUserID] = gin.H{
-			"repost_id": repostID.(primitive.ObjectID),
-		}
-
-		repostWidgetMetadataRepostCount := repostWidgetMetadata["repost_count"].(int32)
-		repostWidgetMetadataRepostCount = repostWidgetMetadataRepostCount + 1
-
-		respostWidgetMetaData := gin.H{
-			"reposts":      repostWidgetMetadataRepostsMap,
-			"repost_count": repostWidgetMetadataRepostCount,
-		}
-
-		widgetUpdateData := gin.H{
-			"$set": gin.H{
-				"metadata": respostWidgetMetaData,
-			},
-		}
-
-		// update widget data
-		handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
-
-		return
-	}
-
-	// if repost widget does not exists for the post, create repost widget
-	respostWidgetMetaData := gin.H{
-		"reposts": gin.H{
-			repostCreatorUserID: gin.H{
-				"repost_id": repostID.(primitive.ObjectID),
-			},
-		},
-		"repost_count": 1,
-	}
-
-	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, originalPostID, constants.PostEntityType, respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
-	if err != nil {
-		return
-	}
-
-	repostAttachmentMeta := &entities.AttachmentMeta{
-		OgTags:   &entities.OGTags{},
-		EntityID: repostWidgetID.(primitive.ObjectID),
-	}
-
-	originalPostAttachments := originalPost.Attachments
-	repostWidgetAttachmentData := entities.Attachment{
-		AttachmentType: enums.RepostType.ToInt(),
-		AttachmentMeta: repostAttachmentMeta}
-
-	originalPostAttachments = append(originalPostAttachments, repostWidgetAttachmentData)
-
-	originalPostIDPrimitiveObject, _ := primitive.ObjectIDFromHex(originalPostID)
-	postUpdateData := gin.H{
-		"$set": gin.H{
-			"attachments": originalPostAttachments,
-		},
-	}
-
-	// save respost widget in original post attachments
-	handlers.postHelper.UpdatePostByIdHelper(originalPostIDPrimitiveObject, postUpdateData)
-}
-
-// extract repost type attachment from a post
-func getRepostWidgetDataFromPost(post entities.Post) entities.Attachment {
-	originalPostAttachments := post.Attachments
-
-	for _, attachment := range originalPostAttachments {
-		if attachment.AttachmentType == enums.RepostWidget {
-			return attachment
-		}
-	}
-	return entities.Attachment{}
-}
-
-// extract post type attachement from a repost
-func getPostAttachmentDataFromPost(post entities.Post) entities.Attachment {
-	postAttachments := post.Attachments
-
-	for _, attachment := range postAttachments {
-		if attachment.AttachmentType == enums.PostWidget {
-			return attachment
-		}
-	}
-	return entities.Attachment{}
-}
-
-// Internal Method to process attachments for widgets
-func processAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType string, attachments []requests.Attachment,
-	postId string, communityId int, uuid string) ([]requests.Attachment, error) {
-
-	updatedAttachments := []requests.Attachment{}
-
-	for _, attachment := range attachments {
-		isLMCreatedCustomWidget := false
-
-		switch attachment.AttachmentType {
-		case enums.PollWidget, enums.ArticleWidget:
-			isLMCreatedCustomWidget = true
-		}
-
-		switch attachment.Type {
-		case enums.PollType, enums.ArticleType:
-			isLMCreatedCustomWidget = true
-		}
-
-		if isLMCreatedCustomWidget {
-			// meta data conversion to desired type
-			metaData := map[string]interface{}{}
-			entityId := ""
-
-			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
-			_ = json.Unmarshal(convertedMetaData, &metaData)
-
-			switch attachment.AttachmentType {
-			case enums.PollWidget:
-				metaData = processPollCustomAttachmentData(metaData)
-			}
-
-			// Edit the metadata keys in case entity_id already exists in LM Created widget
-			if attachment.AttachmentMeta.EntityID != "" {
-				widgetData, err := fetchWidgetByID(handlers.widgetHelper, attachment.AttachmentMeta.EntityID, true, communityId)
-				if err != nil {
-					return nil, err
-				}
-
-				// process meta data before widget edition
-				updatedMetaData := processMetaBeforeWidgetEdition(attachment, metaData, widgetData.MetaData)
-
-				// update widget from given metadata
-				_, err = editWidget(handlers, attachment.AttachmentMeta.EntityID, "", "", true, updatedMetaData, nil, communityId)
-				if err != nil {
-					return nil, err
-				}
-
-				entityId = attachment.AttachmentMeta.EntityID
-
-				// Else create a new LM Created widget
-			} else {
-				// Generate LM Meta
-				lmMeta := map[string]interface{}{}
-
-				// process meta data before widget creation
-				metaData, lmMeta, err := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, uuid)
-				if err != nil {
-					return nil, err
-				}
-
-				// create widget from given metadata
-				widgetData, err := createWidget(handlers, true, postId, parentEntityType, metaData, lmMeta, communityId)
-				if err != nil {
-					return nil, err
-				}
-
-				entityId = widgetData.ID.Hex()
-
-			}
-
-			// updated attachment
-			updatedAttachment := requests.Attachment{
-				AttachmentType: attachment.AttachmentType,
-				AttachmentMeta: requests.AttachmentMeta{
-					EntityID: entityId,
-				},
-			}
-
-			updatedAttachments = append(updatedAttachments, updatedAttachment)
-
-		} else if attachment.AttachmentType == enums.CustomWidget {
-			entityId := attachment.AttachmentMeta.EntityID
-			widgetMeta := attachment.AttachmentMeta.WidgetMeta
-
-			// If entity id is null and widget meta is present, create a new widget and attach it to post
-			if entityId == "" && widgetMeta != nil {
-
-				// create widget from given metadata
-				widgetData, err := createWidget(handlers, false, postId, parentEntityType, widgetMeta, nil, communityId)
-				if err != nil {
-					return nil, err
-				}
-
-				// update attachment with widget id
-				attachment = requests.Attachment{
-					AttachmentType: attachment.AttachmentType,
-					AttachmentMeta: requests.AttachmentMeta{
-						EntityID: widgetData.ID.Hex(),
-					},
-				}
-			}
-			updatedAttachments = append(updatedAttachments, attachment)
-		} else { // Else do nothing
-			updatedAttachments = append(updatedAttachments, attachment)
-		}
-	}
-
-	return updatedAttachments, nil
-}
-
-// Internal Method to parse post & comment attachments
-func parseAttachments(attachments []entities.Attachment, apiRevampV1Check bool,
-) []entities.Attachment {
-
-	// Api revamp check for attachments
-	if apiRevampV1Check {
-		for i := range attachments {
-
-			// Update attachment_type from type and remove attachment_type
-			attachments[i].Type = enums.NewAttachmentTypeFromInt(attachments[i].AttachmentType)
-			attachments[i].AttachmentType = 0
-
-			// Update attachment_meta from meta_data and remove attachment_meta
-			attachments[i].MetaData = attachments[i].AttachmentMeta
-			attachments[i].AttachmentMeta = nil
-		}
-	}
-
-	return attachments
-}
 
 func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post) int32 {
 	var postRepostCount int32 = 0
@@ -400,139 +74,6 @@ func getIsRepostedByUser(widgetHelper interfaces.WidgetHelper, userID string, po
 			return true
 		}
 	}
-	return false
-}
-
-// Internal Method to validate/update post images for NSFW score and return error meta
-func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
-	attachments *[]requests.Attachment, existingAttachments *[]entities.Attachment) (gin.H, error) {
-
-	// Check if NSFW Filtering is enabled and API Key is present
-	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
-
-	if enabled && configuration.InferdoApiKey != "" {
-
-		// Get existing image urls from attachments if edit post request
-		existingImgUrls := map[string]bool{}
-		if existingAttachments != nil && len(*existingAttachments) > 0 {
-			for _, attachment := range *existingAttachments {
-
-				if attachment.AttachmentType == enums.ImageWidget && attachment.AttachmentMeta.Url != "" {
-					existingImgUrls[attachment.AttachmentMeta.Url] = true
-				}
-			}
-		}
-
-		nsfwImageScores := getNsfwScoresFromImageAttachmentsInParallel(cacheHelper, userId, communityId,
-			configuration.InferdoApiKey, *attachments, existingImgUrls)
-
-		nsfwImageIndices := []int{}
-
-		for index, score := range nsfwImageScores {
-			if score > configuration.CutoffScore {
-
-				// Append index to nsfwImageIndices
-				nsfwImageIndices = append(nsfwImageIndices, index)
-
-				// Update NSFW score in attachment meta
-				(*attachments)[index].AttachmentMeta.NsfwScore = score
-			}
-		}
-
-		// If NSFW images are present, return error message with custom meta
-		if len(nsfwImageIndices) > 0 {
-
-			indicesString := ""
-
-			// For all the indices get its ordinal number and append it to the error message
-			for i, imageIndex := range nsfwImageIndices {
-
-				indicesString += utils.GetOrdinal(imageIndex + 1)
-
-				if i == len(nsfwImageIndices)-2 {
-					indicesString += " and"
-				} else if i < len(nsfwImageIndices)-1 {
-					indicesString += ","
-				}
-
-				indicesString += " "
-
-			}
-
-			errorMessage := fmt.Errorf(fmt.Sprintf(utils.NsfwContentInImageError, indicesString))
-
-			errorMeta := gin.H{
-				"title":              "NSFW content detected in images",
-				"type":               "nsfw_content_in_image",
-				"cta":                "<<route://dialog/nsfw_content>>",
-				"nsfw_image_indices": nsfwImageIndices,
-			}
-
-			return errorMeta, errorMessage
-		}
-	}
-
-	return nil, nil
-}
-
-// Internal method to fetch NSFW score for images in parallel
-func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
-	inferdoApiKey string, attachments []requests.Attachment, existingImgUrls map[string]bool) []float64 {
-
-	nsfwScores := make([]float64, len(attachments))
-
-	// Make a channel to receive NSFW scores
-	wg := sync.WaitGroup{}
-
-	for index, attachment := range attachments {
-		if attachment.AttachmentType == enums.ImageWidget {
-
-			// If image url is already present in existing images, skip it
-			if _, exists := existingImgUrls[attachment.AttachmentMeta.Url]; exists {
-				continue
-			}
-
-			// Increment the WaitGroup counter.
-			wg.Add(1)
-
-			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
-			go func(index int, attachment requests.Attachment) {
-
-				// Decrement the counter when the goroutine completes.
-				defer wg.Done()
-
-				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId, attachment.AttachmentMeta.Url, inferdoApiKey)
-
-				// if no error and score is greater than 0.0, update the score in the array
-				if err == nil && nsfwScore > 0.0 {
-					nsfwScores[index] = nsfwScore
-				}
-
-			}(index, attachment)
-
-		}
-	}
-
-	// wait for all goroutines to complete
-	wg.Wait()
-
-	return nsfwScores
-}
-
-func validateRepostPostAttachment(postData *entities.Post, editPostRequest requests.EditPostRequest) bool {
-	// repost's attached post id should not be updated in edit request
-	// repost will have only post type (=8) attachment
-	existingOriginalPostID := postData.Attachments[0].AttachmentMeta.EntityID.Hex()
-
-	if len(editPostRequest.Attachments) <= 0 {
-		return false
-	}
-	editRepostRequestPostID := editPostRequest.Attachments[0].AttachmentMeta.EntityID
-
-	if existingOriginalPostID == editRepostRequestPostID {
-		return true
-	}
-
 	return false
 }
 
@@ -660,33 +201,6 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	}
 
 	return uniqueTopicIds
-}
-
-// Internal Method to parse widget_ids from attachments
-func getWidgetIdsFromAttachments(attachments []entities.Attachment) []primitive.ObjectID {
-	widgetIds := map[primitive.ObjectID]bool{}
-	finalWidgetIds := []primitive.ObjectID{}
-
-	for _, attachment := range attachments {
-		entityId := primitive.NilObjectID
-		if attachment.AttachmentMeta != nil {
-			entityId = attachment.AttachmentMeta.EntityID
-		} else if attachment.MetaData != nil {
-			entityId = attachment.MetaData.EntityID
-		}
-
-		if entityId != primitive.NilObjectID {
-			if _, exists := widgetIds[entityId]; !exists {
-				widgetIds[entityId] = true
-			}
-		}
-	}
-
-	for key := range widgetIds {
-		finalWidgetIds = append(finalWidgetIds, key)
-	}
-
-	return finalWidgetIds
 }
 
 // Internal method to parse widget_ids from topics
@@ -893,7 +407,7 @@ func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string
 	if post, ok := response.(gin.H)["post"]; ok {
 		postData := post.(responses.PostWithRepliesResponse)
 		if postData.IsRepost {
-			tempPostIds[postData.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+			tempPostIds[postData.Attachments[0].AttachmentMeta.EntityID] = true
 		}
 	}
 
@@ -904,9 +418,9 @@ func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string
 			for _, post := range posts {
 				if post.IsRepost {
 					if apiRevampV1Check {
-						tempPostIds[string(post.Attachments[0].MetaData.EntityID.Hex())] = true
+						tempPostIds[string(post.Attachments[0].MetaData.EntityID)] = true
 					} else {
-						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID] = true
 					}
 				}
 			}
@@ -914,9 +428,9 @@ func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string
 			for _, post := range posts {
 				if post.IsRepost {
 					if apiRevampV1Check {
-						tempPostIds[string(post.Attachments[0].MetaData.EntityID.Hex())] = true
+						tempPostIds[string(post.Attachments[0].MetaData.EntityID)] = true
 					} else {
-						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID.Hex()] = true
+						tempPostIds[post.Attachments[0].AttachmentMeta.EntityID] = true
 					}
 				}
 			}
@@ -939,6 +453,108 @@ func getOriginalPostIDFromRepostRequest(createPostRequest requests.CreatePostReq
 	return ""
 }
 
+// updateOriginalPostWidgetForRepost | updates original post's repost widget data for a new repost
+func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID string, repostID interface{}, repostCreatorUserID string) {
+
+	postFilterData := gin.H{
+		"_id": originalPostID,
+	}
+	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
+	if err != nil {
+		return
+	}
+
+	if len(postResults) <= 0 {
+		return
+	}
+	originalPost := postResults[0]
+
+	originalPostRepostWidgetData := getRepostWidgetDataFromPost(originalPost)
+	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
+		//get respost widget id, update respost widget data
+		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
+
+		widgetFilter := gin.H{
+			"_id": repostWidgetID,
+		}
+		repostWidgets, err := handlers.widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
+		if err != nil {
+			return
+		}
+
+		if len(repostWidgets) <= 0 {
+			return
+		}
+
+		repostWidgetData := repostWidgets[0]
+		repostWidgetMetadata := repostWidgetData.MetaData
+		repostWidgetMetadataReposts := repostWidgetMetadata["reposts"]
+		repostWidgetMetadataRepostsMap, ok := repostWidgetMetadataReposts.(map[string]interface{})
+		if !ok {
+			return
+		}
+		repostWidgetMetadataRepostsMap[repostCreatorUserID] = gin.H{
+			"repost_id": repostID.(primitive.ObjectID),
+		}
+
+		repostWidgetMetadataRepostCount := repostWidgetMetadata["repost_count"].(int32)
+		repostWidgetMetadataRepostCount = repostWidgetMetadataRepostCount + 1
+
+		respostWidgetMetaData := gin.H{
+			"reposts":      repostWidgetMetadataRepostsMap,
+			"repost_count": repostWidgetMetadataRepostCount,
+		}
+
+		widgetUpdateData := gin.H{
+			"$set": gin.H{
+				"metadata": respostWidgetMetaData,
+			},
+		}
+
+		// update widget data
+		handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
+
+		return
+	}
+
+	// if repost widget does not exists for the post, create repost widget
+	respostWidgetMetaData := gin.H{
+		"reposts": gin.H{
+			repostCreatorUserID: gin.H{
+				"repost_id": repostID.(primitive.ObjectID),
+			},
+		},
+		"repost_count": 1,
+	}
+
+	repostWidgetID, err := handlers.widgetHelper.CreateWidgetHelper(true, originalPostID, constants.PostEntityType, respostWidgetMetaData, gin.H{}, originalPost.CommunityId)
+	if err != nil {
+		return
+	}
+
+	repostAttachmentMeta := &entities.AttachmentMeta{
+		OgTags:   &entities.OGTags{},
+		EntityID: repostWidgetID.(primitive.ObjectID),
+	}
+
+	originalPostAttachments := originalPost.Attachments
+	repostWidgetAttachmentData := entities.Attachment{
+		AttachmentType: enums.RepostType.ToInt(),
+		AttachmentMeta: repostAttachmentMeta}
+
+	originalPostAttachments = append(originalPostAttachments, repostWidgetAttachmentData)
+
+	originalPostIDPrimitiveObject, _ := primitive.ObjectIDFromHex(originalPostID)
+	postUpdateData := gin.H{
+		"$set": gin.H{
+			"attachments": originalPostAttachments,
+		},
+	}
+
+	// save respost widget in original post attachments
+	handlers.postHelper.UpdatePostByIdHelper(originalPostIDPrimitiveObject, postUpdateData)
+}
+
 // Internal Method to parse post for response
 func parsePostResponse(handlers *FeedHandlers, post entities.Post, userId string, isCm bool, versionCode string, platformCode string,
 	apiRevampV1Check bool, memberRole string,
@@ -959,7 +575,7 @@ func parsePostResponse(handlers *FeedHandlers, post entities.Post, userId string
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
 	response.UUID = post.UserId
-	response.Attachments = parseAttachments(post.Attachments, apiRevampV1Check)
+	response.Attachments = ParseAttachmentsforResponse(post.Attachments, apiRevampV1Check)
 	response.LikesCount = int(likes_count)
 	response.CommentsCount = int(replies_count)
 	response.RepostCount = getPostRepostCount(handlers.widgetHelper, post)
@@ -1237,7 +853,7 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId, userId)
 	if err != nil {
 		return nil, err
@@ -1728,7 +1344,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PostEntityType, editPostRequest.Attachments,
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, editPostRequest.Attachments,
 		postId, communityId, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())

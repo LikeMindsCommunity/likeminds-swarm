@@ -1,6 +1,8 @@
 package responses
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 // Response Structure for Comment
 type CommentResponse struct {
@@ -13,6 +15,7 @@ type CommentResponse struct {
 	CommunityId   int                `json:"community_id,omitempty"`
 	PostId        primitive.ObjectID `json:"post_id,omitempty"`
 	IsLiked       bool               `json:"is_liked"`
+	Attachments   []Attachment       `json:"attachments"`
 	LikesCount    int                `json:"likes_count"`
 	CommentsCount int                `json:"comments_count"`
 	IsEdited      bool               `json:"is_edited"`
