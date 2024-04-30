@@ -72,6 +72,8 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
+		activityCTA := getActivityCTA(handler, activity)
+
 		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
 			ActionBy:           activity.ActionBy,
@@ -79,7 +81,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			EntityID:           activity.EntityID,
 			EntityOwnerID:      activity.EntityOwnerID,
 			UUID:               activity.EntityOwnerID,
-			CTA:                activity.CTA,
+			CTA:                activityCTA,
 			IsRead:             activity.IsRead,
 			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
 			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
@@ -294,13 +296,28 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 		return postData[entityID.Hex()], nil
 
 	case constants.PendingPost:
-		pendingPostData, err := fetchMultiplePendingPostsData(&handler, []string{entityID.Hex()}, communityID, userId, false, "", "",
-			apiRevampV1Check)
+		pendingPost, err := fetchPendingPost(handler.pendingPostHelper, entityID.Hex(), communityID)
 		if err != nil {
 			return nil, err
 		}
 
-		return pendingPostData[entityID.Hex()], nil
+		if pendingPost.Status != enums.Approved {
+			pendingPostData, err := fetchMultiplePendingPostsData(&handler, []string{entityID.Hex()}, communityID, userId, false, "", "",
+				apiRevampV1Check)
+			if err != nil {
+				return nil, err
+			}
+
+			return pendingPostData[entityID.Hex()], nil
+		} else {
+			postData, err := fetchMultiplePostsData(&handler, []string{pendingPost.NormalPostId}, communityID, userId, false, "", "",
+				apiRevampV1Check)
+			if err != nil {
+				return nil, err
+			}
+
+			return postData[pendingPost.NormalPostId], nil
+		}
 
 	case constants.Comment:
 
@@ -446,21 +463,38 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		return activityText, nil
 
 	case constants.AcceptPendingPost:
-		activityText += fmt.Sprintf("Your %s:", postFeedMetadatValue)
+		activityText += fmt.Sprintf("Your %s has been approved:", postFeedMetadatValue)
 		activityText += getEntityText(activity.EntityType, activityEntityData, "")
-		activityText += " has been approved."
 
 		return activityText, nil
 
 	case constants.RejectPendingPost:
-		activityText += fmt.Sprintf("Your %s:", postFeedMetadatValue)
+		activityText += fmt.Sprintf("Your %s was not approved:", postFeedMetadatValue)
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
-		activityText += " was not approved."
 
 		return activityText, nil
 	}
 
 	return activityText, nil
+}
+
+func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
+	activityCTA := activity.CTA
+
+	if activity.EntityType == constants.PendingPost && activity.Action != constants.RejectPendingPost {
+		pendingPostData, _ := fetchPendingPost(handlers.pendingPostHelper, activity.EntityID.Hex(), activity.CommunityID)
+
+		if pendingPostData.Status == enums.Approved {
+			// CTA data for activity
+			ctaData := gin.H{
+				"entity_type": constants.PostEntityType,
+				"post_id":     pendingPostData.NormalPostId,
+			}
+			activityCTA = parseCTAData(ctaData)
+		}
+	}
+
+	return activityCTA
 }
 
 // Internal Method to fetch user profile activity text

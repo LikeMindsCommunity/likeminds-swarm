@@ -546,12 +546,29 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 		return
 	}
 
+	isStatusChanged := false
+	pendingPosStatus := pendingPostData.Status
+
+	if pendingPostData.Status == enums.Rejected {
+		isStatusChanged = true
+		pendingPosStatus = enums.UnderReview
+	}
+
 	// update post data using helper method
 	err = handlers.pendingPostHelper.EditPendingPostHelper(pendingPostData.ID, editPendingPostRequest.Text, editPendingPostRequest.Heading, updatedAttachments,
-		topicIDs, editPendingPostRequest.Visibility, true, pendingPostData.Status, editPendingPostRequest.UUIDs)
+		topicIDs, editPendingPostRequest.Visibility, true, pendingPosStatus, editPendingPostRequest.UUIDs)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
+	}
+
+	if isStatusChanged {
+		// Send post for review
+		err = SendPendingPostForReview(handlers, userId, communityId, pendingPostData.ID)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 	}
 
 	// fetch pending post response data
