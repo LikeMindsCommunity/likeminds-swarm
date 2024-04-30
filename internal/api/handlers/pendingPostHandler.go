@@ -655,7 +655,12 @@ func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
 		"user_id":      userId,
 		"is_deleted":   false,
 		"community_id": communityId,
-		"status":       enums.UnderReview,
+		"status": gin.H{
+			"$in": []string{
+				enums.UnderReview,
+				enums.Rejected,
+			},
+		},
 	}
 
 	// filter options
