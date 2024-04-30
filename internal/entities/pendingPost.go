@@ -15,6 +15,7 @@ type PendingPost struct {
 	CommunityID int                `json:"community_id" bson:"community_id"`
 	IsDeleted   bool               `json:"is_deleted" bson:"is_deleted"`
 	UUIDs       []string           `json:"uuids" bson:"uuids"`
+	ReportID    int                `json:"-" bson:"report_id"`
 	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
 }

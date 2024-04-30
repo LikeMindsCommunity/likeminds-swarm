@@ -143,23 +143,41 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 		return nil, err
 	}
 
-	// Call caravan API to create a review report for the pending post
-	err = externalHelpers.SendPendingPostForReview(userId, communityId, postId.(primitive.ObjectID).Hex())
+	err = SendPendingPostForReview(handlers, userId, communityId, postId.(primitive.ObjectID))
 	if err != nil {
-
-		// Delete the pending post if there is an error in sending the report
-		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(postId.(primitive.ObjectID),
-			gin.H{"$set": gin.H{"is_deleted": true}})
-		if err != nil {
-			// Log the error
-			logging.Error(fmt.Sprint(
-				"Error in deleting the pending post: ", postId.(primitive.ObjectID).Hex(), " after error in sending for review: ", err.Error()))
-		}
-
 		return nil, err
 	}
 
 	return &pendingPostData.PostData, nil
+}
+
+func SendPendingPostForReview(handlers *FeedHandlers, userId string, communityId int, pendingPostId primitive.ObjectID) error {
+	// Call caravan API to create a review report for the pending post
+	reportId, err := externalHelpers.CreatePendingPostReport(userId, communityId, pendingPostId.Hex())
+	if err != nil {
+
+		// Delete the pending post if there is an error in sending the report
+		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostId,
+			gin.H{"$set": gin.H{"is_deleted": true}})
+		if err != nil {
+			// Log the error
+			logging.Error(fmt.Sprint(
+				"Error in deleting the pending post: ", pendingPostId.Hex(), " after error in sending for review: ", err.Error()))
+		}
+
+		return err
+	} else {
+		// Update the report_id in pending post if there is no error in sending the report
+		err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostId,
+			gin.H{"$set": gin.H{"report_id": reportId}})
+		if err != nil {
+			// Log the error
+			logging.Error(fmt.Sprint(
+				"Error in updating the pending post: ", pendingPostId.Hex(), " after error in sending for review: ", err.Error()))
+		}
+
+		return err
+	}
 }
 
 // Exposed method to create a pending post for review (similar to Create post method)
@@ -711,5 +729,9 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 		return
 	}
 
-	utils.GenerateSuccessResponse(c, nil)
+	response := gin.H{
+		"report_id": postData.ReportID,
+	}
+
+	utils.GenerateSuccessResponse(c, response)
 }
