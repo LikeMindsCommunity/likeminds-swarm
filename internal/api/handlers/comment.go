@@ -698,6 +698,45 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func validateEditCommentRequest(handlers *FeedHandlers, communityId int, userId string, editCommentRequest *requests.EditCommentRequest,
+	postId string, commentId string, apiRevampV1Check bool) (*entities.Comment, error) {
+
+	// strip text and check if it is empty
+	editCommentRequest.Text = strings.Trim(editCommentRequest.Text, " ")
+	if editCommentRequest.Text == "" {
+		return nil, fmt.Errorf("comment text cannot be empty")
+	}
+
+	if len(editCommentRequest.Attachments) > 1 {
+		return nil, fmt.Errorf("only one attachment is allowed")
+	}
+
+	// Validate attachments for comments
+	err := ValidateAndUpdateAttachments(handlers, communityId, enums.EntityTypeComment, editCommentRequest.Attachments, apiRevampV1Check, true, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if Post_id is valid
+	_, err = fetchPost(handlers.postHelper, postId, communityId)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch comment data
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	if err != nil {
+		return nil, err
+	}
+
+	// If user is not cm and is not the comment creator
+	if !editCommentRequest.UserIsCm && commentData.UserId != userId {
+		return nil, err
+	}
+
+	return commentData, nil
+}
+
 // Exposed Method to edit a comment
 func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
@@ -721,31 +760,10 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 		return
 	}
 
-	// strip text and check if it is empty
-	editCommentRequest.Text = strings.Trim(editCommentRequest.Text, " ")
-
-	if editCommentRequest.Text == "" {
-		utils.GeneralAPIValidationError(c, "Comment text cannot be empty")
-		return
-	}
-
-	// Check if Post_id is valid
-	_, err := fetchPost(handlers.postHelper, postId, communityId)
+	// validate edit comment request
+	commentData, err := validateEditCommentRequest(handlers, communityId, headers[utils.HeadersMemberId], &editCommentRequest, postId, commentId, apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// If user is not cm and is not the comment creator
-	if !editCommentRequest.UserIsCm && commentData.UserId != headers[utils.HeadersMemberId] {
-		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
 
@@ -789,6 +807,46 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func validateCommentReplyRequest(handlers *FeedHandlers, communityId int, postId string, commentId string,
+	createCommentRequest *requests.CreateCommentRequest, apiRevampV1Check bool,
+) (*entities.Comment, *entities.Post, error) {
+
+	// strip text and check if it is empty
+	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
+	if createCommentRequest.Text == "" {
+		return nil, nil, fmt.Errorf("comment text cannot be empty")
+	}
+
+	if len(createCommentRequest.Attachments) > 1 {
+		return nil, nil, fmt.Errorf("only one attachment is allowed")
+	}
+
+	// Validate attachments for comments
+	err := ValidateAndUpdateAttachments(handlers, communityId, enums.EntityTypeComment, createCommentRequest.Attachments, apiRevampV1Check, false, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// fetch post data
+	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// fetch comment data
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// validation of comment level
+	if commentData.Level >= constants.CommentAllowedLevel {
+		return nil, nil, fmt.Errorf(constants.CommentAllowedErrorMessage)
+	}
+
+	return commentData, postData, nil
+}
+
 // Exposed Method to Reply on a Comment
 func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	// fetch headers and url params
@@ -818,28 +876,14 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		useCustomCreationTimestamp = true
 	}
 
-	// fetch post data
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	commentData, postData, err := validateCommentReplyRequest(handlers, communityId, postId, commentId, &createCommentRequest, apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// validation of comment level
-	if commentData.Level >= constants.CommentAllowedLevel {
-		utils.GeneralAPIValidationError(c, constants.CommentAllowedErrorMessage)
 		return
 	}
 
 	// create comment using the helper method
-	newCommentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
+	newCommentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, commentData.PostId, communityId,
 		commentData.Level+1, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt,
 		createCommentRequest.Attachments)
 	if err != nil {

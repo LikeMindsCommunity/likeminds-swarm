@@ -11,8 +11,9 @@ type CreateCommentRequest struct {
 
 // Request Structure for Edit Comment
 type EditCommentRequest struct {
-	Text     string `json:"text" binding:"required"`
-	UserIsCm bool   `json:"user_is_cm"`
+	Text        string       `json:"text" binding:"required"`
+	Attachments []Attachment `json:"attachments"`
+	UserIsCm    bool         `json:"user_is_cm"`
 }
 
 // Request Structure for Delete Comment
