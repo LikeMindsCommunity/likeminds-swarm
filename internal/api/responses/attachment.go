@@ -19,6 +19,8 @@ type AttachmentMeta struct {
 	Format               string  `json:"format,omitempty"`
 	Size                 int     `json:"size,omitempty"`
 	Duration             int     `json:"duration,omitempty"`
+	Height               int     `json:"height,omitempty"`
+	Width                int     `json:"width,omitempty"`
 	PageCount            int     `json:"page_count,omitempty"`
 	ThumbnailUrl         string  `json:"thumbnail_url,omitempty"`
 	OgTags               *OGTags `json:"og_tags,omitempty"`

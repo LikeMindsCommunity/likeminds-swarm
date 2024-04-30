@@ -19,6 +19,8 @@ type AttachmentMeta struct {
 	Url                  string             `json:"url,omitempty" bson:"url,omitempty"`
 	Format               string             `json:"format,omitempty" bson:"format,omitempty"`
 	Size                 int                `json:"size,omitempty" bson:"size,omitempty"`
+	Width                int                `json:"width,omitempty" bson:"width,omitempty"`
+	Height               int                `json:"height,omitempty" bson:"height,omitempty"`
 	Duration             int                `json:"duration,omitempty" bson:"duration,omitempty"`
 	PageCount            int                `json:"page_count,omitempty" bson:"page_count,omitempty"`
 	ThumbnailUrl         string             `json:"thumbnail_url,omitempty" bson:"thumbnail_url,omitempty"`
@@ -55,13 +57,16 @@ func NewAttachment(attachment_type int, attachment_meta AttachmentMeta) Attachme
 // Exposed Method to Create New Attachment Meta
 func NewAttachmentMeta(name string, url string, format string, size int, duration int, pageCount int, thumbnailUrl string,
 	ogTags OGTags, entityId primitive.ObjectID, coverImageUrl string, title string, body string, expiryTime int64, pollType string,
-	multipleSelectState string, multipleSelectNumber int, isAnonymous bool, allowAddOption bool, nsfwScore float64) AttachmentMeta {
+	multipleSelectState string, multipleSelectNumber int, isAnonymous bool, allowAddOption bool, nsfwScore float64, height int, width int,
+) AttachmentMeta {
 
 	attachmentMeta := AttachmentMeta{
 		Name:                 name,
 		Url:                  url,
 		Format:               format,
 		Size:                 size,
+		Height:               height,
+		Width:                width,
 		Duration:             duration,
 		PageCount:            pageCount,
 		OgTags:               &ogTags,

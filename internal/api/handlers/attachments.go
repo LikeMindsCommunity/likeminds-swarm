@@ -61,6 +61,8 @@ func ParseAttachmentsforResponse(attachments []entities.Attachment, apiRevampV1C
 				Format:       attachment.AttachmentMeta.Format,
 				Size:         attachment.AttachmentMeta.Size,
 				Duration:     attachment.AttachmentMeta.Duration,
+				Height:       attachment.AttachmentMeta.Height,
+				Width:        attachment.AttachmentMeta.Width,
 				PageCount:    attachment.AttachmentMeta.PageCount,
 				ThumbnailUrl: attachment.AttachmentMeta.ThumbnailUrl,
 				OgTags: &responses.OGTags{
