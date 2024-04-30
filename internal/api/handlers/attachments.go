@@ -669,7 +669,7 @@ func ProcessAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 		if isLMCreatedCustomWidget {
 			// meta data conversion to desired type
 			metaData := map[string]interface{}{}
-			entityId := ""
+			var entityId string
 
 			convertedMetaData, _ := json.Marshal(attachment.AttachmentMeta)
 			_ = json.Unmarshal(convertedMetaData, &metaData)

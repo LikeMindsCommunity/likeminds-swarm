@@ -193,7 +193,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	savedPostResponse := parseMultiplePostResponse(handlers, postResults, userId, isCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
-	response := parseFetchMultiplePostResponse(handlers.postHelper, savedPostResponse, saveCount)
+	response := parseFetchMultiplePostResponse(savedPostResponse, saveCount)
 
 	// response data
 	finalResponse := gin.H{

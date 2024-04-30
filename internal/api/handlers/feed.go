@@ -191,7 +191,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	response = append(response, unpinnedPostResponse...)
 
-	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+	finalResponse := parseFetchMultiplePostResponse(response, -1)
 
 	// reponse data
 	finalParsedResponse := gin.H{
@@ -633,7 +633,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	response = append(response, unpinnedPostResponse...)
 
-	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+	finalResponse := parseFetchMultiplePostResponse(response, -1)
 
 	// reponse data
 	finalParsedResponse := gin.H{
@@ -664,9 +664,9 @@ func (handlers *FeedHandlers) deleteCommunityUniversalFeedCacheData(communityID 
 	cacheCommunityUniversalFeedPostsKey := fmt.Sprintf("community_{}_universal_feed_posts", communityID)
 
 	cacheCommunityUniversleFeedPostIDsString := handlers.cacheHelper.Get(cacheCommunityUniversalFeedPostsKey)
-	cacheCommunityUniversleFeedPostIDs := [](string){cacheCommunityUniversleFeedPostIDsString.Val()}
+	cacheCommunityUniversleFeedPostIDs := []string{cacheCommunityUniversleFeedPostIDsString.Val()}
 
-	cachePostKeys := [](string){}
+	cachePostKeys := []string{}
 	for _, cacheCommunityUniversleFeedPostID := range cacheCommunityUniversleFeedPostIDs {
 		cachePostKey := fmt.Sprintf("post_{}", cacheCommunityUniversleFeedPostID)
 		cachePostKeys = append(cachePostKeys, cachePostKey)
@@ -774,7 +774,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 		connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
 		apiRevampV1Check, utils.DefaultRole)
 
-	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, connectionFeedPostResponse, -1)
+	finalResponse := parseFetchMultiplePostResponse(connectionFeedPostResponse, -1)
 
 	// reponse data
 	finalParsedResponse := gin.H{

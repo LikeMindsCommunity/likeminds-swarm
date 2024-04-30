@@ -106,7 +106,7 @@ func validateUserAndPostForRepost(handlers *FeedHandlers, userID string, origina
 }
 
 // Internal Method to parse response for fetch multiple posts api
-func parseFetchMultiplePostResponse(postHelper interfaces.PostHelper, posts []responses.PostResponse, posts_count int64,
+func parseFetchMultiplePostResponse(posts []responses.PostResponse, posts_count int64,
 ) responses.FetchUserMultiplePostResponse {
 
 	response := responses.FetchUserMultiplePostResponse{}
@@ -1846,7 +1846,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	createdPostResponse := parseMultiplePostResponse(handlers, postResults, userId, isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
-	response := parseFetchMultiplePostResponse(handlers.postHelper, createdPostResponse, postsCount)
+	response := parseFetchMultiplePostResponse(createdPostResponse, postsCount)
 
 	// response data
 	finalResponse := gin.H{
