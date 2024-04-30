@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
-func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalEntities) requests.MenuResponse {
+func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalEntities) responses.MenuResponse {
 	var menuId int
 	var menuTitle string
 	var postFeedMetadataValues string
@@ -60,15 +60,15 @@ func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalE
 
 	}
 
-	return requests.MenuResponse{
+	return responses.MenuResponse{
 		Id:    menuId,
 		Title: menuTitle,
 	}
 }
 
 // Exposed Method to get Post Menu for Owner who are CMs also
-func GetIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{}
+func GetIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
@@ -86,8 +86,8 @@ func GetIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntit
 }
 
 // Exposed Method to get Post Menu for Owner who is not a CM
-func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{}
+func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
@@ -99,8 +99,8 @@ func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalH
 }
 
 // Exposed Method to get Post Menu for CMs who are not owners
-func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{}
+func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
@@ -118,17 +118,17 @@ func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEn
 }
 
 // Exposed Method to get Post Menu for members
-func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{getMenuItem(constants.ReportPostMenuItemName, externalEntities)}
+func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+	menuItems := []responses.MenuResponse{getMenuItem(constants.ReportPostMenuItemName, externalEntities)}
 
 	return menuItems
 
 }
 
 // Exposed Method to get Comment Menu for owner
-func GetIsOwnerCommentMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
+func GetIsOwnerCommentMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
 
-	menuItems := []requests.MenuResponse{}
+	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditCommentMenuItemName, externalEntities))
@@ -140,9 +140,9 @@ func GetIsOwnerCommentMenuItems(isEditCheck bool, externalEntities externalHelpe
 }
 
 // Exposed Method to get Comment Menu for CM who is not owner
-func GetNotIsOwnerIsCmCommentMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
+func GetNotIsOwnerIsCmCommentMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
 
-	menuItems := []requests.MenuResponse{}
+	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditCommentMenuItemName, externalEntities))
@@ -154,8 +154,8 @@ func GetNotIsOwnerIsCmCommentMenuItems(isEditCheck bool, externalEntities extern
 }
 
 // Exposed Method to get Comment Menu for members
-func GetNotIsOwnerNotIsCmCommentMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{getMenuItem(constants.ReportCommentMenuItemName, externalEntities)}
+func GetNotIsOwnerNotIsCmCommentMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+	menuItems := []responses.MenuResponse{getMenuItem(constants.ReportCommentMenuItemName, externalEntities)}
 
 	return menuItems
 }

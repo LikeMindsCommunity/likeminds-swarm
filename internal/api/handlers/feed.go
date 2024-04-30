@@ -58,7 +58,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	var universalFeedRequest requests.FetchUniversalFeedRequest
 	var commentSortOrderVal int
-	filtered_comments := map[string]requests.CommentWithParentResponse{}
+	filtered_comments := map[string]responses.CommentWithParentResponse{}
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	versionCode := headers[utils.HeadersAcceptVersion]
@@ -109,11 +109,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 		if len(postObjectIdsList) == 0 {
 			finalParsedResponse := gin.H{
-				"posts":             []requests.PostResponse{},
+				"posts":             []responses.PostResponse{},
 				"success":           true,
 				"topics":            map[string]responses.TopicResponse{},
 				"widgets":           map[string]requests.WidgetResponse{},
-				"reposted_posts":    map[string]requests.PostResponse{},
+				"reposted_posts":    map[string]responses.PostResponse{},
 				"filtered_comments": filtered_comments,
 			}
 
@@ -154,7 +154,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		return
 	}
 
-	response := []requests.PostResponse{}
+	response := []responses.PostResponse{}
 
 	if page == 1 {
 		// pinned post filter options
@@ -217,7 +217,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
-		var updatedPostsWithComments []requests.PostResponse
+		var updatedPostsWithComments []responses.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts, userId, universalFeedRequest.IsCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
 			versionCode, platformCode, apiRevampV1Check, memberRole)
 
@@ -596,7 +596,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		return
 	}
 
-	response := []requests.PostResponse{}
+	response := []responses.PostResponse{}
 
 	if page == 1 {
 		// pinned post filter options

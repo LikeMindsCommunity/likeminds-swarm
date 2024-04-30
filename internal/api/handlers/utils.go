@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -110,8 +110,8 @@ func getTaggedUsers(text string) ([]string, error) {
 
 // Internal Method to fetch menu items for a user on an Entity
 func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool,
-	versionCode string, platformCode string, userId string, communityId int, cacheHelper cache.Helper) []requests.MenuResponse {
-	var output_menu_items []requests.MenuResponse
+	versionCode string, platformCode string, userId string, communityId int, cacheHelper cache.Helper) []responses.MenuResponse {
+	var output_menu_items []responses.MenuResponse
 	var externalEntities externalHelpers.ExternalEntities
 
 	isEditEnabled := utils.CheckVersion(utils.EditFeedEntityVersions, versionCode, platformCode)

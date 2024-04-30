@@ -109,14 +109,14 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		// Parse topicIds and widgetIds from post
 		if activity.EntityType == constants.Post {
 			// Parse topicIds from postData
-			if activityEntityData.(requests.PostResponse).Topics != nil {
-				ids := activityEntityData.(requests.PostResponse).Topics
+			if activityEntityData.(responses.PostResponse).Topics != nil {
+				ids := activityEntityData.(responses.PostResponse).Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if activityEntityData.(requests.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
+			if activityEntityData.(responses.PostResponse).Attachments != nil {
+				ids := getWidgetIdsFromAttachments(activityEntityData.(responses.PostResponse).Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
 		}
@@ -184,7 +184,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 				continue
 			}
 
-			postData = *activityEntityData.(requests.FetchCommentResponse).Post
+			postData = *activityEntityData.(responses.FetchCommentResponse).Post
 
 			// Update activity data
 			activity.CTA = fmt.Sprintf(utils.CommentDetailRoute, activity.EntityID.Hex(), actionByMetadata.EntityId.Hex())
@@ -243,14 +243,14 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 		if postData != nil {
 
 			// Parse topicIds from postData
-			if postData.(requests.PostResponse).Topics != nil {
-				ids := postData.(requests.PostResponse).Topics
+			if postData.(responses.PostResponse).Topics != nil {
+				ids := postData.(responses.PostResponse).Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if postData.(requests.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(postData.(requests.PostResponse).Attachments)
+			if postData.(responses.PostResponse).Attachments != nil {
+				ids := getWidgetIdsFromAttachments(postData.(responses.PostResponse).Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
 		}
@@ -345,12 +345,12 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 	case constants.CMDeletedPost:
 		activityText += fmt.Sprintf("Your %s has been deleted as it violates community guidelines. Reason: ", postFeedMetadatValue)
-		activityText += activityEntityData.(requests.PostResponse).DeleteReason + "."
+		activityText += activityEntityData.(responses.PostResponse).DeleteReason + "."
 		return activityText, nil
 
 	case constants.CMDeletedComment:
 		activityText += "Your reply has been deleted as it violates community guidelines. Reason: "
-		activityText += activityEntityData.(requests.CommentResponse).DeleteReason + "."
+		activityText += activityEntityData.(responses.CommentResponse).DeleteReason + "."
 		return activityText, nil
 
 	case constants.LikeOnPost:
@@ -508,15 +508,15 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 
 	switch entityType {
 	case constants.Post:
-		entityTextData = activityEntityData.(requests.PostResponse).Text
+		entityTextData = activityEntityData.(responses.PostResponse).Text
 
 	case constants.Comment:
-		entityTextData = activityEntityData.(requests.CommentResponse).Text
+		entityTextData = activityEntityData.(responses.CommentResponse).Text
 	}
 
 	// if post text is nil, add attachment type as text
 	if entityType == constants.Post && entityTextData == "" {
-		return " " + getPostAttachmentType(activityEntityData.(requests.PostResponse)) + "."
+		return " " + getPostAttachmentType(activityEntityData.(responses.PostResponse)) + "."
 	}
 
 	if entityType == constants.Post && entityTextData != "" {
@@ -532,7 +532,7 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	return activityText
 }
 
-func getPostAttachmentType(postResponse requests.PostResponse) string {
+func getPostAttachmentType(postResponse responses.PostResponse) string {
 	if len(postResponse.Attachments) == 0 {
 		return ""
 	}

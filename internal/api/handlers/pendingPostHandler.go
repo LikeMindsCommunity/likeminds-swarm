@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -43,7 +44,7 @@ func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string,
 
 // Internal Method to fetch multiple posts data using post_ids
 func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []string, communityId int, userId string,
-	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) (map[string]requests.PostResponse, error) {
+	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) (map[string]responses.PostResponse, error) {
 
 	// convert post_ids to object ids
 	pendingPostObjectIds := helpers.ConvertIdsToObjectIds(pendingPostIds)
@@ -63,7 +64,7 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 	}
 
 	// Make key value pair of post_id -> PostResponse
-	postResponse := map[string]requests.PostResponse{}
+	postResponse := map[string]responses.PostResponse{}
 
 	// parse post data from pending posts
 	for _, pendingPost := range pendingPostLists {

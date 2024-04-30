@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
-	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -213,7 +213,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
 
 	var commentSortOrderVal int
-	filtered_comments := map[string]requests.CommentWithParentResponse{}
+	filtered_comments := map[string]responses.CommentWithParentResponse{}
 
 	if universalFeedConfig.CommentSortOrder == enums.DescendingSortOrder {
 		commentSortOrderVal = -1
@@ -222,7 +222,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	}
 
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
-		var updatedPostsWithComments []requests.PostResponse
+		var updatedPostsWithComments []responses.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
 			response.Posts, userId, isCm, communityId, commentSortOrderVal,
 			universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
