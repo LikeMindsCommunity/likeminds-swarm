@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
@@ -525,8 +526,31 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func validateCreateCommentRequest(handlers *FeedHandlers, communityId int, createCommentRequest *requests.CreateCommentRequest,
+	apiRevampV1Check bool) error {
+
+	// strip text and check if it is empty
+	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
+	if createCommentRequest.Text == "" {
+		return fmt.Errorf("comment text cannot be empty")
+	}
+
+	if len(createCommentRequest.Attachments) > 1 {
+		return fmt.Errorf("only one attachment is allowed")
+	}
+
+	// Validate attachments for comments
+	err := ValidateAndUpdateAttachments(handlers, communityId, enums.EntityTypeComment, createCommentRequest.Attachments, apiRevampV1Check, false, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Exposed Method to comment on a Post
 func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
@@ -553,11 +577,10 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		useCustomCreationTimestamp = true
 	}
 
-	// strip text and check if it is empty
-	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
-
-	if createCommentRequest.Text == "" {
-		utils.GeneralAPIValidationError(c, "Comment text cannot be empty")
+	// validate create comment request
+	err := validateCreateCommentRequest(handlers, communityId, &createCommentRequest, apiRevampV1Check)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
@@ -570,7 +593,8 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// create comment using the helper method
 	commentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
-		constants.CommentBaseLevel, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt)
+		constants.CommentBaseLevel, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt,
+		createCommentRequest.Attachments)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -814,7 +838,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	// create comment using the helper method
 	newCommentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
-		commentData.Level+1, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt)
+		commentData.Level+1, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt,
+		createCommentRequest.Attachments)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

@@ -2,10 +2,11 @@ package requests
 
 // Request Structure for Create Comment
 type CreateCommentRequest struct {
-	Text      string   `json:"text" binding:"required"`
-	TempID    *string  `json:"temp_id"`
-	UUIDs     []string `json:"uuids"`
-	CreatedAt int      `json:"created_at"`
+	Text        string       `json:"text" binding:"required"`
+	Attachments []Attachment `json:"attachments"`
+	TempID      *string      `json:"temp_id"`
+	UUIDs       []string     `json:"uuids"`
+	CreatedAt   int          `json:"created_at"`
 }
 
 // Request Structure for Edit Comment

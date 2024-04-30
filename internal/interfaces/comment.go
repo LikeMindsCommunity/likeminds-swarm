@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -21,7 +22,7 @@ type CommentRepository interface {
 // Interface for Comment Helper
 type CommentHelper interface {
 	CreateCommentHelper(text string, postId primitive.ObjectID, communityId int, level int, userId string,
-		tempId *string, createdAt int) (interface{}, error)
+		tempId *string, createdAt int, attachments []requests.Attachment) (interface{}, error)
 	FindCommentHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Comment, error)
 	UpdateCommentByIdHelper(commentId primitive.ObjectID, update map[string]interface{}) error
 	UpdateManyCommentsHelper(filter map[string]interface{}, update map[string]interface{}) error

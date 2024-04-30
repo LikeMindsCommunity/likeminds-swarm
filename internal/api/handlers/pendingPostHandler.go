@@ -147,7 +147,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	// Validate create post request
-	errorMeta, err := validateCreatePostRequest(handlers, headers, userId, communityId, apiRevampV1Check, &cppr)
+	errorMeta, err := validateCreatePostRequest(handlers, userId, communityId, apiRevampV1Check, &cppr)
 	if err != nil && errorMeta == nil {
 		// if errorMeta is nil, then it is a general validation error
 		utils.GeneralAPIValidationError(c, err.Error())

@@ -14,7 +14,7 @@ import (
 // internal method to parse attachments
 func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 
-	var postAttachments []entities.Attachment
+	var parsedAttachments []entities.Attachment
 
 	// parse attachments
 	for _, element := range attachments {
@@ -33,10 +33,10 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 			metaData.ExpiryTime, metaData.PollType, metaData.MultipleSelectState, metaData.MultipleSelectNumber, metaData.IsAnonymous,
 			metaData.AllowAddOption, metaData.NsfwScore)
 		attachment := entities.NewAttachment(element.AttachmentType, attachmentMeta)
-		postAttachments = append(postAttachments, attachment)
+		parsedAttachments = append(parsedAttachments, attachment)
 	}
 
-	return postAttachments
+	return parsedAttachments
 }
 
 // Exposed Helper Method to Create Post

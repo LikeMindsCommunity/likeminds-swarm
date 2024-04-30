@@ -14,6 +14,7 @@ type Comment struct {
 	PostId       primitive.ObjectID   `json:"post_id" bson:"post_id"`
 	CommunityId  int                  `json:"community_id" bson:"community_id"`
 	Level        int                  `json:"level" bson:"level"`
+	Attachments  []Attachment         `json:"attachments" bson:"attachments"`
 	Replies      []primitive.ObjectID `json:"replies" bson:"replies"`
 	UserId       string               `json:"user_id" bson:"user_id"`
 	IsEdited     bool                 `json:"is_edited" bson:"is_edited"`
@@ -26,7 +27,7 @@ type Comment struct {
 
 // Exposed Method to Create a New Comment
 func NewComment(text string, postId primitive.ObjectID, communityId int, level int, userId string,
-	tempId *string, CreatedAt int) Comment {
+	tempId *string, CreatedAt int, attachments []Attachment) Comment {
 	createdAt := time.Now()
 
 	if CreatedAt > 0 {
@@ -40,6 +41,7 @@ func NewComment(text string, postId primitive.ObjectID, communityId int, level i
 		CommunityId: communityId,
 		Level:       level,
 		UserId:      userId,
+		Attachments: attachments,
 		Replies:     []primitive.ObjectID{},
 		IsDeleted:   false,
 		IsEdited:    false,
