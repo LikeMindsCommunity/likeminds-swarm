@@ -584,7 +584,7 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	}
 
 	if entityType == constants.Post && entityTextData != "" && postFeedMetadatValue != "" {
-		return fmt.Sprintf(" %s \"", postFeedMetadatValue) + entityTextData + "\""
+		return fmt.Sprintf(" %s: \"", postFeedMetadatValue) + entityTextData + "\""
 	} else if entityType == constants.Post && entityTextData != "" {
 		return " \"" + entityTextData + "\""
 	}
