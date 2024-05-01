@@ -566,7 +566,13 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	switch entityType {
 	case constants.Post,
 		constants.PendingPost:
-		entityTextData = activityEntityData.(requests.PostResponse).Text
+		postResponse := activityEntityData.(requests.PostResponse)
+
+		if postResponse.Heading != "" {
+			entityTextData = activityEntityData.(requests.PostResponse).Heading
+		} else if postResponse.Text != "" {
+			entityTextData = activityEntityData.(requests.PostResponse).Text
+		}
 
 	case constants.Comment:
 		entityTextData = activityEntityData.(requests.CommentResponse).Text
@@ -584,7 +590,12 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	}
 
 	if entityTextData == "" {
-		return entityTextData + "."
+
+		if postFeedMetadatValue != "" {
+			return postFeedMetadatValue + "."
+		} else {
+			return entityTextData + "."
+		}
 	}
 
 	activityText := " \"" + entityTextData + "\""
