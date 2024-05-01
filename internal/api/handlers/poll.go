@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
+	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -455,14 +457,20 @@ func getPollVotesDataUsingAggregation(handlers *FeedHandlers, pollId string, com
 
 // Internal Method to Fetch Votes on a Poll using aggregation
 func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communityId int,
-	optionIds []string) ([]gin.H, error) {
+	optionIds []string, page int, page_size int) ([]gin.H, error) {
 	// Run the aggregate query here
 	pollVotesFilterData := []map[string]interface{}{}
+
+	pollIdObject := helpers.ConvertIdsToObjectIds([]string{pollId})
+
+	if len(pollIdObject) == 0 {
+		return nil, errors.New("Invalid poll id")
+	}
 
 	// Add match logic
 	pollVotesFilterData = append(pollVotesFilterData, bson.M{
 		"$match": bson.M{
-			"poll_id":      pollId,
+			"poll_id":      pollIdObject[0],
 			"community_id": communityId,
 		},
 	})
@@ -482,9 +490,11 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 	// Add project logic
 	pollVotesFilterData = append(pollVotesFilterData, bson.M{
 		"$project": bson.M{
-			"_id":   0,
-			"uuid":  1,
-			"votes": 1,
+			"_id":        0,
+			"uuid":       1,
+			"votes":      1,
+			"created_at": 1,
+			"updated_at": 1,
 		},
 	})
 
@@ -506,6 +516,23 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 			},
 		})
 	}
+
+	// Add sort logic
+	pollVotesFilterData = append(pollVotesFilterData, bson.M{
+		"$sort": gin.H{
+			"updated_at": -1,
+			"created_at": 1,
+		},
+	})
+
+	// Add skip logic
+	pollVotesFilterData = append(pollVotesFilterData, gin.H{
+		"$skip": page_size * (page - 1),
+	})
+	// Add limit logic
+	pollVotesFilterData = append(pollVotesFilterData, gin.H{
+		"$limit": page_size,
+	})
 
 	// Add group logic
 	pollVotesFilterData = append(pollVotesFilterData, bson.M{
@@ -562,6 +589,13 @@ func (handlers *FeedHandlers) GetPollVotes(c *gin.Context) {
 		return
 	}
 
+	// fetch pagination query params
+	page, page_size, err := fetchPaginationParams(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
 	// response data
 	response := gin.H{
 		"success": true,
@@ -584,7 +618,7 @@ func (handlers *FeedHandlers) GetPollVotes(c *gin.Context) {
 		}
 
 		// fetch pollVotes using internal method
-		pollVotesResults, err := getPollVotesUsingAggregation(handlers, pollId, communityId, voteIds)
+		pollVotesResults, err := getPollVotesUsingAggregation(handlers, pollId, communityId, voteIds, page, page_size)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
