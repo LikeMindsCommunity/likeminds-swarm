@@ -320,7 +320,7 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 // Internal Method to fetch comment data with postId
 func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
 	memberId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, getPostData bool,
-	memberRole string) (responses.FetchCommentResponse, error) { // TODO: Confirm if pointer works
+	memberRole string) (responses.FetchCommentResponse, error) {
 
 	var response responses.FetchCommentResponse
 	// fetch comment data

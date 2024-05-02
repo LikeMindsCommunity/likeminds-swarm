@@ -242,6 +242,10 @@ func getWidgetIdsFromComments(response interface{}) []primitive.ObjectID {
 		tempWidgetIds = typeAssertAndFetchWidgetIdsFromComments(comments, tempWidgetIds)
 	}
 
+	if comments, ok := response.(gin.H)["replies"]; ok {
+		tempWidgetIds = typeAssertAndFetchWidgetIdsFromComments(comments, tempWidgetIds)
+	}
+
 	for key := range tempWidgetIds {
 		uniqueWidgetIds = append(uniqueWidgetIds, key)
 	}
@@ -448,7 +452,14 @@ func typeAssertAndFetchWidgetIdsFromPosts(posts interface{}, widgetMap map[primi
 		}
 
 	case responses.PostWithRepliesResponse:
-		widgetIds := getWidgetIdsFromAttachments(posts.Attachments)
+
+		tempAttachments := posts.Attachments
+
+		for _, reply := range posts.Replies {
+			tempAttachments = append(tempAttachments, reply.Attachments...)
+		}
+
+		widgetIds := getWidgetIdsFromAttachments(tempAttachments)
 
 		for _, widgetId := range widgetIds {
 			if _, exists := widgetMap[widgetId]; !exists {
@@ -799,11 +810,13 @@ func getPostByID(helper interfaces.PostHelper, postID string) (*entities.Post, e
 // Internal Method to fetch parsed post with replies
 func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int, filterOptions map[string]interface{},
 	memberId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
-) (interface{}, error) {
+) (responses.PostWithRepliesResponse, error) {
+
+	var postWithRepliesResponse responses.PostWithRepliesResponse
 
 	postData, err := fetchPost(handlers.postHelper, postId, communityId)
 	if err != nil {
-		return nil, err
+		return postWithRepliesResponse, err
 	}
 
 	commentFilterData := gin.H{
@@ -815,17 +828,15 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 	// fetch comment using helper method
 	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
 	if err != nil {
-		return nil, err
+		return postWithRepliesResponse, err
 	}
 
 	postResponse := parsePostResponse(handlers, *postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
 		versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
 
-	postWithRepliesResponse := responses.PostWithRepliesResponse{
-		PostResponse: postResponse,
-		Replies:      repliesResponse,
-	}
+	postWithRepliesResponse.PostResponse = postResponse
+	postWithRepliesResponse.Replies = repliesResponse
 
 	return postWithRepliesResponse, nil
 }
