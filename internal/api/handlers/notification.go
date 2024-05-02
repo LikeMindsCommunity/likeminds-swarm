@@ -19,7 +19,7 @@ func sendPendingPostApprovalNotification(handlers FeedHandlers, recieverUUID str
 	receivers := recieverUUID
 	category := constants.FeedCategory
 	subCategory := fmt.Sprintf(constants.PendingPostApprovedSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue))
-	title := fmt.Sprintf(constants.PendingPostApprovedTitle, postMetatadataValue)
+	title := fmt.Sprintf(constants.PendingPostApprovedTitle, utils.CapitalizeFirstLetter((postMetatadataValue)))
 	subTitle := fmt.Sprintf(constants.PendingPostApprovedSubTitle, postMetatadataValue)
 	route := fmt.Sprintf(utils.PostDetailRoute, postId)
 
@@ -36,7 +36,7 @@ func sendPendingPostRejectionNotification(handlers FeedHandlers, recieverUUID st
 	receivers := recieverUUID
 	category := constants.FeedCategory
 	subCategory := fmt.Sprintf(constants.PendingPostRejectedSubCategory, postMetatadataValue)
-	title := fmt.Sprintf(constants.PendingPostRejectedTitle, postMetatadataValue)
+	title := fmt.Sprintf(constants.PendingPostRejectedTitle, utils.CapitalizeFirstLetter(postMetatadataValue))
 	subTitle := fmt.Sprintf(constants.PendingPostRejectedSubTitle, postMetatadataValue)
 	route := constants.PlaceholderHomeRoute // placeholder route
 

@@ -1,6 +1,7 @@
 package externalHelpers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -9,10 +10,16 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
-func pushReport(headers gin.H, postBody gin.H) error {
+type PushReportResponse struct {
+	Success  bool `json:"success"`
+	ReportID int  `json:"report_id"`
+}
+
+func pushReport(headers gin.H, postBody gin.H) (int, error) {
+	var reportId int
 
 	if headers == nil || postBody == nil {
-		return fmt.Errorf("headers or postBody is nil")
+		return reportId, fmt.Errorf("headers or postBody is nil")
 	}
 
 	// Send request
@@ -20,19 +27,26 @@ func pushReport(headers gin.H, postBody gin.H) error {
 		nil, postBody)
 	if err != nil {
 		logging.Error(fmt.Sprintf("error while pushing report: %s", err.Error()))
-		return err
+		return reportId, err
 	}
 
 	if statusCode != http.StatusOK {
 		logging.Error(fmt.Sprintf("error while pushing report | statusCode: %d , Response:  %s", statusCode, string(respBytes)))
-		return fmt.Errorf("error while pushing report:  %s", string(respBytes))
+		return reportId, fmt.Errorf("error while pushing report:  %s", string(respBytes))
 	}
 
-	return nil
+	var pushReportResponse PushReportResponse
+
+	if err := json.Unmarshal(respBytes, &pushReportResponse); err != nil {
+		//Internal unmarshal error
+		return reportId, err
+	}
+
+	return pushReportResponse.ReportID, nil
 }
 
-// SendPendingPostForReview | Exposed method for pushing pending post for review
-func SendPendingPostForReview(userId string, communityId int, pendingPostId string) error {
+// CreatePendingPostReport | Exposed method for pushing pending post in report
+func CreatePendingPostReport(userId string, communityId int, pendingPostId string) (int, error) {
 
 	headers := gin.H{
 		"x-member-id": userId,

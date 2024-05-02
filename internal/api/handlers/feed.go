@@ -908,11 +908,25 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		return
 	}
 
+	// Get user pending posts count
+	pendingPostCountFilter := gin.H{
+		"status": gin.H{
+			"$in": []string{
+				enums.UnderReview,
+				enums.Rejected,
+			},
+		},
+		"is_deleted": false,
+		"user_id":    userId,
+	}
+	userPendingPostsCount, err := handlers.pendingPostHelper.CountPendingPostHelper(pendingPostCountFilter)
+
 	// response data
 	finalResponse := gin.H{
-		"posts_count":      postsCount,
-		"comments_count":   commentsCount,
-		"posts_like_count": userPostLikesCount,
+		"posts_count":         postsCount,
+		"comments_count":      commentsCount,
+		"posts_like_count":    userPostLikesCount,
+		"pending_posts_count": userPendingPostsCount,
 	}
 
 	// return final response

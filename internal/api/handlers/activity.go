@@ -69,6 +69,8 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
+		activityCTA := getActivityCTA(handler, activity)
+
 		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
 			ActionBy:           activity.ActionBy,
@@ -76,7 +78,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			EntityID:           activity.EntityID,
 			EntityOwnerID:      activity.EntityOwnerID,
 			UUID:               activity.EntityOwnerID,
-			CTA:                activity.CTA,
+			CTA:                activityCTA,
 			IsRead:             activity.IsRead,
 			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
 			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
@@ -273,6 +275,30 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 
 		return postData[entityID.Hex()], nil
 
+	case constants.PendingPost:
+		pendingPost, err := fetchPendingPost(handler.pendingPostHelper, entityID.Hex(), communityID)
+		if err != nil {
+			return nil, err
+		}
+
+		if pendingPost.Status != enums.Approved {
+			pendingPostData, err := fetchMultiplePendingPostsData(&handler, []string{entityID.Hex()}, communityID, userId, false, "", "",
+				apiRevampV1Check)
+			if err != nil {
+				return nil, err
+			}
+
+			return pendingPostData[entityID.Hex()], nil
+		} else {
+			postData, err := fetchMultiplePostsData(&handler, []string{pendingPost.NormalPostId}, communityID, userId, false, "", "",
+				apiRevampV1Check)
+			if err != nil {
+				return nil, err
+			}
+
+			return postData[pendingPost.NormalPostId], nil
+		}
+
 	case constants.Comment:
 
 		// If postIdForComment is not empty, fetch post data along with comment data
@@ -415,9 +441,40 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
+
+	case constants.PendingPostAccepted:
+		activityText += fmt.Sprintf("Your %s has been approved:", postFeedMetadatValue)
+		activityText += getEntityText(activity.EntityType, activityEntityData, "")
+
+		return activityText, nil
+
+	case constants.PendingPostRejected:
+		activityText += fmt.Sprintf("Your %s was not approved:", postFeedMetadatValue)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
+
+		return activityText, nil
 	}
 
 	return activityText, nil
+}
+
+func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
+	activityCTA := activity.CTA
+
+	if activity.EntityType == constants.PendingPost && activity.Action != constants.PendingPostRejected {
+		pendingPostData, _ := fetchPendingPost(handlers.pendingPostHelper, activity.EntityID.Hex(), activity.CommunityID)
+
+		if pendingPostData.Status == enums.Approved {
+			// CTA data for activity
+			ctaData := gin.H{
+				"entity_type": constants.PostEntityType,
+				"post_id":     pendingPostData.NormalPostId,
+			}
+			activityCTA = parseCTAData(ctaData)
+		}
+	}
+
+	return activityCTA
 }
 
 // Internal Method to fetch user profile activity text
@@ -487,8 +544,15 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	entityTextData := ""
 
 	switch entityType {
-	case constants.Post:
-		entityTextData = activityEntityData.(responses.PostResponse).Text
+	case constants.Post,
+		constants.PendingPost:
+		postResponse := activityEntityData.(responses.PostResponse)
+
+		if postResponse.Heading != "" {
+			entityTextData = activityEntityData.(responses.PostResponse).Heading
+		} else if postResponse.Text != "" {
+			entityTextData = activityEntityData.(responses.PostResponse).Text
+		}
 
 	case constants.Comment:
 		entityTextData = activityEntityData.(responses.CommentResponse).Text
@@ -499,12 +563,19 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 		return " " + getPostAttachmentType(activityEntityData.(responses.PostResponse)) + "."
 	}
 
-	if entityType == constants.Post && entityTextData != "" {
-		return fmt.Sprintf(" %s \"", postFeedMetadatValue) + entityTextData + "\""
+	if entityType == constants.Post && entityTextData != "" && postFeedMetadatValue != "" {
+		return fmt.Sprintf(" %s: \"", postFeedMetadatValue) + entityTextData + "\""
+	} else if entityType == constants.Post && entityTextData != "" {
+		return " \"" + entityTextData + "\""
 	}
 
 	if entityTextData == "" {
-		return entityTextData + "."
+
+		if postFeedMetadatValue != "" {
+			return postFeedMetadatValue + "."
+		} else {
+			return entityTextData + "."
+		}
 	}
 
 	activityText := " \"" + entityTextData + "\""
@@ -569,7 +640,9 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.TaggedInPost,
 		constants.TaggedInPostComment,
 		constants.AlsoCommentOnPost,
-		constants.RepostOnPost:
+		constants.RepostOnPost,
+		constants.PendingPostAccepted,
+		constants.PendingPostRejected:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
 			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId)
@@ -635,7 +708,9 @@ func fetchActivityCtaForAction(action constants.ActivityAction, ctaData map[stri
 		constants.TaggedInPost,
 		constants.TaggedInPostComment,
 		constants.AlsoCommentOnPost,
-		constants.RepostOnPost:
+		constants.RepostOnPost,
+		constants.PendingPostAccepted,
+		constants.PendingPostRejected:
 		cta = parseCTAData(ctaData)
 
 	case constants.CreatePostPermitAdded:
@@ -657,6 +732,9 @@ func parseCTAData(cta_data map[string]interface{}) string {
 			switch entity_type {
 			case constants.PostEntityType:
 				cta = fmt.Sprintf(utils.PostDetailRoute, post_id)
+
+			case constants.PendingPostEntityType:
+				cta = fmt.Sprintf(utils.PendingPostDetailRoute, post_id)
 
 			case constants.CommentEntityType:
 				if comment_id, ok := cta_data["comment_id"]; ok {

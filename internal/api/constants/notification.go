@@ -19,8 +19,8 @@ const (
 	PostLikedSubCategory                = "%s Liked"
 	CommentLikedSubCategory             = "%s Liked"
 	RepostOnPostSubCategory             = "%s Reposted"
-	PendingPostApprovedSubCategory      = "Pending %s Approved"
-	PendingPostRejectedSubCategory      = "Pending %s Rejected"
+	PendingPostApprovedSubCategory      = "%s Approval - Approved"
+	PendingPostRejectedSubCategory      = "%s Approval - Dissaproved"
 )
 
 const (

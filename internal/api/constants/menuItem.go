@@ -29,6 +29,16 @@ const (
 )
 
 const (
+	EditPendingPostMenuItemName   = "EditPendingPost"
+	DeletePendingPostMenuItemName = "DeletePendingPost"
+)
+
+const (
+	EditPendingPostMenuItemTitle   = "Edit"
+	DeletePendingPostMenuItemTitle = "Delete"
+)
+
+const (
 	DeletePostMenuItemId int = iota + 1
 	PinPostMenuItemId
 	UnpinPostMenuItemId
@@ -37,4 +47,6 @@ const (
 	DeleteCommentMenuItemId
 	ReportCommentMenuItemId
 	EditCommentMenuItemId
+	EditPendingPostMenuItemId
+	DeletePendingPostMenuItemId
 )
