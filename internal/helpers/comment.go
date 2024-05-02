@@ -15,7 +15,7 @@ import (
 
 // Exposed Helper Method to Create a Comment
 func (helper *commentHelper) CreateCommentHelper(text string, postId primitive.ObjectID, communityId int, level int, userId string,
-	tempId *string, createdAt int, attachments []requests.Attachment) (interface{}, error) {
+	tempId *string, createdAt int, attachments []requests.AttachmentRequest) (interface{}, error) {
 
 	if tempId != nil && *tempId == "" {
 		tempId = nil
@@ -52,6 +52,31 @@ func (helper *commentHelper) FindCommentHelper(filter map[string]interface{}, fi
 	}
 
 	return results, err
+}
+
+// Exposed Helper Method to Edit a Comment
+func (helper *commentHelper) EditCommentHelper(commentId primitive.ObjectID, text string, attachments []requests.AttachmentRequest,
+	markIsEdited bool) error {
+
+	// parse attachments
+	parsedAttachments := parseAttachments(attachments)
+
+	updateBody := gin.H{
+		"$set": gin.H{
+			"text":        text,
+			"attachments": parsedAttachments,
+			"updated_at":  time.Now(),
+		},
+	}
+
+	if markIsEdited {
+		updateBody["$set"].(gin.H)["is_edited"] = true
+	}
+
+	err := helper.commentRepository.Update(gin.H{"_id": commentId}, updateBody)
+
+	return err
+
 }
 
 // Exposed Helper Method to Update a Comment

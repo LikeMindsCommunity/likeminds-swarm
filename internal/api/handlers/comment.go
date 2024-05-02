@@ -256,7 +256,7 @@ func parseMultipleCommentResponse(likeHelper interfaces.LikeHelper, commentHelpe
 	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
 ) []responses.CommentResponse {
 
-	var response []responses.CommentResponse
+	response := []responses.CommentResponse{}
 	for _, comment := range comments {
 		response = append(response, parseCommentResponse(likeHelper, commentHelper, comment, userId, isCm, versionCode, platformCode,
 			apiRevampV1Check, cacheHelper, memberRole))
@@ -293,6 +293,7 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 	rawComment *entities.Comment, replies []responses.CommentResponse, userId string, isCm bool,
 	versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper,
 	memberRole string) responses.FetchCommentResponse {
+
 	var response responses.FetchCommentResponse
 
 	response.CommentResponse = parseCommentResponse(likeHelper, commentHelper, *rawComment, userId, isCm, versionCode, platformCode,
@@ -319,12 +320,13 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 // Internal Method to fetch comment data with postId
 func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
 	memberId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, getPostData bool,
-	memberRole string) (interface{}, error) {
+	memberRole string) (responses.FetchCommentResponse, error) { // TODO: Confirm if pointer works
 
+	var response responses.FetchCommentResponse
 	// fetch comment data
 	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 
 	commentFilterData := gin.H{
@@ -338,7 +340,7 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 	// fetch comment replies using helper method
 	commentResults, err := handlers.commentHelper.FindCommentHelper(commentFilterData, filterOptions)
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 
 	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
@@ -350,7 +352,7 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 	if getPostData {
 		postData, err := fetchPost(handlers.postHelper, postId, commentData.CommunityId)
 		if err != nil {
-			return nil, err
+			return response, err
 		}
 
 		// Parse post response and append to Comment's post_data
@@ -416,11 +418,16 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 		commentData, repliesResponse, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
 
-	// return final response
-	c.JSON(http.StatusOK, gin.H{
+	response := gin.H{
 		"success": true,
 		"comment": fetchCommentResponse,
-	})
+	}
+
+	// Parse comments to fetch widget_ids``
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, headers[utils.HeadersMemberId])
+
+	// return final response
+	utils.GenerateSuccessResponse(c, response)
 }
 
 // Exposed Method to fetch multiple comments by comment_ids
@@ -469,12 +476,15 @@ func (handlers *FeedHandlers) FetchComments(c *gin.Context) {
 		"comments": comments,
 	}
 
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, headers[utils.HeadersMemberId])
+
 	// return final response
 	c.JSON(http.StatusOK, response)
 }
 
 // Exposed method to fetch comment by comment_id and post_id
 func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
@@ -524,6 +534,8 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 
 	response["comment"] = fetchCommentResponse
 
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, headers[utils.HeadersMemberId])
+
 	// return final response
 	c.JSON(http.StatusOK, response)
 }
@@ -556,6 +568,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
+	userId := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -597,6 +610,21 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	commentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
 		constants.CommentBaseLevel, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt,
 		createCommentRequest.Attachments)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// process attachments for widgets
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, enums.WidgetParentEntityTypeComment, createCommentRequest.Attachments,
+		commentId.(primitive.ObjectID).Hex(), communityId, userId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// update comment data using helper method
+	err = handlers.commentHelper.EditCommentHelper(commentId.(primitive.ObjectID), createCommentRequest.Text, updatedAttachments, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -691,6 +719,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		response["comment"] = fetchCommentResponse
 	}
 
+	// Parse comments to fetch widget_ids``
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, headers[utils.HeadersMemberId])
+
 	// Delete top liked comments data in post from cache
 	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId))
 
@@ -742,6 +773,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
 	postId := c.Param("post_id")
 	commentId := c.Param("comment_id")
 
@@ -767,16 +799,16 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 		return
 	}
 
-	// comment update data
-	commentUpdateData := gin.H{
-		"$set": gin.H{
-			"text":      editCommentRequest.Text,
-			"is_edited": true,
-		},
+	// process attachments for widgets
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, enums.WidgetParentEntityTypeComment, editCommentRequest.Attachments,
+		commentData.ID.Hex(), communityId, userId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
 	}
 
-	// update comment data
-	err = handlers.commentHelper.UpdateCommentByIdHelper(commentData.ID, commentUpdateData)
+	// update comment data using helper method
+	err = handlers.commentHelper.EditCommentHelper(commentData.ID, editCommentRequest.Text, updatedAttachments, false)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -802,6 +834,8 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 		"success": true,
 		"comment": fetchCommentResponse,
 	}
+
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -849,8 +883,10 @@ func validateCommentReplyRequest(handlers *FeedHandlers, communityId int, postId
 
 // Exposed Method to Reply on a Comment
 func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
 	postId := c.Param("post_id")
 	commentId := c.Param("comment_id")
 
@@ -891,6 +927,19 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		return
 	}
 
+	// process attachments for widgets
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, enums.WidgetParentEntityTypeComment, createCommentRequest.Attachments,
+		newCommentId.(primitive.ObjectID).Hex(), communityId, userId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	err = handlers.commentHelper.EditCommentHelper(newCommentId.(primitive.ObjectID), createCommentRequest.Text, updatedAttachments, false)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 	// comment update data
 	commentUpdateData := gin.H{
 		"$push": gin.H{
@@ -999,6 +1048,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		response["comment"] = fetchCommentResponse
 	}
 
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, headers[utils.HeadersMemberId])
+
 	// return final response
 	c.JSON(http.StatusOK, response)
 }
@@ -1097,8 +1148,9 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	})
 }
 
-// Exposed Method to fetch comment by comment_id
+// Exposed Method to fetch user created comments
 func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := c.Param("user_id")
@@ -1170,7 +1222,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
 	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-	finalResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
+	finalResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
 
 	utils.GenerateSuccessResponse(c, finalResponse)
 }

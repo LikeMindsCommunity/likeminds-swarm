@@ -20,7 +20,7 @@ import (
 )
 
 // Method to validate attachments for post and comments
-func ValidateAndUpdateAttachments(handlers *FeedHandlers, communityId int, entityType string, attachments []requests.Attachment,
+func ValidateAndUpdateAttachments(handlers *FeedHandlers, communityId int, entityType string, attachments []requests.AttachmentRequest,
 	apiRevampV1check bool, isEditRequest bool, isRepost bool,
 ) error {
 
@@ -55,22 +55,19 @@ func ParseAttachmentsforResponse(attachments []entities.Attachment, apiRevampV1C
 	for _, attachment := range attachments {
 		attachmentResponse := responses.Attachment{
 			AttachmentType: attachment.AttachmentType,
-			AttachmentMeta: &responses.AttachmentMeta{
-				Name:         attachment.AttachmentMeta.Name,
-				Url:          attachment.AttachmentMeta.Url,
-				Format:       attachment.AttachmentMeta.Format,
-				Size:         attachment.AttachmentMeta.Size,
-				Duration:     attachment.AttachmentMeta.Duration,
-				Height:       attachment.AttachmentMeta.Height,
-				Width:        attachment.AttachmentMeta.Width,
-				PageCount:    attachment.AttachmentMeta.PageCount,
-				ThumbnailUrl: attachment.AttachmentMeta.ThumbnailUrl,
-				OgTags: &responses.OGTags{
-					Title:       attachment.AttachmentMeta.OgTags.Title,
-					Image:       attachment.AttachmentMeta.OgTags.Image,
-					Description: attachment.AttachmentMeta.OgTags.Description,
-					Url:         attachment.AttachmentMeta.OgTags.Url,
-				},
+		}
+
+		if attachment.AttachmentMeta != nil {
+			attachmentResponse.AttachmentMeta = &responses.AttachmentMeta{
+				Name:                 attachment.AttachmentMeta.Name,
+				Url:                  attachment.AttachmentMeta.Url,
+				Format:               attachment.AttachmentMeta.Format,
+				Size:                 attachment.AttachmentMeta.Size,
+				Duration:             attachment.AttachmentMeta.Duration,
+				Height:               attachment.AttachmentMeta.Height,
+				Width:                attachment.AttachmentMeta.Width,
+				PageCount:            attachment.AttachmentMeta.PageCount,
+				ThumbnailUrl:         attachment.AttachmentMeta.ThumbnailUrl,
 				CoverImageUrl:        attachment.AttachmentMeta.CoverImageUrl,
 				Title:                attachment.AttachmentMeta.Title,
 				Body:                 attachment.AttachmentMeta.Body,
@@ -80,17 +77,24 @@ func ParseAttachmentsforResponse(attachments []entities.Attachment, apiRevampV1C
 				MultipleSelectNumber: attachment.AttachmentMeta.MultipleSelectNumber,
 				IsAnonymous:          attachment.AttachmentMeta.IsAnonymous,
 				AllowAddOption:       attachment.AttachmentMeta.AllowAddOption,
-				// NsfwScore:            attachment.AttachmentMeta.NsfwScore,
-			},
-		}
+			}
 
-		if attachment.AttachmentMeta.EntityID != primitive.NilObjectID {
-			attachmentResponse.AttachmentMeta.EntityID = attachment.AttachmentMeta.EntityID.Hex()
+			if attachment.AttachmentMeta.OgTags != nil {
+				attachmentResponse.AttachmentMeta.OgTags = &responses.OGTags{
+					Title:       attachment.AttachmentMeta.OgTags.Title,
+					Image:       attachment.AttachmentMeta.OgTags.Image,
+					Description: attachment.AttachmentMeta.OgTags.Description,
+					Url:         attachment.AttachmentMeta.OgTags.Url,
+				}
+			}
+
+			if attachment.AttachmentMeta.EntityID != primitive.NilObjectID {
+				attachmentResponse.AttachmentMeta.EntityID = attachment.AttachmentMeta.EntityID.Hex()
+			}
 		}
 
 		// Append attachment to attachmentsData
 		parsedAttachments = append(parsedAttachments, attachmentResponse)
-
 	}
 
 	// Api revamp check for attachments
@@ -110,7 +114,7 @@ func ParseAttachmentsforResponse(attachments []entities.Attachment, apiRevampV1C
 	return parsedAttachments
 }
 
-func validateAndUpdateAttachmentsForApiRevamp(attachments []requests.Attachment) error {
+func validateAndUpdateAttachmentsForApiRevamp(attachments []requests.AttachmentRequest) error {
 
 	for i := range attachments {
 		// If type in attachments is not empty
@@ -145,7 +149,7 @@ func validateAndUpdateAttachmentsForApiRevamp(attachments []requests.Attachment)
 	return nil
 }
 
-func validatePostAttachments(communityId int, attachments []requests.Attachment, isEditRequest bool, isRepost bool, widgetHelper interfaces.WidgetHelper,
+func validatePostAttachments(communityId int, attachments []requests.AttachmentRequest, isEditRequest bool, isRepost bool, widgetHelper interfaces.WidgetHelper,
 ) error {
 
 	// validate attachment_meta
@@ -220,7 +224,7 @@ func validatePostAttachments(communityId int, attachments []requests.Attachment,
 	return nil
 }
 
-func validateCommentAttachments(communityId int, attachments []requests.Attachment, widgetHelper interfaces.WidgetHelper) error {
+func validateCommentAttachments(communityId int, attachments []requests.AttachmentRequest, widgetHelper interfaces.WidgetHelper) error {
 	for _, element := range attachments {
 		switch element.AttachmentType {
 		case enums.ImageWidget:
@@ -268,7 +272,7 @@ func validateCommentAttachments(communityId int, attachments []requests.Attachme
 }
 
 // validateRepostAttachment | validates attachments for a repost
-func validateRepostAttachment(attachment requests.Attachment) (string, bool) {
+func validateRepostAttachment(attachment requests.AttachmentRequest) (string, bool) {
 
 	switch attachment.AttachmentType {
 	case enums.PostWidget:
@@ -292,7 +296,7 @@ func validateRepostAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // validatePostAttachment | validates post as an attachment for repost
-func validatePostAttachment(attachment requests.Attachment) (string, bool) {
+func validatePostAttachment(attachment requests.AttachmentRequest) (string, bool) {
 	if attachment.AttachmentMeta.EntityID == "" {
 		return "send entity_id: <post_id> in attachment_meta", false
 	}
@@ -301,7 +305,7 @@ func validatePostAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal Method to validate image attachment
-func validateImageAttachment(attachment requests.Attachment) (string, bool) {
+func validateImageAttachment(attachment requests.AttachmentRequest) (string, bool) {
 	if attachment.AttachmentMeta.Url == "" {
 		return "send url in attachment_meta for image", false
 	}
@@ -309,7 +313,7 @@ func validateImageAttachment(attachment requests.Attachment) (string, bool) {
 	return "", true
 }
 
-func validateGIFAttachment(attachment requests.Attachment) error {
+func validateGIFAttachment(attachment requests.AttachmentRequest) error {
 	if attachment.AttachmentMeta.Url == "" {
 		return fmt.Errorf("send url in attachment_meta for gif")
 	}
@@ -318,7 +322,7 @@ func validateGIFAttachment(attachment requests.Attachment) error {
 }
 
 // Internal Method to validate video attachment
-func validateVideoAttachment(attachment requests.Attachment) (string, bool) {
+func validateVideoAttachment(attachment requests.AttachmentRequest) (string, bool) {
 	if attachment.AttachmentMeta.Url == "" {
 		return "send url in attachment_meta for video", false
 	}
@@ -331,7 +335,7 @@ func validateVideoAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal Method to validate document attachment
-func validateDocumentAttachment(attachment requests.Attachment) (string, bool) {
+func validateDocumentAttachment(attachment requests.AttachmentRequest) (string, bool) {
 	if attachment.AttachmentMeta.Url == "" {
 		return "send url in attachment_meta for document", false
 	}
@@ -348,7 +352,7 @@ func validateDocumentAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal Method to validate link attachment
-func validateLinkAttachment(attachment requests.Attachment) (string, bool) {
+func validateLinkAttachment(attachment requests.AttachmentRequest) (string, bool) {
 	if attachment.AttachmentMeta.OgTags.Url == "" {
 		return "send url in og_tags in attachment_meta for link", false
 	}
@@ -357,7 +361,7 @@ func validateLinkAttachment(attachment requests.Attachment) (string, bool) {
 }
 
 // Internal Method to validate custom attachment with context
-func validateAndUpdateCustomWidgetAttachment(widgetHelper interfaces.WidgetHelper, attachment requests.Attachment, communityId int,
+func validateAndUpdateCustomWidgetAttachment(widgetHelper interfaces.WidgetHelper, attachment requests.AttachmentRequest, communityId int,
 ) error {
 
 	widgetId := attachment.AttachmentMeta.EntityID
@@ -380,7 +384,7 @@ func validateAndUpdateCustomWidgetAttachment(widgetHelper interfaces.WidgetHelpe
 }
 
 // Internal Method to validate poll attachment
-func validatePollAttachment(attachment requests.Attachment, isEditRequest bool) (string, bool) {
+func validatePollAttachment(attachment requests.AttachmentRequest, isEditRequest bool) (string, bool) {
 	if attachment.AttachmentMeta.Title == "" {
 		return "send title in attachment_meta for poll widget", false
 	}
@@ -412,7 +416,7 @@ func validatePollAttachment(attachment requests.Attachment, isEditRequest bool) 
 }
 
 // Internal Method to validate article attachment
-func validateArticleAttachment(attachment requests.Attachment) (string, bool) {
+func validateArticleAttachment(attachment requests.AttachmentRequest) (string, bool) {
 	if attachment.AttachmentMeta.Body == "" {
 		return "Send body in attachment_meta for article", false
 	}
@@ -454,7 +458,7 @@ func processPollCustomAttachmentData(metaData map[string]interface{}) map[string
 }
 
 // Internal Method to process meta data before widget creation
-func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData map[string]interface{},
+func processMetaBeforeWidgetCreation(attachment requests.AttachmentRequest, metaData map[string]interface{},
 	lmMeta map[string]interface{}, uuid string) (map[string]interface{}, map[string]interface{}, error) {
 	switch attachment.AttachmentType {
 	case enums.PollWidget:
@@ -477,7 +481,7 @@ func processMetaBeforeWidgetCreation(attachment requests.Attachment, metaData ma
 }
 
 // Internal Method to process meta data before widget edition
-func processMetaBeforeWidgetEdition(attachment requests.Attachment, metaData map[string]interface{},
+func processMetaBeforeWidgetEdition(attachment requests.AttachmentRequest, metaData map[string]interface{},
 	existingMetaData map[string]interface{}) map[string]interface{} {
 	updatedMetaData := existingMetaData
 
@@ -520,7 +524,7 @@ func getPostAttachmentDataFromPost(post entities.Post) entities.Attachment {
 
 // Internal Method to validate/update post images for NSFW score and return error meta
 func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId string, communityId int,
-	attachments *[]requests.Attachment, existingAttachments *[]entities.Attachment) (gin.H, error) {
+	attachments *[]requests.AttachmentRequest, existingAttachments *[]entities.Attachment) (gin.H, error) {
 
 	// Check if NSFW Filtering is enabled and API Key is present
 	enabled, configuration := externalHelpers.GetNSFWConfigurationsOrDefault(cacheHelper, userId, communityId)
@@ -592,7 +596,7 @@ func validateAndUpdatePostImagesForNSFWContent(cacheHelper cache.Helper, userId 
 
 // Internal method to fetch NSFW score for images in parallel
 func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userId string, communityId int,
-	inferdoApiKey string, attachments []requests.Attachment, existingImgUrls map[string]bool) []float64 {
+	inferdoApiKey string, attachments []requests.AttachmentRequest, existingImgUrls map[string]bool) []float64 {
 
 	nsfwScores := make([]float64, len(attachments))
 
@@ -611,7 +615,7 @@ func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userI
 			wg.Add(1)
 
 			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
-			go func(index int, attachment requests.Attachment) {
+			go func(index int, attachment requests.AttachmentRequest) {
 
 				// Decrement the counter when the goroutine completes.
 				defer wg.Done()
@@ -648,10 +652,10 @@ func validateRepostPostAttachment(postData *entities.Post, editPostRequest reque
 }
 
 // Internal Method to process attachments for widgets
-func ProcessAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType string, attachments []requests.Attachment,
-	postId string, communityId int, uuid string) ([]requests.Attachment, error) {
+func ProcessAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType string, attachments []requests.AttachmentRequest,
+	parentEntityId string, communityId int, userId string) ([]requests.AttachmentRequest, error) {
 
-	updatedAttachments := []requests.Attachment{}
+	updatedAttachments := []requests.AttachmentRequest{}
 
 	for _, attachment := range attachments {
 		isLMCreatedCustomWidget := false
@@ -703,13 +707,13 @@ func ProcessAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 				lmMeta := map[string]interface{}{}
 
 				// process meta data before widget creation
-				metaData, lmMeta, err := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, uuid)
+				metaData, lmMeta, err := processMetaBeforeWidgetCreation(attachment, metaData, lmMeta, userId)
 				if err != nil {
 					return nil, err
 				}
 
 				// create widget from given metadata
-				widgetData, err := createWidget(handlers, true, postId, parentEntityType, metaData, lmMeta, communityId)
+				widgetData, err := createWidget(handlers, true, parentEntityId, parentEntityType, metaData, lmMeta, communityId)
 				if err != nil {
 					return nil, err
 				}
@@ -719,9 +723,9 @@ func ProcessAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 			}
 
 			// updated attachment
-			updatedAttachment := requests.Attachment{
+			updatedAttachment := requests.AttachmentRequest{
 				AttachmentType: attachment.AttachmentType,
-				AttachmentMeta: requests.AttachmentMeta{
+				AttachmentMeta: requests.AttachmentMetaRequest{
 					EntityID: entityId,
 				},
 			}
@@ -736,15 +740,15 @@ func ProcessAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 			if entityId == "" && widgetMeta != nil {
 
 				// create widget from given metadata
-				widgetData, err := createWidget(handlers, false, postId, parentEntityType, widgetMeta, nil, communityId)
+				widgetData, err := createWidget(handlers, false, parentEntityId, parentEntityType, widgetMeta, nil, communityId)
 				if err != nil {
 					return nil, err
 				}
 
 				// update attachment with widget id
-				attachment = requests.Attachment{
+				attachment = requests.AttachmentRequest{
 					AttachmentType: attachment.AttachmentType,
-					AttachmentMeta: requests.AttachmentMeta{
+					AttachmentMeta: requests.AttachmentMetaRequest{
 						EntityID: widgetData.ID.Hex(),
 					},
 				}

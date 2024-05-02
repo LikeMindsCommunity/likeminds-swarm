@@ -3,7 +3,7 @@ package requests
 import "github.com/nateshr/likeminds-swarm/internal/api/enums"
 
 // OG Tags Structure
-type OGTags struct {
+type OGTagsRequest struct {
 	Title       string `json:"title,omitempty"`
 	Image       string `json:"image,omitempty"`
 	Description string `json:"description,omitempty"`
@@ -11,7 +11,7 @@ type OGTags struct {
 }
 
 // Attachment Meta Structure
-type AttachmentMeta struct {
+type AttachmentMetaRequest struct {
 	Name                 string                 `json:"name,omitempty"`
 	Url                  string                 `json:"url,omitempty"`
 	Format               string                 `json:"format,omitempty"`
@@ -21,7 +21,7 @@ type AttachmentMeta struct {
 	Height               int                    `json:"height,omitempty"`
 	PageCount            int                    `json:"page_count,omitempty"`
 	ThumbnailUrl         string                 `json:"thumbnail_url,omitempty"`
-	OgTags               OGTags                 `json:"og_tags,omitempty"`
+	OgTags               OGTagsRequest          `json:"og_tags,omitempty"`
 	EntityID             string                 `json:"entity_id,omitempty"`
 	CoverImageUrl        string                 `json:"cover_image_url,omitempty"`
 	Title                string                 `json:"title,omitempty"`
@@ -38,10 +38,10 @@ type AttachmentMeta struct {
 	NsfwScore            float64                `json:"-,omitempty"` // field to be updated internally
 }
 
-// Attachment Structure
-type Attachment struct {
-	AttachmentType int                  `json:"attachment_type"`
-	AttachmentMeta AttachmentMeta       `json:"attachment_meta"`
-	Type           enums.AttachmentType `json:"type"`
-	MetaData       AttachmentMeta       `json:"meta_data"`
+// AttachmentRequest Structure
+type AttachmentRequest struct {
+	AttachmentType int                   `json:"attachment_type"`
+	AttachmentMeta AttachmentMetaRequest `json:"attachment_meta"`
+	Type           enums.AttachmentType  `json:"type"`
+	MetaData       AttachmentMetaRequest `json:"meta_data"`
 }

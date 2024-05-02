@@ -251,7 +251,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost) (*entities.Post, error) {
 
 	// Create attachments
-	requestAttachments := []requests.Attachment{}
+	requestAttachments := []requests.AttachmentRequest{}
 
 	// marshal attachments
 	bytes, err := json.Marshal(pendingPostData.PostData.Attachments)

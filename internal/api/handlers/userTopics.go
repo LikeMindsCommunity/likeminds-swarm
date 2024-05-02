@@ -88,7 +88,7 @@ func fetchUserTopicsForResponse(handlers *FeedHandlers, userIds []string, commun
 	}
 
 	// fetch widgets
-	widgetsMap := getWidgetDataFromPostsAndTopics(handlers, gin.H{"topics": topicsMap}, communityId, userIsCm, userId)
+	widgetsMap := getWidgetDataFromFeedResponse(handlers, gin.H{"topics": topicsMap}, communityId, userIsCm, userId)
 
 	return userTopicsMap, topicsMap, widgetsMap, nil
 }

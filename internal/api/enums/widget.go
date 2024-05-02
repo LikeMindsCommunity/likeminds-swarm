@@ -6,4 +6,5 @@ const (
 	WidgetParentEntityTypeMessage string = "message"
 	WidgetParentEntityTypeUser    string = "user"
 	WidgetParentEntityTypeTopic   string = "topic"
+	WidgetParentEntityTypeComment string = "comment"
 )

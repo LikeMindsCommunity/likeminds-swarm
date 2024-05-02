@@ -113,17 +113,17 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 // Internal Method to fetch pollVotes Data Map for poll options
 func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map[string]interface{},
-	communityId int, uniqueVotersOnPoll int64, uuid string) (gin.H, error) {
+	communityId int, uniqueVotersOnPoll int64, userId string) (gin.H, error) {
 	pollVotesData := []gin.H{}
 	parsedPollVotesData := gin.H{}
 	var err error
 
 	pollType, pollTypeExists := metaData["poll_type"]
-	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
+	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, userId)
 
 	if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil) {
 		// Fetch poll Votes Data
-		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, uuid)
+		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, userId)
 		if err != nil {
 			return parsedPollVotesData, err
 		}
@@ -141,7 +141,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
-	communityId int, userIsCm bool, uuid string, parentEntityId string) map[string]interface{} {
+	communityId int, userIsCm bool, userId string, parentEntityId string) map[string]interface{} {
 	// If option exists in LM Meta, it is a poll widget
 	if _, exists := lmMeta["options"]; exists {
 		uniqueVotersOnPoll, err := getUniqueVotersOnPoll(handlers, entityId, communityId)
@@ -151,7 +151,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		}
 
 		// fetch poll votes data
-		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, communityId, uniqueVotersOnPoll, uuid)
+		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, communityId, uniqueVotersOnPoll, userId)
 		if err != nil {
 			return lmMeta
 		}
@@ -167,7 +167,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 			return lmMeta
 		}
 
-		updatedOptions, toShowResults := parsePollResults(userIsCm, metaData["expiry_time"].(float64), uuid, post.UserId, metaData["poll_type"].(string), options, parsedPollVotesData)
+		updatedOptions, toShowResults := parsePollResults(userIsCm, metaData["expiry_time"].(float64), userId, post.UserId, metaData["poll_type"].(string), options, parsedPollVotesData)
 		lmMeta["options"] = updatedOptions
 		lmMeta["to_show_results"] = toShowResults
 
@@ -179,7 +179,9 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 }
 
 // Internal Method to parse the poll results and handle results visibility
-func parsePollResults(userIsCm bool, pollExpiryTime float64, uuid string, postCreatorId string, pollType string, options []gin.H, parsedPollVotesData gin.H) ([]gin.H, bool) {
+func parsePollResults(userIsCm bool, pollExpiryTime float64, userId string, postCreatorId string, pollType string,
+	options []gin.H, parsedPollVotesData gin.H) ([]gin.H, bool) {
+
 	//if the user has voted on atleast one of the options
 	atLeastOneSelected := false
 
@@ -205,7 +207,7 @@ func parsePollResults(userIsCm bool, pollExpiryTime float64, uuid string, postCr
 	}
 
 	//logic to handle the visibility of poll's results
-	if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || uuid == postCreatorId {
+	if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || userId == postCreatorId {
 		return options, true
 	} else if pollType == enums.InstantPollType && atLeastOneSelected {
 		return options, true
@@ -236,14 +238,14 @@ func getAnswerTextForPoll(uniqueVotersOnPoll int64) string {
 }
 
 // Internal Method to parse Widget for response
-func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, uuid string) requests.WidgetResponse {
+func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, userId string) requests.WidgetResponse {
 	var response requests.WidgetResponse
 
 	response.ID = widget.ID
 	response.ParentEntityID = widget.ParentEntityID
 	response.ParentEntityType = widget.ParentEntityType
 	response.MetaData = widget.MetaData
-	response.LMMeta = parseLMMeta(handlers, widget.ID.Hex(), widget.MetaData, widget.LMMeta, communityId, userIsCM, uuid, widget.ParentEntityID)
+	response.LMMeta = parseLMMeta(handlers, widget.ID.Hex(), widget.MetaData, widget.LMMeta, communityId, userIsCM, userId, widget.ParentEntityID)
 
 	response.CreatedAt = int(widget.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(widget.UpdatedAt.UnixMilli())

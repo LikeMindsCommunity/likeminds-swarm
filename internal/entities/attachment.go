@@ -1,7 +1,6 @@
 package entities
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -40,10 +39,8 @@ type AttachmentMeta struct {
 
 // Structure for Attachment
 type Attachment struct {
-	AttachmentType int                  `json:"attachment_type,omitempty" bson:"attachment_type,omitempty"`
-	AttachmentMeta *AttachmentMeta      `json:"attachment_meta,omitempty" bson:"attachment_meta,omitempty"`
-	Type           enums.AttachmentType `json:"type,omitempty" bson:"type,omitempty"`
-	MetaData       *AttachmentMeta      `json:"meta_data,omitempty" bson:"meta_data,omitempty"`
+	AttachmentType int             `json:"attachment_type,omitempty" bson:"attachment_type,omitempty"`
+	AttachmentMeta *AttachmentMeta `json:"attachment_meta,omitempty" bson:"attachment_meta,omitempty"`
 }
 
 // Exposed Method to Create New Attachment
