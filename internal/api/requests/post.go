@@ -113,6 +113,8 @@ type PostResponse struct {
 	CreatedAt          int                   `json:"created_at"`
 	UpdatedAt          int                   `json:"updated_at"`
 	CommentIDs         []string              `json:"comment_ids"`
+	IsPendingPost      bool                  `json:"is_pending_post"`
+	PostStatus         string                `json:"post_status"`
 }
 
 // Response Structure for Menu Item of an Entity

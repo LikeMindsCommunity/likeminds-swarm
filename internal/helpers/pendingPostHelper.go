@@ -14,7 +14,7 @@ import (
 // Exposed Helper Method to Create Pending Post
 func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading string, communityId int, userId string,
 	attachments []requests.Attachment, chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, isRepost bool, createdAt int, postType string) (interface{}, error) {
+	visibility string, isRepost bool, createdAt int, status string, UUIDs []string) (interface{}, error) {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -24,7 +24,7 @@ func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading st
 	}
 
 	pendingPost := entities.NewPendingPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId,
-		topicIds, originalAuthorUUID, visibility, isRepost, createdAt, postType)
+		topicIds, originalAuthorUUID, visibility, isRepost, createdAt, status, UUIDs)
 	id, err := helper.pendingPostRepository.Create(&pendingPost)
 
 	return id, err
@@ -32,7 +32,7 @@ func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading st
 
 // Exposed Helper Method to Edit Post
 func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
-	topicIds []primitive.ObjectID, visibility string, markIsEdited bool, postType string) error {
+	topicIds []primitive.ObjectID, visibility string, markIsEdited bool, status string, UUIDs []string) error {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -45,8 +45,9 @@ func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, tex
 			"post_data.attachments": postAttachments,
 			"post_data.topic_ids":   topicIds,
 			"post_data.visibility":  visibility,
-			"post_type":             postType,
+			"status":                status,
 			"updated_at":            time.Now(),
+			"uuids":                 UUIDs,
 		},
 	}
 
@@ -57,7 +58,6 @@ func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, tex
 	err := helper.pendingPostRepository.Update(gin.H{"_id": id}, updateBody)
 
 	return err
-
 }
 
 // Exposed Helper Method to Find Pending Post

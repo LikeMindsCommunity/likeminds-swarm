@@ -18,10 +18,11 @@ const (
 )
 
 const (
-	CreatePostRoute    string = "route://create_post"
-	HomeFeedRoute      string = "route://feed?type=universal"
-	PostDetailRoute    string = "route://post_detail?post_id=%s"
-	CommentDetailRoute string = "route://post_detail?post_id=%s&comment_id=%s"
+	CreatePostRoute        string = "route://create_post"
+	HomeFeedRoute          string = "route://feed?type=universal"
+	PostDetailRoute        string = "route://post_detail?post_id=%s"
+	CommentDetailRoute     string = "route://post_detail?post_id=%s&comment_id=%s"
+	PendingPostDetailRoute string = "route://pending_post_detail?post_id=%s"
 )
 
 // Member Roles

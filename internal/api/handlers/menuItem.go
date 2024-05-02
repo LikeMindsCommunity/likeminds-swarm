@@ -58,6 +58,14 @@ func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalE
 		menuId = constants.EditCommentMenuItemId
 		menuTitle = constants.EditCommentMenuItemTitle
 
+	case constants.EditPendingPostMenuItemName:
+		menuId = constants.EditPendingPostMenuItemId
+		menuTitle = constants.EditPendingPostMenuItemTitle
+
+	case constants.DeletePendingPostMenuItemName:
+		menuId = constants.DeletePendingPostMenuItemId
+		menuTitle = constants.DeletePendingPostMenuItemTitle
+
 	}
 
 	return requests.MenuResponse{
@@ -156,6 +164,16 @@ func GetNotIsOwnerIsCmCommentMenuItems(isEditCheck bool, externalEntities extern
 // Exposed Method to get Comment Menu for members
 func GetNotIsOwnerNotIsCmCommentMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
 	menuItems := []requests.MenuResponse{getMenuItem(constants.ReportCommentMenuItemName, externalEntities)}
+
+	return menuItems
+}
+
+// Exposed Method to get Pending Post Menu for creators
+func GetPendingPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
+	menuItems := []requests.MenuResponse{
+		getMenuItem(constants.EditPendingPostMenuItemName, externalEntities),
+		getMenuItem(constants.DeletePendingPostMenuItemName, externalEntities),
+	}
 
 	return menuItems
 }
