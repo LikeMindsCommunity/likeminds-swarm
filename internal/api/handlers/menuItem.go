@@ -169,8 +169,8 @@ func GetNotIsOwnerNotIsCmCommentMenuItems(isEditCheck bool, externalEntities ext
 }
 
 // Exposed Method to get Pending Post Menu for creators
-func GetPendingPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []requests.MenuResponse {
-	menuItems := []requests.MenuResponse{
+func GetPendingPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+	menuItems := []responses.MenuResponse{
 		getMenuItem(constants.EditPendingPostMenuItemName, externalEntities),
 		getMenuItem(constants.DeletePendingPostMenuItemName, externalEntities),
 	}

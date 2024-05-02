@@ -33,7 +33,7 @@ func ValidateAndUpdateAttachments(handlers *FeedHandlers, communityId int, entit
 	}
 
 	switch entityType {
-	case enums.EntityTypePost:
+	case enums.EntityTypePost, enums.EntityTypePendingPost:
 		return validatePostAttachments(communityId, attachments, isEditRequest, isRepost, handlers.widgetHelper)
 
 	case enums.EntityTypeComment:

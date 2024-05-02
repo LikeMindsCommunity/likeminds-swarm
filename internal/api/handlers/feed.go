@@ -920,6 +920,10 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		"user_id":    userId,
 	}
 	userPendingPostsCount, err := handlers.pendingPostHelper.CountPendingPostHelper(pendingPostCountFilter)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// response data
 	finalResponse := gin.H{

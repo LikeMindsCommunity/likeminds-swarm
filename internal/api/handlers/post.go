@@ -593,13 +593,12 @@ func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string
 
 // Internal method of adding topics, reposted_posts, widgets data in response
 func addMetadataInResponse(handlers *FeedHandlers, response gin.H, communityId int, memberId string, platformCode string,
-	versionCode string, userIsCM bool, apiRevampV1Check bool, addTopicsData bool, addRespostedPostsData bool,
-	addWidgetsData bool) gin.H {
+	versionCode string, userIsCM bool, apiRevampV1Check bool) gin.H {
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, memberId, userIsCM,
 		versionCode, platformCode, apiRevampV1Check)
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, userIsCM, memberId)
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, userIsCM, memberId)
 
 	return response
 }
@@ -1822,8 +1821,6 @@ func deleteOriginalPostRepostWidgetData(handlers *FeedHandlers, postData *entiti
 
 	// update widget data
 	handlers.widgetHelper.UpdateWidgetByIdHelper(repostWidgetID, widgetUpdateData)
-
-	return
 }
 
 func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entities.Post, headers map[string]string) error {
