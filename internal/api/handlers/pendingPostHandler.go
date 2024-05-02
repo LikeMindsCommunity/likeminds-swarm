@@ -308,7 +308,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 		}
 
 		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.Post,
-			postData.ID, postData.UserId, constants.AcceptPendingPost, ctaData, false, false, primitive.NilObjectID)
+			postData.ID, postData.UserId, constants.PendingPostAccepted, ctaData, false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -326,7 +326,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 		}
 
 		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.PendingPost,
-			pendingPostData.ID, pendingPostData.UserId, constants.RejectPendingPost, ctaData, false, false, primitive.NilObjectID)
+			pendingPostData.ID, pendingPostData.UserId, constants.PendingPostRejected, ctaData, false, false, primitive.NilObjectID)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return

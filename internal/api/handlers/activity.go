@@ -462,13 +462,13 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 		return activityText, nil
 
-	case constants.AcceptPendingPost:
+	case constants.PendingPostAccepted:
 		activityText += fmt.Sprintf("Your %s has been approved:", postFeedMetadatValue)
 		activityText += getEntityText(activity.EntityType, activityEntityData, "")
 
 		return activityText, nil
 
-	case constants.RejectPendingPost:
+	case constants.PendingPostRejected:
 		activityText += fmt.Sprintf("Your %s was not approved:", postFeedMetadatValue)
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
@@ -481,7 +481,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
 	activityCTA := activity.CTA
 
-	if activity.EntityType == constants.PendingPost && activity.Action != constants.RejectPendingPost {
+	if activity.EntityType == constants.PendingPost && activity.Action != constants.PendingPostRejected {
 		pendingPostData, _ := fetchPendingPost(handlers.pendingPostHelper, activity.EntityID.Hex(), activity.CommunityID)
 
 		if pendingPostData.Status == enums.Approved {
@@ -661,8 +661,8 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.TaggedInPostComment,
 		constants.AlsoCommentOnPost,
 		constants.RepostOnPost,
-		constants.AcceptPendingPost,
-		constants.RejectPendingPost:
+		constants.PendingPostAccepted,
+		constants.PendingPostRejected:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
 			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId)
@@ -729,8 +729,8 @@ func fetchActivityCtaForAction(action constants.ActivityAction, ctaData map[stri
 		constants.TaggedInPostComment,
 		constants.AlsoCommentOnPost,
 		constants.RepostOnPost,
-		constants.AcceptPendingPost,
-		constants.RejectPendingPost:
+		constants.PendingPostAccepted,
+		constants.PendingPostRejected:
 		cta = parseCTAData(ctaData)
 
 	case constants.CreatePostPermitAdded:

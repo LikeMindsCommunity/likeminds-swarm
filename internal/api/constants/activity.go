@@ -84,11 +84,11 @@ const (
 	// RepostOnPost | repost on post
 	RepostOnPost ActivityAction = 13
 
-	// AcceptPendingPost | Accepted the pending post
-	AcceptPendingPost ActivityAction = 14
+	// PendingPostAccepted | Accepted the pending post
+	PendingPostAccepted ActivityAction = 14
 
-	// AcceptPendingPost | Rejected the pending post
-	RejectPendingPost ActivityAction = 15
+	// PendingPostRejected | Rejected the pending post
+	PendingPostRejected ActivityAction = 15
 )
 
 // ActivityCacheKey | cache key for activity instance
