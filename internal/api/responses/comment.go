@@ -6,26 +6,26 @@ import (
 
 // Response Structure for Comment
 type CommentResponse struct {
-	ID            primitive.ObjectID `json:"_id"`
-	TempID        *string            `json:"temp_id"`
-	Text          string             `json:"text"`
-	Level         int                `json:"level"`
-	UserId        string             `json:"user_id,omitempty"`
-	UUID          string             `json:"uuid"`
-	CommunityId   int                `json:"community_id,omitempty"`
-	PostId        primitive.ObjectID `json:"post_id,omitempty"`
-	IsLiked       bool               `json:"is_liked"`
-	Attachments   []Attachment       `json:"attachments"`
-	LikesCount    int                `json:"likes_count"`
-	CommentsCount int                `json:"comments_count"`
-	IsEdited      bool               `json:"is_edited"`
-	IsDeleted     bool               `json:"is_deleted,omitempty"`
-	DeletedBy     string             `json:"deleted_by,omitempty"`
-	DeletedByUUID string             `json:"deleted_by_uuid,omitempty"`
-	DeleteReason  string             `json:"delete_reason,omitempty"`
-	MenuItems     []MenuResponse     `json:"menu_items"`
-	CreatedAt     int                `json:"created_at"`
-	UpdatedAt     int                `json:"updated_at"`
+	ID            primitive.ObjectID   `json:"_id"`
+	TempID        *string              `json:"temp_id"`
+	Text          string               `json:"text"`
+	Level         int                  `json:"level"`
+	UserId        string               `json:"user_id,omitempty"`
+	UUID          string               `json:"uuid"`
+	CommunityId   int                  `json:"community_id,omitempty"`
+	PostId        primitive.ObjectID   `json:"post_id,omitempty"`
+	IsLiked       bool                 `json:"is_liked"`
+	Attachments   []AttachmentResponse `json:"attachments"`
+	LikesCount    int                  `json:"likes_count"`
+	CommentsCount int                  `json:"comments_count"`
+	IsEdited      bool                 `json:"is_edited"`
+	IsDeleted     bool                 `json:"is_deleted,omitempty"`
+	DeletedBy     string               `json:"deleted_by,omitempty"`
+	DeletedByUUID string               `json:"deleted_by_uuid,omitempty"`
+	DeleteReason  string               `json:"delete_reason,omitempty"`
+	MenuItems     []MenuResponse       `json:"menu_items"`
+	CreatedAt     int                  `json:"created_at"`
+	UpdatedAt     int                  `json:"updated_at"`
 }
 
 // Response Structure for Comment with Parent

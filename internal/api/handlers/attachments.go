@@ -47,18 +47,18 @@ func ValidateAndUpdateAttachments(handlers *FeedHandlers, communityId int, entit
 
 // Internal Method to parse post & comment attachments
 func ParseAttachmentsforResponse(attachments []entities.Attachment, apiRevampV1Check bool,
-) []responses.Attachment {
+) []responses.AttachmentResponse {
 
-	parsedAttachments := []responses.Attachment{}
+	parsedAttachments := []responses.AttachmentResponse{}
 
 	// Convert attachments to requests.Attachment
 	for _, attachment := range attachments {
-		attachmentResponse := responses.Attachment{
+		attachmentResponse := responses.AttachmentResponse{
 			AttachmentType: attachment.AttachmentType,
 		}
 
 		if attachment.AttachmentMeta != nil {
-			attachmentResponse.AttachmentMeta = &responses.AttachmentMeta{
+			attachmentResponse.AttachmentMeta = &responses.AttachmentMetaResponse{
 				Name:                 attachment.AttachmentMeta.Name,
 				Url:                  attachment.AttachmentMeta.Url,
 				Format:               attachment.AttachmentMeta.Format,
@@ -80,7 +80,7 @@ func ParseAttachmentsforResponse(attachments []entities.Attachment, apiRevampV1C
 			}
 
 			if attachment.AttachmentMeta.OgTags != nil {
-				attachmentResponse.AttachmentMeta.OgTags = &responses.OGTags{
+				attachmentResponse.AttachmentMeta.OgTags = &responses.OGTagsResponse{
 					Title:       attachment.AttachmentMeta.OgTags.Title,
 					Image:       attachment.AttachmentMeta.OgTags.Image,
 					Description: attachment.AttachmentMeta.OgTags.Description,
@@ -763,7 +763,7 @@ func ProcessAttachmentsForWidgets(handlers *FeedHandlers, parentEntityType strin
 }
 
 // Internal Method to parse widget_ids from attachments
-func getWidgetIdsFromAttachments(attachments []responses.Attachment) []primitive.ObjectID {
+func getWidgetIdsFromAttachments(attachments []responses.AttachmentResponse) []primitive.ObjectID {
 	widgetIds := map[primitive.ObjectID]bool{}
 	finalWidgetIds := []primitive.ObjectID{}
 

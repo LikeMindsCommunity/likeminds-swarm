@@ -23,7 +23,7 @@ type PostResponse struct {
 	IsPinned           bool                 `json:"is_pinned"`
 	UserId             string               `json:"user_id,omitempty"`
 	UUID               string               `json:"uuid,omitempty"`
-	Attachments        []Attachment         `json:"attachments"`
+	Attachments        []AttachmentResponse `json:"attachments"`
 	LikesCount         int                  `json:"likes_count"`
 	CommentsCount      int                  `json:"comments_count"`
 	RepostCount        int32                `json:"repost_count"`

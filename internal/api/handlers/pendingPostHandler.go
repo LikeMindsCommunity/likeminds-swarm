@@ -25,7 +25,7 @@ func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.Pendi
 	versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
 ) responses.PostResponse {
 
-	// memberRole = utils.GuestRole
+	memberRole = utils.GuestRole
 
 	postResponse := parsePostResponse(handlers, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
 
