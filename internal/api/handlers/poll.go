@@ -521,7 +521,7 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 	pollVotesFilterData = append(pollVotesFilterData, bson.M{
 		"$sort": gin.H{
 			"updated_at": -1,
-			"created_at": 1,
+			"created_at": -1,
 		},
 	})
 
