@@ -13,7 +13,7 @@ import (
 
 // Exposed Helper Method to Create Pending Post
 func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading string, communityId int, userId string,
-	attachments []requests.Attachment, chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
+	attachments []requests.AttachmentRequest, chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
 	visibility string, isRepost bool, createdAt int, status string, UUIDs []string) (interface{}, error) {
 
 	// parse attachments
@@ -31,7 +31,7 @@ func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading st
 }
 
 // Exposed Helper Method to Edit Post
-func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
+func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, text string, heading string, attachments []requests.AttachmentRequest,
 	topicIds []primitive.ObjectID, visibility string, markIsEdited bool, status string, UUIDs []string) error {
 
 	// parse attachments

@@ -10,10 +10,10 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -21,34 +21,32 @@ import (
 )
 
 // Internal Method to parse pending post for response
-func parsePendingPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, pendingPost entities.PendingPost,
-	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
-) requests.FetchPostResponse {
+func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.PendingPost, userId string, isCm bool,
+	versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
+) responses.PostResponse {
 
 	memberRole = utils.GuestRole
 
-	postResponse := parsePostResponse(likeHelper, commentHelper, saveHelper, topicHelper, widgetHelper,
-		pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper, memberRole)
+	postResponse := parsePostResponse(handlers, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
 
 	postResponse.MenuItems = getEntityMenuItems(constants.PendingPostEntityType, isCm,
-		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, versionCode, platformCode, userId, pendingPost.PostData.CommunityId, cacheHelper)
+		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, versionCode, platformCode, userId, pendingPost.PostData.CommunityId, handlers.cacheHelper)
 
 	postResponse.IsPendingPost = true
 	postResponse.PostStatus = pendingPost.Status
 
-	return parseFetchPostResponse(likeHelper, commentHelper, postResponse, nil)
+	return postResponse
 }
 
 // Internal Method to parse multiple pending posts for response
-func parseMultiplePendingPostResponse(likeHelper interfaces.LikeHelper, commentHelper interfaces.CommentHelper,
-	saveHelper interfaces.SaveHelper, topicHelper interfaces.TopicHelper, widgetHelper interfaces.WidgetHelper, pendingPosts []entities.PendingPost, userId string,
-	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string) []requests.FetchPostResponse {
-	response := []requests.FetchPostResponse{}
+func parseMultiplePendingPostResponse(handlers *FeedHandlers, pendingPosts []entities.PendingPost, userId string, isCm bool,
+	versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
+) []responses.PostResponse {
+
+	response := []responses.PostResponse{}
 
 	for _, pendingPost := range pendingPosts {
-		response = append(response, parsePendingPostResponse(likeHelper, commentHelper, saveHelper, topicHelper, widgetHelper,
-			pendingPost, userId, isCm, versionCode, platformCode, apiRevampV1Check, cacheHelper, memberRole))
+		response = append(response, parsePendingPostResponse(handlers, pendingPost, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole))
 	}
 
 	return response
@@ -72,7 +70,7 @@ func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string,
 
 	// validation of post_id
 	if len(results) == 0 {
-		return nil, fmt.Errorf("Invalid pending_post_id")
+		return nil, fmt.Errorf("invalid pending_post_id")
 	}
 
 	return &results[0], nil
@@ -80,7 +78,7 @@ func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string,
 
 // Internal Method to fetch multiple posts data using post_ids
 func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []string, communityId int, userId string,
-	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) (map[string]requests.PostResponse, error) {
+	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) (map[string]responses.PostResponse, error) {
 
 	// convert post_ids to object ids
 	pendingPostObjectIds := helpers.ConvertIdsToObjectIds(pendingPostIds)
@@ -100,12 +98,12 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 	}
 
 	// Make key value pair of post_id -> PostResponse
-	postResponse := map[string]requests.PostResponse{}
+	postResponse := map[string]responses.PostResponse{}
 
 	// parse post data from pending posts
 	for _, pendingPost := range pendingPostLists {
-		postResponse[pendingPost.ID.Hex()] = parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper, handlers.saveHelper,
-			handlers.topicHelper, handlers.widgetHelper, pendingPost, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole).PostResponse
+		postResponse[pendingPost.ID.Hex()] = parsePendingPostResponse(handlers, pendingPost, userId, isCm, versionCode,
+			platformCode, apiRevampV1Check, utils.DefaultRole)
 	}
 
 	return postResponse, nil
@@ -124,7 +122,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, postRequest.PostType, postRequest.Attachments,
 		postId.(primitive.ObjectID).Hex(), communityId, userId)
 	if err != nil {
 		return nil, err
@@ -204,7 +202,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	}
 
 	// Validate create post request
-	errorMeta, err := validateCreatePostRequest(handlers, headers, userId, communityId, apiRevampV1Check, &cppr)
+	errorMeta, err := validateCreatePostRequest(handlers, userId, communityId, apiRevampV1Check, &cppr)
 	if err != nil && errorMeta == nil {
 		// if errorMeta is nil, then it is a general validation error
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -223,12 +221,11 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	pendingPostData, err := fetchPendingPost(handlers.pendingPostHelper, postData.ID.Hex(), communityId)
 	if err == nil {
 		response := gin.H{
-			"post": parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
-				handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, *pendingPostData, headers[utils.HeadersMemberId], cppr.UserIsCm,
-				versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole),
+			"post": parsePendingPostResponse(handlers, *pendingPostData, headers[utils.HeadersMemberId], cppr.UserIsCm,
+				versionCode, platformCode, apiRevampV1Check, memberRole),
 		}
 		response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, cppr.UserIsCm,
-			apiRevampV1Check, true, true, true)
+			apiRevampV1Check)
 
 		// Generate success response
 		utils.GenerateSuccessResponse(c, response)
@@ -357,7 +354,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 func createNormalPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost, headers map[string]string) (*entities.Post, error) {
 
 	// Create attachments
-	requestAttachments := []requests.Attachment{}
+	requestAttachments := []requests.AttachmentRequest{}
 
 	// marshal attachments
 	bytes, err := json.Marshal(pendingPostData.PostData.Attachments)
@@ -477,7 +474,7 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	}
 
 	// validation of attachment objects
-	err = validateAndUpdatePostAttachments(handlers, communityId, editPendingPostRequest.Attachments, apiRevampV1Check,
+	err = ValidateAndUpdateAttachments(handlers, communityId, enums.EntityTypePendingPost, editPendingPostRequest.Attachments, apiRevampV1Check,
 		true, pendingPostData.PostData.IsRepost)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -529,7 +526,7 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	}
 
 	// process attachments for widgets
-	updatedAttachments, err := processAttachmentsForWidgets(handlers, constants.PostEntityType, editPendingPostRequest.Attachments,
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, editPendingPostRequest.Attachments,
 		pendingPostId, communityId, headers[utils.HeadersMemberId])
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
@@ -575,13 +572,12 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	pendingPostData, err = fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
 	if err == nil {
 		response := gin.H{
-			"post": parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
-				handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, *pendingPostData, headers[utils.HeadersMemberId], false,
-				versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole),
+			"post": parsePendingPostResponse(handlers, *pendingPostData, headers[utils.HeadersMemberId], false,
+				versionCode, platformCode, apiRevampV1Check, memberRole),
 		}
 
 		response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
-			apiRevampV1Check, true, true, true)
+			apiRevampV1Check)
 
 		// Generate success response
 		utils.GenerateSuccessResponse(c, response)
@@ -615,19 +611,18 @@ func (handlers *FeedHandlers) FetchPendingPost(c *gin.Context) {
 		return
 	}
 
-	if pendingPostData.UserId != userId && memberRole != utils.AdminRole {
+	if pendingPostData.UserId != userId && memberRole != utils.CMRole {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
 
 	response := gin.H{
-		"post": parsePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
-			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, *pendingPostData, headers[utils.HeadersMemberId], false,
-			versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole),
+		"post": parsePendingPostResponse(handlers, *pendingPostData, headers[utils.HeadersMemberId], false,
+			versionCode, platformCode, apiRevampV1Check, memberRole),
 	}
 
 	response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
-		apiRevampV1Check, true, true, true)
+		apiRevampV1Check)
 
 	// Generate success response
 	utils.GenerateSuccessResponse(c, response)
@@ -683,10 +678,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
 		return
 	}
 
-	pendingPostResponse := parseMultiplePendingPostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pendingPostResults, userId, isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check,
-		handlers.cacheHelper, utils.DefaultRole)
+	pendingPostResponse := parseMultiplePendingPostResponse(handlers, pendingPostResults, userId, isCm,
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
 	// response data
 	response := gin.H{
@@ -695,7 +688,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
 	}
 
 	response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
-		apiRevampV1Check, true, true, true)
+		apiRevampV1Check)
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)

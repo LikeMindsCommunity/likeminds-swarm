@@ -22,24 +22,6 @@ const (
 var UnreleasedMaxVersion int = 9999
 var UnreleasedMinVersion int = -1
 
-var FeedVideoAndDocumentMediaVersions = map[string]int{
-	PlatformAndroid:     UnreleasedMinVersion,
-	PlatformWeb:         UnreleasedMinVersion,
-	PlatformIoS:         UnreleasedMinVersion,
-	PlatformFlutter:     4,
-	PlatformReactNative: UnreleasedMinVersion,
-	PlatformReactJS:     UnreleasedMinVersion,
-}
-
-var FeedLinkMediaVersion = map[string]int{
-	PlatformAndroid:     UnreleasedMinVersion,
-	PlatformWeb:         UnreleasedMinVersion,
-	PlatformIoS:         UnreleasedMinVersion,
-	PlatformFlutter:     5,
-	PlatformReactNative: UnreleasedMinVersion,
-	PlatformReactJS:     UnreleasedMinVersion,
-}
-
 var EditFeedEntityVersions = map[string]int{
 	PlatformAndroid:     2,
 	PlatformWeb:         UnreleasedMaxVersion,

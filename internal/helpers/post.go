@@ -12,9 +12,9 @@ import (
 )
 
 // internal method to parse attachments
-func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
+func parseAttachments(attachments []requests.AttachmentRequest) []entities.Attachment {
 
-	var postAttachments []entities.Attachment
+	var parsedAttachments []entities.Attachment
 
 	// parse attachments
 	for _, element := range attachments {
@@ -31,16 +31,17 @@ func parseAttachments(attachments []requests.Attachment) []entities.Attachment {
 		attachmentMeta := entities.NewAttachmentMeta(metaData.Name, metaData.Url, metaData.Format, metaData.Size, metaData.Duration,
 			metaData.PageCount, metaData.ThumbnailUrl, metaOgTags, entityId, metaData.CoverImageUrl, metaData.Title, metaData.Body,
 			metaData.ExpiryTime, metaData.PollType, metaData.MultipleSelectState, metaData.MultipleSelectNumber, metaData.IsAnonymous,
-			metaData.AllowAddOption, metaData.NsfwScore)
+			metaData.AllowAddOption, metaData.NsfwScore, metaData.Height, metaData.Width)
+
 		attachment := entities.NewAttachment(element.AttachmentType, attachmentMeta)
-		postAttachments = append(postAttachments, attachment)
+		parsedAttachments = append(parsedAttachments, attachment)
 	}
 
-	return postAttachments
+	return parsedAttachments
 }
 
 // Exposed Helper Method to Create Post
-func (helper *postHelper) CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.Attachment,
+func (helper *postHelper) CreatePostHelper(text string, heading string, communityId int, userId string, attachments []requests.AttachmentRequest,
 	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string, visibility string, isRepost bool, createdAt int) (interface{}, error) {
 
 	// parse attachments
@@ -57,7 +58,7 @@ func (helper *postHelper) CreatePostHelper(text string, heading string, communit
 }
 
 // Exposed Helper Method to Edit Post
-func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.Attachment,
+func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string, heading string, attachments []requests.AttachmentRequest,
 	topicIds []primitive.ObjectID, visibility string, markIsEdited bool) error {
 
 	// parse attachments

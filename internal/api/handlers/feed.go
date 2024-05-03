@@ -58,7 +58,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	var universalFeedRequest requests.FetchUniversalFeedRequest
 	var commentSortOrderVal int
-	filtered_comments := map[string]requests.CommentWithParentResponse{}
+	filtered_comments := map[string]responses.CommentWithParentResponse{}
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	versionCode := headers[utils.HeadersAcceptVersion]
@@ -109,11 +109,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 		if len(postObjectIdsList) == 0 {
 			finalParsedResponse := gin.H{
-				"posts":             []requests.PostResponse{},
+				"posts":             []responses.PostResponse{},
 				"success":           true,
 				"topics":            map[string]responses.TopicResponse{},
 				"widgets":           map[string]requests.WidgetResponse{},
-				"reposted_posts":    map[string]requests.PostResponse{},
+				"reposted_posts":    map[string]responses.PostResponse{},
 				"filtered_comments": filtered_comments,
 			}
 
@@ -154,7 +154,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		return
 	}
 
-	response := []requests.PostResponse{}
+	response := []responses.PostResponse{}
 
 	if page == 1 {
 		// pinned post filter options
@@ -169,10 +169,9 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		}
 
 		// parse pinned posts
-		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pinnedPostResults, headers[utils.HeadersMemberId],
+		pinnedPostResponse := parseMultiplePostResponse(handlers, pinnedPostResults, headers[utils.HeadersMemberId],
 			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check, handlers.cacheHelper, memberRole)
+			apiRevampV1Check, memberRole)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -186,14 +185,13 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// parse unpinned posts
-	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
+	unpinnedPostResponse := parseMultiplePostResponse(handlers, unpinnedPostResults, headers[utils.HeadersMemberId],
 		universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, handlers.cacheHelper, memberRole)
+		apiRevampV1Check, memberRole)
 
 	response = append(response, unpinnedPostResponse...)
 
-	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+	finalResponse := parseFetchMultiplePostResponse(response, -1)
 
 	// reponse data
 	finalParsedResponse := gin.H{
@@ -207,7 +205,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, universalFeedRequest.IsCm, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, communityId, universalFeedRequest.IsCm, headers[utils.HeadersMemberId])
 
 	// Get community configurations
 	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
@@ -219,7 +217,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
-		var updatedPostsWithComments []requests.PostResponse
+		var updatedPostsWithComments []responses.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts, userId, universalFeedRequest.IsCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
 			versionCode, platformCode, apiRevampV1Check, memberRole)
 
@@ -598,7 +596,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		return
 	}
 
-	response := []requests.PostResponse{}
+	response := []responses.PostResponse{}
 
 	if page == 1 {
 		// pinned post filter options
@@ -613,10 +611,9 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		}
 
 		// parse pinned posts
-		pinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-			handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, pinnedPostResults, headers[utils.HeadersMemberId],
+		pinnedPostResponse := parseMultiplePostResponse(handlers, pinnedPostResults, headers[utils.HeadersMemberId],
 			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
+			apiRevampV1Check, utils.DefaultRole)
 
 		response = append(response, pinnedPostResponse...)
 	}
@@ -630,14 +627,13 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	// parse unpinned posts
-	unpinnedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, unpinnedPostResults, headers[utils.HeadersMemberId],
+	unpinnedPostResponse := parseMultiplePostResponse(handlers, unpinnedPostResults, headers[utils.HeadersMemberId],
 		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
+		apiRevampV1Check, utils.DefaultRole)
 
 	response = append(response, unpinnedPostResponse...)
 
-	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, response, -1)
+	finalResponse := parseFetchMultiplePostResponse(response, -1)
 
 	// reponse data
 	finalParsedResponse := gin.H{
@@ -651,7 +647,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, groupFeedRequest.IsCm, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, communityId, groupFeedRequest.IsCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -668,9 +664,9 @@ func (handlers *FeedHandlers) deleteCommunityUniversalFeedCacheData(communityID 
 	cacheCommunityUniversalFeedPostsKey := fmt.Sprintf("community_{}_universal_feed_posts", communityID)
 
 	cacheCommunityUniversleFeedPostIDsString := handlers.cacheHelper.Get(cacheCommunityUniversalFeedPostsKey)
-	cacheCommunityUniversleFeedPostIDs := [](string){cacheCommunityUniversleFeedPostIDsString.Val()}
+	cacheCommunityUniversleFeedPostIDs := []string{cacheCommunityUniversleFeedPostIDsString.Val()}
 
-	cachePostKeys := [](string){}
+	cachePostKeys := []string{}
 	for _, cacheCommunityUniversleFeedPostID := range cacheCommunityUniversleFeedPostIDs {
 		cachePostKey := fmt.Sprintf("post_{}", cacheCommunityUniversleFeedPostID)
 		cachePostKeys = append(cachePostKeys, cachePostKey)
@@ -774,12 +770,11 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	}
 
 	// parse connection feed posts
-	connectionFeedPostResponse := parseMultiplePostResponse(handlers.likeHelper, handlers.commentHelper,
-		handlers.saveHelper, handlers.topicHelper, handlers.widgetHelper, connectionFeedPostResults, headers[utils.HeadersMemberId],
+	connectionFeedPostResponse := parseMultiplePostResponse(handlers, connectionFeedPostResults, headers[utils.HeadersMemberId],
 		connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, handlers.cacheHelper, utils.DefaultRole)
+		apiRevampV1Check, utils.DefaultRole)
 
-	finalResponse := parseFetchMultiplePostResponse(handlers.postHelper, connectionFeedPostResponse, -1)
+	finalResponse := parseFetchMultiplePostResponse(connectionFeedPostResponse, -1)
 
 	// reponse data
 	finalParsedResponse := gin.H{
@@ -793,7 +788,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
 	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-	finalParsedResponse["widgets"] = getWidgetDataFromPostsAndTopics(handlers, finalParsedResponse, communityId, connectionFeedRequest.IsCm, headers[utils.HeadersMemberId])
+	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, communityId, connectionFeedRequest.IsCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	c.JSON(http.StatusOK, finalParsedResponse)
@@ -925,6 +920,10 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		"user_id":    userId,
 	}
 	userPendingPostsCount, err := handlers.pendingPostHelper.CountPendingPostHelper(pendingPostCountFilter)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
 	// response data
 	finalResponse := gin.H{

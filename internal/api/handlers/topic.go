@@ -389,7 +389,7 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
 
 	// parse widget data if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCM, "")
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCM, "")
 
 	// generate final response
 	utils.GenerateSuccessResponse(c, response)
@@ -532,7 +532,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		response["topics"] = processTopicSearchData(esResponse)
 	}
 
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCM, "")
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCM, "")
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)
@@ -640,7 +640,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
 
 	// Fetch widget data from response if exists
-	response["widgets"] = getWidgetDataFromPostsAndTopics(handlers, response, communityId, isCM, "")
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCM, "")
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)
