@@ -545,8 +545,9 @@ func validateCreateCommentRequest(handlers *FeedHandlers, communityId int, creat
 
 	// strip text and check if it is empty
 	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
-	if createCommentRequest.Text == "" {
-		return fmt.Errorf("comment text cannot be empty")
+
+	if createCommentRequest.Text == "" && len(createCommentRequest.Attachments) == 0 {
+		return fmt.Errorf("please send text or an attachment in the comment")
 	}
 
 	if len(createCommentRequest.Attachments) > 1 {
@@ -734,8 +735,9 @@ func validateEditCommentRequest(handlers *FeedHandlers, communityId int, userId 
 
 	// strip text and check if it is empty
 	editCommentRequest.Text = strings.Trim(editCommentRequest.Text, " ")
-	if editCommentRequest.Text == "" {
-		return nil, fmt.Errorf("comment text cannot be empty")
+
+	if editCommentRequest.Text == "" && len(editCommentRequest.Attachments) == 0 {
+		return nil, fmt.Errorf("please send text or an attachment in the comment")
 	}
 
 	if len(editCommentRequest.Attachments) > 1 {
@@ -847,8 +849,9 @@ func validateCommentReplyRequest(handlers *FeedHandlers, communityId int, postId
 
 	// strip text and check if it is empty
 	createCommentRequest.Text = strings.Trim(createCommentRequest.Text, " ")
-	if createCommentRequest.Text == "" {
-		return nil, nil, fmt.Errorf("comment text cannot be empty")
+
+	if createCommentRequest.Text == "" && len(createCommentRequest.Attachments) == 0 {
+		return nil, nil, fmt.Errorf("please send text or an attachment in the comment")
 	}
 
 	if len(createCommentRequest.Attachments) > 1 {

@@ -563,6 +563,11 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 		return " " + getPostAttachmentType(activityEntityData.(responses.PostResponse)) + "."
 	}
 
+	// if comment text is nil, add attachment type as text
+	if entityType == constants.Comment && entityTextData == "" {
+		return " " + getCommentAttachmentType(activityEntityData.(responses.CommentResponse)) + "."
+	}
+
 	if entityType == constants.Post && entityTextData != "" && postFeedMetadatValue != "" {
 		return fmt.Sprintf(" %s: \"", postFeedMetadatValue) + entityTextData + "\""
 	} else if entityType == constants.Post && entityTextData != "" {
@@ -589,6 +594,18 @@ func getPostAttachmentType(postResponse responses.PostResponse) string {
 	}
 
 	intAttachmentType := postResponse.Attachments[0].AttachmentType
+	enumAttachmentType := enums.NewAttachmentTypeFromInt(intAttachmentType)
+
+	return enumAttachmentType.ToString()
+}
+
+func getCommentAttachmentType(commentResponse responses.CommentResponse) string {
+
+	if len(commentResponse.Attachments) == 0 {
+		return ""
+	}
+
+	intAttachmentType := commentResponse.Attachments[0].AttachmentType
 	enumAttachmentType := enums.NewAttachmentTypeFromInt(intAttachmentType)
 
 	return enumAttachmentType.ToString()

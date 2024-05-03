@@ -2,7 +2,7 @@ package requests
 
 // Request Structure for Create Comment
 type CreateCommentRequest struct {
-	Text        string              `json:"text" binding:"required"`
+	Text        string              `json:"text"`
 	Attachments []AttachmentRequest `json:"attachments"`
 	TempID      *string             `json:"temp_id"`
 	UUIDs       []string            `json:"uuids"`
@@ -11,7 +11,7 @@ type CreateCommentRequest struct {
 
 // Request Structure for Edit Comment
 type EditCommentRequest struct {
-	Text        string              `json:"text" binding:"required"`
+	Text        string              `json:"text"`
 	Attachments []AttachmentRequest `json:"attachments"`
 	UserIsCm    bool                `json:"user_is_cm"`
 }
