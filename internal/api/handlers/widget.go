@@ -113,17 +113,19 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 // Internal Method to fetch pollVotes Data Map for poll options
 func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map[string]interface{},
-	communityId int, uniqueVotersOnPoll int64, userId string) (gin.H, error) {
+	currentTimestamp float64, communityId int, uniqueVotersOnPoll int64, uuid string) (gin.H, error) {
 	pollVotesData := []gin.H{}
 	parsedPollVotesData := gin.H{}
 	var err error
 
 	pollType, pollTypeExists := metaData["poll_type"]
-	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, userId)
+	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
 
-	if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil) {
+	pollExipryTime := metaData["expiry_time"].(float64)
+
+	if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil && pollExipryTime > currentTimestamp) {
 		// Fetch poll Votes Data
-		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, userId)
+		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, uuid)
 		if err != nil {
 			return parsedPollVotesData, err
 		}
@@ -141,7 +143,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
-	communityId int, userIsCm bool, userId string, parentEntityId string) map[string]interface{} {
+	communityId int, userIsCm bool, uuid string, parentEntityId string) map[string]interface{} {
 	// If option exists in LM Meta, it is a poll widget
 	if _, exists := lmMeta["options"]; exists {
 		uniqueVotersOnPoll, err := getUniqueVotersOnPoll(handlers, entityId, communityId)
@@ -150,8 +152,10 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 			return lmMeta
 		}
 
+		currentTimestamp := float64(time.Now().UnixMilli())
+
 		// fetch poll votes data
-		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, communityId, uniqueVotersOnPoll, userId)
+		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, currentTimestamp, communityId, uniqueVotersOnPoll, uuid)
 		if err != nil {
 			return lmMeta
 		}
@@ -167,7 +171,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 			return lmMeta
 		}
 
-		updatedOptions, toShowResults := parsePollResults(userIsCm, metaData["expiry_time"].(float64), userId, post.UserId, metaData["poll_type"].(string), options, parsedPollVotesData)
+		updatedOptions, toShowResults := parsePollResults(userIsCm, currentTimestamp, metaData["expiry_time"].(float64), uuid, post.UserId, metaData["poll_type"].(string), options, parsedPollVotesData)
 		lmMeta["options"] = updatedOptions
 		lmMeta["to_show_results"] = toShowResults
 
@@ -179,9 +183,8 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 }
 
 // Internal Method to parse the poll results and handle results visibility
-func parsePollResults(userIsCm bool, pollExpiryTime float64, userId string, postCreatorId string, pollType string,
+func parsePollResults(userIsCm bool, currentTimestamp float64, pollExpiryTime float64, uuid string, postCreatorId string, pollType string,
 	options []gin.H, parsedPollVotesData gin.H) ([]gin.H, bool) {
-
 	//if the user has voted on atleast one of the options
 	atLeastOneSelected := false
 
@@ -207,7 +210,7 @@ func parsePollResults(userIsCm bool, pollExpiryTime float64, userId string, post
 	}
 
 	//logic to handle the visibility of poll's results
-	if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || userId == postCreatorId {
+	if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || uuid == postCreatorId {
 		return options, true
 	} else if pollType == enums.InstantPollType && atLeastOneSelected {
 		return options, true
