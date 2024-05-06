@@ -113,7 +113,7 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 // Internal Method to fetch pollVotes Data Map for poll options
 func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map[string]interface{},
-	currentTimestamp float64, communityId int, uniqueVotersOnPoll int64, uuid string) (gin.H, error) {
+	userIsCm bool, communityId int, uniqueVotersOnPoll int64, postCreatorId string, uuid string) (gin.H, bool, error) {
 	pollVotesData := []gin.H{}
 	parsedPollVotesData := gin.H{}
 	var err error
@@ -121,13 +121,24 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 	pollType, pollTypeExists := metaData["poll_type"]
 	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
 
-	pollExipryTime := metaData["expiry_time"].(float64)
+	pollExpiryTime := metaData["expiry_time"].(float64)
 
-	if !(pollTypeExists && pollType == enums.InstantPollType && pollVote == nil && pollExipryTime > currentTimestamp) {
+	toShowResults := false
+
+	//logic to handle the visibility of poll's results
+	if pollTypeExists {
+		if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || uuid == postCreatorId {
+			toShowResults = true
+		} else if pollType == enums.InstantPollType && pollVote != nil {
+			toShowResults = true
+		}
+	}
+
+	if toShowResults {
 		// Fetch poll Votes Data
 		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, uuid)
 		if err != nil {
-			return parsedPollVotesData, err
+			return parsedPollVotesData, toShowResults, err
 		}
 	}
 
@@ -138,7 +149,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 		}
 	}
 
-	return parsedPollVotesData, nil
+	return parsedPollVotesData, toShowResults, nil
 }
 
 // Internal Method to parse LM meta object for response
@@ -152,10 +163,14 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 			return lmMeta
 		}
 
-		currentTimestamp := float64(time.Now().UnixMilli())
+		//fetch post to get creator
+		post, err := fetchPost(handlers.postHelper, parentEntityId, communityId)
+		if err != nil {
+			return lmMeta
+		}
 
 		// fetch poll votes data
-		parsedPollVotesData, err := fetchPollVotesDataMap(handlers, entityId, metaData, currentTimestamp, communityId, uniqueVotersOnPoll, uuid)
+		parsedPollVotesData, toShowResults, err := fetchPollVotesDataMap(handlers, entityId, metaData, userIsCm, communityId, uniqueVotersOnPoll, post.UserId, uuid)
 		if err != nil {
 			return lmMeta
 		}
@@ -165,13 +180,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		convertedOptions, _ := json.Marshal(lmMeta["options"])
 		_ = json.Unmarshal(convertedOptions, &options)
 
-		//fetch post to get creator
-		post, err := fetchPost(handlers.postHelper, parentEntityId, communityId)
-		if err != nil {
-			return lmMeta
-		}
-
-		updatedOptions, toShowResults := parsePollResults(userIsCm, currentTimestamp, metaData["expiry_time"].(float64), uuid, post.UserId, metaData["poll_type"].(string), options, parsedPollVotesData)
+		updatedOptions := parsePollResults(options, parsedPollVotesData)
 		lmMeta["options"] = updatedOptions
 		lmMeta["to_show_results"] = toShowResults
 
@@ -183,10 +192,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 }
 
 // Internal Method to parse the poll results and handle results visibility
-func parsePollResults(userIsCm bool, currentTimestamp float64, pollExpiryTime float64, uuid string, postCreatorId string, pollType string,
-	options []gin.H, parsedPollVotesData gin.H) ([]gin.H, bool) {
-	//if the user has voted on atleast one of the options
-	atLeastOneSelected := false
+func parsePollResults(options []gin.H, parsedPollVotesData gin.H) []gin.H {
 
 	// Merge option data with votes data
 	for _, option := range options {
@@ -196,9 +202,6 @@ func parsePollResults(userIsCm bool, currentTimestamp float64, pollExpiryTime fl
 
 			if voteData != nil {
 				for key, value := range voteData.(gin.H) {
-					if key == "is_selected" && value == true {
-						atLeastOneSelected = true
-					}
 					option[key] = value
 				}
 			} else {
@@ -209,20 +212,7 @@ func parsePollResults(userIsCm bool, currentTimestamp float64, pollExpiryTime fl
 		}
 	}
 
-	//logic to handle the visibility of poll's results
-	if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || uuid == postCreatorId {
-		return options, true
-	} else if pollType == enums.InstantPollType && atLeastOneSelected {
-		return options, true
-	} else {
-		//set default values to hide the actual results
-		for _, option := range options {
-			option["vote_count"] = 0
-			option["percentage"] = 0
-		}
-
-		return options, false
-	}
+	return options
 }
 
 // Internal Method to get answer text for poll based on the unique voters on the poll
