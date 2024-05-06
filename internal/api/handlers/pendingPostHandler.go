@@ -751,7 +751,7 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 
 	// remove activity for the pending post
 	deleteActivityFilter := gin.H{
-		"entity_type": constants.PendingPostEntityType,
+		"entity_type": constants.PendingPost,
 		"entity_id":   pendingPostData.ID.Hex(),
 	}
 	err = handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
