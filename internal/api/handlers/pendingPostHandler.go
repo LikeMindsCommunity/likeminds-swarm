@@ -34,6 +34,7 @@ func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.Pendi
 
 	postResponse.IsPendingPost = true
 	postResponse.PostStatus = pendingPost.Status
+	postResponse.IsDeleted = pendingPost.IsDeleted
 
 	return postResponse
 }
