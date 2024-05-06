@@ -754,7 +754,10 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 		"entity_type": constants.PendingPostEntityType,
 		"entity_id":   pendingPostData.ID.Hex(),
 	}
-	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
+	err = handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
+	if err != nil {
+		logging.Error("Error in deleting activity in pending post: ", err)
+	}
 
 	utils.GenerateSuccessResponse(c, response)
 }
