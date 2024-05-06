@@ -717,14 +717,14 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 	}
 
 	// fetch pending post using helper method
-	postData, err := fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
+	pendingPostData, err := fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// validation of user permission
-	if userId != postData.UserId {
+	if userId != pendingPostData.UserId {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
@@ -739,14 +739,24 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 	}
 
 	// update post using the helper method
-	err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(postData.ID, updateData)
+	err = handlers.pendingPostHelper.UpdatePendingPostByIdHelper(pendingPostData.ID, updateData)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
 	response := gin.H{
-		"report_id": postData.ReportID,
+		"report_id": pendingPostData.ReportID,
+	}
+
+	// remove activity for the pending post
+	deleteActivityFilter := gin.H{
+		"entity_type": constants.PendingPostEntityType,
+		"entity_id":   pendingPostData.ID.Hex(),
+	}
+	err = handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
+	if err != nil {
+		logging.Error("Error in deleting activity in pending post: ", err)
 	}
 
 	utils.GenerateSuccessResponse(c, response)
