@@ -749,7 +749,7 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 		"report_id": pendingPostData.ReportID,
 	}
 
-	// remove activity for the post
+	// remove activity for the pending post
 	deleteActivityFilter := gin.H{
 		"entity_type": constants.PendingPostEntityType,
 		"entity_id":   pendingPostData.ID.Hex(),
