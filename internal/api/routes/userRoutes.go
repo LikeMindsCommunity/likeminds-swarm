@@ -22,4 +22,5 @@ func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	userGroup.DELETE("/", handler.DeleteUserData)
 	userGroup.GET("/topics", handler.FetchUsersTopics)
 	userGroup.PATCH("/:user_id/topics", handler.UpdateUserTopics)
+	userGroup.GET("/:user_id/post/pending", handler.FetchUserCreatedPendingPosts)
 }

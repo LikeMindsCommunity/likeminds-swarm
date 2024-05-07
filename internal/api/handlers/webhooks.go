@@ -49,7 +49,7 @@ func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*resp
 	return &postPayload, nil
 }
 
-func generateUsersPayloadForWebhook(handlers *FeedHandlers, userIds []string, communityId int) ([]externalHelpers.MemberMeta, error) {
+func generateUsersPayloadForWebhook(userIds []string, communityId int) ([]externalHelpers.MemberMeta, error) {
 
 	if len(userIds) == 0 {
 		return nil, fmt.Errorf("user ids are missing in the payload")
@@ -118,7 +118,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate user meta
-		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
+		userMeta, err := generateUsersPayloadForWebhook(userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +136,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate user meta
-		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
+		userMeta, err := generateUsersPayloadForWebhook(userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +154,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Add to payload data
-		usersMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
+		usersMeta, err := generateUsersPayloadForWebhook(userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate user meta
-		userMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
+		userMeta, err := generateUsersPayloadForWebhook(userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +220,7 @@ func generatePayloadForWebhooks(handlers *FeedHandlers, postId string, userIds [
 		}
 
 		// Generate users meta
-		usersMeta, err := generateUsersPayloadForWebhook(handlers, userIds, postPaylod.Post.CommunityId)
+		usersMeta, err := generateUsersPayloadForWebhook(userIds, postPaylod.Post.CommunityId)
 		if err != nil {
 			return nil, err
 		}

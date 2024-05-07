@@ -11,6 +11,7 @@ const (
 	ArticleWidget
 	PostWidget
 	RepostWidget
+	GIFWidget
 )
 
 // AttachmentType represents the type of attachment
@@ -27,6 +28,7 @@ const (
 	ArticleType  AttachmentType = "article"
 	PostType     AttachmentType = "post"
 	RepostType   AttachmentType = "repost"
+	GIFType      AttachmentType = "gif"
 )
 
 // Create New Attachment Type from int
@@ -50,6 +52,8 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 		return PostType
 	case RepostWidget:
 		return RepostType
+	case GIFWidget:
+		return GIFType
 	}
 	return ""
 }
@@ -57,8 +61,7 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 // checks if the attachment type is valid
 func (at AttachmentType) IsValid() bool {
 	switch at {
-	case ImageType, VideoType, DocumentType, LinkType,
-		CustomType, PollType, ArticleType, RepostType:
+	case ImageType, VideoType, DocumentType, LinkType, CustomType, PollType, ArticleType, PostType, RepostType, GIFType:
 		return true
 	}
 	return false
@@ -100,38 +103,8 @@ func (at AttachmentType) ToInt() int {
 		return PostWidget
 	case RepostType:
 		return RepostWidget
+	case GIFType:
+		return GIFWidget
 	}
 	return 0
-}
-
-// constants for poll_type
-const (
-	InstantPollType  string = "instant"
-	DeferredPollType string = "deferred"
-)
-
-// function to check if poll type is valid
-func IsPollTypeValid(pollType string) bool {
-	switch pollType {
-	case InstantPollType, DeferredPollType:
-		return true
-	}
-	return false
-}
-
-// constants for multiple_select_state in poll
-const (
-	ExactlySelectStateType string = "exactly"
-	AtMaxSelectStateType   string = "at_max"
-	AtLeastSelectStateType string = "at_least"
-)
-
-// function to check if poll multiple select state is valid
-func IsPollMultipleSelectStateValid(pollType string) bool {
-	switch pollType {
-	case ExactlySelectStateType, AtLeastSelectStateType,
-		AtMaxSelectStateType:
-		return true
-	}
-	return false
 }

@@ -14,20 +14,22 @@ const (
 	InvalidCommentIDError      = "Invalid comment_id sent."
 	NsfwContentInImageError    = "This post could not be submitted as %simage/s seems to contain NSFW content."
 	ErrorGuestAccessNotAllowed = "Guest access is not allowed."
+	PendingPostCreationError   = "Some error occurred in creation of pending post."
+	PendingPostUpdationError   = "Some error occurred in updation of pending post."
 )
 
 // Exposed Method to send General Validation Error in API Response
 func GeneralAPIValidationError(c *gin.Context, errorMessage string) {
-	GeneralAPIError(c, errorMessage, http.StatusBadRequest)
+	generalAPIError(c, errorMessage, http.StatusBadRequest)
 }
 
 // Exposed Method to send General Internal Error in API Response
 func GeneralAPIInternalError(c *gin.Context, errorMessage string) {
-	GeneralAPIError(c, errorMessage, http.StatusInternalServerError)
+	generalAPIError(c, errorMessage, http.StatusInternalServerError)
 }
 
 // Exposed Method to send General Error in API Response
-func GeneralAPIError(c *gin.Context, errorMessage string, statusCode int) {
+func generalAPIError(c *gin.Context, errorMessage string, statusCode int) {
 	c.JSON(statusCode, gin.H{
 		"success":       false,
 		"error_message": errorMessage,

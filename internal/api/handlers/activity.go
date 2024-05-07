@@ -22,9 +22,6 @@ import (
 func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	apiRevampV1Check bool, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
-	var postMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
-	var commentMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
-
 	response := []interface{}{}
 	userDatas := map[string]externalHelpers.MemberMeta{}
 	topicDatas := map[string]responses.TopicResponse{}
@@ -34,10 +31,10 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		return response, userDatas, topicDatas, widgetDatas, nil
 	}
 
-	postMetatadataValue = externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
-	commentMetatadataValue = externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 
-	userIds := [](string){}
+	userIds := []string{}
 	topicIds := []primitive.ObjectID{}
 	widgetIds := []primitive.ObjectID{}
 
@@ -72,6 +69,8 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
+		activityCTA := getActivityCTA(handler, activity)
+
 		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
 			ActionBy:           activity.ActionBy,
@@ -79,7 +78,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			EntityID:           activity.EntityID,
 			EntityOwnerID:      activity.EntityOwnerID,
 			UUID:               activity.EntityOwnerID,
-			CTA:                activity.CTA,
+			CTA:                activityCTA,
 			IsRead:             activity.IsRead,
 			CreatedAt:          int(activity.CreatedAt.UnixMilli()),
 			UpdatedAt:          int(activity.UpdatedAt.UnixMilli()),
@@ -109,14 +108,14 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 		// Parse topicIds and widgetIds from post
 		if activity.EntityType == constants.Post {
 			// Parse topicIds from postData
-			if activityEntityData.(requests.PostResponse).Topics != nil {
-				ids := activityEntityData.(requests.PostResponse).Topics
+			if activityEntityData.(responses.PostResponse).Topics != nil {
+				ids := activityEntityData.(responses.PostResponse).Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if activityEntityData.(requests.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(activityEntityData.(requests.PostResponse).Attachments)
+			if activityEntityData.(responses.PostResponse).Attachments != nil {
+				ids := getWidgetIdsFromAttachments(activityEntityData.(responses.PostResponse).Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
 		}
@@ -143,13 +142,10 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 		return activitiesResponse, userDatas, topicsData, widgetsData, nil
 	}
 
-	var postMetatadataValue string = externalHelpers.DefaultMetadataPostVariableValue
-	var commentMetatadataValue string = externalHelpers.DefaultMetadataCommentVariableValue
+	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
+	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 
-	postMetatadataValue = externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
-	commentMetatadataValue = externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
-
-	userIds := [](string){uuid}
+	userIds := []string{uuid}
 	topicIds := []primitive.ObjectID{}
 	widgetIds := []primitive.ObjectID{}
 
@@ -184,7 +180,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 				continue
 			}
 
-			postData = *activityEntityData.(requests.FetchCommentResponse).Post
+			postData = *activityEntityData.(responses.FetchCommentResponse).Post
 
 			// Update activity data
 			activity.CTA = fmt.Sprintf(utils.CommentDetailRoute, activity.EntityID.Hex(), actionByMetadata.EntityId.Hex())
@@ -203,7 +199,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 			postData = activityEntityData
 		}
 
-		activityText := getUserProfileActivityText(uuid, userId, activity.Action, userDatas, postMetatadataValue, commentMetatadataValue)
+		activityText := getUserProfileActivityText(uuid, activity.Action, userDatas, postMetatadataValue, commentMetatadataValue)
 
 		// Make user activity response
 		activityResponse := requests.UserActivityResponse{
@@ -243,14 +239,14 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 		if postData != nil {
 
 			// Parse topicIds from postData
-			if postData.(requests.PostResponse).Topics != nil {
-				ids := postData.(requests.PostResponse).Topics
+			if postData.(responses.PostResponse).Topics != nil {
+				ids := postData.(responses.PostResponse).Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if postData.(requests.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(postData.(requests.PostResponse).Attachments)
+			if postData.(responses.PostResponse).Attachments != nil {
+				ids := getWidgetIdsFromAttachments(postData.(responses.PostResponse).Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
 		}
@@ -266,20 +262,6 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	return activitiesResponse, userDatas, topicsData, widgetsData, nil
 }
 
-func getActivityUserData(activity entities.Activity) (map[string]interface{}, string) {
-	activityUserUID := activity.ActionBy[len(activity.ActionBy)-1]
-	activityUserData := map[string]interface{}{}
-
-	isSuccess, member_data := externalHelpers.FetchMemberMeta([]string{activityUserUID}, activity.ActionOn, activity.CommunityID)
-	if !isSuccess || len(member_data.Members) == 0 {
-		return nil, ""
-	}
-
-	activityUserData[activityUserUID] = member_data.Members[0]
-
-	return activityUserData, activityUserUID
-}
-
 func getEntityData(handler FeedHandlers, entityType constants.EntityType, entityID primitive.ObjectID, communityID int,
 	apiRevampV1Check bool, userId string, postIdForComment string) (interface{}, error) {
 
@@ -292,6 +274,30 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 		}
 
 		return postData[entityID.Hex()], nil
+
+	case constants.PendingPost:
+		pendingPost, err := fetchPendingPost(handler.pendingPostHelper, entityID.Hex(), communityID)
+		if err != nil {
+			return nil, err
+		}
+
+		if pendingPost.Status != enums.Approved {
+			pendingPostData, err := fetchMultiplePendingPostsData(&handler, []string{entityID.Hex()}, communityID, userId, false, "", "",
+				apiRevampV1Check)
+			if err != nil {
+				return nil, err
+			}
+
+			return pendingPostData[entityID.Hex()], nil
+		} else {
+			postData, err := fetchMultiplePostsData(&handler, []string{pendingPost.NormalPostId}, communityID, userId, false, "", "",
+				apiRevampV1Check)
+			if err != nil {
+				return nil, err
+			}
+
+			return postData[pendingPost.NormalPostId], nil
+		}
 
 	case constants.Comment:
 
@@ -345,12 +351,12 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 	case constants.CMDeletedPost:
 		activityText += fmt.Sprintf("Your %s has been deleted as it violates community guidelines. Reason: ", postFeedMetadatValue)
-		activityText += activityEntityData.(requests.PostResponse).DeleteReason + "."
+		activityText += activityEntityData.(responses.PostResponse).DeleteReason + "."
 		return activityText, nil
 
 	case constants.CMDeletedComment:
 		activityText += "Your reply has been deleted as it violates community guidelines. Reason: "
-		activityText += activityEntityData.(requests.CommentResponse).DeleteReason + "."
+		activityText += activityEntityData.(responses.CommentResponse).DeleteReason + "."
 		return activityText, nil
 
 	case constants.LikeOnPost:
@@ -435,23 +441,54 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
 		return activityText, nil
+
+	case constants.PendingPostAccepted:
+		activityText += fmt.Sprintf("Your %s has been approved:", postFeedMetadatValue)
+		activityText += getEntityText(activity.EntityType, activityEntityData, "")
+
+		return activityText, nil
+
+	case constants.PendingPostRejected:
+		activityText += fmt.Sprintf("Your %s was not approved:", postFeedMetadatValue)
+		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
+
+		return activityText, nil
 	}
 
 	return activityText, nil
 }
 
+func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
+	activityCTA := activity.CTA
+
+	if activity.EntityType == constants.PendingPost && activity.Action != constants.PendingPostRejected {
+		pendingPostData, _ := fetchPendingPost(handlers.pendingPostHelper, activity.EntityID.Hex(), activity.CommunityID)
+
+		if pendingPostData.Status == enums.Approved {
+			// CTA data for activity
+			ctaData := gin.H{
+				"entity_type": constants.PostEntityType,
+				"post_id":     pendingPostData.NormalPostId,
+			}
+			activityCTA = parseCTAData(ctaData)
+		}
+	}
+
+	return activityCTA
+}
+
 // Internal Method to fetch user profile activity text
-func getUserProfileActivityText(uuid string, userId string, action constants.ActivityAction,
+func getUserProfileActivityText(uuid string, action constants.ActivityAction,
 	userDatas map[string]externalHelpers.MemberMeta, postFeedMetadatValue string, commentMetatadataValue string) string {
 
 	userRoute := getUserRoute(userDatas[uuid])
 
 	switch action {
 	case constants.CommentOnPost:
-		return (userRoute + fmt.Sprintf(" left a %s on this ", commentMetatadataValue) + postFeedMetadatValue)
+		return userRoute + fmt.Sprintf(" left a %s on this ", commentMetatadataValue) + postFeedMetadatValue
 
 	case constants.LikeOnPost:
-		return (userRoute + " liked this " + postFeedMetadatValue)
+		return userRoute + " liked this " + postFeedMetadatValue
 
 	default:
 		return ""
@@ -488,7 +525,7 @@ func getMultipleUserActivityText(activity entities.Activity) string {
 func fetchActivityEntityOwnerUserData(activity entities.Activity) (map[string]interface{}, string) {
 	userData := make(map[string]interface{})
 	userID := activity.EntityOwnerID
-	isSuccess := false
+	var isSuccess bool
 
 	isSuccess, userData[userID] = externalHelpers.FetchMemberMeta([]string{userID}, activity.ActionOn, activity.CommunityID)
 	if !isSuccess {
@@ -507,24 +544,43 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	entityTextData := ""
 
 	switch entityType {
-	case constants.Post:
-		entityTextData = activityEntityData.(requests.PostResponse).Text
+	case constants.Post,
+		constants.PendingPost:
+		postResponse := activityEntityData.(responses.PostResponse)
+
+		if postResponse.Heading != "" {
+			entityTextData = activityEntityData.(responses.PostResponse).Heading
+		} else if postResponse.Text != "" {
+			entityTextData = activityEntityData.(responses.PostResponse).Text
+		}
 
 	case constants.Comment:
-		entityTextData = activityEntityData.(requests.CommentResponse).Text
+		entityTextData = activityEntityData.(responses.CommentResponse).Text
 	}
 
 	// if post text is nil, add attachment type as text
 	if entityType == constants.Post && entityTextData == "" {
-		return " " + getPostAttachmentType(activityEntityData.(requests.PostResponse)) + "."
+		return " " + getPostAttachmentType(activityEntityData.(responses.PostResponse)) + "."
 	}
 
-	if entityType == constants.Post && entityTextData != "" {
-		return fmt.Sprintf(" %s \"", postFeedMetadatValue) + entityTextData + "\""
+	// if comment text is nil, add attachment type as text
+	if entityType == constants.Comment && entityTextData == "" {
+		return " " + getCommentAttachmentType(activityEntityData.(responses.CommentResponse)) + "."
+	}
+
+	if entityType == constants.Post && entityTextData != "" && postFeedMetadatValue != "" {
+		return fmt.Sprintf(" %s: \"", postFeedMetadatValue) + entityTextData + "\""
+	} else if entityType == constants.Post && entityTextData != "" {
+		return " \"" + entityTextData + "\""
 	}
 
 	if entityTextData == "" {
-		return entityTextData + "."
+
+		if postFeedMetadatValue != "" {
+			return postFeedMetadatValue + "."
+		} else {
+			return entityTextData + "."
+		}
 	}
 
 	activityText := " \"" + entityTextData + "\""
@@ -532,12 +588,24 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	return activityText
 }
 
-func getPostAttachmentType(postResponse requests.PostResponse) string {
+func getPostAttachmentType(postResponse responses.PostResponse) string {
 	if len(postResponse.Attachments) == 0 {
 		return ""
 	}
 
 	intAttachmentType := postResponse.Attachments[0].AttachmentType
+	enumAttachmentType := enums.NewAttachmentTypeFromInt(intAttachmentType)
+
+	return enumAttachmentType.ToString()
+}
+
+func getCommentAttachmentType(commentResponse responses.CommentResponse) string {
+
+	if len(commentResponse.Attachments) == 0 {
+		return ""
+	}
+
+	intAttachmentType := commentResponse.Attachments[0].AttachmentType
 	enumAttachmentType := enums.NewAttachmentTypeFromInt(intAttachmentType)
 
 	return enumAttachmentType.ToString()
@@ -589,7 +657,9 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.TaggedInPost,
 		constants.TaggedInPostComment,
 		constants.AlsoCommentOnPost,
-		constants.RepostOnPost:
+		constants.RepostOnPost,
+		constants.PendingPostAccepted,
+		constants.PendingPostRejected:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
 			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId)
@@ -655,7 +725,9 @@ func fetchActivityCtaForAction(action constants.ActivityAction, ctaData map[stri
 		constants.TaggedInPost,
 		constants.TaggedInPostComment,
 		constants.AlsoCommentOnPost,
-		constants.RepostOnPost:
+		constants.RepostOnPost,
+		constants.PendingPostAccepted,
+		constants.PendingPostRejected:
 		cta = parseCTAData(ctaData)
 
 	case constants.CreatePostPermitAdded:
@@ -677,6 +749,9 @@ func parseCTAData(cta_data map[string]interface{}) string {
 			switch entity_type {
 			case constants.PostEntityType:
 				cta = fmt.Sprintf(utils.PostDetailRoute, post_id)
+
+			case constants.PendingPostEntityType:
+				cta = fmt.Sprintf(utils.PendingPostDetailRoute, post_id)
 
 			case constants.CommentEntityType:
 				if comment_id, ok := cta_data["comment_id"]; ok {

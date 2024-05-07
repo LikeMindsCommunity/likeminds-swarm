@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -14,12 +15,16 @@ import (
 
 // Exposed Helper Method to Create a Comment
 func (helper *commentHelper) CreateCommentHelper(text string, postId primitive.ObjectID, communityId int, level int, userId string,
-	tempId *string, createdAt int) (interface{}, error) {
+	tempId *string, createdAt int, attachments []requests.AttachmentRequest) (interface{}, error) {
+
 	if tempId != nil && *tempId == "" {
 		tempId = nil
 	}
 
-	comment := entities.NewComment(text, postId, communityId, level, userId, tempId, createdAt)
+	// parse attachments
+	parsedAttachments := parseAttachments(attachments)
+
+	comment := entities.NewComment(text, postId, communityId, level, userId, tempId, createdAt, parsedAttachments)
 	commentId, err := helper.commentRepository.Create(&comment)
 
 	return commentId, err
@@ -47,6 +52,31 @@ func (helper *commentHelper) FindCommentHelper(filter map[string]interface{}, fi
 	}
 
 	return results, err
+}
+
+// Exposed Helper Method to Edit a Comment
+func (helper *commentHelper) EditCommentHelper(commentId primitive.ObjectID, text string, attachments []requests.AttachmentRequest,
+	markIsEdited bool) error {
+
+	// parse attachments
+	parsedAttachments := parseAttachments(attachments)
+
+	updateBody := gin.H{
+		"$set": gin.H{
+			"text":        text,
+			"attachments": parsedAttachments,
+			"updated_at":  time.Now(),
+		},
+	}
+
+	if markIsEdited {
+		updateBody["$set"].(gin.H)["is_edited"] = true
+	}
+
+	err := helper.commentRepository.Update(gin.H{"_id": commentId}, updateBody)
+
+	return err
+
 }
 
 // Exposed Helper Method to Update a Comment
