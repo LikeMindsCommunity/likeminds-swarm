@@ -113,13 +113,13 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 // Internal Method to fetch pollVotes Data Map for poll options
 func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map[string]interface{},
-	userIsCm bool, communityId int, uniqueVotersOnPoll int64, postCreatorId string, uuid string) (gin.H, bool, error) {
+	userIsCm bool, communityId int, uniqueVotersOnPoll int64, postCreatorId string, userId string) (gin.H, bool, error) {
 	pollVotesData := []gin.H{}
 	parsedPollVotesData := gin.H{}
 	var err error
 
 	pollType, pollTypeExists := metaData["poll_type"]
-	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, uuid)
+	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, userId)
 
 	pollExpiryTime := metaData["expiry_time"].(float64)
 
@@ -127,7 +127,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 	//logic to handle the visibility of poll's results
 	if pollTypeExists {
-		if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || uuid == postCreatorId {
+		if userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || userId == postCreatorId {
 			toShowResults = true
 		} else if pollType == enums.InstantPollType && pollVote != nil {
 			toShowResults = true
@@ -136,7 +136,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 	if toShowResults {
 		// Fetch poll Votes Data
-		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, uuid)
+		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, userId)
 		if err != nil {
 			return parsedPollVotesData, toShowResults, err
 		}
@@ -154,7 +154,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
-	communityId int, userIsCm bool, uuid string, parentEntityId string) map[string]interface{} {
+	communityId int, userIsCm bool, userId string, parentEntityId string) map[string]interface{} {
 	// If option exists in LM Meta, it is a poll widget
 	if _, exists := lmMeta["options"]; exists {
 		uniqueVotersOnPoll, err := getUniqueVotersOnPoll(handlers, entityId, communityId)
@@ -170,7 +170,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		}
 
 		// fetch poll votes data
-		parsedPollVotesData, toShowResults, err := fetchPollVotesDataMap(handlers, entityId, metaData, userIsCm, communityId, uniqueVotersOnPoll, post.UserId, uuid)
+		parsedPollVotesData, toShowResults, err := fetchPollVotesDataMap(handlers, entityId, metaData, userIsCm, communityId, uniqueVotersOnPoll, post.UserId, userId)
 		if err != nil {
 			return lmMeta
 		}
