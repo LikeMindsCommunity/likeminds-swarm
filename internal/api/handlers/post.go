@@ -170,11 +170,7 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 
 		switch post := post.(type) {
 		case responses.PostWithRepliesResponse:
-			for _, topicId := range post.Topics {
-				if _, exists := tempTopicIds[topicId]; !exists {
-					tempTopicIds[topicId] = true
-				}
-			}
+			tempTopicIds = getTopicsIdsFromTopicResponse(post.Topics, tempTopicIds)
 		}
 	}
 
@@ -183,19 +179,11 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 		switch posts := posts.(type) {
 		case []responses.PostResponse:
 			for _, post := range posts {
-				for _, topicId := range post.Topics {
-					if _, exists := tempTopicIds[topicId]; !exists {
-						tempTopicIds[topicId] = true
-					}
-				}
+				tempTopicIds = getTopicsIdsFromTopicResponse(post.Topics, tempTopicIds)
 			}
 		case map[string]responses.PostResponse:
 			for _, post := range posts {
-				for _, topicId := range post.Topics {
-					if _, exists := tempTopicIds[topicId]; !exists {
-						tempTopicIds[topicId] = true
-					}
-				}
+				tempTopicIds = getTopicsIdsFromTopicResponse(post.Topics, tempTopicIds)
 			}
 		}
 	}
@@ -205,6 +193,17 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 	}
 
 	return uniqueTopicIds
+}
+
+func getTopicsIdsFromTopicResponse(topicIds []primitive.ObjectID, topicMap map[primitive.ObjectID]bool) map[primitive.ObjectID]bool {
+
+	for _, topicId := range topicIds {
+		if _, exists := topicMap[topicId]; !exists {
+			topicMap[topicId] = true
+		}
+	}
+
+	return topicMap
 }
 
 // Internal method to parse widget_ids from topics
@@ -257,20 +256,28 @@ func getWidgetIdsFromComments(response interface{}) []primitive.ObjectID {
 	return uniqueWidgetIds
 }
 
+func appendWidgetIdsFromAttachmentsToMap(attachments []responses.AttachmentResponse, widgetMap map[primitive.ObjectID]bool) map[primitive.ObjectID]bool {
+
+	widgetIds := getWidgetIdsFromAttachments(attachments)
+
+	for _, widgetId := range widgetIds {
+
+		if _, exists := widgetMap[widgetId]; !exists {
+			widgetMap[widgetId] = true
+		}
+	}
+
+	return widgetMap
+
+}
+
 func typeAssertAndFetchWidgetIdsFromComments(comments interface{}, widgetMap map[primitive.ObjectID]bool) map[primitive.ObjectID]bool {
 
 	typeOf := fmt.Sprintf("%T", comments)
 	print(typeOf)
 	switch comments := comments.(type) {
 	case responses.CommentResponse:
-		widgetIds := getWidgetIdsFromAttachments(comments.Attachments)
-
-		for _, widgetId := range widgetIds {
-
-			if _, exists := widgetMap[widgetId]; !exists {
-				widgetMap[widgetId] = true
-			}
-		}
+		widgetMap = appendWidgetIdsFromAttachmentsToMap(comments.Attachments, widgetMap)
 
 	case responses.CommentWithParentResponse:
 		tempAttachments := comments.Attachments
@@ -279,46 +286,22 @@ func typeAssertAndFetchWidgetIdsFromComments(comments interface{}, widgetMap map
 			tempAttachments = append(tempAttachments, comments.ParentComment.Attachments...)
 		}
 
-		widgetIds := getWidgetIdsFromAttachments(tempAttachments)
-
-		for _, widgetId := range widgetIds {
-			if _, exists := widgetMap[widgetId]; !exists {
-				widgetMap[widgetId] = true
-			}
-		}
+		widgetMap = appendWidgetIdsFromAttachmentsToMap(tempAttachments, widgetMap)
 
 	case []responses.CommentResponse:
 		for _, comment := range comments {
-			widgetIds := getWidgetIdsFromAttachments(comment.Attachments)
-
-			for _, widgetId := range widgetIds {
-				if _, exists := widgetMap[widgetId]; !exists {
-					widgetMap[widgetId] = true
-				}
-			}
+			widgetMap = appendWidgetIdsFromAttachmentsToMap(comment.Attachments, widgetMap)
 		}
 
 	case map[string]responses.CommentResponse:
 		for _, comment := range comments {
-			widgetIds := getWidgetIdsFromAttachments(comment.Attachments)
-
-			for _, widgetId := range widgetIds {
-				if _, exists := widgetMap[widgetId]; !exists {
-					widgetMap[widgetId] = true
-				}
-			}
+			widgetMap = appendWidgetIdsFromAttachmentsToMap(comment.Attachments, widgetMap)
 		}
 
 	case map[string][]responses.CommentResponse:
 		for _, comment := range comments {
 			for _, comment := range comment {
-				widgetIds := getWidgetIdsFromAttachments(comment.Attachments)
-
-				for _, widgetId := range widgetIds {
-					if _, exists := widgetMap[widgetId]; !exists {
-						widgetMap[widgetId] = true
-					}
-				}
+				widgetMap = appendWidgetIdsFromAttachmentsToMap(comment.Attachments, widgetMap)
 			}
 		}
 	case []responses.CommentWithParentResponse:
@@ -330,13 +313,7 @@ func typeAssertAndFetchWidgetIdsFromComments(comments interface{}, widgetMap map
 				tempAttachments = append(tempAttachments, comment.ParentComment.Attachments...)
 			}
 
-			widgetIds := getWidgetIdsFromAttachments(tempAttachments)
-
-			for _, widgetId := range widgetIds {
-				if _, exists := widgetMap[widgetId]; !exists {
-					widgetMap[widgetId] = true
-				}
-			}
+			widgetMap = appendWidgetIdsFromAttachmentsToMap(tempAttachments, widgetMap)
 		}
 	case responses.FetchCommentResponse:
 
@@ -350,13 +327,7 @@ func typeAssertAndFetchWidgetIdsFromComments(comments interface{}, widgetMap map
 			tempAttachments = append(tempAttachments, comment.Attachments...)
 		}
 
-		widgetIds := getWidgetIdsFromAttachments(tempAttachments)
-
-		for _, widgetId := range widgetIds {
-			if _, exists := widgetMap[widgetId]; !exists {
-				widgetMap[widgetId] = true
-			}
-		}
+		widgetMap = appendWidgetIdsFromAttachmentsToMap(tempAttachments, widgetMap)
 	}
 
 	return widgetMap
