@@ -136,17 +136,22 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 		toShowResults = true
 	}
 
-	if toShowResults {
-		// Fetch poll Votes Data
-		pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, userId)
-		if err != nil {
-			return parsedPollVotesData, toShowResults, err
-		}
+	// Fetch poll Votes Data
+	pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, userId)
+	if err != nil {
+		return parsedPollVotesData, toShowResults, err
 	}
 
 	// Process poll votes data
 	for _, pollVoteData := range pollVotesData {
 		if optionId, exists := pollVoteData["_id"]; exists {
+
+			// Reset the vote_count, percentage when not to show results to user
+			if !toShowResults {
+				pollVoteData["vote_count"] = 0
+				pollVoteData["percentage"] = 0
+			}
+
 			parsedPollVotesData[optionId.(string)] = pollVoteData
 		}
 	}
