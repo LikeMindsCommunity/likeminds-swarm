@@ -126,7 +126,13 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 	toShowResults := false
 
 	//logic to handle the visibility of poll's results
-	if pollTypeExists && (userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || userId == postCreatorId) || (pollType == enums.InstantPollType && pollVote != nil) {
+
+	/*
+	* if pollTypeExists and the current user is CM or the the current user is poll creator or the poll has expired
+	*  or if poll is of type instant and the current user has voted on the poll then show the poll results
+	 */
+	if pollTypeExists && (userIsCm || pollExpiryTime <= float64(time.Now().UnixMilli()) || userId == postCreatorId) ||
+		(pollType == enums.InstantPollType && pollVote != nil) {
 		toShowResults = true
 	}
 
