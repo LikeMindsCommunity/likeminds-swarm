@@ -539,7 +539,7 @@ func getPollVotesUsingAggregation(handlers *FeedHandlers, pollId string, communi
 		"$group": bson.M{
 			"_id": "$votes",
 			"users": bson.M{
-				"$addToSet": "$uuid",
+				"$push": "$uuid",
 			},
 		},
 	})
