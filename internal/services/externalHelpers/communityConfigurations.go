@@ -102,7 +102,7 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 }
 
 func GetPostVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
-	var postFeedMetadataValues string = DefaultMetadataPostVariableValue
+	var postFeedMetadataValues string = DefaultPostVariableValue
 
 	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
 
@@ -125,7 +125,7 @@ func GetPostVariableOrDefault(cacheHelper cache.Helper, userId string, community
 }
 
 func GetCommentVariableOrDefault(cacheHelper cache.Helper, userId string, communityId int) string {
-	var commentFeedMetadataValues string = DefaultMetadataCommentVariableValue
+	var commentFeedMetadataValues string = DefaultCommentVariableValue
 
 	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
 
@@ -145,6 +145,39 @@ func GetCommentVariableOrDefault(cacheHelper cache.Helper, userId string, commun
 	}
 
 	return commentFeedMetadataValues
+}
+
+func GetLikeVariablesOrDefault(cacheHelper cache.Helper, userId string, communityId int) (string, string) {
+
+	var likePresentValue string = DefaultLikePresentVariableValue
+	var likePastValue string = DefaultLikePastVariableValue
+
+	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
+
+	if communityConfigurationResponse != nil {
+		externalEntities := ExternalEntities{
+			communityConfigurationResponse.CommunityConfigurations,
+		}
+
+		communityConfiguration, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
+			FeedMetadataCommunityConfigurationType)
+
+		likeVariable, ok := communityConfiguration.Value[LikeVariableCommunityConfigurationKey]
+		if ok {
+			present, ok := likeVariable.(map[string]interface{})[LikeVariablePresentConfigurationKey]
+			if ok {
+				likePresentValue = present.(string)
+			}
+
+			past, ok := likeVariable.(map[string]interface{})[LikeVariablePastConfigurationKey]
+			if ok {
+				likePastValue = past.(string)
+			}
+		}
+
+	}
+
+	return likePresentValue, likePastValue
 }
 
 func GetUniversalFeedConfigurationsData(cacheHelper cache.Helper, userId string, communityId int) *UniversalFeedConfigurations {

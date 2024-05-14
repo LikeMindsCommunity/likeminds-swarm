@@ -50,6 +50,9 @@ const (
 	PostCommunityConfigurationKey          = "post"
 	CommentCommunityConfigurationKey       = "comment"
 	UniversalFeedCommunityConfigurationKey = "universal_feed"
+	LikeVariableCommunityConfigurationKey  = "like_variable"
+	LikeVariablePresentConfigurationKey    = "present"
+	LikeVariablePastConfigurationKey       = "past"
 )
 
 const (
@@ -58,8 +61,10 @@ const (
 )
 
 const (
-	DefaultMetadataPostVariableValue    = "post"
-	DefaultMetadataCommentVariableValue = "comment"
+	DefaultPostVariableValue        = "post"
+	DefaultCommentVariableValue     = "comment"
+	DefaultLikePresentVariableValue = "like"
+	DefaultLikePastVariableValue    = "liked"
 )
 
 const (

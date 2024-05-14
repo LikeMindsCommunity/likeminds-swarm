@@ -144,6 +144,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 
 	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
+	_, likePastValue := externalHelpers.GetLikeVariablesOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 
 	userIds := []string{uuid}
 	topicIds := []primitive.ObjectID{}
@@ -199,7 +200,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 			postData = activityEntityData
 		}
 
-		activityText := getUserProfileActivityText(uuid, activity.Action, userDatas, postMetatadataValue, commentMetatadataValue)
+		activityText := getUserProfileActivityText(uuid, activity.Action, userDatas, postMetatadataValue, commentMetatadataValue, likePastValue)
 
 		// Make user activity response
 		activityResponse := requests.UserActivityResponse{
@@ -478,17 +479,18 @@ func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
 }
 
 // Internal Method to fetch user profile activity text
-func getUserProfileActivityText(uuid string, action constants.ActivityAction,
-	userDatas map[string]externalHelpers.MemberMeta, postFeedMetadatValue string, commentMetatadataValue string) string {
+func getUserProfileActivityText(uuid string, action constants.ActivityAction, userDatas map[string]externalHelpers.MemberMeta,
+	postFeedValue string, commentValue string, likePastVariableValue string,
+) string {
 
 	userRoute := getUserRoute(userDatas[uuid])
 
 	switch action {
 	case constants.CommentOnPost:
-		return userRoute + fmt.Sprintf(" left a %s on this ", commentMetatadataValue) + postFeedMetadatValue
+		return userRoute + fmt.Sprintf(" left a %s on this ", commentValue) + postFeedValue
 
 	case constants.LikeOnPost:
-		return userRoute + " liked this " + postFeedMetadatValue
+		return userRoute + fmt.Sprintf(" %s this %s", likePastVariableValue, postFeedValue)
 
 	default:
 		return ""
