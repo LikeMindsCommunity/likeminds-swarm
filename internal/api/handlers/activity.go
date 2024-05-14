@@ -33,6 +33,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 
 	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
+	_, likePastValue := externalHelpers.GetLikeVariablesOrDefault(handler.cacheHelper, userId, activities[0].CommunityID)
 
 	userIds := []string{}
 	topicIds := []primitive.ObjectID{}
@@ -64,7 +65,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityText, err := getActivityText(activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue)
+		activityText, err := getActivityText(activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue, likePastValue)
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -328,7 +329,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 }
 
 func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEntityData interface{}, activity entities.Activity,
-	postFeedMetadatValue string, commentFeedMetadaValue string) (string, error) {
+	postFeedMetadatValue string, commentFeedMetadaValue string, likePastValue string) (string, error) {
 	activityText := ""
 
 	switch activity.Action {
@@ -364,7 +365,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += " liked your"
+		activityText += fmt.Sprintf(" %s your", likePastValue)
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 
@@ -394,7 +395,7 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		activityText += getUserRoute(activityByUserData)
 		activityText += getMultipleUserActivityText(activity)
 
-		activityText += fmt.Sprintf(" liked your %s", commentFeedMetadaValue)
+		activityText += fmt.Sprintf(" %s your %s", likePastValue, commentFeedMetadaValue)
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
 

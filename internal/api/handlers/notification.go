@@ -19,7 +19,7 @@ func sendPendingPostApprovalNotification(handlers FeedHandlers, recieverUUID str
 	receivers := recieverUUID
 	category := constants.FeedCategory
 	subCategory := fmt.Sprintf(constants.PendingPostApprovedSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue))
-	title := fmt.Sprintf(constants.PendingPostApprovedTitle, utils.CapitalizeFirstLetter((postMetatadataValue)))
+	title := fmt.Sprintf(constants.PendingPostApprovedTitle, utils.CapitalizeFirstLetter(postMetatadataValue))
 	subTitle := fmt.Sprintf(constants.PendingPostApprovedSubTitle, postMetatadataValue)
 	route := fmt.Sprintf(utils.PostDetailRoute, postId)
 
@@ -290,7 +290,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 		latestCommentUserID := activity.ActionBy[len(activity.ActionBy)-1]
 
 		// Fetch member details
-		success, member_data := externalHelpers.FetchMemberMeta([](string){latestCommentUserID, activity.EntityOwnerID}, activity.ActionOn, activity.CommunityID)
+		success, member_data := externalHelpers.FetchMemberMeta([]string{latestCommentUserID, activity.EntityOwnerID}, activity.ActionOn, activity.CommunityID)
 		if !success || len(member_data.Members) == 0 {
 			return
 		}
@@ -486,21 +486,22 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 
 	// Fetch community configurations
 	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	likePresentValue, likePastValue := externalHelpers.GetLikeVariablesOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
-	title := constants.LikeTitle
+	title := fmt.Sprintf(constants.LikeTitle, likePresentValue)
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
-	subCategory := fmt.Sprintf(constants.PostLikedSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue))
+	subCategory := fmt.Sprintf(constants.PostLikedSubCategory, utils.CapitalizeFirstLetter(postMetatadataValue), likePastValue)
 
 	if likesCount == 1 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name, postMetatadataValue)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelOne, member.Name, likePastValue, postMetatadataValue)
 	} else if likesCount == 2 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name, postMetatadataValue)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelTwo, member.Name, likePastValue, postMetatadataValue)
 	} else if likesCount > 2 {
-		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1, postMetatadataValue)
+		subTitle = fmt.Sprintf(constants.PostLikedSubTitleLevelThree, member.Name, likesCount-1, likePastValue, postMetatadataValue)
 	}
 
 	// send notification
@@ -542,21 +543,22 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 
 	// Fetch community configurations
 	commentMetatadataValue := externalHelpers.GetCommentVariableOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
+	likePresentValue, likePastValue := externalHelpers.GetLikeVariablesOrDefault(handlers.cacheHelper, member.UUID, activity.CommunityID)
 
 	// notification params
 	receivers := activity.ActionOn
-	title := constants.LikeTitle
+	title := fmt.Sprintf(constants.LikeTitle, likePresentValue)
 	route := activity.CTA
 	category := constants.FeedCategory
 	subTitle := ""
-	subCategory := fmt.Sprintf(constants.CommentLikedSubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue))
+	subCategory := fmt.Sprintf(constants.CommentLikedSubCategory, utils.CapitalizeFirstLetter(commentMetatadataValue), likePastValue)
 
 	if likesCount == 1 {
-		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelOne, member.Name, commentMetatadataValue)
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelOne, member.Name, likePastValue, commentMetatadataValue)
 	} else if likesCount == 2 {
-		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelTwo, member.Name, commentMetatadataValue)
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelTwo, member.Name, likePastValue, commentMetatadataValue)
 	} else if likesCount > 2 {
-		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelThree, member.Name, likesCount-1, commentMetatadataValue)
+		subTitle = fmt.Sprintf(constants.CommentLikedSubTitleLevelThree, member.Name, likesCount-1, likePastValue, commentMetatadataValue)
 	}
 
 	// send notification
