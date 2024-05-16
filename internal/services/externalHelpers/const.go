@@ -50,9 +50,9 @@ const (
 	PostCommunityConfigurationKey          = "post"
 	CommentCommunityConfigurationKey       = "comment"
 	UniversalFeedCommunityConfigurationKey = "universal_feed"
-	LikeVariableCommunityConfigurationKey  = "like_variable"
-	LikeVariablePresentConfigurationKey    = "present"
-	LikeVariablePastConfigurationKey       = "past"
+	LikeVariableCommunityConfigurationKey  = "like_entity_variable"
+	LikeVariablePresentConfigurationKey    = "entity_name"
+	LikeVariablePastConfigurationKey       = "past_tense_verb"
 )
 
 const (
