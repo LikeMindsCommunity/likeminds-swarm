@@ -12,9 +12,9 @@ type LoggedInUserParams struct {
 }
 
 type PostSecondaryDataParams struct {
-	LikesCount       int64
-	RepliesCount     int64
-	RepostCount      int32
+	LikesCount       int
+	RepliesCount     int
+	RepostCount      int
 	IsRepostedByUser bool
 	IsLikedByUser    bool
 	IsSavedByUser    bool

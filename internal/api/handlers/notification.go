@@ -367,7 +367,7 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	commentCount := fetchPostCommentsCount(handlers.commentHelper, activity.EntityID.Hex())
 
 	// If comments count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(commentCount)) {
+	if !checkIfFibonacciNumber(commentCount) {
 		return
 	}
 
@@ -466,7 +466,7 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	likesCount := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
 
 	// If likes count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(likesCount)) {
+	if !checkIfFibonacciNumber(likesCount) {
 		return
 	}
 
@@ -520,7 +520,7 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 	likesCount := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
 
 	// If likes count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(likesCount)) {
+	if !checkIfFibonacciNumber(likesCount) {
 		return
 	}
 
@@ -579,7 +579,7 @@ func sendRepostPostActionNotification(activity *entities.Activity, handlers Feed
 	repostCount := getPostRepostCount(handlers.widgetHelper, postData)
 
 	// If repost count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(repostCount)) {
+	if !checkIfFibonacciNumber(repostCount) {
 		return
 	}
 

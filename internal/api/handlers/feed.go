@@ -161,17 +161,15 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
 
 		// fetch pinned post using helper method
-		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData,
-			pinnedPostFilterOptions)
+		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData, pinnedPostFilterOptions)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
 		// parse pinned posts
-		pinnedPostResponse := parseMultiplePostResponse(handlers, pinnedPostResults, headers[utils.HeadersMemberId],
-			universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check, memberRole)
+		pinnedPostResponse := parseMultiplePostResponse(handlers, pinnedPostResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm,
+			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
 
 		postsResponse = append(postsResponse, pinnedPostResponse...)
 	}
@@ -185,7 +183,9 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// parse unpinned posts
-	unpinnedPostResponse := parseMultiplePostResponse(handlers, unpinnedPostResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
+	unpinnedPostResponse := parseMultiplePostResponse(handlers, unpinnedPostResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm,
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
+
 	postsResponse = append(postsResponse, unpinnedPostResponse...)
 
 	finalResponse := parseFetchMultiplePostResponse(postsResponse, -1)

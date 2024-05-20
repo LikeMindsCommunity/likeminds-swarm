@@ -24,7 +24,7 @@ import (
 )
 
 // Internal Method to fetch comments count of a Post
-func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) int64 {
+func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) int {
 	// comment filter data
 	commentFilterData := gin.H{
 		"post_id":    postId,
@@ -39,7 +39,7 @@ func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) int6
 		return 0
 	}
 
-	return commentsCount
+	return int(commentsCount)
 }
 
 // Internal Method to fetch replies count of a Comment
@@ -207,7 +207,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.UserId = comment.UserId
 	response.UUID = comment.UserId
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, comment.ID.Hex(), constants.CommentEntityType, userId)
-	response.LikesCount = int(likesCount)
+	response.LikesCount = likesCount
 	response.IsDeleted = comment.IsDeleted
 	response.IsEdited = comment.IsEdited
 	response.MenuItems = []responses.MenuResponse{}
