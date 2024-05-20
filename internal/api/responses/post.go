@@ -26,7 +26,7 @@ type PostResponse struct {
 	Attachments        []AttachmentResponse `json:"attachments"`
 	LikesCount         int                  `json:"likes_count"`
 	CommentsCount      int                  `json:"comments_count"`
-	RepostCount        int32                `json:"repost_count"`
+	RepostCount        int                  `json:"repost_count"`
 	IsDeleted          bool                 `json:"is_deleted,omitempty"`
 	IsEdited           bool                 `json:"is_edited"`
 	IsRepost           bool                 `json:"is_repost"`

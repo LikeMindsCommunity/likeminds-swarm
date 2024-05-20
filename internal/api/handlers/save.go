@@ -73,7 +73,7 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

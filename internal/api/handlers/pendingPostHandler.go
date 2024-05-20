@@ -27,7 +27,16 @@ func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.Pendi
 
 	memberRole = utils.GuestRole
 
-	postResponse := parsePostResponse(handlers, pendingPost.PostData, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
+	loggedInUser := LoggedInUserParams{
+		UserId:           userId,
+		IsCm:             isCm,
+		PlatformCode:     platformCode,
+		VersionCode:      versionCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
+	}
+
+	postResponse := parseSinglePostResponse(handlers, &pendingPost.PostData, &loggedInUser)
 
 	postResponse.MenuItems = getEntityMenuItems(constants.PendingPostEntityType, isCm,
 		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, versionCode, platformCode, userId, pendingPost.PostData.CommunityId, handlers.cacheHelper)
