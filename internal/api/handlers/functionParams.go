@@ -11,6 +11,7 @@ type LoggedInUserParams struct {
 	MemberRole       string
 }
 
+// Params Structure for Secondary Post Data
 type PostSecondaryDataParams struct {
 	LikesCount       int
 	RepliesCount     int

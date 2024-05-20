@@ -28,5 +28,6 @@ type CommentHelper interface {
 	UpdateCommentByIdHelper(commentId primitive.ObjectID, update map[string]interface{}) error
 	UpdateManyCommentsHelper(filter map[string]interface{}, update map[string]interface{}) error
 	CountCommentHelper(filter map[string]interface{}) (int64, error)
+	AggregateCommentHelper(query []map[string]interface{}) (interface{}, error)
 	AggregateTopCommentsHelper(query []map[string]interface{}) ([]responses.TopCommentsAggregationQueryResponse, error)
 }

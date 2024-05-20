@@ -269,7 +269,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 
 	switch entityType {
 	case constants.Post:
-		postData, err := fetchMultiplePostsData(&handler, []string{entityID.Hex()}, communityID, userId, false, "", "",
+		postData, err := fetchPostResponseMapFromPostIds(&handler, []string{entityID.Hex()}, communityID, userId, false, "", "",
 			apiRevampV1Check)
 		if err != nil {
 			return nil, err
@@ -292,7 +292,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 
 			return pendingPostData[entityID.Hex()], nil
 		} else {
-			postData, err := fetchMultiplePostsData(&handler, []string{pendingPost.NormalPostId}, communityID, userId, false, "", "",
+			postData, err := fetchPostResponseMapFromPostIds(&handler, []string{pendingPost.NormalPostId}, communityID, userId, false, "", "",
 				apiRevampV1Check)
 			if err != nil {
 				return nil, err

@@ -155,7 +155,8 @@ func fetchSpecificMemberLikesOnEntity(helper interfaces.LikeHelper, entity_id st
 }
 
 // Internal Method to fetch the like status of a user on an Entity
-func fetchUserLikedStatusByEntity(helper interfaces.LikeHelper, entity_id string, entity_type string, liked_by string) bool {
+func fetchUserLikedStatusByEntity(helper interfaces.LikeHelper, entity_id string, entity_type string, liked_by string,
+) bool {
 	like_results, err := fetchSpecificMemberLikesOnEntity(helper, entity_id, entity_type, liked_by)
 	if err != nil {
 		return false
@@ -170,6 +171,31 @@ func fetchUserLikedStatusByEntity(helper interfaces.LikeHelper, entity_id string
 	}
 
 	return true
+}
+
+func fetchUserLikedStatusForMultipleEntities(helper interfaces.LikeHelper, entityIds []primitive.ObjectID, entityType string, likedBy string,
+) map[primitive.ObjectID]bool {
+
+	likedStatus := make(map[primitive.ObjectID]bool, len(entityIds))
+
+	likeFilterData := gin.H{
+		"entity_id": bson.M{
+			"$in": entityIds,
+		},
+		"entity_type": entityType,
+		"liked_by":    likedBy,
+	}
+
+	like_results, err := helper.FindLikeHelper(likeFilterData, gin.H{})
+	if err != nil {
+		return likedStatus
+	}
+
+	for _, like := range like_results {
+		likedStatus[like.EntityId] = !like.IsDeleted
+	}
+
+	return likedStatus
 }
 
 // Exposed Method to like a Post

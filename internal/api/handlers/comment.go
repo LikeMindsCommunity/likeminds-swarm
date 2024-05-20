@@ -42,6 +42,47 @@ func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) int 
 	return int(commentsCount)
 }
 
+// Internal Method to fetch comments count of multiple posts
+func fetchMultiplePostsCommentsCount(helper interfaces.CommentHelper, postIds []primitive.ObjectID) map[primitive.ObjectID]int {
+
+	count := make(map[primitive.ObjectID]int, len(postIds))
+
+	// fetch comments count for each post
+	query := []map[string]interface{}{
+		{
+			"$match": gin.H{
+				"post_id": gin.H{
+					"$in": postIds,
+				},
+				"is_deleted": false,
+				"level":      constants.CommentBaseLevel,
+			},
+		},
+		{
+			"$group": gin.H{
+				"_id": "$post_id",
+				"count": gin.H{
+					"$sum": 1,
+				},
+			},
+		},
+	}
+
+	// fetch comments count using helper method
+	results, err := helper.AggregateCommentHelper(query)
+	if err != nil {
+		logging.Error("Failed to fetch comments count: ", err)
+		return count
+	}
+
+	// parse comments count
+	for _, result := range results.([]gin.H) {
+		count[result["_id"].(primitive.ObjectID)] = int(result["count"].(int32))
+	}
+
+	return count
+}
+
 // Internal Method to fetch replies count of a Comment
 func fetchCommentRepliesCount(helper interfaces.CommentHelper, commentId string) (int64, error) {
 	commentData, err := fetchCommentByIdInternal(helper, commentId)
@@ -1219,7 +1260,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		}
 	}
 
-	postIdsDataMap, err = fetchMultiplePostsData(handlers, postIds, communityId, userId, isCm, headers[utils.HeadersVersionCode],
+	postIdsDataMap, err = fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	if err != nil {
@@ -1417,8 +1458,10 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 }
 
 // Internal Method to get top n comments against posts based on sorting key, sort order
-func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{},
-	communityId int, memberRole string) (map[string]interface{}, []string, error) {
+func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int,
+	commentsCount interface{}, communityId int, memberRole string,
+) (map[string]interface{}, []string, error) {
+
 	postsTopComments := map[string]interface{}{}
 	allCommentsIds := []string{}
 
