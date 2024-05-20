@@ -71,6 +71,7 @@ func (helper *likeHelper) CountLikeHelper(filter map[string]interface{}) (int64,
 
 // Exposed Helper Method to perform Aggregation on Likes
 func (helper *likeHelper) AggregateLikeHelper(query []map[string]interface{}) (interface{}, error) {
+
 	for _, value := range query {
 		if matchGroup, ok := value["$match"]; ok {
 			err := convertHexIdsToObjectIds(matchGroup.(gin.H), []string{"_id", "entity_id"})

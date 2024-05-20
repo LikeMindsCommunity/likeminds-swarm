@@ -24,7 +24,7 @@ import (
 )
 
 // Internal Method to fetch comments count of a Post
-func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) (int64, error) {
+func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) int {
 	// comment filter data
 	commentFilterData := gin.H{
 		"post_id":    postId,
@@ -32,13 +32,55 @@ func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) (int
 		"level":      constants.CommentBaseLevel,
 	}
 
-	// fetch likes count using helper method
-	likesCount, err := helper.CountCommentHelper(commentFilterData)
+	// fetch count using helper method
+	commentsCount, err := helper.CountCommentHelper(commentFilterData)
 	if err != nil {
-		return 0, err
+		logging.Error("Failed to fetch comments count: ", err)
+		return 0
 	}
 
-	return likesCount, nil
+	return int(commentsCount)
+}
+
+// Internal Method to fetch comments count of multiple posts
+func fetchMultiplePostsCommentsCount(helper interfaces.CommentHelper, postIds []primitive.ObjectID) map[primitive.ObjectID]int {
+
+	count := make(map[primitive.ObjectID]int, len(postIds))
+
+	// fetch comments count for each post
+	query := []map[string]interface{}{
+		{
+			"$match": gin.H{
+				"post_id": gin.H{
+					"$in": postIds,
+				},
+				"is_deleted": false,
+				"level":      constants.CommentBaseLevel,
+			},
+		},
+		{
+			"$group": gin.H{
+				"_id": "$post_id",
+				"count": gin.H{
+					"$sum": 1,
+				},
+			},
+		},
+	}
+
+	// fetch comments count using helper method
+	results, err := helper.AggregateCommentHelper(query)
+	if err != nil {
+		logging.Error("Failed to fetch comments count: ", err)
+		return count
+	}
+
+	// parse comments count
+	for _, result := range results.([]gin.H) {
+		count[result["_id"].(primitive.ObjectID)] = int(result["count"].(int32))
+	}
+
+	return count
 }
 
 // Internal Method to fetch replies count of a Comment
@@ -193,7 +235,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, cacheHelper cache.Helper, memberRole string,
 ) responses.CommentResponse {
 
-	likesCount, _ := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
+	likesCount := fetchEntityLikesCount(likeHelper, comment.ID.Hex(), constants.CommentEntityType)
 	var response responses.CommentResponse
 
 	response.ID = comment.ID
@@ -206,7 +248,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.UserId = comment.UserId
 	response.UUID = comment.UserId
 	response.IsLiked = fetchUserLikedStatusByEntity(likeHelper, comment.ID.Hex(), constants.CommentEntityType, userId)
-	response.LikesCount = int(likesCount)
+	response.LikesCount = likesCount
 	response.IsDeleted = comment.IsDeleted
 	response.IsEdited = comment.IsEdited
 	response.MenuItems = []responses.MenuResponse{}
@@ -319,7 +361,7 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 
 // Internal Method to fetch comment data with postId
 func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
-	memberId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, getPostData bool,
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, getPostData bool,
 	memberRole string) (responses.FetchCommentResponse, error) {
 
 	var response responses.FetchCommentResponse
@@ -343,22 +385,32 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 		return response, err
 	}
 
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, userId, isCm,
 		versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
 	fetchCommentResponse := parseFetchCommentResponse(handlers.likeHelper, handlers.commentHelper,
-		commentData, repliesResponse, memberId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
+		commentData, repliesResponse, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
 
 	// fetch post data if getPostData is true
 	if getPostData {
-		postData, err := fetchPost(handlers.postHelper, postId, commentData.CommunityId)
+		postData, err := FetchPostData(handlers.postHelper, postId, commentData.CommunityId, true)
 		if err != nil {
 			return response, err
 		}
 
+		loggedInUser := LoggedInUserParams{
+			UserId:           userId,
+			IsCm:             isCm,
+			PlatformCode:     platformCode,
+			VersionCode:      versionCode,
+			ApiRevampCheckV1: apiRevampV1Check,
+			MemberRole:       memberRole,
+		}
+
 		// Parse post response and append to Comment's post_data
-		parsePostResponse := parsePostResponse(handlers, *postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
+		parsePostResponse := parseSinglePostResponse(handlers, postData, &loggedInUser)
 		fetchCommentResponse.Post = &parsePostResponse
 	}
+
 	return fetchCommentResponse, nil
 }
 
@@ -506,7 +558,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	}
 
 	// fetch post data
-	_, err := fetchPost(handlers.postHelper, postId, communityId)
+	_, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -601,7 +653,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// fetch post data
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -751,7 +803,7 @@ func validateEditCommentRequest(handlers *FeedHandlers, communityId int, userId 
 	}
 
 	// Check if Post_id is valid
-	_, err = fetchPost(handlers.postHelper, postId, communityId)
+	_, err = FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		return nil, err
 	}
@@ -865,7 +917,7 @@ func validateCommentReplyRequest(handlers *FeedHandlers, communityId int, postId
 	}
 
 	// fetch post data
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1078,7 +1130,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	}
 
 	// fetch post data
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1208,7 +1260,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		}
 	}
 
-	postIdsDataMap, err = fetchMultiplePostsData(handlers, postIds, communityId, userId, isCm, headers[utils.HeadersVersionCode],
+	postIdsDataMap, err = fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check)
 
 	if err != nil {
@@ -1406,8 +1458,10 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 }
 
 // Internal Method to get top n comments against posts based on sorting key, sort order
-func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int, commentsCount interface{},
-	communityId int, memberRole string) (map[string]interface{}, []string, error) {
+func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int,
+	commentsCount interface{}, communityId int, memberRole string,
+) (map[string]interface{}, []string, error) {
+
 	postsTopComments := map[string]interface{}{}
 	allCommentsIds := []string{}
 

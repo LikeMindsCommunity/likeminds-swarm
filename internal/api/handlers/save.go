@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -60,6 +61,32 @@ func fetchUserSavedStatusByPostId(helper interfaces.SaveHelper, post_id string, 
 	return true
 }
 
+func fetchUserSavedStatusByPostIds(helper interfaces.SaveHelper, postIds []primitive.ObjectID, savedBy string,
+) map[primitive.ObjectID]bool {
+	userSavedStatusMap := make(map[primitive.ObjectID]bool, len(postIds))
+
+	saveFilterData := gin.H{
+		"entity_id": gin.H{
+			"$in": postIds,
+		},
+		"entity_type": constants.PostEntityType,
+		"saved_by":    savedBy,
+		"is_deleted":  false,
+	}
+
+	saveResults, err := helper.FindSaveHelper(saveFilterData, gin.H{})
+	if err != nil {
+		logging.Error("Error while fetching saved posts", err)
+		return userSavedStatusMap
+	}
+
+	for _, save := range saveResults {
+		userSavedStatusMap[save.EntityId] = true
+	}
+
+	return userSavedStatusMap
+}
+
 // Exposed Method to Save a Post for a User
 func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	// fetch headers and url params
@@ -73,7 +100,7 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	post_data, err := fetchPost(handlers.postHelper, post_id, community_id)
+	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

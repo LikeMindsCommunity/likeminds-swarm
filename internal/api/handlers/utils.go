@@ -111,6 +111,7 @@ func getTaggedUsers(text string) ([]string, error) {
 // Internal Method to fetch menu items for a user on an Entity
 func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned bool,
 	versionCode string, platformCode string, userId string, communityId int, cacheHelper cache.Helper) []responses.MenuResponse {
+
 	var output_menu_items []responses.MenuResponse
 	var externalEntities externalHelpers.ExternalEntities
 

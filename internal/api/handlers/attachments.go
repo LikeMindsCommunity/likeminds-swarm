@@ -499,7 +499,7 @@ func processMetaBeforeWidgetEdition(attachment requests.AttachmentRequest, metaD
 }
 
 // extract repost type attachment from a post
-func getRepostWidgetDataFromPost(post entities.Post) entities.Attachment {
+func getRepostWidgetDataFromPost(post *entities.Post) entities.Attachment {
 	originalPostAttachments := post.Attachments
 
 	for _, attachment := range originalPostAttachments {
