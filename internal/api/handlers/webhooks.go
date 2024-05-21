@@ -15,11 +15,19 @@ import (
 
 func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*responses.WebhookPostPayload, error) {
 
-	// Fetch post response
-	post, err := FetchSinglePostResponse(handlers, postId)
+	// Fetch post data
+	postData, err := FetchPostData(handlers.postHelper, postId, -1, false)
 	if err != nil {
 		return nil, err
 	}
+
+	loggedInUser := LoggedInUserParams{
+		UserId:     postData.UserId,
+		MemberRole: utils.DefaultRole,
+	}
+
+	// parse post response
+	post := parseSinglePostResponse(handlers, postData, &loggedInUser)
 
 	// Fetch topics for the post
 	topics, err := fetchAndParseTopicsForResponse(handlers.topicHelper, post.Topics, post.CommunityId)
@@ -40,7 +48,7 @@ func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*resp
 	}
 
 	postPayload := responses.WebhookPostPayload{
-		Post:        *post,
+		Post:        post,
 		Topics:      topics,
 		Widgets:     widgets,
 		PostCreator: usersMeta.Members[0],

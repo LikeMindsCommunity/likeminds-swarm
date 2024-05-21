@@ -24,8 +24,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post) int32 {
-	var postRepostCount int32 = 0
+func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post *entities.Post) int {
+	var postRepostCount int = 0
 
 	postRepostWidgetData := getRepostWidgetDataFromPost(post)
 	if postRepostWidgetData.AttachmentType == enums.RepostWidget {
@@ -43,13 +43,49 @@ func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post entities.Post
 			return postRepostCount
 		}
 
-		return repostWidgets[0].MetaData["repost_count"].(int32)
+		return int(repostWidgets[0].MetaData["repost_count"].(int32))
 	}
 
 	return postRepostCount
 }
 
-func getIsRepostedByUser(widgetHelper interfaces.WidgetHelper, userID string, post entities.Post) bool {
+// Internal Method to fetch repost count for multiple posts
+func GetRepostCountForMultiplePosts(widgetHelper interfaces.WidgetHelper, posts []entities.Post) map[primitive.ObjectID]int {
+
+	postRepostCount := make(map[primitive.ObjectID]int, len(posts))
+
+	repostWidgetIds := []primitive.ObjectID{}
+	for _, post := range posts {
+		postRepostWidgetData := getRepostWidgetDataFromPost(&post)
+		if postRepostWidgetData.AttachmentType == enums.RepostWidget {
+			repostWidgetIds = append(repostWidgetIds, postRepostWidgetData.AttachmentMeta.EntityID)
+		}
+	}
+
+	widgetFilter := gin.H{
+		"_id": bson.M{
+			"$in": repostWidgetIds,
+		},
+	}
+
+	repostWidgets, err := widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
+	if err != nil {
+		logging.Error("Error while fetching repost widgets for posts", err)
+		return postRepostCount
+	}
+
+	for _, repostWidget := range repostWidgets { //TODO: check if this is correct
+		postId, err := primitive.ObjectIDFromHex(repostWidget.ParentEntityID)
+		if err == nil {
+			postRepostCount[postId] = int(repostWidget.MetaData["repost_count"].(int32))
+		}
+	}
+
+	return postRepostCount
+}
+
+func getIsRepostedByUser(widgetHelper interfaces.WidgetHelper, userID string, post *entities.Post) bool {
+
 	originalPostRepostWidgetData := getRepostWidgetDataFromPost(post)
 	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
 		//get repost widget id, update repost widget data
@@ -77,6 +113,50 @@ func getIsRepostedByUser(widgetHelper interfaces.WidgetHelper, userID string, po
 	return false
 }
 
+func getIsRepostedByUserForMultiplePosts(widgetHelper interfaces.WidgetHelper, userID string, posts []entities.Post,
+) map[primitive.ObjectID]bool {
+
+	isRepostedByUserMap := make(map[primitive.ObjectID]bool, len(posts))
+
+	repostWidgetIds := []primitive.ObjectID{}
+	for _, post := range posts {
+		postRepostWidgetData := getRepostWidgetDataFromPost(&post)
+		if postRepostWidgetData.AttachmentType == enums.RepostWidget {
+			repostWidgetIds = append(repostWidgetIds, postRepostWidgetData.AttachmentMeta.EntityID)
+		}
+	}
+
+	widgetFilter := gin.H{
+		"_id": bson.M{
+			"$in": repostWidgetIds,
+		},
+	}
+
+	repostWidgets, err := widgetHelper.FindWidgetHelper(widgetFilter, gin.H{})
+	if err != nil {
+		logging.Error("Error while fetching repost widgets for posts", err)
+		return isRepostedByUserMap
+	}
+
+	for _, repostWidget := range repostWidgets {
+		repostWidgetMetadataRepostsMap, ok := repostWidget.MetaData["reposts"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		postId, err := primitive.ObjectIDFromHex(repostWidget.ParentEntityID)
+		if err != nil {
+			continue
+		}
+
+		if _, ok := repostWidgetMetadataRepostsMap[userID]; ok {
+			isRepostedByUserMap[postId] = true
+		}
+	}
+
+	return isRepostedByUserMap
+}
+
 func validateUserAndPostForRepost(handlers *FeedHandlers, userID string, originalPostID string, communityId int) error {
 	postFilterData := gin.H{
 		"_id": originalPostID,
@@ -86,7 +166,7 @@ func validateUserAndPostForRepost(handlers *FeedHandlers, userID string, origina
 		return fmt.Errorf("original post not found for repost")
 	}
 
-	if getIsRepostedByUser(handlers.widgetHelper, userID, postResults[0]) {
+	if getIsRepostedByUser(handlers.widgetHelper, userID, &postResults[0]) {
 		return fmt.Errorf("can not repost one post multiple times")
 	}
 
@@ -122,8 +202,8 @@ func parseFetchMultiplePostResponse(posts []responses.PostResponse, posts_count 
 }
 
 // Internal Method to parse topics response
-func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID,
-	communityId int) (map[string]responses.TopicResponse, error) {
+func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int,
+) (map[string]responses.TopicResponse, error) {
 
 	// Fetch topics using topic Ids
 	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false)
@@ -509,9 +589,9 @@ func getOriginalPostForReposts(handlers *FeedHandlers, response interface{}, com
 
 	postIds := getPostIdsFromReposts(response, apiRevampV1Check)
 
-	postsData, _ := fetchMultiplePostsData(handlers, postIds, communityId, userId, isCm, versionCode, platformCode, apiRevampV1Check)
+	postsResponseMap, _ := fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, versionCode, platformCode, apiRevampV1Check)
 
-	return postsData
+	return postsResponseMap
 }
 
 func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string {
@@ -599,7 +679,7 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	}
 	originalPost := postResults[0]
 
-	originalPostRepostWidgetData := getRepostWidgetDataFromPost(originalPost)
+	originalPostRepostWidgetData := getRepostWidgetDataFromPost(&originalPost)
 	if originalPostRepostWidgetData.AttachmentType == enums.RepostWidget {
 		//get respost widget id, update respost widget data
 		repostWidgetID := originalPostRepostWidgetData.AttachmentMeta.EntityID
@@ -686,12 +766,8 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 }
 
 // Internal Method to parse post for response
-func parsePostResponse(handlers *FeedHandlers, post entities.Post, userId string, isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool, memberRole string,
+func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, post *entities.Post, postSecondaryData *PostSecondaryDataParams,
 ) responses.PostResponse {
-
-	likes_count, _ := fetchEntityLikesCount(handlers.likeHelper, post.ID.Hex(), constants.PostEntityType)
-	replies_count, _ := fetchPostCommentsCount(handlers.commentHelper, post.ID.Hex())
 
 	var response responses.PostResponse
 
@@ -705,21 +781,27 @@ func parsePostResponse(handlers *FeedHandlers, post entities.Post, userId string
 	response.IsPinned = post.IsPinned
 	response.UserId = post.UserId
 	response.UUID = post.UserId
-	response.Attachments = ParseAttachmentsforResponse(post.Attachments, apiRevampV1Check)
-	response.LikesCount = int(likes_count)
-	response.CommentsCount = int(replies_count)
-	response.RepostCount = getPostRepostCount(handlers.widgetHelper, post)
 	response.IsDeleted = post.IsDeleted
 	response.IsEdited = post.IsEdited
 	response.IsRepost = post.IsRepost
-	response.IsRepostedByUser = getIsRepostedByUser(handlers.widgetHelper, userId, post)
-	response.IsLiked = fetchUserLikedStatusByEntity(handlers.likeHelper, post.ID.Hex(), constants.PostEntityType, userId)
-	response.IsSaved = fetchUserSavedStatusByPostId(handlers.saveHelper, post.ID.Hex(), userId)
-	response.MenuItems = []responses.MenuResponse{}
+	response.CreatedAt = int(post.CreatedAt.UnixMilli())
+	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
+	response.IsPendingPost = false
 
-	if memberRole != utils.GuestRole {
-		response.MenuItems = getEntityMenuItems(constants.PostEntityType, isCm, userId == post.UserId, post.IsPinned,
-			versionCode, platformCode, userId, post.CommunityId, handlers.cacheHelper)
+	response.Attachments = ParseAttachmentsforResponse(post.Attachments, loggedInUser.ApiRevampCheckV1)
+
+	response.LikesCount = int(postSecondaryData.LikesCount)
+	response.CommentsCount = int(postSecondaryData.RepliesCount)
+	response.RepostCount = int(postSecondaryData.RepostCount)
+
+	response.IsRepostedByUser = postSecondaryData.IsRepostedByUser
+	response.IsLiked = postSecondaryData.IsLikedByUser
+	response.IsSaved = postSecondaryData.IsSavedByUser
+
+	response.MenuItems = []responses.MenuResponse{}
+	if loggedInUser.MemberRole != utils.GuestRole {
+		response.MenuItems = getEntityMenuItems(constants.PostEntityType, loggedInUser.IsCm, loggedInUser.UserId == post.UserId,
+			post.IsPinned, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.UserId, post.CommunityId, handlers.cacheHelper)
 	}
 
 	if post.IsDeleted {
@@ -728,19 +810,30 @@ func parsePostResponse(handlers *FeedHandlers, post entities.Post, userId string
 		response.DeletedByUUID = post.DeletedBy
 	}
 
-	response.CreatedAt = int(post.CreatedAt.UnixMilli())
-	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
-
-	if apiRevampV1Check {
-		// remove community_id and user_id from post response
+	// if apiRevampV1Check is true, then do not parse community_id and user_id
+	if loggedInUser.ApiRevampCheckV1 {
 		response.CommunityId = 0
 		response.UserId = ""
-
 	}
 
-	response.IsPendingPost = false
-
 	return response
+}
+
+func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, loggedInUser *LoggedInUserParams,
+) responses.PostResponse {
+
+	postSecondaryData := PostSecondaryDataParams{
+		LikesCount:       fetchEntityLikesCount(handlers.likeHelper, postData.ID.Hex(), constants.PostEntityType),
+		RepliesCount:     fetchPostCommentsCount(handlers.commentHelper, postData.ID.Hex()),
+		RepostCount:      getPostRepostCount(handlers.widgetHelper, postData),
+		IsRepostedByUser: getIsRepostedByUser(handlers.widgetHelper, loggedInUser.UserId, postData),
+		IsLikedByUser:    fetchUserLikedStatusByEntity(handlers.likeHelper, postData.ID.Hex(), constants.PostEntityType, loggedInUser.UserId),
+		IsSavedByUser:    fetchUserSavedStatusByPostId(handlers.saveHelper, loggedInUser.UserId, postData.ID.Hex()),
+	}
+
+	postResponse := parsePostResponse(handlers, loggedInUser, postData, &postSecondaryData)
+
+	return postResponse
 }
 
 // Internal Method to parse multiple post for response
@@ -748,23 +841,60 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 	apiRevampV1Check bool, memberRole string,
 ) []responses.PostResponse {
 
-	response := []responses.PostResponse{}
+	loggedInUser := LoggedInUserParams{
+		UserId:           userId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
+	}
 
+	postIds := []primitive.ObjectID{}
 	for _, post := range posts {
-		response = append(response, parsePostResponse(handlers, post, userId, isCm, versionCode, platformCode,
-			apiRevampV1Check, memberRole))
+		postIds = append(postIds, post.ID)
+	}
+
+	likesCountMap := fetchMultipleEntitiesLikesCount(handlers.likeHelper, postIds, constants.PostEntityType)
+	repliesCountMap := fetchMultiplePostsCommentsCount(handlers.commentHelper, postIds)
+	repostCountMap := GetRepostCountForMultiplePosts(handlers.widgetHelper, posts)
+	isRepostedByUserMap := getIsRepostedByUserForMultiplePosts(handlers.widgetHelper, userId, posts)
+	isLikedByUserMap := fetchUserLikedStatusForMultipleEntities(handlers.likeHelper, postIds, constants.PostEntityType, userId)
+	isSavedByUserMap := fetchUserSavedStatusByPostIds(handlers.saveHelper, postIds, userId)
+
+	response := []responses.PostResponse{}
+	for _, post := range posts {
+
+		postSecondaryData := PostSecondaryDataParams{
+			LikesCount:       likesCountMap[post.ID],
+			RepliesCount:     repliesCountMap[post.ID],
+			RepostCount:      repostCountMap[post.ID],
+			IsRepostedByUser: isRepostedByUserMap[post.ID],
+			IsLikedByUser:    isLikedByUserMap[post.ID],
+			IsSavedByUser:    isSavedByUserMap[post.ID],
+		}
+
+		response = append(response, parsePostResponse(handlers, &loggedInUser, &post, &postSecondaryData))
 	}
 
 	return response
 }
 
-// Internal Method to fetch post using post_id and community_id
-func fetchPost(helper interfaces.PostHelper, postId string, communityId int) (*entities.Post, error) {
+// Internal Method to fetch post using post_id
+func FetchPostData(helper interfaces.PostHelper, postId string, communityId int, isDeletedCheck bool,
+) (*entities.Post, error) {
+
 	// post filter data
 	postFilterData := gin.H{
-		"_id":          postId,
-		"is_deleted":   false,
-		"community_id": communityId,
+		"_id": postId,
+	}
+
+	if communityId > 0 {
+		postFilterData["community_id"] = communityId
+	}
+
+	if isDeletedCheck {
+		postFilterData["is_deleted"] = false
 	}
 
 	// fetch post using helper method
@@ -781,32 +911,14 @@ func fetchPost(helper interfaces.PostHelper, postId string, communityId int) (*e
 	return &postResults[0], nil
 }
 
-// getPostByID | get post data by id
-func getPostByID(helper interfaces.PostHelper, postID string) (*entities.Post, error) {
-	filter := gin.H{
-		"_id": postID,
-	}
-
-	postResults, err := helper.FindPostHelper(filter, gin.H{})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(postResults) == 0 {
-		return nil, fmt.Errorf("invalid post_id")
-	}
-
-	return &postResults[0], nil
-}
-
 // Internal Method to fetch parsed post with replies
 func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int, filterOptions map[string]interface{},
-	memberId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
 ) (responses.PostWithRepliesResponse, error) {
 
 	var postWithRepliesResponse responses.PostWithRepliesResponse
 
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		return postWithRepliesResponse, err
 	}
@@ -823,9 +935,17 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 		return postWithRepliesResponse, err
 	}
 
-	postResponse := parsePostResponse(handlers, *postData, memberId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, memberId, isCm,
-		versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
+	loggedInUser := LoggedInUserParams{
+		UserId:           userId,
+		IsCm:             isCm,
+		PlatformCode:     platformCode,
+		VersionCode:      versionCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
+	}
+
+	postResponse := parseSinglePostResponse(handlers, postData, &loggedInUser)
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
 
 	postWithRepliesResponse.PostResponse = postResponse
 	postWithRepliesResponse.Replies = repliesResponse
@@ -833,23 +953,10 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 	return postWithRepliesResponse, nil
 }
 
-// Internal Method to fetch single post response
-func FetchSinglePostResponse(handlers *FeedHandlers, postId string) (*responses.PostResponse, error) {
-
-	postData, err := getPostByID(handlers.postHelper, postId)
-	if err != nil {
-		return nil, err
-	}
-
-	postResponse := parsePostResponse(handlers, *postData, postData.UserId, false, "", "", false, utils.DefaultRole)
-
-	return &postResponse, nil
-}
-
 // Internal Method to fetch multiple posts data using post_ids
-func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityId int, userId string,
-	isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool) (map[string]responses.PostResponse, error) {
+func fetchPostResponseMapFromPostIds(handlers *FeedHandlers, postIds []string, communityId int, userId string, isCm bool,
+	versionCode string, platformCode string, apiRevampV1Check bool,
+) (map[string]responses.PostResponse, error) {
 
 	// convert post_ids to object ids
 	postObjectIds := helpers.ConvertIdsToObjectIds(postIds)
@@ -868,16 +975,16 @@ func fetchMultiplePostsData(handlers *FeedHandlers, postIds []string, communityI
 		return nil, err
 	}
 
+	// parse fetched posts
+	parsedPosts := parseMultiplePostResponse(handlers, postsLists, userId, isCm, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
+
 	// Make key value pair of post_id -> PostResponse
 	postResponse := map[string]responses.PostResponse{}
-
-	// parse post response data for each post
-	for _, post := range postsLists {
-		postResponse[post.ID.Hex()] = parsePostResponse(handlers, post, userId, isCm, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
+	for _, post := range parsedPosts {
+		postResponse[post.ID.Hex()] = post
 	}
 
 	return postResponse, nil
-
 }
 
 // Internal function to fetch posts with topic id
@@ -1013,7 +1120,7 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 	}
 
 	// fetch post data using new post_id
-	postData, err := fetchPost(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1299,7 +1406,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	if len(postIds) > 0 {
 		// fetch multiple posts data using internal method
-		postsResponse, err = fetchMultiplePostsData(handlers, postIds, communityId, headers[utils.HeadersMemberId],
+		postsResponse, err = fetchPostResponseMapFromPostIds(handlers, postIds, communityId, headers[utils.HeadersMemberId],
 			true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -1423,7 +1530,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post data
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1530,7 +1637,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post data
-	postData, err = fetchPost(handlers.postHelper, postId, communityId)
+	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1618,7 +1725,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1747,7 +1854,7 @@ func deleteOriginalPostRepostWidgetData(handlers *FeedHandlers, postData *entiti
 	}
 
 	originalPostData := postDatas[0]
-	RepostWidgetData := getRepostWidgetDataFromPost(originalPostData)
+	RepostWidgetData := getRepostWidgetDataFromPost(&originalPostData)
 	if RepostWidgetData.AttachmentType != enums.RepostWidget {
 		return
 	}
@@ -1886,7 +1993,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	postData, err := fetchPost(handlers.postHelper, postId, communityId)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1907,7 +2014,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	}
 
 	// fetch updated post data using post_id
-	postData, err = fetchPost(handlers.postHelper, postId, communityId)
+	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

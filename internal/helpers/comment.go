@@ -118,14 +118,33 @@ func (helper *commentHelper) CountCommentHelper(filter map[string]interface{}) (
 	return count, err
 }
 
+// Exposed Helper Method to perform Aggregation queries on Comment
+func (helper *commentHelper) AggregateCommentHelper(query []map[string]interface{}) (interface{}, error) {
+
+	cursor, err := helper.commentRepository.Aggregate(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = []gin.H{}
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
+
+	return results, err
+}
+
 // Exposed Helper Method to perform Aggregation on Comments
 func (helper *commentHelper) AggregateTopCommentsHelper(query []map[string]interface{}) ([]responses.TopCommentsAggregationQueryResponse, error) {
+
 	results, err := helper.commentRepository.Aggregate(query)
+	if err != nil {
+		return nil, err
+	}
 
 	var commentResultsList []responses.TopCommentsAggregationQueryResponse
-
 	if err = results.All(context.TODO(), &commentResultsList); err != nil {
-		return nil, fmt.Errorf("Error in conversion!")
+		return nil, fmt.Errorf("error in conversion")
 	}
 
 	return commentResultsList, err

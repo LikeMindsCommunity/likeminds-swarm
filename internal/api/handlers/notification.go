@@ -123,10 +123,10 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 }
 
 // Internal Method to send notification on Deletion of a Post
-func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
-	platform_code string, version_code string) {
+func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers, platform_code string, version_code string,
+) {
 	// Fetch post data
-	post_data, err := getPostByID(handlers.postHelper, activity.EntityID.Hex())
+	post_data, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, false)
 	if err != nil {
 		return
 	}
@@ -282,7 +282,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 	switch activity.EntityType {
 	case constants.Post:
 		// Fetch post details
-		post_data, err := fetchPost(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID)
+		post_data, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, true)
 		if err != nil {
 			return
 		}
@@ -364,13 +364,10 @@ func sendPostCommentActionNotification(activity *entities.Activity, handlers Fee
 	subTitle := ""
 
 	// Fetch comments count
-	commentCount, err := fetchPostCommentsCount(handlers.commentHelper, activity.EntityID.Hex())
-	if err != nil {
-		return
-	}
+	commentCount := fetchPostCommentsCount(handlers.commentHelper, activity.EntityID.Hex())
 
 	// If comments count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(commentCount)) {
+	if !checkIfFibonacciNumber(commentCount) {
 		return
 	}
 
@@ -466,13 +463,10 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 	}
 
 	// Fetch likes count
-	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
-	if err != nil {
-		return
-	}
+	likesCount := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
 
 	// If likes count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(likesCount)) {
+	if !checkIfFibonacciNumber(likesCount) {
 		return
 	}
 
@@ -523,13 +517,10 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 		entityType = "user"
 	}
 	// Fetch likes count
-	likesCount, err := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
-	if err != nil {
-		return
-	}
+	likesCount := fetchEntityLikesCount(handlers.likeHelper, activity.EntityID.Hex(), entityType)
 
 	// If likes count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(likesCount)) {
+	if !checkIfFibonacciNumber(likesCount) {
 		return
 	}
 
@@ -581,14 +572,14 @@ func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandle
 // Internal General Method to send notification on repost action on a post
 func sendRepostPostActionNotification(activity *entities.Activity, handlers FeedHandlers, platformCode string, versionCode string) {
 
-	postData, err := fetchPost(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID)
+	postData, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, true)
 	if err != nil {
 		return
 	}
-	repostCount := getPostRepostCount(handlers.widgetHelper, *postData)
+	repostCount := getPostRepostCount(handlers.widgetHelper, postData)
 
 	// If repost count is not in fibonacci series
-	if !checkIfFibonacciNumber(int(repostCount)) {
+	if !checkIfFibonacciNumber(repostCount) {
 		return
 	}
 
