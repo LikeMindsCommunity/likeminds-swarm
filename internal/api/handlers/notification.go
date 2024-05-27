@@ -28,7 +28,7 @@ func sendPendingPostApprovalNotification(handlers FeedHandlers, recieverUUID str
 }
 
 // Internal Method to send notification on Pending post rejection
-func sendPendingPostRejectionNotification(handlers FeedHandlers, recieverUUID string, communityId int) {
+func sendPendingPostRejectionNotification(handlers FeedHandlers, recieverUUID string, communityId int, pendingPostId string) {
 
 	// Fetch post variable value
 	postMetatadataValue := externalHelpers.GetPostVariableOrDefault(handlers.cacheHelper, recieverUUID, communityId)
@@ -38,7 +38,7 @@ func sendPendingPostRejectionNotification(handlers FeedHandlers, recieverUUID st
 	subCategory := fmt.Sprintf(constants.PendingPostRejectedSubCategory, postMetatadataValue)
 	title := fmt.Sprintf(constants.PendingPostRejectedTitle, utils.CapitalizeFirstLetter(postMetatadataValue))
 	subTitle := fmt.Sprintf(constants.PendingPostRejectedSubTitle, postMetatadataValue)
-	route := constants.PlaceholderHomeRoute // placeholder route
+	route := fmt.Sprintf(utils.PendingPostDetailRoute, pendingPostId)
 
 	// send notification
 	externalHelpers.SendNotification([]string{receivers}, title, subTitle, route, communityId, category, subCategory, "", "")
