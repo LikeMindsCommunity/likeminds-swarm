@@ -341,7 +341,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 		if activityID != nil {
 			// Send Rejection notification
-			sendPendingPostRejectionNotification(*handlers, pendingPostData.UserId, communityId)
+			sendPendingPostRejectionNotification(*handlers, pendingPostData.UserId, communityId, pendingPostData.ID.Hex())
 		}
 	}
 
