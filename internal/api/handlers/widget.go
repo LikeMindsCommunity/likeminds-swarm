@@ -227,13 +227,13 @@ func getAnswerTextForPoll(uniqueVotersOnPoll int64) string {
 
 	switch uniqueVotersOnPoll {
 	case 0:
-		return "Be the first to vote"
+		return "Be the first one to vote."
 
 	case 1:
-		return "1 member voted on this poll"
+		return "1 vote"
 
 	default:
-		return fmt.Sprintf(`%d members voted on this poll`, uniqueVotersOnPoll)
+		return fmt.Sprintf(`%d votes`, uniqueVotersOnPoll)
 	}
 }
 
