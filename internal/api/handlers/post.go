@@ -251,6 +251,9 @@ func getTopicIdsFromPosts(response interface{}) []primitive.ObjectID {
 		switch post := post.(type) {
 		case responses.PostWithRepliesResponse:
 			tempTopicIds = getTopicsIdsFromTopicResponse(post.Topics, tempTopicIds)
+
+		case responses.PostResponse:
+			tempTopicIds = getTopicsIdsFromTopicResponse(post.Topics, tempTopicIds)
 		}
 	}
 
