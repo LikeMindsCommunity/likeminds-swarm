@@ -190,6 +190,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		updatedOptions := parsePollResults(options, parsedPollVotesData)
 		lmMeta["options"] = updatedOptions
 		lmMeta["to_show_results"] = toShowResults
+		lmMeta["voters_count"] = uniqueVotersOnPoll
 
 		//Updates the pollAnswerText as per the number of unique members that voted on this poll
 		lmMeta["poll_answer_text"] = getAnswerTextForPoll(uniqueVotersOnPoll)
