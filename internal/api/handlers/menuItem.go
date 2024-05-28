@@ -97,7 +97,7 @@ func GetIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntit
 func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
 	menuItems := []responses.MenuResponse{}
 
-	if isEditCheck {
+	if isEditCheck && !externalEntities.IsPostApprovalSettingEnabled {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
 	}
 
