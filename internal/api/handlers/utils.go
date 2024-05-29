@@ -121,10 +121,12 @@ func getEntityMenuItems(entity_type string, is_cm bool, is_owner bool, is_pinned
 	case constants.PostEntityType:
 		// Get community configurations
 		communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(cacheHelper, userId, communityId)
+		isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(cacheHelper, userId, communityId)
 
 		if communityConfigurationResponse != nil {
 			externalEntities = externalHelpers.ExternalEntities{
-				CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
+				CommunityConfigurations:      communityConfigurationResponse.CommunityConfigurations,
+				IsPostApprovalSettingEnabled: isPostApprovalSettingEnabled,
 			}
 		}
 

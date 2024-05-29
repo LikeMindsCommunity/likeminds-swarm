@@ -8,12 +8,14 @@ const (
 	InferdoApiFailsCountKey      = "inferdo_api_fails_count_%d"
 	CommunityWebhooksCacheKey    = "%s_webhooks"
 	PostTopLikedCommentKey       = "%d_%s_top_liked_comments"
+	CommunitySettingsCacheKey    = "%d_community_settings" // communityId
 )
 
 // Cache TTLs
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
+	CommunitySettingsCacheTTL              = 30 * 24
 )
 
 // Kettle Cache Keys
