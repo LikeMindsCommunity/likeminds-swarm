@@ -10,10 +10,16 @@ const (
 	PostTopLikedCommentKey       = "%d_%s_top_liked_comments"
 )
 
+// Swarm cache keys of personalised feed
+const (
+	PostsRececnyMetricsKey = "%d_recency_metric_score"
+)
+
 // Cache TTLs
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
+	PostsRecenctCacheTTLInMins             = 5   // 5 Mins
 )
 
 // Kettle Cache Keys
