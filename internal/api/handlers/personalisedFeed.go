@@ -145,7 +145,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 		return
 	}
 
-	// Filter for all posts of community
+	// Filter for all likes count of posts in a community
 	allPostsLikesCountOfCommunityFilter := []map[string]interface{}{
 		gin.H{
 			"$match": gin.H{
