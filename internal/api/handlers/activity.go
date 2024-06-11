@@ -1003,7 +1003,7 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 	// activity filter data
 	activityFilterData := gin.H{
 		"action": gin.H{
-			"$in": []int{int(constants.LikeOnPost), int(constants.LikeOnComment)}, // Only fetch LikeOnPost and CommentOnPost activities
+			"$in": []int{int(constants.LikeOnPost), int(constants.CommentOnPost)}, // Only fetch LikeOnPost and CommentOnPost activities
 		},
 		actionByMetaUserKey: gin.H{
 			"$exists": true,
