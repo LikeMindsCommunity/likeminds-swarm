@@ -12,8 +12,9 @@ const (
 
 // Swarm cache keys of personalised feed
 const (
-	PostsRececnyMetricsKey = "%d_recency_metric_score"
-	PostsLikesMetricsKey   = "%d_likes_metric_score"
+	PostsRececnyMetricsKey  = "%d_recency_metric_score"
+	PostsLikesMetricsKey    = "%d_likes_metric_score"
+	PostsCommentsMetricsKey = "%d_comments_metric_score"
 )
 
 // Cache TTLs

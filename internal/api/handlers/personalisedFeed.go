@@ -33,6 +33,9 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 	// Compute post likes metric and save it in cache
 	PostLikesMetricComputation(handlers, userId, communityId)
 
+	// Compute post comments metric and save it in cache
+	PostCommentsMetricComputation(handlers, userId, communityId)
+
 	utils.GenerateSuccessResponse(c, gin.H{})
 }
 
@@ -61,6 +64,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 		gin.H{
 			"$match": gin.H{
 				"community_id": communityId,
+				"is_deleted":   false,
 			},
 		},
 		gin.H{
@@ -193,4 +197,93 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 // Compute post likes metric score
 func computePostLikesMetricScore(postLikesCount float64, likesMetricMaxThreshold float64, likesMetricWeight float64) float64 {
 	return utils.GetMinimumFromArray(postLikesCount, likesMetricMaxThreshold) * likesMetricWeight
+}
+
+// Recompute & save post ranking on the basis of comments metrics
+func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, communityId int) {
+	postsCommentsMetricMap := map[string]float64{}
+
+	cacheKey := fmt.Sprintf(cache.PostsCommentsMetricsKey, communityId)
+
+	// Get data from cache
+	postsCommentsMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey)
+	if postsCommentsMetricMapCacheValue.Val() != "" && postsCommentsMetricMapCacheValue.Val() != "null" {
+		return
+	}
+
+	// // Start of computation of post likes metric
+	// var postRecencyMetricsMap map[string]float64
+	// postIdsArray := []string{}
+	// postsMetricMapCacheKey := fmt.Sprintf(cache.PostsRececnyMetricsKey, communityId)
+
+	// // Get data from cache
+	// postsMetricMapCacheValue := handlers.cacheHelper.Get(postsMetricMapCacheKey)
+	// if postsMetricMapCacheValue.Val() == "" || postsMetricMapCacheValue.Val() == "null" {
+	// 	return
+	// }
+
+	// err := json.Unmarshal([]byte(postsMetricMapCacheValue.Val()), &postRecencyMetricsMap)
+
+	// if err != nil {
+	// 	logging.Error("Error in unmarshalling recency metric score from cache", err)
+	// }
+
+	// for postId := range postRecencyMetricsMap {
+	// 	postIdsArray = append(postIdsArray, postId)
+	// }
+
+	// Get personalised weights
+	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
+
+	if err != nil {
+		logging.Error("Error in computation of recency metric: ", err)
+		return
+	}
+
+	// Filter for all comments count of posts in a community
+	allPostsCommentsCountOfCommunityFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"community_id": communityId,
+				"is_deleted":   false,
+				"level":        0,
+			},
+		},
+		gin.H{
+			"$group": gin.H{
+				"_id": "$post_id",
+				"count": gin.H{
+					"$sum": 1,
+				},
+			},
+		},
+	}
+
+	allPostsLikesData, err := handlers.commentHelper.AggregateCommentHelper(allPostsCommentsCountOfCommunityFilter)
+
+	for _, postData := range allPostsLikesData.([]gin.H) {
+		var metricScore float64
+
+		postCommentsCount := float64(postData["count"].(int32))
+
+		metricScore = computePostCommentsMetricScore(
+			postCommentsCount,
+			personalisedFeedWeights.CommentsMetrics.MaxThreshold,
+			personalisedFeedWeights.CommentsMetrics.Weight)
+
+		postsCommentsMetricMap[postData["_id"].(primitive.ObjectID).Hex()] = metricScore
+	}
+
+	// Set post metric score in cache
+	postsMetricMapBytesValue, _ := json.Marshal(postsCommentsMetricMap)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecenctCacheTTLInMins*time.Minute)
+
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving post comments metric score in cache", setStatus.Err())
+	}
+}
+
+// Compute post comments metric score
+func computePostCommentsMetricScore(postCommentsCount float64, commentsMetricMaxThreshold float64, commentsMetricWeight float64) float64 {
+	return utils.GetMinimumFromArray(postCommentsCount, commentsMetricMaxThreshold) * commentsMetricWeight
 }
