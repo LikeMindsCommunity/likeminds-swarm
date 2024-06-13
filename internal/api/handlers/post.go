@@ -831,7 +831,7 @@ func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, lo
 		RepostCount:      getPostRepostCount(handlers.widgetHelper, postData),
 		IsRepostedByUser: getIsRepostedByUser(handlers.widgetHelper, loggedInUser.UserId, postData),
 		IsLikedByUser:    fetchUserLikedStatusByEntity(handlers.likeHelper, postData.ID.Hex(), constants.PostEntityType, loggedInUser.UserId),
-		IsSavedByUser:    fetchUserSavedStatusByPostId(handlers.saveHelper, loggedInUser.UserId, postData.ID.Hex()),
+		IsSavedByUser:    fetchUserSavedStatusByPostId(handlers.saveHelper, postData.ID.Hex(), loggedInUser.UserId),
 	}
 
 	postResponse := parsePostResponse(handlers, loggedInUser, postData, &postSecondaryData)
