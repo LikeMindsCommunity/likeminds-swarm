@@ -49,6 +49,7 @@ func fetchUserSavedPostByPostId(helper interfaces.SaveHelper, post_id string,
 
 // Internal Method to fetch the save status of a Post for a User
 func fetchUserSavedStatusByPostId(helper interfaces.SaveHelper, post_id string, saved_by string) bool {
+
 	save_results, err := fetchUserSavedPostByPostId(helper, post_id, saved_by)
 	if err != nil {
 		return false

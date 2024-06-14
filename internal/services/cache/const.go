@@ -8,6 +8,7 @@ const (
 	InferdoApiFailsCountKey      = "inferdo_api_fails_count_%d"
 	CommunityWebhooksCacheKey    = "%s_webhooks"
 	PostTopLikedCommentKey       = "%d_%s_top_liked_comments"
+	CommunitySettingsCacheKey    = "%d_community_settings" // communityId
 )
 
 // Swarm cache keys of personalised feed
@@ -17,11 +18,16 @@ const (
 	PostsCommentsMetricsKey = "%d_comments_metric_score"
 )
 
-// Cache TTLs
+// Cache TTLs (in Hourse)
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
-	PostsRecenctCacheTTLInMins             = 5   // 5 Mins
+	CommunitySettingsCacheTTLInHours       = 720 // 30 days
+)
+
+// Cache TTLs (in Mins)
+const (
+	PostsRecenctCacheTTLInMins = 5 // 5 Mins
 )
 
 // Kettle Cache Keys

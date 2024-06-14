@@ -341,7 +341,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 		if activityID != nil {
 			// Send Rejection notification
-			sendPendingPostRejectionNotification(*handlers, pendingPostData.UserId, communityId)
+			sendPendingPostRejectionNotification(*handlers, pendingPostData.UserId, communityId, pendingPostData.ID.Hex())
 		}
 	}
 
@@ -478,7 +478,7 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	}
 
 	// Check if user is post creator
-	if pendingPostData.UserId != headers[utils.HeadersMemberId] {
+	if memberRole != utils.CMRole && pendingPostData.UserId != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
 	}
