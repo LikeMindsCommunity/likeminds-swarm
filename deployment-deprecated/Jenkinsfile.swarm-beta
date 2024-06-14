@@ -1,10 +1,14 @@
+// Deployment jenkins script file for GCP GKE swarm-beta deployment
+// We have moved deployment to AWS jenkins deploying service on AWS EKS
+// File is deprecated and moved to deployment-deprecated directory
+
 pipeline {
     agent any
     // environment {
-    //     PROJECT_ID = 'likeminds-prod-prj-5464'
-    //     CLUSTER_NAME = 'likeminds-prod-autopilot-cluster'
+    //     PROJECT_ID = 'likeminds-nonprod-prj-24e1'
+    //     CLUSTER_NAME = 'likeminds-nonprod-autopilot-cluster'
     //     LOCATION = 'asia-south1'
-    //     CREDENTIALS_ID = 'likeminds-prod-prj-5464'
+    //     CREDENTIALS_ID = 'likeminds-nonprod-prj-24e1'
     // }
     stages {
         stage("Checkout code") {
@@ -17,7 +21,7 @@ pipeline {
             steps{
                 script{
                     sh 'gcloud auth configure-docker asia.gcr.io'
-                    sh 'docker build -f Dockerfile.swarm-prod -t asia.gcr.io/likeminds-prod-prj-5464/likeminds-swarm/swarm-prod:${BUILD_NUMBER} . '
+                    sh 'docker build -f Dockerfile.swarm-beta -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:${BUILD_NUMBER} . '
                     }
                 }
             }
@@ -25,17 +29,18 @@ pipeline {
             steps{
                 script{
                     sh 'gcloud auth configure-docker asia.gcr.io'
-                    sh 'docker push asia.gcr.io/likeminds-prod-prj-5464/likeminds-swarm/swarm-prod:${BUILD_NUMBER}'
+                    sh 'docker push asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:${BUILD_NUMBER}'
                       }
                  }
             }
               
         stage('Deploy to GKE') {
             steps{
-               sh '''
-                 sed -i 's/swarm-prod:.*/swarm-prod:'${BUILD_NUMBER}'"/g' deployment-swarm-prod.yaml
+              sh '''
+                 sed -i 's/swarm-beta:.*/swarm-beta:'${BUILD_NUMBER}'"/g' deployment-swarm-beta.yaml
                  gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${LOCATION} --project ${PROJECT_ID} --internal-ip
-                 kubectl apply -f /var/lib/jenkins/workspace/likeminds-swarm-prod/deployment-swarm-prod.yaml
+                 kubectl apply -f /var/lib/jenkins/workspace/likeminds-swarm-beta/deployment-swarm-beta.yaml
+                
                 '''
             }
         }
