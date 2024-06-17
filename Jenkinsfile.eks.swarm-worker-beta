@@ -7,6 +7,14 @@ pipeline {
             }
          }
         
+        stage ("Download .env file from s3") {
+            steps{
+                withAWS(region:"ap-south-1", credentials:"AWS-S3-ENV"){
+                    s3Download(file:'./cmd/server/config/.env', bucket:'likeminds-configs-beta', path:'application-dot-envs-beta/swarm-beta/swarm-beta-dot-env-private', force: true)
+                }
+            }
+        }
+        
         stage ('Build Image') {
             steps {
                 sh "sudo docker build -f Dockerfile.swarm-worker-beta -t 081371230266.dkr.ecr.ap-south-1.amazonaws.com/likeminds-swarm-worker-repo:swarm-worker-V$BUILD_NUMBER ."
