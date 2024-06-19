@@ -1,53 +1,57 @@
+# Deployment spec file for GCP GKE swarm-prod deployment
+# We have moved service to container based deployment with docker and AWS EKS
+# File is deprecated and moved to deployment-deprecated directory
+
 apiVersion: "apps/v1"
 kind: "Deployment"
 metadata:
-  name: "swarm-beta"
+  name: "swarm-prod"
   namespace: "app-deploy"
   labels:
-    app: "swarm-beta"
+    app: "swarm-prod"
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
-      app: "swarm-beta"
+      app: "swarm-prod"
   minReadySeconds: 5
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1
+      maxUnavailable: 1  
   template:
     metadata:
       labels:
-        app: "swarm-beta"
+        app: "swarm-prod"
     spec:
       containers:
-      - name: "likeminds-swarm-beta-1"
-        image: "asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:45ffd92"
+      - name: "likeminds-swarm-prod-1"
+        image: "asia.gcr.io/likeminds-prod-prj-5464/likeminds-swarm/swarm-prod:a22ed32"
         resources:
           requests:
             memory: "1000Mi"
-            cpu: "500m"
+            cpu: "2000m"
           limits:
-            memory: "1500Mi"
-            cpu: "1000m"
+            memory: "3000Mi"
+            cpu: "2500m"
 
 ---
 
 apiVersion: "autoscaling/v2"
 kind: "HorizontalPodAutoscaler"
 metadata:
-  name: "swarm-beta"
+  name: "swarm-prod"
   namespace: "app-deploy"
   labels:
-    app: "swarm-beta"
+    app: "swarm-prod"
 spec:
   scaleTargetRef:
     kind: "Deployment"
-    name: "swarm-beta"
+    name: "swarm-prod"
     apiVersion: "apps/v1"
-  minReplicas: 1
-  maxReplicas: 3
+  minReplicas: 2
+  maxReplicas: 6
   metrics:
   - type: "Resource"
     resource:
