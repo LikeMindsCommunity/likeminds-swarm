@@ -18,12 +18,17 @@ const (
 	PostsCommentsMetricsKey = "%d_comments_metric_score"
 )
 
-// Cache TTLs
+// Cache TTLs (in Hourse)
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
-	PostsRecenctCacheTTLInMins             = 5   // 5 Mins
 	CommunitySettingsCacheTTL              = 30 * 24
+	CommunitySettingsCacheTTLInHours       = 720 // 30 days
+)
+
+// Cache TTLs (in Mins)
+const (
+	PostsRecenctCacheTTLInMins = 5 // 5 Mins
 )
 
 // Kettle Cache Keys
