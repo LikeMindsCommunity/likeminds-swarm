@@ -16,7 +16,8 @@ const (
 	PostsRececnyMetricsKey  = "%d_recency_metric_score" //TODO: fix typo
 	PostsLikesMetricsKey    = "%d_likes_metric_score"
 	PostsCommentsMetricsKey = "%d_comments_metric_score"
-	CommunityDefaultFeedKey = "%d_community_default_feed" // communityId
+	CommunityDefaultFeedKey = "%d_community_default_feed"    // communityId
+	UserPersonalisedFeedKey = "%d_%s_user_personalised_feed" // communityId, userId
 )
 
 // Cache TTLs (in Hours)
@@ -31,6 +32,7 @@ const (
 const (
 	PostsRecenctCacheTTLInMins         = 5  // 5 Mins
 	DefaultCommunityFeedCacheTTLInMins = 30 // 30 Mins
+	UserPersonalisedFeedCacheTTLInMins = 30 // 30 Mins
 )
 
 // Kettle Cache Keys

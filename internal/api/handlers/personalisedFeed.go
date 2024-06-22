@@ -322,8 +322,8 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 
 	// fetch headers and url params
-	// headers := utils.GetHeaders(c)
-	// userId := headers[utils.HeadersMemberId]
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -331,51 +331,101 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
-	// Get personalised weights
-	// personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
-	// if err != nil {
-	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed weights: ", err.Error()))
-	// 	return
-	// }
+	// Reorder user personalised feed and update in cache
+	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId) //TODO: check if this is correct
 
-	// Get personalised feed
-	// personalisedFeed, err := externalHelpers.GetPersonalisedFeed(handlers.cacheHelper, userId, communityId, personalisedFeedWeights)
-	// if err != nil {
-	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed: ", err.Error()))
-	// 	return
-	// }
+	utils.GenerateSuccessResponse(c, nil)
+}
 
-	// Reorder personalised feed
-	// reorderedPersonalisedFeed, err := externalHelpers.ReorderPersonalisedFeed(personalisedFeed)
-	// if err != nil {
-	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in reordering personalised feed: ", err.Error()))
-	// 	return
-	// }
+// method to reorder user personalised feed and update in cache
+func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, userId string) {
 
-	// response := gin.H{}
+	// fetch community metric post scores
+	postScoreMap, err := fetchCommunityMetricPostScores(cacheHelper, communityId)
+	if err != nil {
+		logging.Error("Error in fetching post metrics for community: ", communityId, " err: ", err)
+		return
+	}
 
-	utils.GenerateSuccessResponse(c, gin.H{})
+	if len(postScoreMap) == 0 {
+		logging.Error("No community metric post scores found for community: ", communityId)
+		return
+	}
+
+	// fetch user dampened posts score map
+	var userDampenedPostsMap map[string]float64 // TODO: complete this
+	// userDampenedPostsMap, err := fetchUserDampenedPosts(cacheHelper, communityId, userId)
+
+	// reduce the score of dampened posts
+	for postId, score := range userDampenedPostsMap {
+		if _, ok := postScoreMap[postId]; !ok {
+			postScoreMap[postId] -= score // TODO: check if this is correct
+		}
+	}
+
+	// Sort the post score map in descending order and get top 1000 posts
+	sortedPostIds := utils.SortFloatMapByValues(postScoreMap, true)
+	if len(sortedPostIds) > 1000 {
+		sortedPostIds = sortedPostIds[:1000]
+	}
+
+	// Save user personalised feed (postIds) in cache
+	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)
+	defaultFeedBytesValue, _ := json.Marshal(sortedPostIds)
+
+	setStatus := cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.UserPersonalisedFeedCacheTTLInMins*time.Minute)
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving user personalised feed in cache", setStatus.Err())
+	}
 }
 
 // Exposed Method to compute community default feed | Should be run every 30 mins
 func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(communityId int) {
 
+	// Fetch post scores map for the community
+	postScoreMap, err := fetchCommunityMetricPostScores(handlers.cacheHelper, communityId)
+	if err != nil {
+		logging.Error("Error in fetching post metrics for community: ", communityId, " err: ", err)
+		return
+	}
+
+	if len(postScoreMap) == 0 {
+		logging.Error("No community metric post scores found for community: ", communityId)
+		return
+	}
+
+	// Sort the post score map in descending order and get top 1000 posts
+	sortedPostIds := utils.SortFloatMapByValues(postScoreMap, true)
+	if len(sortedPostIds) > 1000 {
+		sortedPostIds = sortedPostIds[:1000]
+	}
+
+	// Save the default community feed in cache
+	cacheKey := fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
+	defaultFeedBytesValue, _ := json.Marshal(sortedPostIds)
+
+	setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.DefaultCommunityFeedCacheTTLInMins*time.Minute)
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving community default feed in cache", setStatus.Err())
+	}
+}
+
+func fetchCommunityMetricPostScores(cacheHelper cache.Helper, communityId int) (map[string]float64, error) {
+
 	postScoreMap := map[string]float64{}
 
 	// Fetch all the recent posts of the community
 	cacheKey := fmt.Sprintf(cache.PostsRececnyMetricsKey, communityId)
-	recentPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+	recentPostsMap, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
-		logging.Error("Error in fetching community recency metrics from cache", err)
-		return
+		return postScoreMap, fmt.Errorf("error in fetching community recency metrics from cache: %v", err)
 	}
 
 	if exists {
 		var recentPostsMapData map[string]float64
 		err := json.Unmarshal([]byte(recentPostsMap), &recentPostsMapData)
 		if err != nil {
-			logging.Error("Error in unmarshalling recency metrics from cache", err)
-			return
+			return postScoreMap, fmt.Errorf("error in unmarshalling recency metrics from cache: %v", err)
 		}
 
 		for postId := range recentPostsMapData {
@@ -385,18 +435,16 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(communityId int) {
 
 	// Fetch all the top liked posts of the community
 	cacheKey = fmt.Sprintf(cache.PostsLikesMetricsKey, communityId)
-	topLikedPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+	topLikedPostsMap, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
-		logging.Error("Error in fetching community likes metrics from cache", err)
-		return
+		return postScoreMap, fmt.Errorf("error in fetching community likes metrics from cache: %v", err)
 	}
 
 	if exists {
 		var topLikedPostsMapData map[string]float64
 		err := json.Unmarshal([]byte(topLikedPostsMap), &topLikedPostsMapData)
 		if err != nil {
-			logging.Error("Error in unmarshalling likes metrics from cache", err)
-			return
+			return postScoreMap, fmt.Errorf("error in unmarshalling likes metrics from cache: %v", err)
 		}
 
 		for postId := range topLikedPostsMapData {
@@ -406,18 +454,16 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(communityId int) {
 
 	// Fetch all the top commented posts of the community
 	cacheKey = fmt.Sprintf(cache.PostsCommentsMetricsKey, communityId)
-	topCommentedPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+	topCommentedPostsMap, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
-		logging.Error("Error in fetching community comments metrics from cache", err)
-		return
+		return postScoreMap, fmt.Errorf("error in fetching community comments metrics from cache: %v", err)
 	}
 
 	if exists {
 		var topCommentedPostsMapData map[string]float64
 		err := json.Unmarshal([]byte(topCommentedPostsMap), &topCommentedPostsMapData)
 		if err != nil {
-			logging.Error("Error in unmarshalling comments metrics from cache", err)
-			return
+			return postScoreMap, fmt.Errorf("error in unmarshalling comments metrics from cache: %v", err)
 		}
 
 		for postId := range topCommentedPostsMapData {
@@ -425,24 +471,5 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(communityId int) {
 		}
 	}
 
-	if len(postScoreMap) == 0 {
-		logging.Error("No post metrics found for community: ", communityId)
-		return
-	}
-
-	// Sort the post score map in descending order and get top 1000 posts
-	sortedPostIds := utils.SortMapByValues(postScoreMap, true)
-	if len(sortedPostIds) > 1000 {
-		sortedPostIds = sortedPostIds[:1000]
-	}
-
-	// Save the default community feed in cache
-	cacheKey = fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
-	defaultFeedBytesValue, _ := json.Marshal(sortedPostIds)
-
-	setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.DefaultCommunityFeedCacheTTLInMins*time.Minute)
-	if setStatus.Err() != nil {
-		logging.Error("Error in saving community default feed in cache", setStatus.Err())
-	}
-
+	return postScoreMap, nil
 }
