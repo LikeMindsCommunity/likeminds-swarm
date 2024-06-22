@@ -862,7 +862,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	}
 
 	// update comment data using helper method
-	err = handlers.commentHelper.EditCommentHelper(commentData.ID, editCommentRequest.Text, updatedAttachments, false)
+	err = handlers.commentHelper.EditCommentHelper(commentData.ID, editCommentRequest.Text, updatedAttachments, true)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return

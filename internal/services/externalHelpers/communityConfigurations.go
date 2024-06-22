@@ -11,7 +11,8 @@ import (
 )
 
 type ExternalEntities struct {
-	CommunityConfigurations []CommunityConfiguration
+	CommunityConfigurations      []CommunityConfiguration
+	IsPostApprovalSettingEnabled bool
 }
 
 type CommunityConfiguration struct {
@@ -122,7 +123,7 @@ func GetPostVariableOrDefault(cacheHelper cache.Helper, userId string, community
 
 	if communityConfigurationResponse != nil {
 		externalEntities := ExternalEntities{
-			communityConfigurationResponse.CommunityConfigurations,
+			CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
 		}
 
 		communityConfiguration, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
@@ -145,7 +146,7 @@ func GetCommentVariableOrDefault(cacheHelper cache.Helper, userId string, commun
 
 	if communityConfigurationResponse != nil {
 		externalEntities := ExternalEntities{
-			communityConfigurationResponse.CommunityConfigurations,
+			CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
 		}
 
 		communityConfiguration, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
@@ -170,7 +171,7 @@ func GetLikeVariablesOrDefault(cacheHelper cache.Helper, userId string, communit
 
 	if communityConfigurationResponse != nil {
 		externalEntities := ExternalEntities{
-			communityConfigurationResponse.CommunityConfigurations,
+			CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
 		}
 
 		communityConfiguration, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
@@ -203,7 +204,7 @@ func GetUniversalFeedConfigurationsData(cacheHelper cache.Helper, userId string,
 
 	if communityConfigurationResponse != nil {
 		externalEntities := ExternalEntities{
-			communityConfigurationResponse.CommunityConfigurations,
+			CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
 		}
 
 		feedMetatdataCommunityConfig, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,
@@ -236,7 +237,7 @@ func GetNSFWConfigurationsOrDefault(cacheHelper cache.Helper, userId string, com
 
 	if communityConfigurationResponse != nil {
 		externalEntities := ExternalEntities{
-			communityConfigurationResponse.CommunityConfigurations,
+			CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
 		}
 
 		communityConfiguration, err := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations,

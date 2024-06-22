@@ -37,6 +37,7 @@ const SendMailEndpoint = "/api/external_service_apis/send_email"
 const PushReportEndpoint = "/api/community/report"
 const CommunityWebhooksEndpoint = "/api/webhook"
 const KettleCacheDeleteEndpoint = "/cache"
+const FetchCommunitySettingsEndpoint = "/api/community/fetch_community_settings"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
@@ -53,6 +54,11 @@ const (
 	LikeVariableCommunityConfigurationKey  = "like_entity_variable"
 	LikeVariablePresentConfigurationKey    = "entity_name"
 	LikeVariablePastConfigurationKey       = "past_tense_verb"
+)
+
+// Community settings type
+const (
+	PostApprovalNeededSettingType = "post_approval_needed"
 )
 
 const (
