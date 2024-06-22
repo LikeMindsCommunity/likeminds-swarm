@@ -115,7 +115,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	cacheKey := fmt.Sprintf(cache.PostsLikesMetricsKey, communityId)
 
 	// Get data from cache
-	postsLikesMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey)
+	postsLikesMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey) // Can use GetWithKeyExists to check if key exists
 	if postsLikesMetricMapCacheValue.Val() != "" && postsLikesMetricMapCacheValue.Val() != "null" {
 		return
 	}
@@ -132,7 +132,6 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	}
 
 	err := json.Unmarshal([]byte(postsMetricMapCacheValue.Val()), &postRecencyMetricsMap)
-
 	if err != nil {
 		logging.Error("Error in unmarshalling recency metric score from cache", err)
 	}
@@ -143,7 +142,6 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
-
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
 		return
@@ -286,4 +284,165 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 // Compute post comments metric score
 func computePostCommentsMetricScore(postCommentsCount float64, commentsMetricMaxThreshold float64, commentsMetricWeight float64) float64 {
 	return utils.GetMinimumFromArray(postCommentsCount, commentsMetricMaxThreshold) * commentsMetricWeight
+}
+
+// Exposed Method to Fetch Personalised Feed
+func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
+
+	// fetch headers and url params
+	// headers := utils.GetHeaders(c)
+	// userId := headers[utils.HeadersMemberId]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// Get personalised weights
+	// personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
+	// if err != nil {
+	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed weights: ", err.Error()))
+	// 	return
+	// }
+
+	// Get personalised feed
+	// personalisedFeed, err := externalHelpers.GetPersonalisedFeed(handlers.cacheHelper, userId, communityId, personalisedFeedWeights)
+	// if err != nil {
+	// utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed: ", err.Error()))
+	// return
+	// }
+
+	// response := gin.H{}
+
+	utils.GenerateSuccessResponse(c, gin.H{})
+}
+
+// Exposed Method to Reorder Personalised Feed
+func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
+
+	// fetch headers and url params
+	// headers := utils.GetHeaders(c)
+	// userId := headers[utils.HeadersMemberId]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// Get personalised weights
+	// personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
+	// if err != nil {
+	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed weights: ", err.Error()))
+	// 	return
+	// }
+
+	// Get personalised feed
+	// personalisedFeed, err := externalHelpers.GetPersonalisedFeed(handlers.cacheHelper, userId, communityId, personalisedFeedWeights)
+	// if err != nil {
+	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed: ", err.Error()))
+	// 	return
+	// }
+
+	// Reorder personalised feed
+	// reorderedPersonalisedFeed, err := externalHelpers.ReorderPersonalisedFeed(personalisedFeed)
+	// if err != nil {
+	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in reordering personalised feed: ", err.Error()))
+	// 	return
+	// }
+
+	// response := gin.H{}
+
+	utils.GenerateSuccessResponse(c, gin.H{})
+}
+
+// Exposed Method to compute community default feed | Should be run every 30 mins
+func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(communityId int) {
+
+	postScoreMap := map[string]float64{}
+
+	// Fetch all the recent posts of the community
+	cacheKey := fmt.Sprintf(cache.PostsRececnyMetricsKey, communityId)
+	recentPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		logging.Error("Error in fetching community recency metrics from cache", err)
+		return
+	}
+
+	if exists {
+		var recentPostsMapData map[string]float64
+		err := json.Unmarshal([]byte(recentPostsMap), &recentPostsMapData)
+		if err != nil {
+			logging.Error("Error in unmarshalling recency metrics from cache", err)
+			return
+		}
+
+		for postId := range recentPostsMapData {
+			postScoreMap[postId] += recentPostsMapData[postId]
+		}
+	}
+
+	// Fetch all the top liked posts of the community
+	cacheKey = fmt.Sprintf(cache.PostsLikesMetricsKey, communityId)
+	topLikedPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		logging.Error("Error in fetching community likes metrics from cache", err)
+		return
+	}
+
+	if exists {
+		var topLikedPostsMapData map[string]float64
+		err := json.Unmarshal([]byte(topLikedPostsMap), &topLikedPostsMapData)
+		if err != nil {
+			logging.Error("Error in unmarshalling likes metrics from cache", err)
+			return
+		}
+
+		for postId := range topLikedPostsMapData {
+			postScoreMap[postId] += topLikedPostsMapData[postId]
+		}
+	}
+
+	// Fetch all the top commented posts of the community
+	cacheKey = fmt.Sprintf(cache.PostsCommentsMetricsKey, communityId)
+	topCommentedPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		logging.Error("Error in fetching community comments metrics from cache", err)
+		return
+	}
+
+	if exists {
+		var topCommentedPostsMapData map[string]float64
+		err := json.Unmarshal([]byte(topCommentedPostsMap), &topCommentedPostsMapData)
+		if err != nil {
+			logging.Error("Error in unmarshalling comments metrics from cache", err)
+			return
+		}
+
+		for postId := range topCommentedPostsMapData {
+			postScoreMap[postId] += topCommentedPostsMapData[postId]
+		}
+	}
+
+	if len(postScoreMap) == 0 {
+		logging.Error("No post metrics found for community: ", communityId)
+		return
+	}
+
+	// Sort the post score map in descending order and get top 1000 posts
+	sortedPostIds := utils.SortMapByValues(postScoreMap, true)
+	if len(sortedPostIds) > 1000 {
+		sortedPostIds = sortedPostIds[:1000]
+	}
+
+	// Save the default community feed in cache
+	cacheKey = fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
+	defaultFeedBytesValue, _ := json.Marshal(sortedPostIds)
+
+	setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.DefaultCommunityFeedCacheTTLInMins*time.Minute)
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving community default feed in cache", setStatus.Err())
+	}
+
 }
