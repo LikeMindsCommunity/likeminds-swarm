@@ -2,13 +2,14 @@ package cache
 
 // Swarm cache keys
 const (
-	CommunityConfigurationsKey   = "%d_community_configurations"
-	UserConnnectionCacheKey      = "connection_list_%s_%s"
-	ConnectionFeedBufferCacheKey = "connection_feed_buffer_%s_%s"
-	InferdoApiFailsCountKey      = "inferdo_api_fails_count_%d"
-	CommunityWebhooksCacheKey    = "%s_webhooks"
-	PostTopLikedCommentKey       = "%d_%s_top_liked_comments"
-	CommunitySettingsCacheKey    = "%d_community_settings" // communityId
+	CommunityConfigurationsKey    = "%d_community_configurations"
+	UserConnnectionCacheKey       = "connection_list_%s_%s"
+	ConnectionFeedBufferCacheKey  = "connection_feed_buffer_%s_%s"
+	InferdoApiFailsCountKey       = "inferdo_api_fails_count_%d"
+	CommunityWebhooksCacheKey     = "%s_webhooks"
+	PostTopLikedCommentKey        = "%d_%s_top_liked_comments"
+	CommunitySettingsCacheKey     = "%d_community_settings"         // communityId
+	UserCommunityChannelsCacheKey = "%s_%d_user_community_channels" // userId, communityId
 )
 
 // Swarm cache keys of personalised feed
@@ -16,14 +17,16 @@ const (
 	PostsRececnyMetricsKey  = "%d_recency_metric_score"
 	PostsLikesMetricsKey    = "%d_likes_metric_score"
 	PostsCommentsMetricsKey = "%d_comments_metric_score"
+	UserGroupsMetricsKey    = "%s_%d_comments_metric_score"
 )
 
-// Cache TTLs (in Hourse)
+// Cache TTLs (in Hours)
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
 	CommunitySettingsCacheTTL              = 30 * 24
 	CommunitySettingsCacheTTLInHours       = 720 // 30 days
+	UserCommunityChannelsCacheTTLInHours   = 720 // 30 days
 )
 
 // Cache TTLs (in Mins)

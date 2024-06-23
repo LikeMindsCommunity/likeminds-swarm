@@ -20,6 +20,7 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
+	apiKey := headers[utils.HeadersApiKey]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -35,6 +36,9 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 
 	// Compute post comments metric and save it in cache
 	PostCommentsMetricComputation(handlers, userId, communityId)
+
+	// Compute user groups metric and save it in cache
+	UserGroupsMetricComputation(handlers, userId, communityId, apiKey)
 
 	utils.GenerateSuccessResponse(c, gin.H{})
 }
@@ -211,30 +215,8 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 		return
 	}
 
-	// // Start of computation of post likes metric
-	// var postRecencyMetricsMap map[string]float64
-	// postIdsArray := []string{}
-	// postsMetricMapCacheKey := fmt.Sprintf(cache.PostsRececnyMetricsKey, communityId)
-
-	// // Get data from cache
-	// postsMetricMapCacheValue := handlers.cacheHelper.Get(postsMetricMapCacheKey)
-	// if postsMetricMapCacheValue.Val() == "" || postsMetricMapCacheValue.Val() == "null" {
-	// 	return
-	// }
-
-	// err := json.Unmarshal([]byte(postsMetricMapCacheValue.Val()), &postRecencyMetricsMap)
-
-	// if err != nil {
-	// 	logging.Error("Error in unmarshalling recency metric score from cache", err)
-	// }
-
-	// for postId := range postRecencyMetricsMap {
-	// 	postIdsArray = append(postIdsArray, postId)
-	// }
-
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
-
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
 		return
@@ -286,4 +268,72 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 // Compute post comments metric score
 func computePostCommentsMetricScore(postCommentsCount float64, commentsMetricMaxThreshold float64, commentsMetricWeight float64) float64 {
 	return utils.GetMinimumFromArray(postCommentsCount, commentsMetricMaxThreshold) * commentsMetricWeight
+}
+
+// Recompute & save post ranking on the basis of user group metrics
+func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communityId int, apiKey string) {
+	userGroupsMetricMap := map[string]float64{}
+
+	// Get personalised weights
+	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
+
+	if err != nil {
+		logging.Error("Error in computation of recency metric: ", err)
+		return
+	}
+
+	userFollowedChannels, err := externalHelpers.FetchUserCommunityChannels(handlers.cacheHelper, userId, communityId, apiKey)
+	if err != nil {
+		logging.Error("Unable to fetch user followed channels:", err)
+	}
+
+	// Filter for all posts of community
+	allPostsOfCommunityChannelsFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"community_id": communityId,
+				"is_deleted":   false,
+				"chatroom_id": gin.H{
+					"$in": userFollowedChannels,
+				},
+			},
+		},
+		gin.H{
+			"$project": gin.H{
+				"_id": 1,
+			},
+		},
+	}
+
+	allUserFollowedChannelPostsData, err := handlers.postHelper.AggregatePostHelper(allPostsOfCommunityChannelsFilter)
+
+	if allUserFollowedChannelPostsData == nil || len(allUserFollowedChannelPostsData) == 0 {
+		logging.Error("No user followed channels post data found in db")
+		return
+	}
+
+	for _, postData := range allUserFollowedChannelPostsData {
+		var metricScore float64
+
+		metricScore = computeUserGroupsMetricScore(
+			personalisedFeedWeights.UserGroupsMetrics.MaxThreshold,
+			personalisedFeedWeights.UserGroupsMetrics.Weight)
+
+		userGroupsMetricMap[postData["_id"].(primitive.ObjectID).Hex()] = metricScore
+	}
+
+	// Set post metric score in cache
+	postsMetricMapBytesValue, _ := json.Marshal(userGroupsMetricMap)
+
+	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, userId, communityId)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecenctCacheTTLInMins*time.Minute)
+
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving user groups metric score in cache", setStatus.Err())
+	}
+}
+
+// Compute user groups metric score
+func computeUserGroupsMetricScore(userGroupsMetricMaxThreshold float64, userGroupsMetricWeight float64) float64 {
+	return userGroupsMetricMaxThreshold * userGroupsMetricWeight
 }
