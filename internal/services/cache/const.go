@@ -17,7 +17,8 @@ const (
 	PostsRececnyMetricsKey  = "%d_recency_metric_score"
 	PostsLikesMetricsKey    = "%d_likes_metric_score"
 	PostsCommentsMetricsKey = "%d_comments_metric_score"
-	UserGroupsMetricsKey    = "%s_%d_comments_metric_score"
+	UserGroupsMetricsKey    = "%s_%d_user_groups_metric_score"
+	UserTopicsMetricsKey    = "%s_%d_user_topics_metric_score"
 )
 
 // Cache TTLs (in Hours)
@@ -31,7 +32,8 @@ const (
 
 // Cache TTLs (in Mins)
 const (
-	PostsRecenctCacheTTLInMins = 5 // 5 Mins
+	PostsRecenctCacheTTLInMins = 5   // 5 Mins
+	UserMetricCacheTTLInHours  = 720 // 30 days
 )
 
 // Kettle Cache Keys

@@ -40,6 +40,9 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 	// Compute user groups metric and save it in cache
 	UserGroupsMetricComputation(handlers, userId, communityId, apiKey)
 
+	// Compute user topics metric and save it in cache
+	UserTopicsMetricComputation(handlers, userId, communityId)
+
 	utils.GenerateSuccessResponse(c, gin.H{})
 }
 
@@ -326,7 +329,7 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 	postsMetricMapBytesValue, _ := json.Marshal(userGroupsMetricMap)
 
 	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, userId, communityId)
-	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecenctCacheTTLInMins*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.UserMetricCacheTTLInHours*time.Hour)
 
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving user groups metric score in cache", setStatus.Err())
@@ -336,4 +339,90 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 // Compute user groups metric score
 func computeUserGroupsMetricScore(userGroupsMetricMaxThreshold float64, userGroupsMetricWeight float64) float64 {
 	return userGroupsMetricMaxThreshold * userGroupsMetricWeight
+}
+
+// Recompute & save post ranking on the basis of user topics metrics
+func UserTopicsMetricComputation(handlers *FeedHandlers, userId string, communityId int) {
+	userTopicsMetricMap := map[string]float64{}
+
+	// Get personalised weights
+	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
+
+	if err != nil {
+		logging.Error("Error in computation of recency metric: ", err)
+		return
+	}
+
+	// Filter for all posts of community
+	allUserTopicsPostsOfCommunityFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"community_id": communityId,
+				"user_id":      userId,
+			},
+		},
+		gin.H{
+			"$lookup": gin.H{
+				"from":         "postTopics",
+				"localField":   "topic_id",
+				"foreignField": "topic_id",
+				"as":           "result",
+			},
+		},
+		gin.H{
+			"$unwind": gin.H{
+				"path": "$result",
+			},
+		},
+		gin.H{
+			"$project": gin.H{
+				"_id":      0,
+				"post_id":  "$result.post_id",
+				"topic_id": 1,
+			},
+		},
+		gin.H{
+			"$group": gin.H{
+				"_id": "$post_id",
+				"topics_count": gin.H{
+					"$sum": 1,
+				},
+			},
+		},
+	}
+
+	allUserFollowedChannelPostsData, _ := handlers.userTopicsHelper.AggregateUserTopicsHelper(allUserTopicsPostsOfCommunityFilter)
+
+	if allUserFollowedChannelPostsData == nil || len(allUserFollowedChannelPostsData) == 0 {
+		logging.Error("No user followed channels post data found in db")
+		return
+	}
+
+	for _, postData := range allUserFollowedChannelPostsData {
+		var metricScore float64
+
+		topicsCount := float64(postData["topics_count"].(int32))
+
+		metricScore = computeUserTopicsMetricScore(
+			topicsCount,
+			personalisedFeedWeights.UserTopicsMetrics.MaxThreshold,
+			personalisedFeedWeights.UserTopicsMetrics.Weight)
+
+		userTopicsMetricMap[postData["_id"].(primitive.ObjectID).Hex()] = metricScore
+	}
+
+	// Set post metric score in cache
+	postsMetricMapBytesValue, _ := json.Marshal(userTopicsMetricMap)
+
+	cacheKey := fmt.Sprintf(cache.UserTopicsMetricsKey, userId, communityId)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.UserMetricCacheTTLInHours*time.Hour)
+
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving user groups metric score in cache", setStatus.Err())
+	}
+}
+
+// Compute user topics metric score
+func computeUserTopicsMetricScore(topicsCount float64, userTopicsMetricMaxThreshold float64, userTopicsMetricWeight float64) float64 {
+	return utils.GetMinimumFromArray(topicsCount, userTopicsMetricMaxThreshold) * userTopicsMetricWeight
 }
