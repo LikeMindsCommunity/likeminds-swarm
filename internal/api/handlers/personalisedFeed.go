@@ -3,10 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -290,8 +293,16 @@ func computePostCommentsMetricScore(postCommentsCount float64, commentsMetricMax
 func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 
 	// fetch headers and url params
-	// headers := utils.GetHeaders(c)
-	// userId := headers[utils.HeadersMemberId]
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+	memberRole := headers[utils.HeaderMemberRole]
+
+	versionCode := headers[utils.HeadersVersionCode]
+	platformCode := headers[utils.HeadersPlatformCode]
+
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+
+	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -299,23 +310,127 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
-	// Get personalised weights
-	// personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
-	// if err != nil {
-	// 	utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed weights: ", err.Error()))
-	// 	return
-	// }
+	// Fetch user personalised feed from cache
+	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)
+	userPersonalisedFeed, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
 
-	// Get personalised feed
-	// personalisedFeed, err := externalHelpers.GetPersonalisedFeed(handlers.cacheHelper, userId, communityId, personalisedFeedWeights)
-	// if err != nil {
-	// utils.GeneralAPIInternalError(c, fmt.Sprint("Error in fetching personalised feed: ", err.Error()))
-	// return
-	// }
+	postIds := []string{}
 
-	// response := gin.H{}
+	if exists {
+		err := json.Unmarshal([]byte(userPersonalisedFeed), &postIds)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
 
-	utils.GenerateSuccessResponse(c, gin.H{})
+	} else { // If user personalised feed not found, fetch community default feed
+
+		cacheKey = fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
+		defaultFeed, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		if exists {
+			err := json.Unmarshal([]byte(defaultFeed), &postIds)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+		} else { // If default feed not found, send error
+			utils.GeneralAPIValidationError(c, "Personalised feed is not yet computed. Please try again later.")
+			return
+		}
+	}
+
+	// fetch pagination query params
+	page, pageSize, err := fetchPaginationParams(c)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// slice postIds based on pagination
+	startIndex := (page - 1) * pageSize
+	endIndex := int(math.Min(float64(len(postIds)), float64(page*pageSize)))
+
+	postIds = postIds[startIndex:endIndex]
+
+	// Fetch posts data from post service
+	postFilter := gin.H{
+		"_id": gin.H{
+			"$in": helpers.ConvertIdsToObjectIds(postIds),
+		},
+		"is_deleted":   false,
+		"community_id": communityId,
+	}
+
+	// TODO: sort the posts based on postIds order
+	postsData, err := handlers.postHelper.FindPostHelper(postFilter, nil)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// TODO: refactor the below as this is same as universal feed
+
+	// parse unpinned posts
+	parsedPostResponse := parseMultiplePostResponse(handlers, postsData, userId, isCm, versionCode, platformCode,
+		apiRevampV1Check, memberRole)
+
+	finalResponse := parseFetchMultiplePostResponse(parsedPostResponse, -1)
+
+	// reponse data
+	finalParsedResponse := gin.H{
+		"posts":   finalResponse.Posts,
+		"success": finalResponse.Success,
+	}
+
+	if finalResponse.TotalCount > 0 {
+		finalParsedResponse["total_count"] = finalResponse.TotalCount
+	}
+
+	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
+	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, versionCode, platformCode, apiRevampV1Check)
+	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, communityId, isCm, headers[utils.HeadersMemberId])
+
+	// Get community configurations
+	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
+
+	var commentSortOrderVal int
+	if universalFeedConfig.CommentSortOrder == enums.DescendingSortOrder {
+		commentSortOrderVal = -1
+	} else {
+		commentSortOrderVal = 1
+	}
+
+	filtered_comments := map[string]responses.CommentWithParentResponse{}
+
+	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
+		var updatedPostsWithComments []responses.PostResponse
+
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts,
+			userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check, memberRole)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		if len(updatedPostsWithComments) > 0 {
+			finalParsedResponse["posts"] = updatedPostsWithComments
+		}
+	}
+
+	finalParsedResponse["filtered_comments"] = filtered_comments
+
+	// return final response
+	utils.GenerateSuccessResponse(c, finalParsedResponse)
 }
 
 // Exposed Method to Reorder Personalised Feed
