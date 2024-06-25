@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -500,27 +501,39 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 	endIndex := int(math.Min(float64(len(postIds)), float64(page*pageSize)))
 
 	postIds = postIds[startIndex:endIndex]
+	postObjectIds := helpers.ConvertIdsToObjectIds(postIds)
 
 	// Fetch posts data from post service
 	postFilter := gin.H{
 		"_id": gin.H{
-			"$in": helpers.ConvertIdsToObjectIds(postIds),
+			"$in": postObjectIds,
 		},
 		"is_deleted":   false,
 		"community_id": communityId,
 	}
 
-	// TODO: sort the posts based on postIds order
 	postsData, err := handlers.postHelper.FindPostHelper(postFilter, nil)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// TODO: refactor the below as this is same as universal feed
+	// sort the posts based on postIds order
+	postsMap := make(map[primitive.ObjectID]entities.Post, len(postsData))
+	for _, postData := range postsData {
+		postsMap[postData.ID] = postData
+	}
 
+	sortedPosts := []entities.Post{}
+	for _, postId := range postObjectIds {
+		if post, ok := postsMap[postId]; ok {
+			sortedPosts = append(sortedPosts, post)
+		}
+	}
+
+	// TODO: refactor the below as this is same as universal feed
 	// parse unpinned posts
-	parsedPostResponse := parseMultiplePostResponse(handlers, postsData, userId, isCm, versionCode, platformCode,
+	parsedPostResponse := parseMultiplePostResponse(handlers, sortedPosts, userId, isCm, versionCode, platformCode,
 		apiRevampV1Check, memberRole)
 
 	finalResponse := parseFetchMultiplePostResponse(parsedPostResponse, -1)
