@@ -13,7 +13,7 @@ const (
 
 // Swarm cache keys of personalised feed
 const (
-	PostsRececnyMetricsKey  = "%d_recency_metric_score" //TODO: fix typo
+	PostsRececnyMetricsKey  = "%d_recency_metric_score"
 	PostsLikesMetricsKey    = "%d_likes_metric_score"
 	PostsCommentsMetricsKey = "%d_comments_metric_score"
 	CommunityDefaultFeedKey = "%d_community_default_feed"    // communityId
@@ -24,15 +24,15 @@ const (
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
-	CommunitySettingsCacheTTL              = 30 * 24
+	CommunitySettingsCacheTTL              = 720 // 30 days
 	CommunitySettingsCacheTTLInHours       = 720 // 30 days
+	UserPersonalisedFeedCacheTTLInHours    = 720 // 30 days
 )
 
 // Cache TTLs (in Mins)
 const (
 	PostsRecenctCacheTTLInMins         = 5  // 5 Mins
 	DefaultCommunityFeedCacheTTLInMins = 30 // 30 Mins
-	UserPersonalisedFeedCacheTTLInMins = 30 // 30 Mins
 )
 
 // Kettle Cache Keys

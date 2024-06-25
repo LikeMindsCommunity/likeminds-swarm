@@ -332,7 +332,7 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	}
 
 	// Reorder user personalised feed and update in cache
-	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId) //TODO: check if this is correct
+	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId) //TODO: to confirm if use goroutine or asynq
 
 	utils.GenerateSuccessResponse(c, nil)
 }
@@ -359,7 +359,7 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 	// reduce the score of dampened posts
 	for postId, score := range userDampenedPostsMap {
 		if _, ok := postScoreMap[postId]; !ok {
-			postScoreMap[postId] -= score // TODO: check if this is correct
+			postScoreMap[postId] -= score
 		}
 	}
 
@@ -373,7 +373,7 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)
 	defaultFeedBytesValue, _ := json.Marshal(sortedPostIds)
 
-	setStatus := cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.UserPersonalisedFeedCacheTTLInMins*time.Minute)
+	setStatus := cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.UserPersonalisedFeedCacheTTLInHours*time.Minute)
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving user personalised feed in cache", setStatus.Err())
 	}

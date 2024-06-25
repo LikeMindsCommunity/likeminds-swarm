@@ -74,7 +74,7 @@ func GetRepostCountForMultiplePosts(widgetHelper interfaces.WidgetHelper, posts 
 		return postRepostCount
 	}
 
-	for _, repostWidget := range repostWidgets { //TODO: check if this is correct
+	for _, repostWidget := range repostWidgets {
 		postId, err := primitive.ObjectIDFromHex(repostWidget.ParentEntityID)
 		if err == nil {
 			postRepostCount[postId] = int(repostWidget.MetaData["repost_count"].(int32))
