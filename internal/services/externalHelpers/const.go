@@ -38,14 +38,23 @@ const PushReportEndpoint = "/api/community/report"
 const CommunityWebhooksEndpoint = "/api/webhook"
 const KettleCacheDeleteEndpoint = "/cache"
 const FetchCommunitySettingsEndpoint = "/api/community/fetch_community_settings"
+const SyncChatroomsEndpoint = "/api/sync/chatrooms"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
 const ParamPage = "page"
 const ParamPageSize = "page_size"
+const ParamsChatroomTypes = "chatroom_types"
+const ParamsIsLocalDb = "is_local_db"
+const ParamsMinimumTimestamp = "min_timestamp"
+const ParamsMaximumTimestamp = "max_timestamp"
 
 const ContentTypeHeader = "application/json"
 const SwarmServiceHeader = "swarm-service"
+
+const (
+	FeedroomChatroomType = 11
+)
 
 const (
 	PostCommunityConfigurationKey          = "post"
