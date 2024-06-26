@@ -51,7 +51,7 @@ type PostWithRepliesResponse struct {
 	Replies []CommentResponse `json:"replies"`
 }
 
-// Response Structure for Fetch Multiple Post
+// Response Structure for Fetch Multiple Post - Deprecated
 type FetchUserMultiplePostResponse struct {
 	Success    bool           `json:"success"`
 	TotalCount int            `json:"total_count,omitempty"`

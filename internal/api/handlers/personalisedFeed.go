@@ -8,8 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
@@ -450,6 +448,16 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
+	loggedInUser := LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
+	}
+
 	// Fetch user personalised feed from cache
 	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)
 	userPersonalisedFeed, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
@@ -531,55 +539,11 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		}
 	}
 
-	// TODO: refactor the below as this is same as universal feed
-	// parse unpinned posts
-	parsedPostResponse := parseMultiplePostResponse(handlers, sortedPosts, userId, isCm, versionCode, platformCode,
-		apiRevampV1Check, memberRole)
+	// parse posts for multiple post response
+	parsedPosts := parseMultiplePostResponse(handlers, sortedPosts, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
 
-	finalResponse := parseFetchMultiplePostResponse(parsedPostResponse, -1)
-
-	// reponse data
-	finalParsedResponse := gin.H{
-		"posts":   finalResponse.Posts,
-		"success": finalResponse.Success,
-	}
-
-	if finalResponse.TotalCount > 0 {
-		finalParsedResponse["total_count"] = finalResponse.TotalCount
-	}
-
-	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, versionCode, platformCode, apiRevampV1Check)
-	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, communityId, isCm, headers[utils.HeadersMemberId])
-
-	// Get community configurations
-	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
-
-	var commentSortOrderVal int
-	if universalFeedConfig.CommentSortOrder == enums.DescendingSortOrder {
-		commentSortOrderVal = -1
-	} else {
-		commentSortOrderVal = 1
-	}
-
-	filtered_comments := map[string]responses.CommentWithParentResponse{}
-
-	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
-		var updatedPostsWithComments []responses.PostResponse
-
-		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, finalResponse.Posts,
-			userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check, memberRole)
-		if err != nil {
-			utils.GeneralAPIValidationError(c, err.Error())
-			return
-		}
-
-		if len(updatedPostsWithComments) > 0 {
-			finalParsedResponse["posts"] = updatedPostsWithComments
-		}
-	}
-
-	finalParsedResponse["filtered_comments"] = filtered_comments
+	// parse posts for final response (topics, widgets, comments, etc)
+	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
 
 	// return final response
 	utils.GenerateSuccessResponse(c, finalParsedResponse)

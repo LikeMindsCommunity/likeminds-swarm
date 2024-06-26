@@ -185,22 +185,6 @@ func validateUserAndPostForRepost(handlers *FeedHandlers, userID string, origina
 	return nil
 }
 
-// Internal Method to parse response for fetch multiple posts api
-func parseFetchMultiplePostResponse(posts []responses.PostResponse, posts_count int64,
-) responses.FetchUserMultiplePostResponse {
-
-	response := responses.FetchUserMultiplePostResponse{}
-
-	response.Success = true
-	response.Posts = posts
-
-	if posts_count > 0 {
-		response.TotalCount = int(posts_count)
-	}
-
-	return response
-}
-
 // Internal Method to parse topics response
 func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int,
 ) (map[string]responses.TopicResponse, error) {
@@ -2095,19 +2079,14 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		return
 	}
 
-	createdPostResponse := parseMultiplePostResponse(handlers, postResults, userId, isCm, headers[utils.HeadersVersionCode],
+	parsedPosts := parseMultiplePostResponse(handlers, postResults, userId, isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
-	response := parseFetchMultiplePostResponse(createdPostResponse, postsCount)
-
-	// response data
+	// final response data
 	finalResponse := gin.H{
-		"posts":   response.Posts,
-		"success": response.Success,
-	}
-
-	if response.TotalCount > 0 {
-		finalResponse["total_count"] = response.TotalCount
+		"success":     true,
+		"posts":       parsedPosts,
+		"total_count": postsCount,
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
@@ -2129,7 +2108,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
 		var updatedPostsWithComments []responses.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
-			response.Posts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
+			parsedPosts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
 			versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
 
 		if err != nil {
