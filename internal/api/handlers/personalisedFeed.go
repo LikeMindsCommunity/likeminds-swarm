@@ -19,6 +19,7 @@ import (
 
 // Exposed Method to Add a New Poll Option
 func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
@@ -29,6 +30,8 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
+
+	// TODO: Run all the below tasks parallely?
 
 	// Compute recency metric and save it in cache
 	RecencyMetricComputation(handlers, userId, communityId)
@@ -343,7 +346,7 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(userGroupsMetricMap)
 
-	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, communityId, userId)
+	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, communityId, userId) // TODO: We are just setting this cache key, and are never fetching it
 	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.UserMetricCacheTTLInHours*time.Hour)
 
 	if setStatus.Err() != nil {
