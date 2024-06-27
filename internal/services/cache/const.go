@@ -2,12 +2,12 @@ package cache
 
 // Swarm cache keys
 const (
-	CommunityConfigurationsKey    = "%d_community_configurations"
-	UserConnnectionCacheKey       = "connection_list_%s_%s"
-	ConnectionFeedBufferCacheKey  = "connection_feed_buffer_%s_%s"
-	InferdoApiFailsCountKey       = "inferdo_api_fails_count_%d"
-	CommunityWebhooksCacheKey     = "%s_webhooks"
-	PostTopLikedCommentKey        = "%d_%s_top_liked_comments"
+	CommunityConfigurationsKey    = "%d_community_configurations"   // communityId
+	UserConnnectionCacheKey       = "connection_list_%s_%s"         // userId, communityId
+	ConnectionFeedBufferCacheKey  = "connection_feed_buffer_%s_%s"  // userId, communityId
+	InferdoApiFailsCountKey       = "inferdo_api_fails_count_%d"    // communityId
+	CommunityWebhooksCacheKey     = "%s_webhooks"                   // apiKey
+	PostTopLikedCommentKey        = "%d_%s_top_liked_comments"      // communityId, postId
 	CommunitySettingsCacheKey     = "%d_community_settings"         // communityId
 	UserCommunityChannelsCacheKey = "%s_%d_user_community_channels" // userId, communityId
 )
@@ -17,6 +17,8 @@ const (
 	PostsRececnyMetricsKey  = "%d_recency_metric_score"
 	PostsLikesMetricsKey    = "%d_likes_metric_score"
 	PostsCommentsMetricsKey = "%d_comments_metric_score"
+	CommunityDefaultFeedKey = "%d_community_default_feed"    // communityId
+	UserPersonalisedFeedKey = "%d_%s_user_personalised_feed" // communityId, userId
 	UserGroupsMetricsKey    = "%s_%d_user_groups_metric_score"
 	UserTopicsMetricsKey    = "%s_%d_user_topics_metric_score"
 )
@@ -25,15 +27,17 @@ const (
 const (
 	CommunityConfigurationsCacheTTLInHours = 175 // 7 days
 	CommunityWebhooksCacheTTTLInHours      = 175 // 7 days
-	CommunitySettingsCacheTTL              = 30 * 24
+	CommunitySettingsCacheTTL              = 720 // 30 days
 	CommunitySettingsCacheTTLInHours       = 720 // 30 days
+	UserPersonalisedFeedCacheTTLInHours    = 720 // 30 days
 	UserCommunityChannelsCacheTTLInHours   = 720 // 30 days
 )
 
 // Cache TTLs (in Mins)
 const (
-	PostsRecenctCacheTTLInMins = 5   // 5 Mins
-	UserMetricCacheTTLInHours  = 720 // 30 days
+	PostsRecenctCacheTTLInMins         = 5   // 5 Mins
+	DefaultCommunityFeedCacheTTLInMins = 30  // 30 Mins
+	UserMetricCacheTTLInHours          = 720 // 30 days
 )
 
 // Kettle Cache Keys

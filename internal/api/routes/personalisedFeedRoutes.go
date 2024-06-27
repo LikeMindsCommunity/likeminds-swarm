@@ -10,4 +10,6 @@ func PersonalisedFeedRouter(routerGroup *gin.RouterGroup, handler *handlers.Feed
 	personalisedFeedGroup := routerGroup.Group("personalised")
 
 	personalisedFeedGroup.POST("/recompute", handler.RecomputePersonalisedFeed)
+	personalisedFeedGroup.GET("/personalised", handler.FetchPersonalisedFeed)
+	personalisedFeedGroup.POST("/reorder", handler.ReorderPersonalisedFeed)
 }
