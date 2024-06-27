@@ -2375,3 +2375,79 @@ func DeletePostTopics(handlers *FeedHandlers, postId string) error {
 
 	return nil
 }
+
+// Exposed method to mark posts as seen
+func (handlers *FeedHandlers) MarkPostsSeen(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	isCm := utils.IsCMRole(headers[utils.HeaderMemberRole])
+
+	// Create logged in user params
+	loggedInUser := LoggedInUserParams{
+		UserId:           headers[utils.HeadersMemberId],
+		MemberRole:       headers[utils.HeaderMemberRole],
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		PlatformCode:     headers[utils.HeadersPlatformCode],
+		VersionCode:      headers[utils.HeadersVersionCode],
+		ApiRevampCheckV1: utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion]),
+	}
+
+	var markPostsSeenRequest requests.MarkSeenPostsRequest
+	if err := c.ShouldBindJSON(&markPostsSeenRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Validate request
+	err := validateMarkPostsSeenRequest(handlers, loggedInUser, markPostsSeenRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Call helper method to mark posts as seen in Background
+	// TODO: Move this to background service
+	go saveDampenedPostsForUserInCache(handlers.cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds)
+
+	utils.GenerateSuccessResponse(c, nil)
+}
+
+func validateMarkPostsSeenRequest(handlers *FeedHandlers, loggedInUser LoggedInUserParams, markPostsSeenRequest requests.MarkSeenPostsRequest) error {
+
+	// Validate post ids
+	if len(markPostsSeenRequest.PostIds) == 0 {
+		return fmt.Errorf("post IDs are required")
+	}
+
+	// validate if post ids are valid
+	postIds := helpers.ConvertIdsToObjectIds(markPostsSeenRequest.PostIds)
+
+	// fetch posts using helper method
+	postFilterData := gin.H{
+		"_id": gin.H{
+			"$in": postIds,
+		},
+		"community_id": loggedInUser.CommunityId,
+		"is_deleted":   false,
+	}
+
+	posts, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	if len(posts) != len(postIds) {
+		return fmt.Errorf("Invalid post ids sent")
+	}
+
+	return nil
+}

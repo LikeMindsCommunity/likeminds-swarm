@@ -443,6 +443,38 @@ func computeUserTopicsMetricScore(topicsCount float64, userTopicsMetricMaxThresh
 	return utils.GetMinimumFromArray(topicsCount, userTopicsMetricMaxThreshold) * userTopicsMetricWeight
 }
 
+// Internal method to save dampened posts for user in cache
+func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, communityId int, postIds []string) {
+
+	cacheKey := fmt.Sprintf(cache.UserSeenDampenedPostsKey, communityId, userId)
+	bytes, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		logging.Error("error while fetching cache for User dampened posts: ", err.Error())
+		return
+	}
+
+	var dampenedPostsMap map[string]int64
+	if exists {
+		err = json.Unmarshal([]byte(bytes), &dampenedPostsMap)
+		if err != nil {
+			logging.Error("error while unmarshalling user dampened posts: ", err.Error())
+		}
+	}
+
+	// add the posts with updated timestamp to map
+	timeIn24Hours := time.Now().Add(time.Duration(24) * time.Hour).Unix() // now + 24 hours
+	for _, postId := range postIds {
+		dampenedPostsMap[postId] = timeIn24Hours
+	}
+
+	// save the updated map
+	bytesValue, _ := json.Marshal(dampenedPostsMap)
+	setStatus := cacheHelper.Set(cacheKey, bytesValue, cache.UserDampenedPostsCacheTTLInHours)
+	if setStatus.Err() != nil {
+		logging.Error("error while saving user dampened posts: ", setStatus.Err().Error())
+	}
+}
+
 // Exposed Method to Fetch Personalised Feed
 func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 

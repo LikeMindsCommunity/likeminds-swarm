@@ -14,13 +14,14 @@ const (
 
 // Swarm cache keys of personalised feed
 const (
-	PostsRececnyMetricsKey  = "%d_recency_metric_score"
-	PostsLikesMetricsKey    = "%d_likes_metric_score"
-	PostsCommentsMetricsKey = "%d_comments_metric_score"
-	CommunityDefaultFeedKey = "%d_community_default_feed"    // communityId
-	UserPersonalisedFeedKey = "%d_%s_user_personalised_feed" // communityId, userId
-	UserGroupsMetricsKey    = "%s_%d_user_groups_metric_score"
-	UserTopicsMetricsKey    = "%s_%d_user_topics_metric_score"
+	PostsRececnyMetricsKey   = "%d_recency_metric_score"
+	PostsLikesMetricsKey     = "%d_likes_metric_score"
+	PostsCommentsMetricsKey  = "%d_comments_metric_score"
+	CommunityDefaultFeedKey  = "%d_community_default_feed"      // communityId
+	UserPersonalisedFeedKey  = "%d_%s_user_personalised_feed"   // communityId, userId
+	UserGroupsMetricsKey     = "%s_%d_user_groups_metric_score" // TODO: we should have communityId first and then userId
+	UserTopicsMetricsKey     = "%s_%d_user_topics_metric_score" // TODO: we should have communityId first and then userId
+	UserSeenDampenedPostsKey = "%d_%s_seen_dampened_posts"      // communityId, userId
 )
 
 // Cache TTLs (in Hours)
@@ -31,6 +32,7 @@ const (
 	CommunitySettingsCacheTTLInHours       = 720 // 30 days
 	UserPersonalisedFeedCacheTTLInHours    = 720 // 30 days
 	UserCommunityChannelsCacheTTLInHours   = 720 // 30 days
+	UserDampenedPostsCacheTTLInHours       = 720 //30days
 )
 
 // Cache TTLs (in Mins)
