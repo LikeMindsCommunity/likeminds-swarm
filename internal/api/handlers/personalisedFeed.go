@@ -118,7 +118,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 
 // Compute recency metric score
 func computeRecencyMetricScore(postCreatedAt float64, recencyMetricMaxThreshold float64, recencyMetricWeight float64,
-	currentTime float64) float64 {
+	currentTime float64) float64 { //TODO: this is still unused
 	return ((recencyMetricMaxThreshold - (float64(time.Now().Unix()) - postCreatedAt)) / recencyMetricMaxThreshold) * recencyMetricWeight
 }
 
@@ -230,7 +230,7 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
 	if err != nil {
-		logging.Error("Error in computation of recency metric: ", err)
+		logging.Error("Error in fetching personalised feed weights from community configurations: ", err)
 		return
 	}
 
@@ -292,7 +292,6 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
-
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
 		return
@@ -363,7 +362,6 @@ func UserTopicsMetricComputation(handlers *FeedHandlers, userId string, communit
 
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
-
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
 		return
@@ -407,7 +405,11 @@ func UserTopicsMetricComputation(handlers *FeedHandlers, userId string, communit
 		},
 	}
 
-	allUserFollowedChannelPostsData, _ := handlers.userTopicsHelper.AggregateUserTopicsHelper(allUserTopicsPostsOfCommunityFilter)
+	allUserFollowedChannelPostsData, err := handlers.userTopicsHelper.AggregateUserTopicsHelper(allUserTopicsPostsOfCommunityFilter)
+	if err != nil {
+		logging.Error("Error in fetching all posts of community: ", communityId, " err: ", err)
+		return
+	}
 
 	if len(allUserFollowedChannelPostsData) == 0 {
 		logging.Error("No user followed channels post data found in db")
@@ -473,9 +475,8 @@ func fetchUserDampenedPosts(cacheHelper cache.Helper, userId string, communityId
 	}
 
 	for postId, dampenedUntil := range dampenedPostsMap {
-		var metricScore float64
 
-		metricScore = computeUserPostDampeningMetricScore(
+		metricScore := computeUserPostDampeningMetricScore(
 			dampenedUntil,
 			personalisedFeedWeights.PostDampeningMetrics.MaxThreshold,
 			personalisedFeedWeights.PostDampeningMetrics.Weight)
@@ -664,7 +665,8 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	}
 
 	// Reorder user personalised feed and update in cache
-	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId) //TODO: to confirm if use goroutine or asynq
+	// TODO: move this to background service
+	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId)
 
 	utils.GenerateSuccessResponse(c, nil)
 }
@@ -687,6 +689,10 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 	// fetch user dampened posts score map
 	var userDampenedPostsMap map[string]float64
 	userDampenedPostsMap, err = fetchUserDampenedPosts(cacheHelper, userId, communityId)
+	if err != nil {
+		logging.Error("Error in fetching user dampened posts: ", err)
+		return
+	}
 
 	// reduce the score of dampened posts
 	for postId, score := range userDampenedPostsMap {
