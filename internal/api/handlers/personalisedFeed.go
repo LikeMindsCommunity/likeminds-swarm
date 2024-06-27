@@ -85,6 +85,10 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 	}
 
 	allPostsData, err := handlers.postHelper.AggregatePostHelper(allPostsOfCommunityFilter)
+	if err != nil {
+		logging.Error("Error in fetching all posts of community: ", communityId, " err: ", err)
+		return
+	}
 
 	currentTimeInSeconds := float64(time.Now().Unix())
 
@@ -113,7 +117,8 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 }
 
 // Compute recency metric score
-func computeRecencyMetricScore(postCreatedAt float64, recencyMetricMaxThreshold float64, recencyMetricWeight float64, currentTime float64) float64 {
+func computeRecencyMetricScore(postCreatedAt float64, recencyMetricMaxThreshold float64, recencyMetricWeight float64,
+	currentTime float64) float64 { //TODO: Why are we not using currentTime??
 	return ((recencyMetricMaxThreshold - (float64(time.Now().Unix()) - postCreatedAt)) / recencyMetricMaxThreshold) * recencyMetricWeight
 }
 
@@ -178,6 +183,10 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	}
 
 	allPostsLikesData, err := handlers.likeHelper.AggregateLikeHelper(allPostsLikesCountOfCommunityFilter)
+	if err != nil {
+		logging.Error("Error in fetching all posts likes count of community: ", communityId, " err: ", err)
+		return
+	}
 
 	for _, postData := range allPostsLikesData.([]gin.H) {
 		var metricScore float64
@@ -245,6 +254,10 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 	}
 
 	allPostsLikesData, err := handlers.commentHelper.AggregateCommentHelper(allPostsCommentsCountOfCommunityFilter)
+	if err != nil {
+		logging.Error("Error in fetching all posts comments count of community: ", communityId, " err: ", err)
+		return
+	}
 
 	for _, postData := range allPostsLikesData.([]gin.H) {
 		var metricScore float64
@@ -309,16 +322,19 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 	}
 
 	allUserFollowedChannelPostsData, err := handlers.postHelper.AggregatePostHelper(allPostsOfCommunityChannelsFilter)
+	if err != nil {
+		logging.Error("Error in fetching all posts of community: ", communityId, " err: ", err)
+		return
+	}
 
-	if allUserFollowedChannelPostsData == nil || len(allUserFollowedChannelPostsData) == 0 {
+	if len(allUserFollowedChannelPostsData) == 0 {
 		logging.Error("No user followed channels post data found in db")
 		return
 	}
 
 	for _, postData := range allUserFollowedChannelPostsData {
-		var metricScore float64
 
-		metricScore = computeUserGroupsMetricScore(
+		metricScore := computeUserGroupsMetricScore(
 			personalisedFeedWeights.UserGroupsMetrics.MaxThreshold,
 			personalisedFeedWeights.UserGroupsMetrics.Weight)
 
@@ -393,7 +409,7 @@ func UserTopicsMetricComputation(handlers *FeedHandlers, userId string, communit
 
 	allUserFollowedChannelPostsData, _ := handlers.userTopicsHelper.AggregateUserTopicsHelper(allUserTopicsPostsOfCommunityFilter)
 
-	if allUserFollowedChannelPostsData == nil || len(allUserFollowedChannelPostsData) == 0 {
+	if len(allUserFollowedChannelPostsData) == 0 {
 		logging.Error("No user followed channels post data found in db")
 		return
 	}
