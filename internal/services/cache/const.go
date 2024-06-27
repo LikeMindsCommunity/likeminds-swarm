@@ -19,8 +19,8 @@ const (
 	PostsCommentsMetricsKey  = "%d_comments_metric_score"
 	CommunityDefaultFeedKey  = "%d_community_default_feed"      // communityId
 	UserPersonalisedFeedKey  = "%d_%s_user_personalised_feed"   // communityId, userId
-	UserGroupsMetricsKey     = "%s_%d_user_groups_metric_score" // TODO: we should have communityId first and then userId
-	UserTopicsMetricsKey     = "%s_%d_user_topics_metric_score" // TODO: we should have communityId first and then userId
+	UserGroupsMetricsKey     = "%d_%s_user_groups_metric_score" // communityId, userId
+	UserTopicsMetricsKey     = "%d_%s_user_topics_metric_score" // communityId, userId
 	UserSeenDampenedPostsKey = "%d_%s_seen_dampened_posts"      // communityId, userId
 )
 

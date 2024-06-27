@@ -118,7 +118,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 
 // Compute recency metric score
 func computeRecencyMetricScore(postCreatedAt float64, recencyMetricMaxThreshold float64, recencyMetricWeight float64,
-	currentTime float64) float64 { //TODO: Why are we not using currentTime??
+	currentTime float64) float64 {
 	return ((recencyMetricMaxThreshold - (float64(time.Now().Unix()) - postCreatedAt)) / recencyMetricMaxThreshold) * recencyMetricWeight
 }
 
@@ -344,7 +344,7 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(userGroupsMetricMap)
 
-	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, userId, communityId)
+	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, communityId, userId)
 	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.UserMetricCacheTTLInHours*time.Hour)
 
 	if setStatus.Err() != nil {
@@ -430,7 +430,7 @@ func UserTopicsMetricComputation(handlers *FeedHandlers, userId string, communit
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(userTopicsMetricMap)
 
-	cacheKey := fmt.Sprintf(cache.UserTopicsMetricsKey, userId, communityId)
+	cacheKey := fmt.Sprintf(cache.UserTopicsMetricsKey, communityId, userId)
 	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.UserMetricCacheTTLInHours*time.Hour)
 
 	if setStatus.Err() != nil {
@@ -441,6 +441,59 @@ func UserTopicsMetricComputation(handlers *FeedHandlers, userId string, communit
 // Compute user topics metric score
 func computeUserTopicsMetricScore(topicsCount float64, userTopicsMetricMaxThreshold float64, userTopicsMetricWeight float64) float64 {
 	return utils.GetMinimumFromArray(topicsCount, userTopicsMetricMaxThreshold) * userTopicsMetricWeight
+}
+
+// Compute post dampening metrics for user
+func fetchUserDampenedPosts(cacheHelper cache.Helper, userId string, communityId int) (map[string]float64, error) {
+	userPostDampeningMetricMap := map[string]float64{}
+
+	// Get dampened posts data from cache
+	cacheKey := fmt.Sprintf(cache.UserSeenDampenedPostsKey, communityId, userId)
+
+	userDampenedPostsCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		logging.Error("error while fetching cache for User dampened posts: ", err.Error())
+		return userPostDampeningMetricMap, err
+	}
+
+	var dampenedPostsMap map[string]int64
+	if exists {
+		err = json.Unmarshal([]byte(userDampenedPostsCacheValue), &dampenedPostsMap)
+		if err != nil {
+			logging.Error("error while unmarshalling user dampened posts: ", err.Error())
+		}
+	}
+
+	// Get personalised weights
+	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper, userId, communityId)
+
+	if err != nil {
+		logging.Error("Error in computation of recency metric: ", err)
+		return userPostDampeningMetricMap, err
+	}
+
+	for postId, dampenedUntil := range dampenedPostsMap {
+		var metricScore float64
+
+		metricScore = computeUserPostDampeningMetricScore(
+			dampenedUntil,
+			personalisedFeedWeights.PostDampeningMetrics.MaxThreshold,
+			personalisedFeedWeights.PostDampeningMetrics.Weight)
+
+		userPostDampeningMetricMap[postId] = metricScore
+	}
+
+	return userPostDampeningMetricMap, nil
+}
+
+// Compute user post dampening metric score
+func computeUserPostDampeningMetricScore(postDampenedUntil int64, userTopicsMetricMaxThreshold float64, userTopicsMetricWeight float64) float64 {
+
+	if postDampenedUntil >= time.Now().Unix() {
+		return userTopicsMetricMaxThreshold * userTopicsMetricWeight
+	} else {
+		return 0
+	}
 }
 
 // Internal method to save dampened posts for user in cache
@@ -632,8 +685,8 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 	}
 
 	// fetch user dampened posts score map
-	var userDampenedPostsMap map[string]float64 // TODO: complete this
-	// userDampenedPostsMap, err := fetchUserDampenedPosts(cacheHelper, communityId, userId)
+	var userDampenedPostsMap map[string]float64
+	userDampenedPostsMap, err = fetchUserDampenedPosts(cacheHelper, userId, communityId)
 
 	// reduce the score of dampened posts
 	for postId, score := range userDampenedPostsMap {
