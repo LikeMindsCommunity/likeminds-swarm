@@ -52,7 +52,8 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 }
 
 // Recompute & save post ranking on the basis of recency metrics
-func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId int) {
+func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId int,
+) map[string]float64 {
 	postsMetricMap := map[string]float64{}
 
 	cacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
@@ -60,7 +61,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 	// Get data from cache
 	postsMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey)
 	if postsMetricMapCacheValue.Val() != "" && postsMetricMapCacheValue.Val() != "null" {
-		return
+		return postsMetricMap
 	}
 
 	// Get personalised weights
@@ -68,7 +69,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
-		return
+		return postsMetricMap
 	}
 
 	// Filter for all posts of community
@@ -90,7 +91,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 	allPostsData, err := handlers.postHelper.AggregatePostHelper(allPostsOfCommunityFilter)
 	if err != nil {
 		logging.Error("Error in fetching all posts of community: ", communityId, " err: ", err)
-		return
+		return postsMetricMap
 	}
 
 	currentTimeInSeconds := float64(time.Now().Unix())
@@ -117,6 +118,8 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving recency metric score in cache", setStatus.Err())
 	}
+
+	return postsMetricMap
 }
 
 // Compute recency metric score
@@ -126,7 +129,8 @@ func computeRecencyMetricScore(postCreatedAt float64, recencyMetricMaxThreshold 
 }
 
 // Recompute & save post ranking on the basis of likes metrics
-func PostLikesMetricComputation(handlers *FeedHandlers, userId string, communityId int) {
+func PostLikesMetricComputation(handlers *FeedHandlers, userId string, communityId int,
+) map[string]float64 {
 	postsLikesMetricMap := map[string]float64{}
 
 	cacheKey := fmt.Sprintf(cache.PostsLikesMetricsKey, communityId)
@@ -134,7 +138,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	// Get data from cache
 	postsLikesMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey) // Can use GetWithKeyExists to check if key exists
 	if postsLikesMetricMapCacheValue.Val() != "" && postsLikesMetricMapCacheValue.Val() != "null" {
-		return
+		return postsLikesMetricMap
 	}
 
 	// Start of computation of post likes metric
@@ -145,7 +149,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	// Get data from cache
 	postsMetricMapCacheValue := handlers.cacheHelper.Get(postsMetricMapCacheKey)
 	if postsMetricMapCacheValue.Val() == "" || postsMetricMapCacheValue.Val() == "null" {
-		return
+		return postsLikesMetricMap
 	}
 
 	err := json.Unmarshal([]byte(postsMetricMapCacheValue.Val()), &postRecencyMetricsMap)
@@ -161,7 +165,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
-		return
+		return postsLikesMetricMap
 	}
 
 	// Filter for all likes count of posts in a community
@@ -188,7 +192,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	allPostsLikesData, err := handlers.likeHelper.AggregateLikeHelper(allPostsLikesCountOfCommunityFilter)
 	if err != nil {
 		logging.Error("Error in fetching all posts likes count of community: ", communityId, " err: ", err)
-		return
+		return postsLikesMetricMap
 	}
 
 	for _, postData := range allPostsLikesData.([]gin.H) {
@@ -211,6 +215,8 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving post likes metric score in cache", setStatus.Err())
 	}
+
+	return postsLikesMetricMap
 }
 
 // Compute post likes metric score
@@ -219,7 +225,8 @@ func computePostLikesMetricScore(postLikesCount float64, likesMetricMaxThreshold
 }
 
 // Recompute & save post ranking on the basis of comments metrics
-func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, communityId int) {
+func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, communityId int,
+) map[string]float64 {
 	postsCommentsMetricMap := map[string]float64{}
 
 	cacheKey := fmt.Sprintf(cache.PostsCommentsMetricsKey, communityId)
@@ -227,14 +234,14 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 	// Get data from cache
 	postsCommentsMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey)
 	if postsCommentsMetricMapCacheValue.Val() != "" && postsCommentsMetricMapCacheValue.Val() != "null" {
-		return
+		return postsCommentsMetricMap
 	}
 
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		logging.Error("Error in fetching personalised feed weights from community configurations: ", err)
-		return
+		return postsCommentsMetricMap
 	}
 
 	// Filter for all comments count of posts in a community
@@ -259,7 +266,7 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 	allPostsLikesData, err := handlers.commentHelper.AggregateCommentHelper(allPostsCommentsCountOfCommunityFilter)
 	if err != nil {
 		logging.Error("Error in fetching all posts comments count of community: ", communityId, " err: ", err)
-		return
+		return postsCommentsMetricMap
 	}
 
 	for _, postData := range allPostsLikesData.([]gin.H) {
@@ -282,6 +289,8 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving post comments metric score in cache", setStatus.Err())
 	}
+
+	return postsCommentsMetricMap
 }
 
 // Compute post comments metric score
@@ -671,16 +680,16 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	}
 
 	// Reorder user personalised feed and update in cache
-	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId) // TODO: Can move this to background service
+	go reorderUserPersonalisedFeed(handlers, communityId, userId) // TODO: Can move this to background service
 
 	utils.GenerateSuccessResponse(c, nil)
 }
 
 // method to reorder user personalised feed and update in cache
-func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, userId string) {
+func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId string) {
 
 	// fetch community metric post scores
-	postScoreMap, err := fetchCommunityMetricPostScores(cacheHelper, communityId)
+	postScoreMap, err := fetchCommunityMetricPostScores(handlers, communityId, userId)
 	if err != nil {
 		logging.Error("Error in fetching post metrics for community: ", communityId, " err: ", err)
 		return
@@ -692,7 +701,7 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 	}
 
 	// fetch user specific metric scores map
-	userSpecificMetricScores, err := fetchUserSpecificMetricScores(cacheHelper, userId, communityId)
+	userSpecificMetricScores, err := fetchUserSpecificMetricScores(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		logging.Error("Error in fetching user specific metric scores: ", err)
 		return
@@ -713,7 +722,7 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)
 	defaultFeedBytesValue, _ := json.Marshal(sortedPostIds)
 
-	setStatus := cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.UserPersonalisedFeedCacheTTLInHours*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.UserPersonalisedFeedCacheTTLInHours*time.Minute)
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving user personalised feed in cache", setStatus.Err())
 	}
@@ -722,6 +731,10 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 // Exposed Method to compute community default feed | Should be run every 30 mins
 func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -729,7 +742,7 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	}
 
 	// Fetch post scores map for the community
-	postScoreMap, err := fetchCommunityMetricPostScores(handlers.cacheHelper, communityId)
+	postScoreMap, err := fetchCommunityMetricPostScores(handlers, communityId, userId)
 	if err != nil {
 		logging.Error("Error in fetching post metrics for community: ", communityId, " err: ", err)
 		return
@@ -758,65 +771,74 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	utils.GenerateSuccessResponse(c, nil)
 }
 
-func fetchCommunityMetricPostScores(cacheHelper cache.Helper, communityId int) (map[string]float64, error) {
+func fetchCommunityMetricPostScores(handlers *FeedHandlers, communityId int, userId string,
+) (map[string]float64, error) {
 
 	postScoreMap := map[string]float64{}
 
 	// Fetch all the recent posts of the community
+	recentPostsMapData := map[string]float64{}
 	cacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
-	recentPostsMap, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	recentPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		return postScoreMap, fmt.Errorf("error in fetching community recency metrics from cache: %v", err)
 	}
 
 	if exists {
-		var recentPostsMapData map[string]float64
 		err := json.Unmarshal([]byte(recentPostsMap), &recentPostsMapData)
 		if err != nil {
 			return postScoreMap, fmt.Errorf("error in unmarshalling recency metrics from cache: %v", err)
 		}
+	} else { // Compute recency metric if not found in cache
+		logging.Info("Recency metrics not found in cache. Computing recency metrics for community: ", communityId)
+		recentPostsMapData = RecencyMetricComputation(handlers, userId, communityId)
+	}
 
-		for postId := range recentPostsMapData {
-			postScoreMap[postId] += recentPostsMapData[postId]
-		}
+	for postId := range recentPostsMapData {
+		postScoreMap[postId] += recentPostsMapData[postId]
 	}
 
 	// Fetch all the top liked posts of the community
+	topLikedPostsMapData := map[string]float64{}
 	cacheKey = fmt.Sprintf(cache.PostsLikesMetricsKey, communityId)
-	topLikedPostsMap, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	topLikedPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		return postScoreMap, fmt.Errorf("error in fetching community likes metrics from cache: %v", err)
 	}
 
 	if exists {
-		var topLikedPostsMapData map[string]float64
 		err := json.Unmarshal([]byte(topLikedPostsMap), &topLikedPostsMapData)
 		if err != nil {
 			return postScoreMap, fmt.Errorf("error in unmarshalling likes metrics from cache: %v", err)
 		}
+	} else {
+		logging.Info("Likes metrics not found in cache. Computing likes metrics for community: ", communityId)
+		topLikedPostsMapData = PostLikesMetricComputation(handlers, userId, communityId)
+	}
 
-		for postId := range topLikedPostsMapData {
-			postScoreMap[postId] += topLikedPostsMapData[postId]
-		}
+	for postId := range topLikedPostsMapData {
+		postScoreMap[postId] += topLikedPostsMapData[postId]
 	}
 
 	// Fetch all the top commented posts of the community
+	topCommentedPostsMapData := map[string]float64{}
 	cacheKey = fmt.Sprintf(cache.PostsCommentsMetricsKey, communityId)
-	topCommentedPostsMap, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	topCommentedPostsMap, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		return postScoreMap, fmt.Errorf("error in fetching community comments metrics from cache: %v", err)
 	}
-
 	if exists {
-		var topCommentedPostsMapData map[string]float64
 		err := json.Unmarshal([]byte(topCommentedPostsMap), &topCommentedPostsMapData)
 		if err != nil {
 			return postScoreMap, fmt.Errorf("error in unmarshalling comments metrics from cache: %v", err)
 		}
+	} else {
+		logging.Info("Comments metrics not found in cache. Computing comments metrics for community: ", communityId)
+		topCommentedPostsMapData = PostCommentsMetricComputation(handlers, userId, communityId)
+	}
 
-		for postId := range topCommentedPostsMapData {
-			postScoreMap[postId] += topCommentedPostsMapData[postId]
-		}
+	for postId := range topCommentedPostsMapData {
+		postScoreMap[postId] += topCommentedPostsMapData[postId]
 	}
 
 	return postScoreMap, nil
