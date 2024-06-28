@@ -2415,8 +2415,7 @@ func (handlers *FeedHandlers) MarkPostsSeen(c *gin.Context) {
 	}
 
 	// Call helper method to mark posts as seen in Background
-	// TODO: Move this to background service
-	go saveDampenedPostsForUserInCache(handlers.cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds)
+	go saveDampenedPostsForUserInCache(handlers.cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds) // TODO: Can Move this to background service
 
 	utils.GenerateSuccessResponse(c, nil)
 }

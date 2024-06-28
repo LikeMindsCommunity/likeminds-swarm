@@ -31,7 +31,7 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 		return
 	}
 
-	// TODO: Run all the below tasks parallely?
+	// TODO: Can Run all the below tasks parallely
 
 	// Compute recency metric and save it in cache
 	RecencyMetricComputation(handlers, userId, communityId)
@@ -121,8 +121,8 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 
 // Compute recency metric score
 func computeRecencyMetricScore(postCreatedAt float64, recencyMetricMaxThreshold float64, recencyMetricWeight float64,
-	currentTime float64) float64 { //TODO: this is still unused
-	return ((recencyMetricMaxThreshold - (float64(time.Now().Unix()) - postCreatedAt)) / recencyMetricMaxThreshold) * recencyMetricWeight
+	currentTime float64) float64 {
+	return ((recencyMetricMaxThreshold - (currentTime - postCreatedAt)) / recencyMetricMaxThreshold) * recencyMetricWeight
 }
 
 // Recompute & save post ranking on the basis of likes metrics
@@ -346,7 +346,7 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(userGroupsMetricMap)
 
-	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, communityId, userId) // TODO: We are just setting this cache key, and are never fetching it
+	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, communityId, userId)
 	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.UserMetricCacheTTLInHours*time.Hour)
 
 	if setStatus.Err() != nil {
@@ -454,7 +454,6 @@ func fetchUserDampenedPosts(cacheHelper cache.Helper, userId string, communityId
 
 	// Get dampened posts data from cache
 	cacheKey := fmt.Sprintf(cache.UserSeenDampenedPostsKey, communityId, userId)
-
 	userDampenedPostsCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		logging.Error("error while fetching cache for User dampened posts: ", err.Error())
@@ -471,7 +470,6 @@ func fetchUserDampenedPosts(cacheHelper cache.Helper, userId string, communityId
 
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper, userId, communityId)
-
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
 		return userPostDampeningMetricMap, err
@@ -504,7 +502,7 @@ func computeUserPostDampeningMetricScore(postDampenedUntil int64, userTopicsMetr
 func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, communityId int, postIds []string) {
 
 	cacheKey := fmt.Sprintf(cache.UserSeenDampenedPostsKey, communityId, userId)
-	bytes, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	dampenedPostsBytes, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		logging.Error("error while fetching cache for User dampened posts: ", err.Error())
 		return
@@ -512,7 +510,7 @@ func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, co
 
 	var dampenedPostsMap map[string]int64
 	if exists {
-		err = json.Unmarshal([]byte(bytes), &dampenedPostsMap)
+		err = json.Unmarshal([]byte(dampenedPostsBytes), &dampenedPostsMap)
 		if err != nil {
 			logging.Error("error while unmarshalling user dampened posts: ", err.Error())
 		}
@@ -668,8 +666,7 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	}
 
 	// Reorder user personalised feed and update in cache
-	// TODO: move this to background service
-	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId)
+	go reorderUserPersonalisedFeed(handlers.cacheHelper, communityId, userId) // TODO: Can move this to background service
 
 	utils.GenerateSuccessResponse(c, nil)
 }
@@ -689,19 +686,16 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 		return
 	}
 
-	// fetch user dampened posts score map
-	var userDampenedPostsMap map[string]float64
-	userDampenedPostsMap, err = fetchUserDampenedPosts(cacheHelper, userId, communityId)
+	// fetch user specific metric scores map
+	userSpecificMetricScores, err := fetchUserSpecificMetricScores(cacheHelper, userId, communityId)
 	if err != nil {
-		logging.Error("Error in fetching user dampened posts: ", err)
+		logging.Error("Error in fetching user specific metric scores: ", err)
 		return
 	}
 
-	// reduce the score of dampened posts
-	for postId, score := range userDampenedPostsMap {
-		if _, ok := postScoreMap[postId]; !ok {
-			postScoreMap[postId] -= score
-		}
+	// Add user specific metric scores to posts score map
+	for postId, score := range userSpecificMetricScores {
+		postScoreMap[postId] += score
 	}
 
 	// Sort the post score map in descending order and get top 1000 posts
@@ -813,4 +807,67 @@ func fetchCommunityMetricPostScores(cacheHelper cache.Helper, communityId int) (
 	}
 
 	return postScoreMap, nil
+}
+
+func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, communityId int,
+) (map[string]float64, error) {
+
+	userSpecificMetricScores := map[string]float64{}
+
+	// fetch user groups metric score map for user
+	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, communityId, userId)
+	userGroupsMetricMapCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		return nil, fmt.Errorf("error in fetching user groups metric score from cache: %v", err)
+	}
+
+	var userGroupsMetricMap map[string]float64
+	if exists {
+		err := json.Unmarshal([]byte(userGroupsMetricMapCacheValue), &userGroupsMetricMap)
+		if err != nil {
+			return nil, fmt.Errorf("error in unmarshalling user groups metric score from cache: %v", err)
+		}
+
+		for postId, score := range userGroupsMetricMap {
+			if _, ok := userSpecificMetricScores[postId]; !ok {
+				userSpecificMetricScores[postId] += score
+			}
+		}
+	}
+
+	// fetch user topics metric score map for user
+	cacheKey = fmt.Sprintf(cache.UserTopicsMetricsKey, communityId, userId)
+	userTopicsMetricMapCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		return nil, fmt.Errorf("error in fetching user topics metric score from cache: %v", err)
+	}
+
+	var userTopicsMetricMap map[string]float64
+	if exists {
+		err := json.Unmarshal([]byte(userTopicsMetricMapCacheValue), &userTopicsMetricMap)
+		if err != nil {
+			return nil, fmt.Errorf("error in unmarshalling user topics metric score from cache: %v", err)
+		}
+
+		for postId, score := range userTopicsMetricMap {
+			if _, ok := userSpecificMetricScores[postId]; !ok {
+				userSpecificMetricScores[postId] += score
+			}
+		}
+	}
+
+	// fetch user dampened posts score map
+	userDampenedPostsMap, err := fetchUserDampenedPosts(cacheHelper, userId, communityId)
+	if err != nil {
+		return nil, fmt.Errorf("error in fetching user dampened posts: %v", err)
+	}
+
+	// reduce the score of dampened posts
+	for postId, score := range userDampenedPostsMap {
+		if _, ok := userSpecificMetricScores[postId]; !ok {
+			userSpecificMetricScores[postId] -= score
+		}
+	}
+
+	return userSpecificMetricScores, nil
 }
