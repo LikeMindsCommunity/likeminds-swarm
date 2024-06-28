@@ -12,4 +12,5 @@ func PersonalisedFeedRouter(routerGroup *gin.RouterGroup, handler *handlers.Feed
 	personalisedFeedGroup.POST("/recompute", handler.RecomputePersonalisedFeed)
 	personalisedFeedGroup.GET("/personalised", handler.FetchPersonalisedFeed)
 	personalisedFeedGroup.POST("/reorder", handler.ReorderPersonalisedFeed)
+	personalisedFeedGroup.POST("/compute/community/default", handler.ComputeCommunityDefaultFeed)
 }

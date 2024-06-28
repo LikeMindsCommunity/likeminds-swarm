@@ -715,7 +715,13 @@ func reorderUserPersonalisedFeed(cacheHelper cache.Helper, communityId int, user
 }
 
 // Exposed Method to compute community default feed | Should be run every 30 mins
-func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(communityId int) {
+func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
 
 	// Fetch post scores map for the community
 	postScoreMap, err := fetchCommunityMetricPostScores(handlers.cacheHelper, communityId)
