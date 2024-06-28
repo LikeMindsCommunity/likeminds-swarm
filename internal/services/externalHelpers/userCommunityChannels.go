@@ -24,7 +24,7 @@ type UserCommunityChannelsResponse struct {
 
 func fetchUserCommunityChannelsFromCache(cacheHelper cache.Helper, userId string, communityId int) []int {
 
-	userCommunityChannelsCacheKey := fmt.Sprintf(cache.UserCommunityChannelsCacheKey, userId, communityId)
+	userCommunityChannelsCacheKey := fmt.Sprintf(cache.UserCommunityChannelsCacheKey, communityId, userId)
 	userCommunityChannelsCacheValue := cacheHelper.Get(userCommunityChannelsCacheKey)
 
 	if userCommunityChannelsCacheValue.Val() == "" || userCommunityChannelsCacheValue.Val() == "null" {
@@ -43,7 +43,7 @@ func fetchUserCommunityChannelsFromCache(cacheHelper cache.Helper, userId string
 
 func saveUserCommunityChannelsInCache(cacheHelper cache.Helper, userId string, communityId int, userCommunityChannels []int) error {
 
-	userCommunityChannelsCacheKey := fmt.Sprintf(cache.UserCommunityChannelsCacheKey, userId, communityId)
+	userCommunityChannelsCacheKey := fmt.Sprintf(cache.UserCommunityChannelsCacheKey, communityId, userId)
 	parsedUserCommunityChannels, err := json.Marshal(userCommunityChannels)
 	if err != nil {
 		return err

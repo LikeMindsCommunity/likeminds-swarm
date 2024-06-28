@@ -9,7 +9,7 @@ const (
 	CommunityWebhooksCacheKey     = "%s_webhooks"                   // apiKey
 	PostTopLikedCommentKey        = "%d_%s_top_liked_comments"      // communityId, postId
 	CommunitySettingsCacheKey     = "%d_community_settings"         // communityId
-	UserCommunityChannelsCacheKey = "%s_%d_user_community_channels" // userId, communityId
+	UserCommunityChannelsCacheKey = "%d_%s_user_community_channels" // communityId, userId
 )
 
 // Swarm cache keys of personalised feed
