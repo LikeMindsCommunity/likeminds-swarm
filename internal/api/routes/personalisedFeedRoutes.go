@@ -9,8 +9,8 @@ import (
 func PersonalisedFeedRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	personalisedFeedGroup := routerGroup.Group("personalised")
 
+	personalisedFeedGroup.GET("/", handler.FetchPersonalisedFeed)
 	personalisedFeedGroup.POST("/recompute", handler.RecomputePersonalisedFeed)
-	personalisedFeedGroup.GET("/personalised", handler.FetchPersonalisedFeed)
 	personalisedFeedGroup.POST("/reorder", handler.ReorderPersonalisedFeed)
 	personalisedFeedGroup.POST("/compute/community/default", handler.ComputeCommunityDefaultFeed)
 }

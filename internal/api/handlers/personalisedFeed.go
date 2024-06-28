@@ -55,7 +55,7 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId int) {
 	postsMetricMap := map[string]float64{}
 
-	cacheKey := fmt.Sprintf(cache.PostsRececnyMetricsKey, communityId)
+	cacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
 
 	// Get data from cache
 	postsMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey)
@@ -112,7 +112,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(postsMetricMap)
-	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecenctCacheTTLInMins*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecencyCacheTTLInMins*time.Minute)
 
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving recency metric score in cache", setStatus.Err())
@@ -140,7 +140,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	// Start of computation of post likes metric
 	var postRecencyMetricsMap map[string]float64
 	postIdsArray := []string{}
-	postsMetricMapCacheKey := fmt.Sprintf(cache.PostsRececnyMetricsKey, communityId)
+	postsMetricMapCacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
 
 	// Get data from cache
 	postsMetricMapCacheValue := handlers.cacheHelper.Get(postsMetricMapCacheKey)
@@ -206,7 +206,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(postsLikesMetricMap)
-	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecenctCacheTTLInMins*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecencyCacheTTLInMins*time.Minute)
 
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving post likes metric score in cache", setStatus.Err())
@@ -277,7 +277,7 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(postsCommentsMetricMap)
-	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecenctCacheTTLInMins*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecencyCacheTTLInMins*time.Minute)
 
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving post comments metric score in cache", setStatus.Err())
@@ -303,6 +303,11 @@ func UserGroupsMetricComputation(handlers *FeedHandlers, userId string, communit
 	userFollowedChannels, err := externalHelpers.FetchUserCommunityChannels(handlers.cacheHelper, userId, communityId, apiKey)
 	if err != nil {
 		logging.Error("Unable to fetch user followed channels:", err)
+	}
+
+	if len(userFollowedChannels) == 0 {
+		logging.Info("No user followed channels found for user: ", userId)
+		return
 	}
 
 	// Filter for all posts of community
@@ -415,7 +420,7 @@ func UserTopicsMetricComputation(handlers *FeedHandlers, userId string, communit
 	}
 
 	if len(allUserFollowedChannelPostsData) == 0 {
-		logging.Error("No user followed channels post data found in db")
+		logging.Error("No user followed topic post data found in db")
 		return
 	}
 
@@ -508,7 +513,7 @@ func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, co
 		return
 	}
 
-	var dampenedPostsMap map[string]int64
+	dampenedPostsMap := map[string]int64{}
 	if exists {
 		err = json.Unmarshal([]byte(dampenedPostsBytes), &dampenedPostsMap)
 		if err != nil {
@@ -749,6 +754,8 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving community default feed in cache", setStatus.Err())
 	}
+
+	utils.GenerateSuccessResponse(c, nil)
 }
 
 func fetchCommunityMetricPostScores(cacheHelper cache.Helper, communityId int) (map[string]float64, error) {
@@ -756,7 +763,7 @@ func fetchCommunityMetricPostScores(cacheHelper cache.Helper, communityId int) (
 	postScoreMap := map[string]float64{}
 
 	// Fetch all the recent posts of the community
-	cacheKey := fmt.Sprintf(cache.PostsRececnyMetricsKey, communityId)
+	cacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
 	recentPostsMap, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		return postScoreMap, fmt.Errorf("error in fetching community recency metrics from cache: %v", err)

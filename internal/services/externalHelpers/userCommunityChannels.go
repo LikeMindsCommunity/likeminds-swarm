@@ -2,7 +2,6 @@ package externalHelpers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -88,9 +87,10 @@ func getUserCommunityChannelsFromAPI(userId string, apiKey string) ([]UserCommun
 		return nil, err
 	}
 
-	if len(uccr.UserCommunityChannels) == 0 {
-		return nil, errors.New("User community channels not found.")
-	}
+	// TODO: I do not think we need this @ankit
+	// if len(uccr.UserCommunityChannels) == 0 {
+	// 	return nil, errors.New("User community channels not found.")
+	// }
 
 	return uccr.UserCommunityChannels, nil
 }
@@ -101,6 +101,8 @@ func FetchUserCommunityChannels(cacheHelper cache.Helper, userId string, communi
 	// fetch user community channels from cache
 	userCommunityChannels := fetchUserCommunityChannelsFromCache(cacheHelper, userId, communityId)
 	if userCommunityChannels == nil {
+		// Save the channel ids in list
+		channelIdsList := []int{}
 
 		// fetch from api if not found in cache
 		userCommunityChannels, err := getUserCommunityChannelsFromAPI(userId, apiKey)
@@ -108,8 +110,9 @@ func FetchUserCommunityChannels(cacheHelper cache.Helper, userId string, communi
 			return nil, err
 		}
 
-		// Save the channel ids in list
-		channelIdsList := []int{}
+		if len(userCommunityChannels) == 0 {
+			return channelIdsList, nil
+		}
 
 		for _, userCommunityChannel := range userCommunityChannels {
 			channelIdsList = append(channelIdsList, userCommunityChannel.ID)

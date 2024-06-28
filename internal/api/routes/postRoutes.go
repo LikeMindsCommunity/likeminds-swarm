@@ -19,7 +19,7 @@ func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup.PUT("/:post_id/like", handler.LikePost)
 	postGroup.PUT("/:post_id/save", handler.SavePost)
 
-	postGroup.GET("/seen", handler.MarkPostsSeen)
+	postGroup.POST("/seen", handler.MarkPostsSeen)
 
 	postGroup.POST("/:post_id/comment", handler.CommentPost)
 	postGroup.PUT("/:post_id/comment/:comment_id", handler.EditComment)
