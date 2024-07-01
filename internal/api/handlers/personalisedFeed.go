@@ -538,7 +538,7 @@ func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, co
 
 	// save the updated map
 	bytesValue, _ := json.Marshal(dampenedPostsMap)
-	setStatus := cacheHelper.Set(cacheKey, bytesValue, cache.UserDampenedPostsCacheTTLInHours)
+	setStatus := cacheHelper.Set(cacheKey, bytesValue, cache.UserDampenedPostsCacheTTLInHours*time.Hour)
 	if setStatus.Err() != nil {
 		logging.Error("error while saving user dampened posts: ", setStatus.Err().Error())
 	}
