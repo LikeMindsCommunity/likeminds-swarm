@@ -27,7 +27,7 @@ func fetchUserCommunityChannelsFromCache(cacheHelper cache.Helper, userId string
 	userCommunityChannelsCacheValue := cacheHelper.Get(userCommunityChannelsCacheKey)
 
 	if userCommunityChannelsCacheValue.Val() == "" || userCommunityChannelsCacheValue.Val() == "null" {
-		logging.Error(fmt.Sprintf("Channels not found in cache for communityId: %d, userId: %s", communityId, userId))
+		logging.Error(fmt.Sprintf(UserCommunityChannelsNotFoundErrorMessage, communityId, userId))
 		return nil
 	}
 
@@ -50,11 +50,11 @@ func saveUserCommunityChannelsInCache(cacheHelper cache.Helper, userId string, c
 
 	userCommunityChannelsSet := cacheHelper.Set(userCommunityChannelsCacheKey, parsedUserCommunityChannels, cache.UserCommunityChannelsCacheTTLInHours*time.Hour)
 	if userCommunityChannelsSet.Err() != nil {
-		logging.Error(fmt.Sprintf("Error while saving user community channels in cache for communityId: %d, userId: %s, err: %v", communityId, userId, err))
+		logging.Error(fmt.Sprintf(UserCommunityChannelsCacheSavingError, communityId, userId, err))
 		return err
 	}
 
-	logging.Info(fmt.Sprintf("Saved user community channels in cache for communityId: %d, userId: %s", communityId, userId))
+	logging.Info(fmt.Sprintf(UserCommunityChannelsCacheSaveSuccess, communityId, userId))
 	return nil
 }
 
@@ -62,9 +62,9 @@ func saveUserCommunityChannelsInCache(cacheHelper cache.Helper, userId string, c
 func getUserCommunityChannelsFromAPI(userId string, apiKey string) ([]UserCommunityFollowedChannels, error) {
 
 	headers := gin.H{
-		"Content-Type":        "application/json",
-		utils.HeadersMemberId: userId,
-		utils.HeadersApiKey:   apiKey,
+		utils.HeaderContentType: utils.ContentTypeApplicationJson,
+		utils.HeadersMemberId:   userId,
+		utils.HeadersApiKey:     apiKey,
 	}
 
 	// Params to be sent in the api/sync/chatrooms
@@ -86,11 +86,6 @@ func getUserCommunityChannelsFromAPI(userId string, apiKey string) ([]UserCommun
 	if err = json.Unmarshal(respBytes, &uccr); err != nil {
 		return nil, err
 	}
-
-	// TODO: I do not think we need this @ankit
-	// if len(uccr.UserCommunityChannels) == 0 {
-	// 	return nil, errors.New("User community channels not found.")
-	// }
 
 	return uccr.UserCommunityChannels, nil
 }

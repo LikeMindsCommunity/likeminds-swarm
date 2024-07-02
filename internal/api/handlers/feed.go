@@ -254,7 +254,7 @@ func filterTopCommentsForPosts(handlers *FeedHandlers, parsedPosts []responses.P
 			LoggedInUser.UserId, LoggedInUser.IsCm, LoggedInUser.CommunityId, commentSortOrderVal, universalFeedConfig.CommentCount,
 			LoggedInUser.VersionCode, LoggedInUser.PlatformCode, LoggedInUser.ApiRevampCheckV1, LoggedInUser.MemberRole)
 		if err != nil {
-			logging.Error("Error in fetching top comments against posts", err)
+			logging.Error(constants.FetchingTopCommentsErrorMessage, err)
 			return parsedPosts, filteredComments
 		}
 

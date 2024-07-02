@@ -14,9 +14,9 @@ const (
 
 // Swarm cache keys of personalised feed
 const (
-	PostsRecencyMetricsKey   = "%d_recency_metric_score"
-	PostsLikesMetricsKey     = "%d_likes_metric_score"
-	PostsCommentsMetricsKey  = "%d_comments_metric_score"
+	PostsRecencyMetricsKey   = "%d_recency_metric_score"        // communityId
+	PostsLikesMetricsKey     = "%d_likes_metric_score"          // communityId
+	PostsCommentsMetricsKey  = "%d_comments_metric_score"       // communityId
 	CommunityDefaultFeedKey  = "%d_community_default_feed"      // communityId
 	UserPersonalisedFeedKey  = "%d_%s_user_personalised_feed"   // communityId, userId
 	UserGroupsMetricsKey     = "%d_%s_user_groups_metric_score" // communityId, userId

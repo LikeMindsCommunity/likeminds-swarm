@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Exposed Method to Add a New Poll Option
+// Exposed Method to recompute the personalised feed
 func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 
 	// fetch headers and url params

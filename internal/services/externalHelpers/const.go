@@ -113,3 +113,9 @@ const (
 	%v
 	</code>`
 )
+
+const (
+	UserCommunityChannelsNotFoundErrorMessage = "Channels not found in cache for communityId: %d, userId: %s"
+	UserCommunityChannelsCacheSavingError     = "Error while saving user community channels in cache for communityId: %d, userId: %s, err: %v"
+	UserCommunityChannelsCacheSaveSuccess     = "Saved user community channels in cache for communityId: %d, userId: %s"
+)
