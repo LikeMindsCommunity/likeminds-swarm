@@ -218,19 +218,14 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 		return
 	}
 
-	savedPostResponse := parseMultiplePostResponse(handlers, postResults, userId, isCm,
+	parsedPosts := parseMultiplePostResponse(handlers, postResults, userId, isCm,
 		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
-	response := parseFetchMultiplePostResponse(savedPostResponse, saveCount)
-
-	// response data
+	// final response data
 	finalResponse := gin.H{
-		"posts":   response.Posts,
-		"success": response.Success,
-	}
-
-	if response.TotalCount > 0 {
-		finalResponse["total_count"] = response.TotalCount
+		"success":     true,
+		"posts":       parsedPosts,
+		"total_count": saveCount,
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
@@ -252,7 +247,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
 		var updatedPostsWithComments []responses.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
-			response.Posts, userId, isCm, communityId, commentSortOrderVal,
+			parsedPosts, userId, isCm, communityId, commentSortOrderVal,
 			universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
 
 		if err != nil {

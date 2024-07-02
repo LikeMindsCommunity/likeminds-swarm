@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,6 +16,7 @@ type UserTopicsRepository interface {
 	UpdateMany(filter map[string]interface{}, update map[string]interface{}) error
 	Count(filter map[string]interface{}) (int64, error)
 	DeleteMany(filter map[string]interface{}) (int64, error)
+	Aggregate(query []map[string]interface{}) (*mongo.Cursor, error)
 }
 
 type UserTopicsHelper interface {
@@ -23,4 +25,5 @@ type UserTopicsHelper interface {
 	UpdateManyUserTopicsHelper(filter map[string]interface{}, update map[string]interface{}) error
 	CountUserTopicsHelper(filter map[string]interface{}) (int64, error)
 	DeleteUserTopicsHelper(filter map[string]interface{}) error
+	AggregateUserTopicsHelper(query []map[string]interface{}) ([]gin.H, error)
 }

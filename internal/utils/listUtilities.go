@@ -52,3 +52,16 @@ func GetDifferenceBetweenArray(a []primitive.ObjectID, b []primitive.ObjectID) [
 	}
 	return diff
 }
+
+// This function returns the minimum number in the array
+func GetMinimumFromArray(vars ...float64) float64 {
+	min := vars[0]
+
+	for _, i := range vars {
+		if min > i {
+			min = i
+		}
+	}
+
+	return min
+}

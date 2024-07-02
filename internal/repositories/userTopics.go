@@ -34,6 +34,11 @@ func (repository *userTopicsRepository) DeleteMany(filter map[string]interface{}
 	return _deleteManyDocumentsInDB(repository.db, UserTopicsCollection, filter)
 }
 
+// Exposed Helper Method to perform Aggregation on User Topics
+func (repository *userTopicsRepository) Aggregate(query []map[string]interface{}) (*mongo.Cursor, error) {
+	return _aggregateDocumentsInDBReturnCursor(repository.db, UserTopicsCollection, query)
+}
+
 type userTopicsRepository struct {
 	db *mongo.Database
 }
