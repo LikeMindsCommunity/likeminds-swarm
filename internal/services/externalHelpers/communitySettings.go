@@ -52,7 +52,7 @@ func saveCommunitySettingsInCache(cacheHelper cache.Helper, communityId int, com
 		return err
 	}
 
-	communitySettingsSet := cacheHelper.Set(communitySettingsCacheKey, parsedCommunitySettings, cache.CommunitySettingsCacheTTL*time.Hour)
+	communitySettingsSet := cacheHelper.Set(communitySettingsCacheKey, parsedCommunitySettings, cache.CommunitySettingsCacheTTLInHours*time.Hour)
 	if communitySettingsSet.Err() != nil {
 		logging.Error(fmt.Sprintf("Error while Saving community settings in cache for communityId: %d, err: %v", communityId, err))
 		return err

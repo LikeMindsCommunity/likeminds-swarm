@@ -11,6 +11,11 @@ const (
 	HeadersAcceptVersion string = "x-accept-version"
 	HeadersApiVersion    string = "x-api-version"
 	HeaderMemberRole     string = "x-member-role"
+	HeaderContentType    string = "Content-Type"
+)
+
+const (
+	ContentTypeApplicationJson string = "application/json"
 )
 
 const (

@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	AppVersion     string = "1.25.2" // Application Version
+	AppVersion     string = "1.26.0" // Application Version
 	GinPortAddress string = ":8080"  // Gin Port Address
 )
 
@@ -134,6 +134,7 @@ func main() {
 		routes.TopicRouter(routerGroup, feedHandlers)
 		routes.WidgetRouter(routerGroup, feedHandlers)
 		routes.PollRouter(routerGroup, feedHandlers)
+		routes.PersonalisedFeedRouter(routerGroup, feedHandlers)
 
 		logging.Info(fmt.Sprintf("Main: application version: %s", AppVersion))
 

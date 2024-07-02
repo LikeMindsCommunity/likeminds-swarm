@@ -8,3 +8,5 @@ const (
 )
 
 const TopicsSplitterKeyWithAndValue = "#$AND$#"
+
+const FetchingTopCommentsErrorMessage = "Error in fetching top comments against posts"

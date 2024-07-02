@@ -74,7 +74,7 @@ func GetRepostCountForMultiplePosts(widgetHelper interfaces.WidgetHelper, posts 
 		return postRepostCount
 	}
 
-	for _, repostWidget := range repostWidgets { //TODO: check if this is correct
+	for _, repostWidget := range repostWidgets {
 		postId, err := primitive.ObjectIDFromHex(repostWidget.ParentEntityID)
 		if err == nil {
 			postRepostCount[postId] = int(repostWidget.MetaData["repost_count"].(int32))
@@ -183,22 +183,6 @@ func validateUserAndPostForRepost(handlers *FeedHandlers, userID string, origina
 	}
 
 	return nil
-}
-
-// Internal Method to parse response for fetch multiple posts api
-func parseFetchMultiplePostResponse(posts []responses.PostResponse, posts_count int64,
-) responses.FetchUserMultiplePostResponse {
-
-	response := responses.FetchUserMultiplePostResponse{}
-
-	response.Success = true
-	response.Posts = posts
-
-	if posts_count > 0 {
-		response.TotalCount = int(posts_count)
-	}
-
-	return response
 }
 
 // Internal Method to parse topics response
@@ -2095,19 +2079,14 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		return
 	}
 
-	createdPostResponse := parseMultiplePostResponse(handlers, postResults, userId, isCm, headers[utils.HeadersVersionCode],
+	parsedPosts := parseMultiplePostResponse(handlers, postResults, userId, isCm, headers[utils.HeadersVersionCode],
 		headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
-	response := parseFetchMultiplePostResponse(createdPostResponse, postsCount)
-
-	// response data
+	// final response data
 	finalResponse := gin.H{
-		"posts":   response.Posts,
-		"success": response.Success,
-	}
-
-	if response.TotalCount > 0 {
-		finalResponse["total_count"] = response.TotalCount
+		"success":     true,
+		"posts":       parsedPosts,
+		"total_count": postsCount,
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
@@ -2129,7 +2108,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
 		var updatedPostsWithComments []responses.PostResponse
 		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
-			response.Posts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
+			parsedPosts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
 			versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
 
 		if err != nil {
@@ -2392,6 +2371,81 @@ func DeletePostTopics(handlers *FeedHandlers, postId string) error {
 	if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
 		logging.Error("Error in deleting Post Topics")
 		return nil
+	}
+
+	return nil
+}
+
+// Exposed method to mark posts as seen
+func (handlers *FeedHandlers) MarkPostsSeen(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	isCm := utils.IsCMRole(headers[utils.HeaderMemberRole])
+
+	// Create logged in user params
+	loggedInUser := LoggedInUserParams{
+		UserId:           headers[utils.HeadersMemberId],
+		MemberRole:       headers[utils.HeaderMemberRole],
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		PlatformCode:     headers[utils.HeadersPlatformCode],
+		VersionCode:      headers[utils.HeadersVersionCode],
+		ApiRevampCheckV1: utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion]),
+	}
+
+	var markPostsSeenRequest requests.MarkSeenPostsRequest
+	if err := c.ShouldBindJSON(&markPostsSeenRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Validate request
+	err := validateMarkPostsSeenRequest(handlers, loggedInUser, markPostsSeenRequest)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Call helper method to mark posts as seen in Background
+	go saveDampenedPostsForUserInCache(handlers.cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds) // TODO: Can Move this to background service
+
+	utils.GenerateSuccessResponse(c, nil)
+}
+
+func validateMarkPostsSeenRequest(handlers *FeedHandlers, loggedInUser LoggedInUserParams, markPostsSeenRequest requests.MarkSeenPostsRequest) error {
+
+	// Validate post ids
+	if len(markPostsSeenRequest.PostIds) == 0 {
+		return fmt.Errorf("post IDs are required")
+	}
+
+	// validate if post ids are valid
+	postIds := helpers.ConvertIdsToObjectIds(markPostsSeenRequest.PostIds)
+
+	// fetch posts using helper method
+	postFilterData := gin.H{
+		"_id": gin.H{
+			"$in": postIds,
+		},
+		"community_id": loggedInUser.CommunityId,
+		"is_deleted":   false,
+	}
+
+	posts, err := handlers.postHelper.FindPostHelper(postFilterData, gin.H{})
+	if err != nil {
+		return err
+	}
+
+	if len(posts) != len(postIds) {
+		return fmt.Errorf("Invalid post ids sent")
 	}
 
 	return nil

@@ -39,6 +39,20 @@ type NSFWConfigurations struct {
 	ErrorStatus   string  `json:"error_status"`
 }
 
+type MetricsMap struct {
+	MaxThreshold float64 `json:"max_threshold"`
+	Weight       float64 `json:"weight"`
+}
+
+type PersonalisedFeedWeights struct {
+	CommentsMetrics      MetricsMap `json:"comments_metrics"`
+	LikesMetrics         MetricsMap `json:"likes_metrics"`
+	RecencyMetrics       MetricsMap `json:"recency_metrics"`
+	UserGroupsMetrics    MetricsMap `json:"user_groups_metrics"`
+	UserTopicsMetrics    MetricsMap `json:"user_topics_metrics"`
+	PostDampeningMetrics MetricsMap `json:"post_dampening_metrics"`
+}
+
 func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityConfiguration, communityConfigurationType string) (CommunityConfiguration, error) {
 
 	if len(communityConfigurations) > 0 {
@@ -242,5 +256,29 @@ func GetNSFWConfigurationsOrDefault(cacheHelper cache.Helper, userId string, com
 	}
 
 	return nsfwConfigurations.Enabled, &nsfwConfigurations
+
+}
+
+// Exposed helper method to fetch the personalised feed weights for a community
+func GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper cache.Helper, userId string, communityId int) (*PersonalisedFeedWeights, error) {
+	communityConfigurationResponse, err := GetCommunityConfigurations(cacheHelper, userId, communityId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	personalisedFeedWeightsConfiguration, err := GetCommunityConfigurationAgainstType(communityConfigurationResponse.CommunityConfigurations,
+		PersonalisedFeedWeightsConfigurationType)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var personalisedFeedWeights PersonalisedFeedWeights
+
+	bytes, _ := json.Marshal(personalisedFeedWeightsConfiguration.Value)
+	json.Unmarshal(bytes, &personalisedFeedWeights)
+
+	return &personalisedFeedWeights, nil
 
 }

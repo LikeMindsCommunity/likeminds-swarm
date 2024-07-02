@@ -53,3 +53,8 @@ type FetchPostsQueryRequest struct {
 	PendingPostIds string `form:"pending_post_ids"`
 	UserIsCm       bool   `form:"user_is_cm"`
 }
+
+// Request Structure for Mark posts as seen
+type MarkSeenPostsRequest struct {
+	PostIds []string `json:"post_ids" binding:"required"`
+}
