@@ -1499,6 +1499,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
+	userId := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
@@ -1597,6 +1598,47 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	if editPostRequest.Visibility != enums.PrivateVisibility && editPostRequest.Visibility != enums.PublicVisibility {
 		utils.GeneralAPIValidationError(c, "Invalid visibility sent")
 		return
+	}
+
+	isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(handlers.cacheHelper, userId, communityId)
+
+	if isPostApprovalSettingEnabled {
+		pendingPostData, err := fetchPendingPostFromNormalPostId(handlers.pendingPostHelper, postData.ID)
+
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		if pendingPostData == nil {
+			// Create Pending Post with edited data
+			postData, err := createPendingPostFromNormalPost(handlers, postData, userId, communityId, headers,
+				&editPostRequest)
+
+			if err != nil {
+				utils.GeneralAPIValidationError(c, err.Error())
+				return
+			}
+
+			// fetch pending post data
+			pendingPostData, err = fetchPendingPost(handlers.pendingPostHelper, postData.ID.Hex(), communityId)
+			if err != nil {
+				utils.GeneralAPIValidationError(c, err.Error())
+				return
+			}
+
+		} else {
+			// Adding new param in context
+			pendingPostIdParam := gin.Param{
+				Key:   "pending_post_id",
+				Value: pendingPostData.ID.Hex(),
+			}
+			c.Params = append(c.Params, pendingPostIdParam)
+
+			// Update the Pending Post with edited data and change the status to under review
+			handlers.EditPendingPost(c)
+			return
+		}
 	}
 
 	// update post data using helper method
@@ -2449,4 +2491,62 @@ func validateMarkPostsSeenRequest(handlers *FeedHandlers, loggedInUser LoggedInU
 	}
 
 	return nil
+}
+
+func fetchPendingPostFromNormalPostId(helper interfaces.PendingPostHelper, postId primitive.ObjectID) (*entities.PendingPost, error) {
+	// filter data
+	filterData := gin.H{
+		"normal_post_id": postId,
+		"is_deleted":     false,
+	}
+
+	// fetch post using helper method
+	results, err := helper.FindPendingPostHelper(filterData, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of post_id
+	if len(results) == 0 {
+		return nil, nil
+	}
+
+	return &results[0], nil
+}
+
+// Function to create pending post from normal post with updated data
+func createPendingPostFromNormalPost(handlers *FeedHandlers, postData *entities.Post, userId string, communityId int, headers map[string]string,
+	editPostRequest *requests.EditPostRequest) (*entities.Post, error) {
+
+	postText := editPostRequest.Text
+	postHeading := editPostRequest.Heading
+
+	if postText == "" {
+		postText = postData.Text
+	}
+
+	if postHeading == "" {
+		postHeading = postData.Heading
+	}
+
+	cpr := requests.CreatePostRequest{
+		Text:           postText,
+		Heading:        postHeading,
+		Attachments:    editPostRequest.Attachments,
+		ChatroomID:     postData.ChatroomId,
+		TopicIds:       editPostRequest.TopicIds,
+		OriginalAuthor: postData.OriginalAuthorUUID,
+		Visibility:     postData.Visibility,
+		TempID:         postData.TempId,
+		IsRepost:       postData.IsRepost,
+		PostType:       constants.PendingPostEntityType,
+	}
+
+	// create post using internal method
+	postDbData, err := createPostAfterValidation(handlers, userId, communityId, &cpr, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	return postDbData, nil
 }
