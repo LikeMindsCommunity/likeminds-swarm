@@ -6,4 +6,4 @@ FROM hibiken/asynqmon:latest
 ENV REDIS_ADDR=redis-swarm-worker-beta.staging.likeminds:6379
 
 # Command to run Asynqmon with the Redis address
-CMD ["asynqmon", "--port=8080", "--redis-addr=${REDIS_ADDR}"]
+CMD ["asynqmon", "--port=8080", "--redis-addr=${REDIS_ADDR}", "--read-only=true"]
