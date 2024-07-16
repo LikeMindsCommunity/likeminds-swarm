@@ -1612,20 +1612,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 		if pendingPostData == nil {
 			// Create Pending Post with edited data
-			postData, err := createPendingPostFromNormalPost(handlers, postData, userId, communityId, headers,
+			createPendingPostFromNormalPost(handlers, postData, userId, communityId, headers,
 				&editPostRequest)
-
-			if err != nil {
-				utils.GeneralAPIValidationError(c, err.Error())
-				return
-			}
-
-			// fetch pending post data
-			pendingPostData, err = fetchPendingPost(handlers.pendingPostHelper, postData.ID.Hex(), communityId)
-			if err != nil {
-				utils.GeneralAPIValidationError(c, err.Error())
-				return
-			}
 
 		} else {
 			// Adding new param in context
@@ -2518,28 +2506,17 @@ func fetchPendingPostFromNormalPostId(helper interfaces.PendingPostHelper, postI
 func createPendingPostFromNormalPost(handlers *FeedHandlers, postData *entities.Post, userId string, communityId int, headers map[string]string,
 	editPostRequest *requests.EditPostRequest) (*entities.Post, error) {
 
-	postText := editPostRequest.Text
-	postHeading := editPostRequest.Heading
-
-	if postText == "" {
-		postText = postData.Text
-	}
-
-	if postHeading == "" {
-		postHeading = postData.Heading
-	}
-
 	cpr := requests.CreatePostRequest{
-		Text:           postText,
-		Heading:        postHeading,
-		Attachments:    editPostRequest.Attachments,
-		ChatroomID:     postData.ChatroomId,
-		TopicIds:       editPostRequest.TopicIds,
-		OriginalAuthor: postData.OriginalAuthorUUID,
-		Visibility:     postData.Visibility,
-		TempID:         postData.TempId,
-		IsRepost:       postData.IsRepost,
-		PostType:       constants.PendingPostEntityType,
+		Text:         editPostRequest.Text,
+		Heading:      editPostRequest.Heading,
+		Attachments:  editPostRequest.Attachments,
+		ChatroomID:   postData.ChatroomId,
+		TopicIds:     editPostRequest.TopicIds,
+		Visibility:   editPostRequest.Visibility,
+		TempID:       postData.TempId,
+		IsRepost:     postData.IsRepost,
+		NormalPostId: postData.ID.Hex(),
+		PostType:     constants.PendingPostEntityType,
 	}
 
 	// create post using internal method

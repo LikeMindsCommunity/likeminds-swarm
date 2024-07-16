@@ -140,7 +140,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 
 	err = handlers.pendingPostHelper.EditPendingPostHelper(postId.(primitive.ObjectID), postRequest.Text,
 		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false,
-		enums.UnderReview, postRequest.UUIDs)
+		enums.UnderReview, postRequest.UUIDs, postRequest.NormalPostId)
 	if err != nil {
 		return nil, err
 	}
@@ -535,14 +535,6 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 		}
 	}
 
-	// process attachments for widgets
-	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, editPendingPostRequest.Attachments,
-		pendingPostId, communityId, headers[utils.HeadersMemberId])
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
 	// check the visibility of the pending post
 	if editPendingPostRequest.Visibility == "" {
 		editPendingPostRequest.Visibility = enums.PublicVisibility
@@ -561,9 +553,17 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 		pendingPosStatus = enums.UnderReview
 	}
 
+	// process attachments for widgets
+	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, editPendingPostRequest.Attachments,
+		pendingPostId, communityId, headers[utils.HeadersMemberId])
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
 	// update post data using helper method
 	err = handlers.pendingPostHelper.EditPendingPostHelper(pendingPostData.ID, editPendingPostRequest.Text, editPendingPostRequest.Heading, updatedAttachments,
-		topicIDs, editPendingPostRequest.Visibility, true, pendingPosStatus, editPendingPostRequest.UUIDs)
+		topicIDs, editPendingPostRequest.Visibility, true, pendingPosStatus, editPendingPostRequest.UUIDs, "")
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
