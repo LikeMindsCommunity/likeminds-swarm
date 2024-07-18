@@ -303,10 +303,55 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	// If status is approved, call Create post API internally
 	if arpr.Status == enums.Approved {
 
-		postData, err = createNormalPostFromPendingPost(handlers, pendingPostData, headers)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
+		if pendingPostData.NormalPostId == "" {
+			postData, err = createNormalPostFromPendingPost(handlers, pendingPostData, headers)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+		} else {
+			normalPostObjectId, _ := primitive.ObjectIDFromHex(pendingPostData.NormalPostId)
+
+			// fetch post data
+			postData, err = FetchPostData(handlers.postHelper, normalPostObjectId.Hex(), communityId, true)
+			if err != nil {
+				utils.GeneralAPIValidationError(c, err.Error())
+				return
+			}
+
+			// Create attachments
+			requestAttachments := []requests.AttachmentRequest{}
+
+			// marshal attachments
+			bytes, err := json.Marshal(pendingPostData.PostData.Attachments)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			// Unmarshall to Request attachments
+			err = json.Unmarshal(bytes, &requestAttachments)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			// process attachments for widgets
+			updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, requestAttachments,
+				pendingPostData.NormalPostId, communityId, pendingPostData.UserId)
+			if err != nil {
+				utils.GeneralAPIValidationError(c, err.Error())
+				return
+			}
+
+			// Update the post
+			err = editPostAfterValidation(handlers, communityId, normalPostObjectId, pendingPostData.PostData.Text, pendingPostData.PostData.Heading,
+				updatedAttachments, helpers.ParseObjectIdsToStringArray(pendingPostData.PostData.TopicIds), postData.TopicIds,
+				pendingPostData.PostData.Visibility)
+			if err != nil {
+				utils.GeneralAPIValidationError(c, err.Error())
+				return
+			}
 		}
 
 		ctaData := gin.H{
