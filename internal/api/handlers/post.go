@@ -1603,7 +1603,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(handlers.cacheHelper, userId, communityId)
 
 	if isPostApprovalSettingEnabled {
-		pendingPostData, err := fetchPendingPostFromNormalPostId(handlers.pendingPostHelper, postData.ID)
+		pendingPostData, err := fetchPendingPostFromNormalPostId(handlers.pendingPostHelper, postData.ID.Hex())
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
@@ -1616,25 +1616,25 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 				&editPostRequest)
 
 		} else {
-			// Adding new param in context
-			pendingPostIdParam := gin.Param{
-				Key:   "pending_post_id",
-				Value: pendingPostData.ID.Hex(),
-			}
-			c.Params = append(c.Params, pendingPostIdParam)
-
 			// Update the Pending Post with edited data and change the status to under review
-			handlers.EditPendingPost(c)
+			err = editPendingPost(handlers, communityId, userId, editPostRequest.Attachments, editPostRequest.Text,
+				editPostRequest.Heading, editPostRequest.Visibility, []string{}, pendingPostData,
+				true, topicIDs, enums.UnderReview, postId)
+
+			if err != nil {
+				utils.GeneralAPIValidationError(c, err.Error())
+				return
+			}
+		}
+
+	} else {
+		// update post data using helper method
+		err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
+			topicIDs, editPostRequest.Visibility, true)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
-	}
-
-	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
-		topicIDs, editPostRequest.Visibility, true)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
 	}
 
 	// filter options
@@ -1653,30 +1653,32 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
-	// fetch post data
-	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// Update the post topics data
-	if postData.TopicIds != nil {
-		// Trigger edit post background tasks
-		err = handlers.taskDistributor.AsyncEditPostTasks(postData.ID.Hex())
+	if !isPostApprovalSettingEnabled {
+		// fetch post data
+		postData, err = FetchPostData(handlers.postHelper, postId, communityId, true)
 		if err != nil {
-			logging.Error("Error enqueing edit post background task", err)
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
 		}
-	}
 
-	// update post data in elastic search
-	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+		// Update the post topics data
+		if postData.TopicIds != nil {
+			// Trigger edit post background tasks
+			err = handlers.taskDistributor.AsyncEditPostTasks(postData.ID.Hex())
+			if err != nil {
+				logging.Error("Error enqueing edit post background task", err)
+			}
+		}
 
-	if editPostRequest.TopicIds != nil {
-		updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
+		// update post data in elastic search
+		err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		if editPostRequest.TopicIds != nil {
+			updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
+		}
 	}
 
 	response := gin.H{
@@ -2481,7 +2483,7 @@ func validateMarkPostsSeenRequest(handlers *FeedHandlers, loggedInUser LoggedInU
 	return nil
 }
 
-func fetchPendingPostFromNormalPostId(helper interfaces.PendingPostHelper, postId primitive.ObjectID) (*entities.PendingPost, error) {
+func fetchPendingPostFromNormalPostId(helper interfaces.PendingPostHelper, postId string) (*entities.PendingPost, error) {
 	// filter data
 	filterData := gin.H{
 		"normal_post_id": postId,
