@@ -1601,10 +1601,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(handlers.cacheHelper, userId, communityId)
-
 	if isPostApprovalSettingEnabled {
 		pendingPostData, err := fetchPendingPostFromNormalPostId(handlers.pendingPostHelper, postData.ID.Hex())
-
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -1617,7 +1615,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 		} else {
 			// Update the Pending Post with edited data and change the status to under review
-			err = editPendingPost(handlers, communityId, userId, editPostRequest.Attachments, editPostRequest.Text,
+			err = editPendingPostAfterValidation(handlers, communityId, userId, editPostRequest.Attachments, editPostRequest.Text,
 				editPostRequest.Heading, editPostRequest.Visibility, []string{}, pendingPostData,
 				true, topicIDs, enums.UnderReview, postId)
 
