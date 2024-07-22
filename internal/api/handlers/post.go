@@ -1623,6 +1623,9 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 				utils.GeneralAPIValidationError(c, err.Error())
 				return
 			}
+		} else {
+			utils.GeneralAPIValidationError(c, "Post is already in review.")
+			return
 		}
 
 	} else {
