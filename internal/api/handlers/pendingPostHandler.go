@@ -310,7 +310,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 				return
 			}
 		} else {
-			err = editNormalPostFromPeningPost(handlers, communityId, &pendingPostData)
+			postData, err = editNormalPostFromPeningPost(handlers, communityId, &pendingPostData)
 			if err != nil {
 				utils.GeneralAPIValidationError(c, err.Error())
 				return
@@ -366,7 +366,6 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 	// Generate success response
 	utils.GenerateSuccessResponse(c, nil)
-
 }
 
 func createNormalPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost, headers map[string]string) (*entities.Post, error) {
@@ -794,13 +793,13 @@ func editPendingPostAfterValidation(handlers *FeedHandlers, communityId int, use
 }
 
 // Internal method to update the normal post from pending data
-func editNormalPostFromPeningPost(handlers *FeedHandlers, communityId int, pendingPostData *entities.PendingPost) error {
+func editNormalPostFromPeningPost(handlers *FeedHandlers, communityId int, pendingPostData *entities.PendingPost) (*entities.Post, error) {
 	normalPostObjectId, _ := primitive.ObjectIDFromHex(pendingPostData.NormalPostId)
 
 	// fetch post data
 	postData, err := FetchPostData(handlers.postHelper, normalPostObjectId.Hex(), communityId, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create attachments
@@ -809,29 +808,29 @@ func editNormalPostFromPeningPost(handlers *FeedHandlers, communityId int, pendi
 	// marshal attachments
 	bytes, err := json.Marshal(pendingPostData.PostData.Attachments)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Unmarshall to Request attachments
 	err = json.Unmarshal(bytes, &requestAttachments)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// process attachments for widgets
 	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, requestAttachments,
 		pendingPostData.NormalPostId, communityId, pendingPostData.UserId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Update the post
-	err = editPostAfterValidation(handlers, communityId, normalPostObjectId, pendingPostData.PostData.Text, pendingPostData.PostData.Heading,
+	postData, err = editPostAfterValidation(handlers, communityId, normalPostObjectId, pendingPostData.PostData.Text, pendingPostData.PostData.Heading,
 		updatedAttachments, helpers.ParseObjectIdsToStringArray(pendingPostData.PostData.TopicIds), postData.TopicIds,
 		pendingPostData.PostData.Visibility)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return postData, nil
 }

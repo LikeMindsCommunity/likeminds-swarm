@@ -1613,7 +1613,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 			createPendingPostFromNormalPost(handlers, postData, userId, communityId, headers,
 				&editPostRequest)
 
-		} else {
+		} else if pendingPostData.Status != enums.UnderReview {
 			// Update the Pending Post with edited data and change the status to under review
 			err = editPendingPostAfterValidation(handlers, communityId, userId, editPostRequest.Attachments, editPostRequest.Text,
 				editPostRequest.Heading, editPostRequest.Visibility, []string{}, pendingPostData,
@@ -1623,11 +1623,14 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 				utils.GeneralAPIValidationError(c, err.Error())
 				return
 			}
+		} else {
+			utils.GeneralAPIValidationError(c, "Post is already in review.")
+			return
 		}
 
 	} else {
 		// Update the post
-		err = editPostAfterValidation(handlers, communityId, postData.ID, editPostRequest.Text, editPostRequest.Heading,
+		_, err = editPostAfterValidation(handlers, communityId, postData.ID, editPostRequest.Text, editPostRequest.Heading,
 			updatedAttachments, editPostRequest.TopicIds, existingTopicIds, editPostRequest.Visibility)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
@@ -2503,7 +2506,7 @@ func createPendingPostFromNormalPost(handlers *FeedHandlers, postData *entities.
 // Internal method to edit post after validation
 func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId primitive.ObjectID, updatedPostText string, updatedPostHeading string,
 	updatedAttachments []requests.AttachmentRequest, updatedTopicIds []string, existingTopicIds []primitive.ObjectID,
-	updatedPostVisibility string) error {
+	updatedPostVisibility string) (*entities.Post, error) {
 
 	// Topic IDs
 	topicIds := helpers.ConvertIdsToObjectIds(updatedTopicIds)
@@ -2512,13 +2515,13 @@ func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId pri
 	err := handlers.postHelper.EditPostHelper(postId, updatedPostText, updatedPostHeading, updatedAttachments,
 		topicIds, updatedPostVisibility, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// fetch post data
 	postData, err := FetchPostData(handlers.postHelper, postId.Hex(), communityId, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Update the post topics data
@@ -2540,5 +2543,5 @@ func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId pri
 		updatePostCountInTopics(handlers, updatedTopicIds, existingTopicIds)
 	}
 
-	return nil
+	return postData, nil
 }
