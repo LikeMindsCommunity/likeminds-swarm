@@ -292,13 +292,13 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 
 			return pendingPostData[entityID.Hex()], nil
 		} else {
-			postData, err := fetchPostResponseMapFromPostIds(&handler, []string{pendingPost.NormalPostId}, communityID, userId, false, "", "",
+			postData, err := fetchPostResponseMapFromPostIds(&handler, []string{pendingPost.PostId}, communityID, userId, false, "", "",
 				apiRevampV1Check)
 			if err != nil {
 				return nil, err
 			}
 
-			return postData[pendingPost.NormalPostId], nil
+			return postData[pendingPost.PostId], nil
 		}
 
 	case constants.Comment:
@@ -470,7 +470,7 @@ func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
 			// CTA data for activity
 			ctaData := gin.H{
 				"entity_type": constants.PostEntityType,
-				"post_id":     pendingPostData.NormalPostId,
+				"post_id":     pendingPostData.PostId,
 			}
 			activityCTA = parseCTAData(ctaData)
 		}

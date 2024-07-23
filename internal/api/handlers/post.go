@@ -1069,7 +1069,7 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 	return nil
 }
 
-func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
 	postRequest *requests.CreatePostRequest, headers map[string]string) (*entities.Post, error) {
 
 	// create post using the helper method
@@ -1144,8 +1144,8 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 }
 
 // Internal method to create normal or pending post after validation of request
-func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest, headers map[string]string) (*entities.Post, error) {
+func CreatePostAfterValidationFromType(handlers *FeedHandlers, userId string, communityId int, postRequest *requests.CreatePostRequest, headers map[string]string,
+) (*entities.Post, error) {
 
 	var postData *entities.Post
 	var err error
@@ -1154,7 +1154,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	if postRequest.PostType == constants.PendingPostEntityType {
 		postData, err = createPendingPostAfterValidation(handlers, userId, communityId, postRequest)
 	} else {
-		postData, err = createNormalPostAfterValidation(handlers, userId, communityId, postRequest, headers)
+		postData, err = createPostAfterValidation(handlers, userId, communityId, postRequest, headers)
 	}
 
 	return postData, err
@@ -1271,7 +1271,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// create normal post using internal method
 	createPostRequest.PostType = constants.PostEntityType
-	postData, err := createPostAfterValidation(handlers, userId, communityId, &createPostRequest, headers)
+	postData, err := CreatePostAfterValidationFromType(handlers, userId, communityId, &createPostRequest, headers)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -1499,6 +1499,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
+	userId := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
@@ -1579,6 +1580,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
 			return
 		}
+
+		editPostRequest.ParsedTopicIds = topicIDs
 	}
 
 	// process attachments for widgets
@@ -1599,12 +1602,41 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
-	// update post data using helper method
-	err = handlers.postHelper.EditPostHelper(postData.ID, editPostRequest.Text, editPostRequest.Heading, updatedAttachments,
-		topicIDs, editPostRequest.Visibility, true)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
+	isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(handlers.cacheHelper, userId, communityId)
+	if isPostApprovalSettingEnabled {
+		pendingPostData, err := fetchPendingPostFromPostId(handlers.pendingPostHelper, postData.ID.Hex())
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		if pendingPostData == nil {
+			// Create Pending Post with edited data
+			createPendingPostFromPost(handlers, postData, userId, communityId, headers, &editPostRequest)
+
+		} else if pendingPostData.Status != enums.UnderReview {
+			// Update the Pending Post with edited data and change the status to under review
+			err = editPendingPostAfterValidation(handlers, communityId, userId, editPostRequest.Attachments, editPostRequest.Text,
+				editPostRequest.Heading, editPostRequest.Visibility, []string{}, pendingPostData,
+				true, topicIDs, enums.UnderReview, postId)
+
+			if err != nil {
+				utils.GeneralAPIValidationError(c, err.Error())
+				return
+			}
+		} else {
+			utils.GeneralAPIValidationError(c, "Post is already in review.")
+			return
+		}
+
+	} else {
+		// Update the post
+		_, err = editPostAfterValidation(handlers, communityId, postData.ID, editPostRequest.Text, editPostRequest.Heading,
+			updatedAttachments, editPostRequest.TopicIds, existingTopicIds, editPostRequest.Visibility)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
 	}
 
 	// filter options
@@ -1621,32 +1653,6 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
-	}
-
-	// fetch post data
-	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// Update the post topics data
-	if postData.TopicIds != nil {
-		// Trigger edit post background tasks
-		err = handlers.taskDistributor.AsyncEditPostTasks(postData.ID.Hex())
-		if err != nil {
-			logging.Error("Error enqueing edit post background task", err)
-		}
-	}
-
-	// update post data in elastic search
-	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	if editPostRequest.TopicIds != nil {
-		updatePostCountInTopics(handlers, editPostRequest.TopicIds, existingTopicIds)
 	}
 
 	response := gin.H{
@@ -2449,4 +2455,95 @@ func validateMarkPostsSeenRequest(handlers *FeedHandlers, loggedInUser LoggedInU
 	}
 
 	return nil
+}
+
+func fetchPendingPostFromPostId(helper interfaces.PendingPostHelper, postId string) (*entities.PendingPost, error) {
+	// filter data
+	filterData := gin.H{
+		"post_id":    postId,
+		"is_deleted": false,
+	}
+
+	// fetch post using helper method
+	results, err := helper.FindPendingPostHelper(filterData, gin.H{})
+	if err != nil {
+		return nil, err
+	}
+
+	// validation of post_id
+	if len(results) == 0 {
+		return nil, nil
+	}
+
+	return &results[0], nil
+}
+
+// Function to create pending post from normal post with updated data
+func createPendingPostFromPost(handlers *FeedHandlers, postData *entities.Post, userId string, communityId int, headers map[string]string,
+	editPostRequest *requests.EditPostRequest) (*entities.Post, error) {
+
+	cpr := requests.CreatePostRequest{
+		Text:           editPostRequest.Text,
+		Heading:        editPostRequest.Heading,
+		Attachments:    editPostRequest.Attachments,
+		ChatroomID:     postData.ChatroomId,
+		TopicIds:       editPostRequest.TopicIds,
+		ParsedTopicIds: editPostRequest.ParsedTopicIds,
+		Visibility:     editPostRequest.Visibility,
+		TempID:         postData.TempId,
+		IsRepost:       postData.IsRepost,
+		PostId:         postData.ID.Hex(),
+		PostType:       constants.PendingPostEntityType,
+	}
+
+	// create post using internal method
+	postDbData, err := CreatePostAfterValidationFromType(handlers, userId, communityId, &cpr, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	return postDbData, nil
+}
+
+// Internal method to edit post after validation
+func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId primitive.ObjectID, updatedPostText string, updatedPostHeading string,
+	updatedAttachments []requests.AttachmentRequest, updatedTopicIds []string, existingTopicIds []primitive.ObjectID,
+	updatedPostVisibility string) (*entities.Post, error) {
+
+	// Topic IDs
+	topicIds := helpers.ConvertIdsToObjectIds(updatedTopicIds)
+
+	// update post data using helper method
+	err := handlers.postHelper.EditPostHelper(postId, updatedPostText, updatedPostHeading, updatedAttachments,
+		topicIds, updatedPostVisibility, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch post data
+	postData, err := FetchPostData(handlers.postHelper, postId.Hex(), communityId, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the post topics data
+	if postData.TopicIds != nil {
+		// Trigger edit post background tasks
+		err = handlers.taskDistributor.AsyncEditPostTasks(postData.ID.Hex())
+		if err != nil {
+			logging.Error("Error enqueing edit post background task", err)
+		}
+	}
+
+	// update post data in elastic search
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	if updatedTopicIds != nil {
+		updatePostCountInTopics(handlers, updatedTopicIds, existingTopicIds)
+	}
+
+	return postData, nil
 }
