@@ -1069,7 +1069,7 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 	return nil
 }
 
-func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
+func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
 	postRequest *requests.CreatePostRequest, headers map[string]string) (*entities.Post, error) {
 
 	// create post using the helper method
@@ -1144,7 +1144,7 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 }
 
 // Internal method to create normal or pending post after validation of request
-func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int, postRequest *requests.CreatePostRequest, headers map[string]string,
+func CreatePostAfterValidationFromType(handlers *FeedHandlers, userId string, communityId int, postRequest *requests.CreatePostRequest, headers map[string]string,
 ) (*entities.Post, error) {
 
 	var postData *entities.Post
@@ -1154,7 +1154,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	if postRequest.PostType == constants.PendingPostEntityType {
 		postData, err = createPendingPostAfterValidation(handlers, userId, communityId, postRequest)
 	} else {
-		postData, err = createNormalPostAfterValidation(handlers, userId, communityId, postRequest, headers)
+		postData, err = createPostAfterValidation(handlers, userId, communityId, postRequest, headers)
 	}
 
 	return postData, err
@@ -1271,7 +1271,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 
 	// create normal post using internal method
 	createPostRequest.PostType = constants.PostEntityType
-	postData, err := createPostAfterValidation(handlers, userId, communityId, &createPostRequest, headers)
+	postData, err := CreatePostAfterValidationFromType(handlers, userId, communityId, &createPostRequest, headers)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -1604,7 +1604,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(handlers.cacheHelper, userId, communityId)
 	if isPostApprovalSettingEnabled {
-		pendingPostData, err := fetchPendingPostFromNormalPostId(handlers.pendingPostHelper, postData.ID.Hex())
+		pendingPostData, err := fetchPendingPostFromPostId(handlers.pendingPostHelper, postData.ID.Hex())
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -1612,7 +1612,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 		if pendingPostData == nil {
 			// Create Pending Post with edited data
-			createPendingPostFromNormalPost(handlers, postData, userId, communityId, headers, &editPostRequest)
+			createPendingPostFromPost(handlers, postData, userId, communityId, headers, &editPostRequest)
 
 		} else if pendingPostData.Status != enums.UnderReview {
 			// Update the Pending Post with edited data and change the status to under review
@@ -2457,11 +2457,11 @@ func validateMarkPostsSeenRequest(handlers *FeedHandlers, loggedInUser LoggedInU
 	return nil
 }
 
-func fetchPendingPostFromNormalPostId(helper interfaces.PendingPostHelper, postId string) (*entities.PendingPost, error) {
+func fetchPendingPostFromPostId(helper interfaces.PendingPostHelper, postId string) (*entities.PendingPost, error) {
 	// filter data
 	filterData := gin.H{
-		"normal_post_id": postId,
-		"is_deleted":     false,
+		"post_id":    postId,
+		"is_deleted": false,
 	}
 
 	// fetch post using helper method
@@ -2479,7 +2479,7 @@ func fetchPendingPostFromNormalPostId(helper interfaces.PendingPostHelper, postI
 }
 
 // Function to create pending post from normal post with updated data
-func createPendingPostFromNormalPost(handlers *FeedHandlers, postData *entities.Post, userId string, communityId int, headers map[string]string,
+func createPendingPostFromPost(handlers *FeedHandlers, postData *entities.Post, userId string, communityId int, headers map[string]string,
 	editPostRequest *requests.EditPostRequest) (*entities.Post, error) {
 
 	cpr := requests.CreatePostRequest{
@@ -2492,12 +2492,12 @@ func createPendingPostFromNormalPost(handlers *FeedHandlers, postData *entities.
 		Visibility:     editPostRequest.Visibility,
 		TempID:         postData.TempId,
 		IsRepost:       postData.IsRepost,
-		NormalPostId:   postData.ID.Hex(),
+		PostId:         postData.ID.Hex(),
 		PostType:       constants.PendingPostEntityType,
 	}
 
 	// create post using internal method
-	postDbData, err := createPostAfterValidation(handlers, userId, communityId, &cpr, headers)
+	postDbData, err := CreatePostAfterValidationFromType(handlers, userId, communityId, &cpr, headers)
 	if err != nil {
 		return nil, err
 	}

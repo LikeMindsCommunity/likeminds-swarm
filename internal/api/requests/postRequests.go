@@ -21,7 +21,7 @@ type CreatePostRequest struct {
 	ParsedTopicIds []primitive.ObjectID `json:"-"` // field to be updated internally
 	OriginalAuthor string               `json:"-"` // field to be updated internally
 	PostType       string               `json:"-"` // field to be updated internally
-	NormalPostId   string               `json:"-"` // field used in pending post, updated internally
+	PostId         string               `json:"-"` // field used in pending post, updated internally
 }
 
 // Request Structure for Edit Post

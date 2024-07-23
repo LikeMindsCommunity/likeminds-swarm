@@ -140,7 +140,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 
 	err = handlers.pendingPostHelper.EditPendingPostHelper(postId.(primitive.ObjectID), postRequest.Text,
 		postRequest.Heading, updatedAttachments, postRequest.ParsedTopicIds, postRequest.Visibility, false,
-		enums.UnderReview, postRequest.UUIDs, postRequest.NormalPostId)
+		enums.UnderReview, postRequest.UUIDs, postRequest.PostId)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 
 	// create pending post using internal method
 	cppr.PostType = constants.PendingPostEntityType
-	postData, err := createPostAfterValidation(handlers, userId, communityId, &cppr, headers)
+	postData, err := CreatePostAfterValidationFromType(handlers, userId, communityId, &cppr, headers)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -293,8 +293,8 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 
 	updateBody := gin.H{
 		"$set": gin.H{
-			"status":         arpr.Status,
-			"normal_post_id": "",
+			"status":  arpr.Status,
+			"post_id": "",
 		},
 	}
 
@@ -303,14 +303,14 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	// If status is approved, call Create post API internally
 	if arpr.Status == enums.Approved {
 
-		if pendingPostData.NormalPostId == "" {
-			postData, err = createNormalPostFromPendingPost(handlers, pendingPostData, headers)
+		if pendingPostData.PostId == "" {
+			postData, err = createPostFromPendingPost(handlers, pendingPostData, headers)
 			if err != nil {
 				utils.GeneralAPIValidationError(c, err.Error())
 				return
 			}
 		} else {
-			postData, err = editNormalPostFromPeningPost(handlers, communityId, &pendingPostData)
+			postData, err = editPostFromPendingPost(handlers, communityId, &pendingPostData)
 			if err != nil {
 				utils.GeneralAPIValidationError(c, err.Error())
 				return
@@ -354,7 +354,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	}
 
 	if postData != nil {
-		updateBody["$set"].(gin.H)["normal_post_id"] = postData.ID.Hex()
+		updateBody["$set"].(gin.H)["post_id"] = postData.ID.Hex()
 	}
 
 	// Update status of pending post
@@ -368,7 +368,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	utils.GenerateSuccessResponse(c, nil)
 }
 
-func createNormalPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost, headers map[string]string) (*entities.Post, error) {
+func createPostFromPendingPost(handlers *FeedHandlers, pendingPostData entities.PendingPost, headers map[string]string) (*entities.Post, error) {
 
 	// Create attachments
 	requestAttachments := []requests.AttachmentRequest{}
@@ -400,7 +400,7 @@ func createNormalPostFromPendingPost(handlers *FeedHandlers, pendingPostData ent
 
 	// create post using internal method
 	cpr.PostType = constants.PostEntityType
-	postData, err := createPostAfterValidation(handlers, pendingPostData.UserId, pendingPostData.CommunityID, &cpr, headers)
+	postData, err := CreatePostAfterValidationFromType(handlers, pendingPostData.UserId, pendingPostData.CommunityID, &cpr, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -765,7 +765,7 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 // Internal method to edit pending post after validation
 func editPendingPostAfterValidation(handlers *FeedHandlers, communityId int, userId string, pendingPostAttachments []requests.AttachmentRequest,
 	pendingPostText string, pendingPostHeading string, pendingPostVisibility string, pendingPostUUIDs []string, pendingPostData *entities.PendingPost,
-	isStatusChanged bool, topicIDs []primitive.ObjectID, pendingPostStatus string, normalPostId string,
+	isStatusChanged bool, topicIDs []primitive.ObjectID, pendingPostStatus string, postId string,
 ) error {
 
 	// process attachments for widgets
@@ -777,7 +777,7 @@ func editPendingPostAfterValidation(handlers *FeedHandlers, communityId int, use
 
 	// update post data using helper method
 	err = handlers.pendingPostHelper.EditPendingPostHelper(pendingPostData.ID, pendingPostText, pendingPostHeading, updatedAttachments,
-		topicIDs, pendingPostVisibility, true, pendingPostStatus, pendingPostUUIDs, normalPostId)
+		topicIDs, pendingPostVisibility, true, pendingPostStatus, pendingPostUUIDs, postId)
 	if err != nil {
 		return err
 	}
@@ -794,11 +794,12 @@ func editPendingPostAfterValidation(handlers *FeedHandlers, communityId int, use
 }
 
 // Internal method to update the normal post from pending data
-func editNormalPostFromPeningPost(handlers *FeedHandlers, communityId int, pendingPostData *entities.PendingPost) (*entities.Post, error) {
-	normalPostObjectId, _ := primitive.ObjectIDFromHex(pendingPostData.NormalPostId)
+func editPostFromPendingPost(handlers *FeedHandlers, communityId int, pendingPostData *entities.PendingPost,
+) (*entities.Post, error) {
+	postId, _ := primitive.ObjectIDFromHex(pendingPostData.PostId)
 
 	// fetch post data
-	postData, err := FetchPostData(handlers.postHelper, normalPostObjectId.Hex(), communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId.Hex(), communityId, true)
 	if err != nil {
 		return nil, err
 	}
@@ -820,13 +821,13 @@ func editNormalPostFromPeningPost(handlers *FeedHandlers, communityId int, pendi
 
 	// process attachments for widgets
 	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, requestAttachments,
-		pendingPostData.NormalPostId, communityId, pendingPostData.UserId)
+		pendingPostData.PostId, communityId, pendingPostData.UserId)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update the post
-	postData, err = editPostAfterValidation(handlers, communityId, normalPostObjectId, pendingPostData.PostData.Text, pendingPostData.PostData.Heading,
+	postData, err = editPostAfterValidation(handlers, communityId, postId, pendingPostData.PostData.Text, pendingPostData.PostData.Heading,
 		updatedAttachments, helpers.ParseObjectIdsToStringArray(pendingPostData.PostData.TopicIds), postData.TopicIds,
 		pendingPostData.PostData.Visibility)
 	if err != nil {

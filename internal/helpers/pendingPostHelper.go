@@ -31,8 +31,10 @@ func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading st
 }
 
 // Exposed Helper Method to Edit Post
-func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, text string, heading string, attachments []requests.AttachmentRequest,
-	topicIds []primitive.ObjectID, visibility string, markIsEdited bool, status string, UUIDs []string, normalPostId string) error {
+func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, text string, heading string,
+	attachments []requests.AttachmentRequest, topicIds []primitive.ObjectID, visibility string, markIsEdited bool,
+	status string, UUIDs []string, PostId string,
+) error {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -48,7 +50,7 @@ func (helper pendingPostHelper) EditPendingPostHelper(id primitive.ObjectID, tex
 			"status":                status,
 			"updated_at":            time.Now(),
 			"uuids":                 UUIDs,
-			"normal_post_id":        normalPostId,
+			"post_id":               PostId,
 		},
 	}
 
