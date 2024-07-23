@@ -120,8 +120,8 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 
 }
 
-func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest) (*entities.Post, error) {
+func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, communityId int, postRequest *requests.CreatePostRequest,
+) (*entities.Post, error) {
 
 	// Create pending post
 	postId, err := handlers.pendingPostHelper.CreatePendingPostHelper(postRequest.Text, postRequest.Heading, communityId,
@@ -764,9 +764,10 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 
 // Internal method to edit pending post after validation
 func editPendingPostAfterValidation(handlers *FeedHandlers, communityId int, userId string, pendingPostAttachments []requests.AttachmentRequest,
-	pendingPostText string, pendingPostHeading string, pendingPostVisibility string, pendingPostUUIDs []string,
-	pendingPostData *entities.PendingPost, isStatusChanged bool, topicIDs []primitive.ObjectID, pendingPostStatus string,
-	normalPostId string) error {
+	pendingPostText string, pendingPostHeading string, pendingPostVisibility string, pendingPostUUIDs []string, pendingPostData *entities.PendingPost,
+	isStatusChanged bool, topicIDs []primitive.ObjectID, pendingPostStatus string, normalPostId string,
+) error {
+
 	// process attachments for widgets
 	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, pendingPostAttachments,
 		pendingPostData.ID.Hex(), communityId, userId)

@@ -26,12 +26,13 @@ type CreatePostRequest struct {
 
 // Request Structure for Edit Post
 type EditPostRequest struct {
-	Text        string              `json:"text"`
-	Heading     string              `json:"heading"`
-	TopicIds    []string            `json:"topic_ids,omitempty"`
-	Attachments []AttachmentRequest `json:"attachments"`
-	Visibility  string              `json:"visibility"`
-	UserIsCm    bool                `json:"user_is_cm"`
+	Text           string               `json:"text"`
+	Heading        string               `json:"heading"`
+	TopicIds       []string             `json:"topic_ids,omitempty"`
+	Attachments    []AttachmentRequest  `json:"attachments"`
+	Visibility     string               `json:"visibility"`
+	UserIsCm       bool                 `json:"user_is_cm"`
+	ParsedTopicIds []primitive.ObjectID `json:"-"` // field to be updated internallys
 }
 
 // Request Structure for Delete Post

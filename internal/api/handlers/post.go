@@ -1144,8 +1144,8 @@ func createNormalPostAfterValidation(handlers *FeedHandlers, userId string, comm
 }
 
 // Internal method to create normal or pending post after validation of request
-func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int,
-	postRequest *requests.CreatePostRequest, headers map[string]string) (*entities.Post, error) {
+func createPostAfterValidation(handlers *FeedHandlers, userId string, communityId int, postRequest *requests.CreatePostRequest, headers map[string]string,
+) (*entities.Post, error) {
 
 	var postData *entities.Post
 	var err error
@@ -1580,6 +1580,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 			utils.GeneralAPIValidationError(c, "Invalid topic_ids sent")
 			return
 		}
+
+		editPostRequest.ParsedTopicIds = topicIDs
 	}
 
 	// process attachments for widgets
@@ -1610,8 +1612,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 		if pendingPostData == nil {
 			// Create Pending Post with edited data
-			createPendingPostFromNormalPost(handlers, postData, userId, communityId, headers,
-				&editPostRequest)
+			createPendingPostFromNormalPost(handlers, postData, userId, communityId, headers, &editPostRequest)
 
 		} else if pendingPostData.Status != enums.UnderReview {
 			// Update the Pending Post with edited data and change the status to under review
@@ -2482,16 +2483,17 @@ func createPendingPostFromNormalPost(handlers *FeedHandlers, postData *entities.
 	editPostRequest *requests.EditPostRequest) (*entities.Post, error) {
 
 	cpr := requests.CreatePostRequest{
-		Text:         editPostRequest.Text,
-		Heading:      editPostRequest.Heading,
-		Attachments:  editPostRequest.Attachments,
-		ChatroomID:   postData.ChatroomId,
-		TopicIds:     editPostRequest.TopicIds,
-		Visibility:   editPostRequest.Visibility,
-		TempID:       postData.TempId,
-		IsRepost:     postData.IsRepost,
-		NormalPostId: postData.ID.Hex(),
-		PostType:     constants.PendingPostEntityType,
+		Text:           editPostRequest.Text,
+		Heading:        editPostRequest.Heading,
+		Attachments:    editPostRequest.Attachments,
+		ChatroomID:     postData.ChatroomId,
+		TopicIds:       editPostRequest.TopicIds,
+		ParsedTopicIds: editPostRequest.ParsedTopicIds,
+		Visibility:     editPostRequest.Visibility,
+		TempID:         postData.TempId,
+		IsRepost:       postData.IsRepost,
+		NormalPostId:   postData.ID.Hex(),
+		PostType:       constants.PendingPostEntityType,
 	}
 
 	// create post using internal method
