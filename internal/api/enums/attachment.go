@@ -12,6 +12,7 @@ const (
 	PostWidget
 	RepostWidget
 	GIFWidget
+	ReelWidget
 )
 
 // AttachmentType represents the type of attachment

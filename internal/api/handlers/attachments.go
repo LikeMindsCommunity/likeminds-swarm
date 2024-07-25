@@ -215,6 +215,11 @@ func validatePostAttachments(communityId int, attachments []requests.AttachmentR
 			if err != nil {
 				return err
 			}
+		case enums.ReelWidget:
+			err := validateReelAttachment(element)
+			if err != nil {
+				return err
+			}
 
 		default:
 			return fmt.Errorf("send valid attachment_type in attachment")
@@ -316,6 +321,15 @@ func validateImageAttachment(attachment requests.AttachmentRequest) (string, boo
 func validateGIFAttachment(attachment requests.AttachmentRequest) error {
 	if attachment.AttachmentMeta.Url == "" {
 		return fmt.Errorf("send url in attachment_meta for gif")
+	}
+
+	return nil
+}
+
+// Internal method to validate reel attachment
+func validateReelAttachment(attachment requests.AttachmentRequest) error {
+	if attachment.AttachmentMeta.Url == "" {
+		return fmt.Errorf("Send url in attachment_meta for reel")
 	}
 
 	return nil
