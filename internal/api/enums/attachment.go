@@ -12,6 +12,7 @@ const (
 	PostWidget
 	RepostWidget
 	GIFWidget
+	ReelWidget
 )
 
 // AttachmentType represents the type of attachment
@@ -29,6 +30,7 @@ const (
 	PostType     AttachmentType = "post"
 	RepostType   AttachmentType = "repost"
 	GIFType      AttachmentType = "gif"
+	ReelType     AttachmentType = "reel"
 )
 
 // Create New Attachment Type from int
@@ -54,6 +56,8 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 		return RepostType
 	case GIFWidget:
 		return GIFType
+	case ReelWidget:
+		return ReelType
 	}
 	return ""
 }
@@ -61,7 +65,7 @@ func NewAttachmentTypeFromInt(attachment_type int) AttachmentType {
 // checks if the attachment type is valid
 func (at AttachmentType) IsValid() bool {
 	switch at {
-	case ImageType, VideoType, DocumentType, LinkType, CustomType, PollType, ArticleType, PostType, RepostType, GIFType:
+	case ImageType, VideoType, DocumentType, LinkType, CustomType, PollType, ArticleType, PostType, RepostType, GIFType, ReelType:
 		return true
 	}
 	return false
@@ -105,6 +109,8 @@ func (at AttachmentType) ToInt() int {
 		return RepostWidget
 	case GIFType:
 		return GIFWidget
+	case ReelType:
+		return ReelWidget
 	}
 	return 0
 }
