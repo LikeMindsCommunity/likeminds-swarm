@@ -45,12 +45,13 @@ type MetricsMap struct {
 }
 
 type PersonalisedFeedWeights struct {
-	CommentsMetrics      MetricsMap `json:"comments_metrics"`
-	LikesMetrics         MetricsMap `json:"likes_metrics"`
-	RecencyMetrics       MetricsMap `json:"recency_metrics"`
-	UserGroupsMetrics    MetricsMap `json:"user_groups_metrics"`
-	UserTopicsMetrics    MetricsMap `json:"user_topics_metrics"`
-	PostDampeningMetrics MetricsMap `json:"post_dampening_metrics"`
+	CommentsMetrics       MetricsMap `json:"comments_metrics"`
+	LikesMetrics          MetricsMap `json:"likes_metrics"`
+	RecencyMetrics        MetricsMap `json:"recency_metrics"`
+	UserGroupsMetrics     MetricsMap `json:"user_groups_metrics"`
+	UserTopicsMetrics     MetricsMap `json:"user_topics_metrics"`
+	UserConnectionMetrics MetricsMap `json:"user_connection_metrics"`
+	PostDampeningMetrics  MetricsMap `json:"post_dampening_metrics"`
 }
 
 func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityConfiguration, communityConfigurationType string) (CommunityConfiguration, error) {

@@ -14,14 +14,15 @@ const (
 
 // Swarm cache keys of personalised feed
 const (
-	PostsRecencyMetricsKey   = "%d_recency_metric_score"        // communityId
-	PostsLikesMetricsKey     = "%d_likes_metric_score"          // communityId
-	PostsCommentsMetricsKey  = "%d_comments_metric_score"       // communityId
-	CommunityDefaultFeedKey  = "%d_community_default_feed"      // communityId
-	UserPersonalisedFeedKey  = "%d_%s_user_personalised_feed"   // communityId, userId
-	UserGroupsMetricsKey     = "%d_%s_user_groups_metric_score" // communityId, userId
-	UserTopicsMetricsKey     = "%d_%s_user_topics_metric_score" // communityId, userId
-	UserSeenDampenedPostsKey = "%d_%s_seen_dampened_posts"      // communityId, userId
+	PostsRecencyMetricsKey   = "%d_recency_metric_score"            // communityId
+	PostsLikesMetricsKey     = "%d_likes_metric_score"              // communityId
+	PostsCommentsMetricsKey  = "%d_comments_metric_score"           // communityId
+	CommunityDefaultFeedKey  = "%d_community_default_feed"          // communityId
+	UserPersonalisedFeedKey  = "%d_%s_user_personalised_feed"       // communityId, userId
+	UserGroupsMetricsKey     = "%d_%s_user_groups_metric_score"     // communityId, userId
+	UserTopicsMetricsKey     = "%d_%s_user_topics_metric_score"     // communityId, userId
+	UserSeenDampenedPostsKey = "%d_%s_seen_dampened_posts"          // communityId, userId
+	UserConnectionMetricsKey = "%d_%s_user_connection_metric_score" // communityId, userId
 )
 
 // Cache TTLs (in Hours)

@@ -79,7 +79,7 @@ func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, community
 	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
 	handlers.cacheHelper.Del(userConnectionFeedCacheKeyName)
 
-	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
+	userConnectionData, _ := GetUserConnectionDataFromCache(handlers, userId, communityId)
 	if len(userConnectionData) == 0 {
 		updateConnectionList(handlers, userId, communityId, "", false)
 	}
@@ -101,7 +101,7 @@ func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, community
 		existingPostIds = append(existingPostIds, userConnectionFeedResult.PostId)
 	}
 
-	userConnectionData, _ = getUserConnectionDataFromCache(handlers, userId, communityId)
+	userConnectionData, _ = GetUserConnectionDataFromCache(handlers, userId, communityId)
 	userConnectionIds := []string{}
 
 	for userConnectionId := range userConnectionData {

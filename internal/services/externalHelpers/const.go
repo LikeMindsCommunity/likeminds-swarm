@@ -68,6 +68,7 @@ const (
 // Community settings type
 const (
 	PostApprovalNeededSettingType = "post_approval_needed"
+	UserConnectionSettingType     = "user_connection"
 )
 
 const (

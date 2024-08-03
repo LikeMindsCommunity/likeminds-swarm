@@ -21,7 +21,7 @@ func getUserConnectionCacheKeyName(userId string, communityId int) string {
 }
 
 // Internal Method to get User connection data from cache
-func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, communityId int) (map[string]bool, bool) {
+func GetUserConnectionDataFromCache(handlers *FeedHandlers, userId string, communityId int) (map[string]bool, bool) {
 	userConnectionData := map[string]bool{}
 	var errorMessage string
 
@@ -30,7 +30,7 @@ func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, commu
 
 	val, keyExists, err := handlers.cacheHelper.GetWithKeyExists(userCacheKeyName)
 	if err != nil {
-		errorMessage = fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data from cache, %s: %s", userCacheKeyName, err.Error())
+		errorMessage = fmt.Sprintf("GetUserConnectionDataFromCache() - Error while getting data from cache, %s: %s", userCacheKeyName, err.Error())
 		log.Error(errorMessage)
 		return userConnectionData, keyExists
 	}
@@ -38,7 +38,7 @@ func getUserConnectionDataFromCache(handlers *FeedHandlers, userId string, commu
 	if keyExists {
 		err = json.Unmarshal([]byte(val), &userConnectionData)
 		if err != nil {
-			errorMessage = fmt.Sprintf("getUserConnectionDataFromCache() - Error while getting data conversion, %s: %s", userCacheKeyName, err.Error())
+			errorMessage = fmt.Sprintf("GetUserConnectionDataFromCache() - Error while getting data conversion, %s: %s", userCacheKeyName, err.Error())
 			log.Error(errorMessage)
 			return userConnectionData, keyExists
 		}
@@ -60,8 +60,8 @@ func setUserConnectionDataInCache(handlers *FeedHandlers, userId string, communi
 
 // Interal Method to Add user in connection list for a user
 func addUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string) {
-	primaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, primaryUserId, communityId)
-	secondaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
+	primaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, primaryUserId, communityId)
+	secondaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
 
 	primaryUserConnectionData[secondaryUserId] = true
 	secondaryUserConnectionData[primaryUserId] = true
@@ -72,8 +72,8 @@ func addUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string
 
 // Internal Method to Remove user from connection list for a user
 func removeUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string) {
-	primaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, primaryUserId, communityId)
-	secondaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
+	primaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, primaryUserId, communityId)
+	secondaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
 
 	delete(primaryUserConnectionData, secondaryUserId)
 	delete(secondaryUserConnectionData, primaryUserId)
@@ -83,7 +83,7 @@ func removeUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId str
 }
 
 // Internal Method to warm up connection list for a user
-func warmUpConnectionList(handlers *FeedHandlers, userId string, communityId int) {
+func WarmUpConnectionList(handlers *FeedHandlers, userId string, communityId int) {
 	userCacheKeyName := getUserConnectionCacheKeyName(userId, communityId)
 	handlers.cacheHelper.Del(userCacheKeyName)
 
@@ -112,15 +112,15 @@ func warmUpConnectionList(handlers *FeedHandlers, userId string, communityId int
 
 // Internal Method to Update connection list for a user
 func updateConnectionList(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string, connected bool) {
-	_, primaryUserCacheKeyExists := getUserConnectionDataFromCache(handlers, primaryUserId, communityId)
+	_, primaryUserCacheKeyExists := GetUserConnectionDataFromCache(handlers, primaryUserId, communityId)
 	if !primaryUserCacheKeyExists {
-		warmUpConnectionList(handlers, primaryUserId, communityId)
+		WarmUpConnectionList(handlers, primaryUserId, communityId)
 	}
 
 	if secondaryUserId != "" {
-		_, secondaryUserCacheKeyExists := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
+		_, secondaryUserCacheKeyExists := GetUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
 		if !secondaryUserCacheKeyExists {
-			warmUpConnectionList(handlers, secondaryUserId, communityId)
+			WarmUpConnectionList(handlers, secondaryUserId, communityId)
 		} else {
 			if connected {
 				addUserInConnectionListInCache(handlers, primaryUserId, communityId, secondaryUserId)

@@ -135,3 +135,15 @@ func IsPostApprovalNeeded(cacheHelper cache.Helper, userId string, communityId i
 
 	return checkCommunitySettingEnabled(communitySettings, PostApprovalNeededSettingType)
 }
+
+// Exposed method to check if user connection setting is enabled for a community
+func IsUserConnectionSettingEnabled(cacheHelper cache.Helper, userId string, communityId int) bool {
+
+	communitySettings, err := fetchCommunitySettings(cacheHelper, userId, communityId)
+	if err != nil {
+		logging.Error(fmt.Sprintf("Error while fetching community settings, err: %v", err))
+		return false
+	}
+
+	return checkCommunitySettingEnabled(communitySettings, UserConnectionSettingType)
+}
