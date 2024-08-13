@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math"
 	"strconv"
@@ -65,6 +66,12 @@ func GetRedisClientOpts() *asynq.RedisClientOpt {
 
 	redisClientOpt := asynq.RedisClientOpt{
 		Addr: brokerAddress,
+	}
+
+	serverEnviornment := environment.GoDotEnvVariable("SERVER_ENVIRONMENT")
+	if serverEnviornment == "load" {
+		redisClientOpt.Password = environment.GoDotEnvVariable("ASYNQ_BROKER_PASSWORD")
+		redisClientOpt.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
 
 	return &redisClientOpt
