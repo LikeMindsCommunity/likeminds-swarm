@@ -54,6 +54,11 @@ type PersonalisedFeedWeights struct {
 	PostDampeningMetrics  MetricsMap `json:"post_dampening_metrics"`
 }
 
+type ConnectionFeedConfigration struct {
+	ConnectionType    string `json:"connectionType"`
+	AutoAcceptRequest bool   `json:"connection_request_auto_accepted"`
+}
+
 func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityConfiguration, communityConfigurationType string) (CommunityConfiguration, error) {
 
 	if len(communityConfigurations) > 0 {
@@ -281,5 +286,29 @@ func GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper cache.Helper, userId
 	json.Unmarshal(bytes, &personalisedFeedWeights)
 
 	return &personalisedFeedWeights, nil
+
+}
+
+// Exposed helper method to fetch the connection feed configurations for a community
+func GetConnectionFeedConfigurationAgainstCommunity(cacheHelper cache.Helper, userId string, communityId int) (*ConnectionFeedConfigration, error) {
+	communityConfigurationResponse, err := GetCommunityConfigurations(cacheHelper, userId, communityId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	connectionFeedConfiguration, err := GetCommunityConfigurationAgainstType(communityConfigurationResponse.CommunityConfigurations,
+		ConnectionFeedConfigurationType)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var connectionFeedConf ConnectionFeedConfigration
+
+	bytes, _ := json.Marshal(connectionFeedConfiguration.Value)
+	json.Unmarshal(bytes, &connectionFeedConf)
+
+	return &connectionFeedConf, nil
 
 }

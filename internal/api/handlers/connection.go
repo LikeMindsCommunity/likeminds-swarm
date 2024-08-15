@@ -61,25 +61,41 @@ func setUserConnectionDataInCache(handlers *FeedHandlers, userId string, communi
 // Interal Method to Add user in connection list for a user
 func addUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string) {
 	primaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, primaryUserId, communityId)
-	secondaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
-
 	primaryUserConnectionData[secondaryUserId] = true
-	secondaryUserConnectionData[primaryUserId] = true
-
 	setUserConnectionDataInCache(handlers, primaryUserId, communityId, primaryUserConnectionData)
-	setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+
+	// User 2 connection updation
+	connectionFeedConfiguration, err := externalHelpers.GetConnectionFeedConfigurationAgainstCommunity(handlers.cacheHelper, secondaryUserId, communityId)
+	if err != nil {
+		errorMessage := fmt.Sprintf("Error occurred in fetching connection feed configurations: %s", err.Error())
+		log.Error(errorMessage)
+	}
+
+	if connectionFeedConfiguration.ConnectionType == enums.TwoWayConnection {
+		secondaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
+		secondaryUserConnectionData[primaryUserId] = true
+		setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+	}
 }
 
 // Internal Method to Remove user from connection list for a user
 func removeUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string) {
 	primaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, primaryUserId, communityId)
-	secondaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
-
 	delete(primaryUserConnectionData, secondaryUserId)
-	delete(secondaryUserConnectionData, primaryUserId)
-
 	setUserConnectionDataInCache(handlers, primaryUserId, communityId, primaryUserConnectionData)
-	setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+
+	// User 2 connection updation
+	connectionFeedConfiguration, err := externalHelpers.GetConnectionFeedConfigurationAgainstCommunity(handlers.cacheHelper, secondaryUserId, communityId)
+	if err != nil {
+		errorMessage := fmt.Sprintf("Error occurred in fetching connection feed configurations: %s", err.Error())
+		log.Error(errorMessage)
+	}
+
+	if connectionFeedConfiguration.ConnectionType == enums.TwoWayConnection {
+		secondaryUserConnectionData, _ := GetUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
+		delete(secondaryUserConnectionData, primaryUserId)
+		setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+	}
 }
 
 // Internal Method to warm up connection list for a user

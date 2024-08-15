@@ -75,6 +75,7 @@ const (
 	FeedMetadataCommunityConfigurationType   = "feed_metadata"
 	NSFWFilteringCommunityConfigurationType  = "nsfw_filtering"
 	PersonalisedFeedWeightsConfigurationType = "personalised_feed_weights"
+	ConnectionFeedConfigurationType          = "connection_feed_metadata"
 )
 
 const (
