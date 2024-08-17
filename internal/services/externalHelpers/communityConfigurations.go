@@ -54,11 +54,6 @@ type PersonalisedFeedWeights struct {
 	PostDampeningMetrics  MetricsMap `json:"post_dampening_metrics"`
 }
 
-type ConnectionFeedConfigration struct {
-	ConnectionType    string `json:"connectionType"`
-	AutoAcceptRequest bool   `json:"connection_request_auto_accepted"`
-}
-
 func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityConfiguration, communityConfigurationType string) (CommunityConfiguration, error) {
 
 	if len(communityConfigurations) > 0 {
