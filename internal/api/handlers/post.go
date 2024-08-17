@@ -1098,7 +1098,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	// update post in connection buffer lists
 	userConnectionData, _ := GetUserConnectionDataFromCache(handlers, userId, communityId)
 	if len(userConnectionData) == 0 {
-		updateConnectionList(handlers, userId, communityId, "", false)
+		updateConnectionList(handlers, userId, communityId, "", false, enums.OneWayConnection)
 	}
 
 	userConnectionData, _ = GetUserConnectionDataFromCache(handlers, userId, communityId)

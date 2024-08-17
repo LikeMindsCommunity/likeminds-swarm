@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -81,7 +82,7 @@ func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, community
 
 	userConnectionData, _ := GetUserConnectionDataFromCache(handlers, userId, communityId)
 	if len(userConnectionData) == 0 {
-		updateConnectionList(handlers, userId, communityId, "", false)
+		updateConnectionList(handlers, userId, communityId, "", false, enums.OneWayConnection)
 	}
 
 	userConnectionFeedFilter := gin.H{

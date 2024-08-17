@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
@@ -483,7 +484,7 @@ func UserConnectionMetricComputation(handlers *FeedHandlers, userId string, comm
 	}
 
 	// Warm up the connection list
-	WarmUpConnectionList(handlers, userId, communityId)
+	WarmUpConnectionList(handlers, userId, communityId, enums.OneWayConnection)
 
 	// Get user's connected userIds list
 	userIdsMap, isDataExists := GetUserConnectionDataFromCache(handlers, userId, communityId)

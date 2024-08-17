@@ -288,27 +288,3 @@ func GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper cache.Helper, userId
 	return &personalisedFeedWeights, nil
 
 }
-
-// Exposed helper method to fetch the connection feed configurations for a community
-func GetConnectionFeedConfigurationAgainstCommunity(cacheHelper cache.Helper, userId string, communityId int) (*ConnectionFeedConfigration, error) {
-	communityConfigurationResponse, err := GetCommunityConfigurations(cacheHelper, userId, communityId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	connectionFeedConfiguration, err := GetCommunityConfigurationAgainstType(communityConfigurationResponse.CommunityConfigurations,
-		ConnectionFeedConfigurationType)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var connectionFeedConf ConnectionFeedConfigration
-
-	bytes, _ := json.Marshal(connectionFeedConfiguration.Value)
-	json.Unmarshal(bytes, &connectionFeedConf)
-
-	return &connectionFeedConf, nil
-
-}
