@@ -32,25 +32,23 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 		return
 	}
 
-	// TODO: Can Run all the below tasks parallely
-
 	// Compute recency metric and save it in cache
 	RecencyMetricComputation(handlers, userId, communityId)
 
 	// Compute post likes metric and save it in cache
-	PostLikesMetricComputation(handlers, userId, communityId)
+	go PostLikesMetricComputation(handlers, userId, communityId)
 
 	// Compute post comments metric and save it in cache
-	PostCommentsMetricComputation(handlers, userId, communityId)
+	go PostCommentsMetricComputation(handlers, userId, communityId)
 
 	// Compute user groups metric and save it in cache
-	UserGroupsMetricComputation(handlers, userId, communityId, apiKey)
+	go UserGroupsMetricComputation(handlers, userId, communityId, apiKey)
 
 	// Compute user topics metric and save it in cache
-	UserTopicsMetricComputation(handlers, userId, communityId)
+	go UserTopicsMetricComputation(handlers, userId, communityId)
 
 	// Compute user connection metric and save it in cache
-	UserConnectionMetricComputation(handlers, userId, communityId)
+	go UserConnectionMetricComputation(handlers, userId, communityId)
 
 	utils.GenerateSuccessResponse(c, gin.H{})
 }
@@ -487,7 +485,7 @@ func UserConnectionMetricComputation(handlers *FeedHandlers, userId string, comm
 	WarmUpConnectionList(handlers, userId, communityId, enums.OneWayConnection)
 
 	// Get user's connected userIds list
-	userIdsMap, isDataExists := GetUserConnectionDataFromCache(handlers, userId, communityId)
+	userIdsMap, isDataExists := getUserConnectionDataFromCache(handlers, userId, communityId)
 	if !isDataExists {
 		logging.Error(fmt.Sprintf("User %s connections not exists in cache: ", userId), err)
 		return
@@ -770,7 +768,7 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	}
 
 	// Reorder user personalised feed and update in cache
-	go reorderUserPersonalisedFeed(handlers, communityId, userId) // TODO: Can move this to background service
+	reorderUserPersonalisedFeed(handlers, communityId, userId) // TODO: Can move this to background service
 
 	utils.GenerateSuccessResponse(c, nil)
 }

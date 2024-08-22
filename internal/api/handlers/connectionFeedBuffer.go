@@ -77,10 +77,13 @@ func removePostInConnectionFeedBufferInCache(handlers *FeedHandlers, userId stri
 // Internal Method to warm up Connection Feed Buffer list for a user
 func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, communityId int) {
 	var errorMessage string
-	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
-	handlers.cacheHelper.Del(userConnectionFeedCacheKeyName)
 
-	userConnectionData, _ := GetUserConnectionDataFromCache(handlers, userId, communityId)
+	go func() {
+		userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
+		handlers.cacheHelper.Del(userConnectionFeedCacheKeyName)
+	}()
+
+	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
 	if len(userConnectionData) == 0 {
 		updateConnectionList(handlers, userId, communityId, "", false, enums.OneWayConnection)
 	}
@@ -102,7 +105,7 @@ func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, community
 		existingPostIds = append(existingPostIds, userConnectionFeedResult.PostId)
 	}
 
-	userConnectionData, _ = GetUserConnectionDataFromCache(handlers, userId, communityId)
+	userConnectionData, _ = getUserConnectionDataFromCache(handlers, userId, communityId)
 	userConnectionIds := []string{}
 
 	for userConnectionId := range userConnectionData {
