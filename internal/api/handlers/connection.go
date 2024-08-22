@@ -59,33 +59,35 @@ func setUserConnectionDataInCache(handlers *FeedHandlers, userId string, communi
 }
 
 // Interal Method to Add user in connection list for a user
-func addUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string) {
+func addUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string, connectionType string) {
 	primaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, primaryUserId, communityId)
-	secondaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
-
 	primaryUserConnectionData[secondaryUserId] = true
-	secondaryUserConnectionData[primaryUserId] = true
+	go setUserConnectionDataInCache(handlers, primaryUserId, communityId, primaryUserConnectionData)
 
-	setUserConnectionDataInCache(handlers, primaryUserId, communityId, primaryUserConnectionData)
-	setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+	if connectionType == enums.TwoWayConnection {
+		secondaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
+		secondaryUserConnectionData[primaryUserId] = true
+		go setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+	}
 }
 
 // Internal Method to Remove user from connection list for a user
-func removeUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string) {
+func removeUserInConnectionListInCache(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string, connectionType string) {
 	primaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, primaryUserId, communityId)
-	secondaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
-
 	delete(primaryUserConnectionData, secondaryUserId)
-	delete(secondaryUserConnectionData, primaryUserId)
+	go setUserConnectionDataInCache(handlers, primaryUserId, communityId, primaryUserConnectionData)
 
-	setUserConnectionDataInCache(handlers, primaryUserId, communityId, primaryUserConnectionData)
-	setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+	if connectionType == enums.TwoWayConnection {
+		secondaryUserConnectionData, _ := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
+		delete(secondaryUserConnectionData, primaryUserId)
+		go setUserConnectionDataInCache(handlers, secondaryUserId, communityId, secondaryUserConnectionData)
+	}
 }
 
 // Internal Method to warm up connection list for a user
-func warmUpConnectionList(handlers *FeedHandlers, userId string, communityId int) {
+func WarmUpConnectionList(handlers *FeedHandlers, userId string, communityId int, connectionType string) {
 	userCacheKeyName := getUserConnectionCacheKeyName(userId, communityId)
-	handlers.cacheHelper.Del(userCacheKeyName)
+	go handlers.cacheHelper.Del(userCacheKeyName)
 
 	getConnections := true
 	page := 1
@@ -97,7 +99,7 @@ func warmUpConnectionList(handlers *FeedHandlers, userId string, communityId int
 		if success {
 			if len(userConnections.Connections) > 0 {
 				for _, userConnection := range userConnections.Connections {
-					addUserInConnectionListInCache(handlers, userConnection.User1UUID, communityId, userConnection.User2UUID)
+					addUserInConnectionListInCache(handlers, userConnection.User1UUID, communityId, userConnection.User2UUID, connectionType)
 				}
 
 				page += 1
@@ -111,21 +113,23 @@ func warmUpConnectionList(handlers *FeedHandlers, userId string, communityId int
 }
 
 // Internal Method to Update connection list for a user
-func updateConnectionList(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string, connected bool) {
+func updateConnectionList(handlers *FeedHandlers, primaryUserId string, communityId int, secondaryUserId string, connected bool, connectionType string) {
 	_, primaryUserCacheKeyExists := getUserConnectionDataFromCache(handlers, primaryUserId, communityId)
 	if !primaryUserCacheKeyExists {
-		warmUpConnectionList(handlers, primaryUserId, communityId)
+		WarmUpConnectionList(handlers, primaryUserId, communityId, connectionType)
 	}
 
 	if secondaryUserId != "" {
 		_, secondaryUserCacheKeyExists := getUserConnectionDataFromCache(handlers, secondaryUserId, communityId)
 		if !secondaryUserCacheKeyExists {
-			warmUpConnectionList(handlers, secondaryUserId, communityId)
+			WarmUpConnectionList(handlers, secondaryUserId, communityId, connectionType)
+
 		} else {
 			if connected {
-				addUserInConnectionListInCache(handlers, primaryUserId, communityId, secondaryUserId)
+				addUserInConnectionListInCache(handlers, primaryUserId, communityId, secondaryUserId, connectionType)
+
 			} else {
-				removeUserInConnectionListInCache(handlers, primaryUserId, communityId, secondaryUserId)
+				removeUserInConnectionListInCache(handlers, primaryUserId, communityId, secondaryUserId, connectionType)
 			}
 		}
 	}
@@ -151,9 +155,9 @@ func (handlers *FeedHandlers) UpdateConnection(c *gin.Context) {
 	}
 
 	if updateConnectionRequest.Status == enums.ConnectionConnected {
-		updateConnectionList(handlers, headers[utils.HeadersMemberId], communityId, userId, true)
+		updateConnectionList(handlers, headers[utils.HeadersMemberId], communityId, userId, true, updateConnectionRequest.ConnectionType)
 	} else {
-		updateConnectionList(handlers, headers[utils.HeadersMemberId], communityId, userId, false)
+		updateConnectionList(handlers, headers[utils.HeadersMemberId], communityId, userId, false, updateConnectionRequest.ConnectionType)
 	}
 
 	// return final response

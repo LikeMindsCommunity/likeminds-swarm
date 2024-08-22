@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
@@ -31,22 +32,23 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 		return
 	}
 
-	// TODO: Can Run all the below tasks parallely
-
 	// Compute recency metric and save it in cache
 	RecencyMetricComputation(handlers, userId, communityId)
 
 	// Compute post likes metric and save it in cache
-	PostLikesMetricComputation(handlers, userId, communityId)
+	go PostLikesMetricComputation(handlers, userId, communityId)
 
 	// Compute post comments metric and save it in cache
-	PostCommentsMetricComputation(handlers, userId, communityId)
+	go PostCommentsMetricComputation(handlers, userId, communityId)
 
 	// Compute user groups metric and save it in cache
-	UserGroupsMetricComputation(handlers, userId, communityId, apiKey)
+	go UserGroupsMetricComputation(handlers, userId, communityId, apiKey)
 
 	// Compute user topics metric and save it in cache
-	UserTopicsMetricComputation(handlers, userId, communityId)
+	go UserTopicsMetricComputation(handlers, userId, communityId)
+
+	// Compute user connection metric and save it in cache
+	go UserConnectionMetricComputation(handlers, userId, communityId)
 
 	utils.GenerateSuccessResponse(c, gin.H{})
 }
@@ -462,6 +464,92 @@ func computeUserTopicsMetricScore(topicsCount float64, userTopicsMetricMaxThresh
 	return utils.GetMinimumFromArray(topicsCount, userTopicsMetricMaxThreshold) * userTopicsMetricWeight
 }
 
+// Recompute & save post ranking on the basis of user connection metrics
+func UserConnectionMetricComputation(handlers *FeedHandlers, userId string, communityId int) {
+	// Check whether user connection setting is enabled or not
+	if !externalHelpers.IsUserConnectionSettingEnabled(handlers.cacheHelper, userId, communityId) {
+		logging.Error(fmt.Sprintf("User connection setting is disabled for community id %d: ", communityId))
+		return
+	}
+
+	userConnectionMetricMap := map[string]float64{}
+
+	// Get personalised weights
+	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		logging.Error("Error in computation of recency metric: ", err)
+		return
+	}
+
+	// Warm up the connection list
+	WarmUpConnectionList(handlers, userId, communityId, enums.OneWayConnection)
+
+	// Get user's connected userIds list
+	userIdsMap, isDataExists := getUserConnectionDataFromCache(handlers, userId, communityId)
+	if !isDataExists {
+		logging.Error(fmt.Sprintf("User %s connections not exists in cache: ", userId), err)
+		return
+	}
+
+	userIdsList := []string{}
+
+	for userId, _ := range userIdsMap {
+		userIdsList = append(userIdsList, userId)
+	}
+
+	// Filter for all posts of community
+	allPostsOfConnectedUsersFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"community_id": communityId,
+				"is_deleted":   false,
+				"user_id": gin.H{
+					"$in": userIdsList,
+				},
+			},
+		},
+		gin.H{
+			"$project": gin.H{
+				"_id": 1,
+			},
+		},
+	}
+
+	allConnectedUsersPostsData, err := handlers.postHelper.AggregatePostHelper(allPostsOfConnectedUsersFilter)
+	if err != nil {
+		logging.Error("Error in fetching all posts of community: ", communityId, " err: ", err)
+		return
+	}
+
+	if len(allConnectedUsersPostsData) == 0 {
+		logging.Error("No connected users post data found in db")
+		return
+	}
+
+	for _, postData := range allConnectedUsersPostsData {
+		metricScore := computeUserConnectionMetricScore(
+			personalisedFeedWeights.UserConnectionMetrics.MaxThreshold,
+			personalisedFeedWeights.UserConnectionMetrics.Weight)
+
+		userConnectionMetricMap[postData["_id"].(primitive.ObjectID).Hex()] = metricScore
+	}
+
+	// Set post metric score in cache
+	postsMetricMapBytesValue, _ := json.Marshal(userConnectionMetricMap)
+
+	cacheKey := fmt.Sprintf(cache.UserConnectionMetricsKey, communityId, userId)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.UserMetricCacheTTLInHours*time.Hour)
+
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving user connection metric score in cache", setStatus.Err())
+	}
+}
+
+// Compute user connection metric score
+func computeUserConnectionMetricScore(userConnectionMetricMaxThreshold float64, userConnectionMetricWeight float64) float64 {
+	return userConnectionMetricMaxThreshold * userConnectionMetricWeight
+}
+
 // Compute post dampening metrics for user
 func fetchUserDampenedPosts(cacheHelper cache.Helper, userId string, communityId int) (map[string]float64, error) {
 	userPostDampeningMetricMap := map[string]float64{}
@@ -680,7 +768,7 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	}
 
 	// Reorder user personalised feed and update in cache
-	go reorderUserPersonalisedFeed(handlers, communityId, userId) // TODO: Can move this to background service
+	reorderUserPersonalisedFeed(handlers, communityId, userId) // TODO: Can move this to background service
 
 	utils.GenerateSuccessResponse(c, nil)
 }
@@ -901,6 +989,27 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 	for postId, score := range userDampenedPostsMap {
 		if _, ok := userSpecificMetricScores[postId]; !ok {
 			userSpecificMetricScores[postId] -= score
+		}
+	}
+
+	// fetch user connection metric score map for user
+	cacheKey = fmt.Sprintf(cache.UserConnectionMetricsKey, communityId, userId)
+	userConnectionMetricMapCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		return nil, fmt.Errorf("error in fetching user connection metric score from cache: %v", err)
+	}
+
+	var userConnectionMetricMap map[string]float64
+	if exists {
+		err := json.Unmarshal([]byte(userConnectionMetricMapCacheValue), &userConnectionMetricMap)
+		if err != nil {
+			return nil, fmt.Errorf("error in unmarshalling user groups metric score from cache: %v", err)
+		}
+
+		for postId, score := range userConnectionMetricMap {
+			if _, ok := userSpecificMetricScores[postId]; !ok {
+				userSpecificMetricScores[postId] += score
+			}
 		}
 	}
 

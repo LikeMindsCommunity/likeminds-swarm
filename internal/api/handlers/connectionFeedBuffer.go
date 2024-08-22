@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -76,12 +77,15 @@ func removePostInConnectionFeedBufferInCache(handlers *FeedHandlers, userId stri
 // Internal Method to warm up Connection Feed Buffer list for a user
 func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, communityId int) {
 	var errorMessage string
-	userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
-	handlers.cacheHelper.Del(userConnectionFeedCacheKeyName)
+
+	go func() {
+		userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
+		handlers.cacheHelper.Del(userConnectionFeedCacheKeyName)
+	}()
 
 	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
 	if len(userConnectionData) == 0 {
-		updateConnectionList(handlers, userId, communityId, "", false)
+		updateConnectionList(handlers, userId, communityId, "", false, enums.OneWayConnection)
 	}
 
 	userConnectionFeedFilter := gin.H{
