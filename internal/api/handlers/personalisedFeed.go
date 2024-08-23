@@ -953,9 +953,7 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 		}
 
 		for postId, score := range userGroupsMetricMap {
-			if _, ok := userSpecificMetricScores[postId]; !ok {
-				userSpecificMetricScores[postId] += score
-			}
+			userSpecificMetricScores[postId] += score
 		}
 	}
 
@@ -974,9 +972,7 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 		}
 
 		for postId, score := range userTopicsMetricMap {
-			if _, ok := userSpecificMetricScores[postId]; !ok {
-				userSpecificMetricScores[postId] += score
-			}
+			userSpecificMetricScores[postId] += score
 		}
 	}
 
@@ -988,9 +984,7 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 
 	// reduce the score of dampened posts
 	for postId, score := range userDampenedPostsMap {
-		if _, ok := userSpecificMetricScores[postId]; !ok {
-			userSpecificMetricScores[postId] -= score
-		}
+		userSpecificMetricScores[postId] -= score
 	}
 
 	// fetch user connection metric score map for user
@@ -1008,9 +1002,7 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 		}
 
 		for postId, score := range userConnectionMetricMap {
-			if _, ok := userSpecificMetricScores[postId]; !ok {
-				userSpecificMetricScores[postId] += score
-			}
+			userSpecificMetricScores[postId] += score
 		}
 	}
 
