@@ -115,7 +115,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(postsMetricMap)
-	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecencyCacheTTLInMins*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.CommunityMetricCacheTTLInMins*time.Minute)
 
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving recency metric score in cache", setStatus.Err())
@@ -212,7 +212,7 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(postsLikesMetricMap)
-	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecencyCacheTTLInMins*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.CommunityMetricCacheTTLInMins*time.Minute)
 
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving post likes metric score in cache", setStatus.Err())
@@ -286,7 +286,7 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 
 	// Set post metric score in cache
 	postsMetricMapBytesValue, _ := json.Marshal(postsCommentsMetricMap)
-	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.PostsRecencyCacheTTLInMins*time.Minute)
+	setStatus := handlers.cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.CommunityMetricCacheTTLInMins*time.Minute)
 
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving post comments metric score in cache", setStatus.Err())
@@ -837,7 +837,8 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	}
 
 	if len(postScoreMap) == 0 {
-		logging.Error("No community metric post scores found for community: ", communityId)
+		// Return error in API
+		utils.GeneralAPIValidationError(c, "No community metric post scores found for community")
 		return
 	}
 
