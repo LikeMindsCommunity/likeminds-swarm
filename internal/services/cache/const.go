@@ -33,14 +33,14 @@ const (
 	CommunitySettingsCacheTTLInHours       = 720 // 30 days
 	UserPersonalisedFeedCacheTTLInHours    = 720 // 30 days
 	UserCommunityChannelsCacheTTLInHours   = 720 // 30 days
-	UserDampenedPostsCacheTTLInHours       = 720 //30days
+	UserDampenedPostsCacheTTLInHours       = 720 // 30 days
+	UserMetricCacheTTLInHours              = 720 // 30 days
 )
 
 // Cache TTLs (in Mins)
 const (
-	PostsRecencyCacheTTLInMins         = 5   // 5 Mins
-	DefaultCommunityFeedCacheTTLInMins = 30  // 30 Mins
-	UserMetricCacheTTLInHours          = 720 // 30 days
+	CommunityMetricCacheTTLInMins      = 5  // 5 Mins
+	DefaultCommunityFeedCacheTTLInMins = 30 // 30 Mins
 )
 
 // Kettle Cache Keys
