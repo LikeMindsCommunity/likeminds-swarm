@@ -800,11 +800,15 @@ func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId
 		postScoreMap[postId] += score
 	}
 
+	logging.Info("Post score map before sorting: ", postScoreMap)
+
 	// Sort the post score map in descending order and get top 1000 posts
 	sortedPostIds := utils.SortFloatMapByValues(postScoreMap, true)
 	if len(sortedPostIds) > 1000 {
 		sortedPostIds = sortedPostIds[:1000]
 	}
+
+	logging.Info("Post score Ids after sorting: ", sortedPostIds)
 
 	// Save user personalised feed (postIds) in cache
 	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)
