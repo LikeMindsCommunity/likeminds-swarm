@@ -862,7 +862,7 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 }
 
 // Exposed Method to compute community default feed in async every 30 mins
-func (handlers *FeedHandlers) AsyncComputeCommunityDefaultFeed() {
+func AsyncComputeCommunityDefaultFeed(handlers *FeedHandlers) error {
 	communityIdsList := externalHelpers.GetCommunityIdsForCommunitySettingsEnabled(handlers.cacheHelper, externalHelpers.PersonalisedFeedSettingType)
 
 	for _, communityId := range communityIdsList {
@@ -878,7 +878,7 @@ func (handlers *FeedHandlers) AsyncComputeCommunityDefaultFeed() {
 		postScoreMap, err := fetchCommunityMetricPostScores(handlers, communityIdInt, userId)
 		if err != nil {
 			logging.Error("Error in fetching post metrics for community: ", communityIdInt, " err: ", err)
-			return
+			return err
 		}
 
 		if len(postScoreMap) == 0 {
@@ -898,8 +898,11 @@ func (handlers *FeedHandlers) AsyncComputeCommunityDefaultFeed() {
 		setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.DefaultCommunityFeedCacheTTLInMins*time.Minute)
 		if setStatus.Err() != nil {
 			logging.Error("Error in saving community default feed in cache", setStatus.Err())
+			return err
 		}
 	}
+
+	return nil
 }
 
 func fetchCommunityMetricPostScores(handlers *FeedHandlers, communityId int, userId string,

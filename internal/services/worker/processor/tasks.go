@@ -152,3 +152,8 @@ func (processor *RedisTaskProcessor) sendNotification(ctx context.Context, task 
 
 	return handlers.SendNotification(*processor.feedHandlers, payload.ActivityID, payload.PlatformCode, payload.VersionCode)
 }
+
+// Task to compute community default feed
+func (processor *RedisTaskProcessor) computeCommunityDefaultFeed(ctx context.Context, task *asynq.Task) error {
+	return handlers.AsyncComputeCommunityDefaultFeed(processor.feedHandlers)
+}

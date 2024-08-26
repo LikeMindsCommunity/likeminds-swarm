@@ -15,6 +15,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/processor"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/scheduler"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
@@ -154,6 +155,13 @@ func main() {
 
 		// Run Background worker to process tasks
 		logging.Fatal(feedTaskProcessor.Run())
+
+	// runworker | Run background worker to process tasks
+	case os.Args[1] == "runscheduler":
+		feedTaskScheduler := scheduler.NewTaskScheduler()
+
+		// Run Background worker to schedule tasks
+		logging.Fatal(feedTaskScheduler.Run())
 
 	// runscript | Run script to perform some action
 	case os.Args[1] == "runscript":
