@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -858,6 +859,47 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	}
 
 	utils.GenerateSuccessResponse(c, nil)
+}
+
+// Exposed Method to compute community default feed in async every 30 mins
+func (handlers *FeedHandlers) AsyncComputeCommunityDefaultFeed() {
+	communityIdsList := externalHelpers.GetCommunityIdsForCommunitySettingsEnabled(handlers.cacheHelper, externalHelpers.PersonalisedFeedSettingType)
+
+	for _, communityId := range communityIdsList {
+		userId := externalHelpers.GetCommunityBotId("", communityId)
+
+		communityIdInt, err := strconv.Atoi(communityId)
+		if err != nil {
+			logging.Error(fmt.Sprintf("Error in converting the community id: %s to int", communityId))
+			continue
+		}
+
+		// Fetch post scores map for the community
+		postScoreMap, err := fetchCommunityMetricPostScores(handlers, communityIdInt, userId)
+		if err != nil {
+			logging.Error("Error in fetching post metrics for community: ", communityIdInt, " err: ", err)
+			return
+		}
+
+		if len(postScoreMap) == 0 {
+			continue
+		}
+
+		// Sort the post score map in descending order and get top 1000 posts
+		sortedPostIds := utils.SortFloatMapByValues(postScoreMap, true)
+		if len(sortedPostIds) > 1000 {
+			sortedPostIds = sortedPostIds[:1000]
+		}
+
+		// Save the default community feed in cache
+		cacheKey := fmt.Sprintf(cache.CommunityDefaultFeedKey, communityIdInt)
+		defaultFeedBytesValue, _ := json.Marshal(sortedPostIds)
+
+		setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.DefaultCommunityFeedCacheTTLInMins*time.Minute)
+		if setStatus.Err() != nil {
+			logging.Error("Error in saving community default feed in cache", setStatus.Err())
+		}
+	}
 }
 
 func fetchCommunityMetricPostScores(handlers *FeedHandlers, communityId int, userId string,
