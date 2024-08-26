@@ -144,6 +144,13 @@ func main() {
 
 	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
+		// Start the schduler
+		go func() {
+			feedTaskScheduler := scheduler.NewTaskScheduler()
+
+			// Run Background worker to schedule tasks
+			logging.Fatal(feedTaskScheduler.Run())
+		}()
 
 		// get queue names from arguments
 		queues := []string{}
@@ -155,13 +162,6 @@ func main() {
 
 		// Run Background worker to process tasks
 		logging.Fatal(feedTaskProcessor.Run())
-
-	// runworker | Run background worker to process tasks
-	case os.Args[1] == "runscheduler":
-		feedTaskScheduler := scheduler.NewTaskScheduler()
-
-		// Run Background worker to schedule tasks
-		logging.Fatal(feedTaskScheduler.Run())
 
 	// runscript | Run script to perform some action
 	case os.Args[1] == "runscript":
