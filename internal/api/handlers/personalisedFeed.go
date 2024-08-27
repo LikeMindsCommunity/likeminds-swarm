@@ -697,9 +697,30 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 				return
 			}
 
-		} else { // If default feed not found, send error
-			utils.GeneralAPIValidationError(c, "Personalised feed is not yet computed. Please try again later.")
-			return
+		} else {
+			err = AsyncComputeCommunityDefaultFeed(handlers)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			cacheKey = fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
+			defaultFeed, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			if exists {
+				err := json.Unmarshal([]byte(defaultFeed), &postIds)
+				if err != nil {
+					utils.GeneralAPIInternalError(c, err.Error())
+					return
+				}
+			} else {
+				utils.GeneralAPIValidationError(c, "Personalised feed is not yet computed. Please try again later.")
+				return
+			}
 		}
 	}
 
