@@ -6,7 +6,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
 
-// Task to test the connection with the broker
+// Task to register the crom job tasks
 func (taskScheduler *RedisTaskScheduler) Run() error {
 	logging.Info(`Starting the redis task scheduler`)
 
