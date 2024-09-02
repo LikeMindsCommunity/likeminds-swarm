@@ -77,27 +77,6 @@ func GetRedisClientOpts() *asynq.RedisClientOpt {
 	return &redisClientOpt
 }
 
-// GetRedisConnOpts | Returns the redis connection options for the Asynq client
-func GetRedisConnOpts() *asynq.RedisClientOpt {
-
-	brokerAddress := environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS")
-	if brokerAddress == "" {
-		brokerAddress = "localhost:6379"
-	}
-
-	redisClientOpt := asynq.RedisClientOpt{
-		Addr: brokerAddress,
-	}
-
-	serverEnviornment := environment.GoDotEnvVariable("SERVER_ENVIRONMENT")
-	if serverEnviornment == "load" {
-		redisClientOpt.Password = environment.GoDotEnvVariable("ASYNQ_BROKER_PASSWORD")
-		redisClientOpt.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	}
-
-	return &redisClientOpt
-}
-
 // EnqueueTaskToQueue | Enqueues a task to the queue with the provided payload and options
 func EnqueueTaskToQueue(client *asynq.Client, taskName string, taskPayload []byte, opts ...asynq.Option) (*asynq.TaskInfo, error) {
 

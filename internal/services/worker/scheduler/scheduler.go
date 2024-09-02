@@ -25,7 +25,7 @@ type RedisTaskScheduler struct {
 func NewTaskScheduler() FeedTaskScheduler {
 
 	// create a new redis conn opts
-	redisConnOpts := worker.GetRedisConnOpts()
+	redisConnOpts := worker.GetRedisClientOpts()
 
 	// get AsynQ scheduler configurations
 	config := worker.GetSchedulerConfigurations()
