@@ -78,19 +78,24 @@ func GetRedisClientOpts() *asynq.RedisClientOpt {
 }
 
 // GetRedisConnOpts | Returns the redis connection options for the Asynq client
-func GetRedisConnOpts() *asynq.RedisConnOpt {
+func GetRedisConnOpts() *asynq.RedisClientOpt {
 
-	brokerAddress := environment.GoDotEnvVariable("ASYNQ_BROKER_REDIS_ADDRESS")
+	brokerAddress := environment.GoDotEnvVariable("ASYNQ_BROKER_ADDRESS")
 	if brokerAddress == "" {
 		brokerAddress = "localhost:6379"
 	}
 
-	redisConnOpt, err := asynq.ParseRedisURI(brokerAddress)
-	if err != nil {
-		logging.Error(fmt.Sprintf("Error in connecting to redis: %s", err.Error()))
+	redisClientOpt := asynq.RedisClientOpt{
+		Addr: brokerAddress,
 	}
 
-	return &redisConnOpt
+	serverEnviornment := environment.GoDotEnvVariable("SERVER_ENVIRONMENT")
+	if serverEnviornment == "load" {
+		redisClientOpt.Password = environment.GoDotEnvVariable("ASYNQ_BROKER_PASSWORD")
+		redisClientOpt.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+
+	return &redisClientOpt
 }
 
 // EnqueueTaskToQueue | Enqueues a task to the queue with the provided payload and options
@@ -177,7 +182,7 @@ func GetServerConfigurations(QueueNames []string) asynq.Config {
 	return config
 }
 
-func GetSchedulerConfigurations() asynq.SchedulerOpts {
+func GetSchedulerConfigurations() *asynq.SchedulerOpts {
 
 	// default configurations for the Task Processor
 	config := asynq.SchedulerOpts{
@@ -186,7 +191,7 @@ func GetSchedulerConfigurations() asynq.SchedulerOpts {
 		Logger: logging.NewCustomLogger(),
 	}
 
-	return config
+	return &config
 }
 
 func retryDelayFunctionForWebhookTasks(n int, e error, t *asynq.Task) time.Duration {

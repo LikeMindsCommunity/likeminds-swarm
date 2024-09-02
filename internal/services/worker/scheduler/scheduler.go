@@ -31,7 +31,7 @@ func NewTaskScheduler() FeedTaskScheduler {
 	config := worker.GetSchedulerConfigurations()
 
 	// create a new asynq client
-	scheduler := asynq.NewScheduler(*redisConnOpts, &config)
+	scheduler := asynq.NewScheduler(redisConnOpts, config)
 
 	return &RedisTaskScheduler{
 		scheduler: scheduler,
