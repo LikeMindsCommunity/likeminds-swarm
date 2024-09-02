@@ -69,6 +69,7 @@ const (
 const (
 	PostApprovalNeededSettingType = "post_approval_needed"
 	UserConnectionSettingType     = "user_connection"
+	PersonalisedFeedSettingType   = "enable_personalised_feed"
 )
 
 const (
@@ -88,6 +89,10 @@ const (
 	FeedMetadataUniversalFeedCommentSortKey      = "comment_sort_order_key"
 	FeedMetadataUniversalFeedCommentSortOrderKey = "comment_sort_order"
 	FeedMetadataUniversalFeedCommentCountKey     = "comment_count"
+)
+
+const (
+	CommunityIdFromCommunitySettingsRegex string = "([0-9]+)_community_settings"
 )
 
 // Inferdo API related constants

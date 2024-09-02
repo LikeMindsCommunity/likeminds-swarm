@@ -20,6 +20,7 @@ const (
 	TaskAsyncEditPostTasks            = "task:AsyncEditPostTasks"
 	TaskAsyncDeletePostTasks          = "task:AsnycDeletePostTasks"
 	TaskAsyncSendNotification         = "task:AsyncSendNotification"
+	TaskAsyncCommunityDefaultFeed     = "task:AsyncCommunityDefaultFeed"
 )
 
 // Payload for the task to trigger post creation webhook

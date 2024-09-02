@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -696,9 +697,30 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 				return
 			}
 
-		} else { // If default feed not found, send error
-			utils.GeneralAPIValidationError(c, "Personalised feed is not yet computed. Please try again later.")
-			return
+		} else {
+			err = AsyncComputeCommunityDefaultFeed(handlers)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			cacheKey = fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
+			defaultFeed, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			if exists {
+				err := json.Unmarshal([]byte(defaultFeed), &postIds)
+				if err != nil {
+					utils.GeneralAPIInternalError(c, err.Error())
+					return
+				}
+			} else {
+				utils.GeneralAPIValidationError(c, "Personalised feed is not yet computed. Please try again later.")
+				return
+			}
 		}
 	}
 
@@ -816,30 +838,17 @@ func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId
 	}
 }
 
-// Exposed Method to compute community default feed | Should be run every 30 mins
-func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
-
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
-	userId := headers[utils.HeadersMemberId]
-
-	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
-	if communityId == externalHelpers.DefaultCommunityId {
-		return
-	}
-
+// Internal method to compute and save community default feed in cache
+func computeAndSaveCommunityDefaultFeed(handlers *FeedHandlers, communityId int, userId string) error {
 	// Fetch post scores map for the community
 	postScoreMap, err := fetchCommunityMetricPostScores(handlers, communityId, userId)
 	if err != nil {
 		logging.Error("Error in fetching post metrics for community: ", communityId, " err: ", err)
-		return
+		return err
 	}
 
 	if len(postScoreMap) == 0 {
-		// Return error in API
-		utils.GeneralAPIValidationError(c, "No community metric post scores found for community")
-		return
+		return nil
 	}
 
 	// Sort the post score map in descending order and get top 1000 posts
@@ -855,9 +864,49 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.DefaultCommunityFeedCacheTTLInMins*time.Minute)
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving community default feed in cache", setStatus.Err())
+		return err
 	}
 
+	return nil
+}
+
+// Exposed Method to compute community default feed | Should be run every 30 mins
+func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// Call compute and save community default feed
+	computeAndSaveCommunityDefaultFeed(handlers, communityId, userId)
+
 	utils.GenerateSuccessResponse(c, nil)
+}
+
+// Exposed Method to compute community default feed in async every 30 mins
+func AsyncComputeCommunityDefaultFeed(handlers *FeedHandlers) error {
+	communityIdsList := externalHelpers.GetCommunityIdsForCommunitySettingsEnabled(handlers.cacheHelper, externalHelpers.PersonalisedFeedSettingType)
+
+	for _, communityId := range communityIdsList {
+		userId := externalHelpers.GetCommunityBotId("", communityId)
+
+		communityIdInt, err := strconv.Atoi(communityId)
+		if err != nil {
+			logging.Error(fmt.Sprintf("Error in converting the community id: %s to int", communityId))
+			continue
+		}
+
+		// Call compute and save community default feed
+		computeAndSaveCommunityDefaultFeed(handlers, communityIdInt, userId)
+	}
+
+	return nil
 }
 
 func fetchCommunityMetricPostScores(handlers *FeedHandlers, communityId int, userId string,

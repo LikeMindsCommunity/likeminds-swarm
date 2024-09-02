@@ -28,7 +28,7 @@ type CommunityWebhooksResponse struct {
 func fetchCommunityWebhooksFromInternalService(apiKey string) []CommunityWebhook {
 
 	// Get Bot Id using ApiKey
-	botId := GetCommunityBotId(apiKey)
+	botId := GetCommunityBotId(apiKey, "")
 	if botId == "" {
 		return nil
 	}
@@ -149,7 +149,7 @@ func IsWebhookUrlActive(cacheHelper cache.Helper, apiKey string, webhookType str
 func DisableWebhookAndSendMail(cacheHelper cache.Helper, apiKey string, webhookType string, webhookUrl string,
 	webhookResponse string, webhookPayload string) {
 
-	botId := GetCommunityBotId(apiKey)
+	botId := GetCommunityBotId(apiKey, "")
 
 	webhookId := fetchWebhookId(cacheHelper, apiKey, webhookType, webhookUrl)
 	if webhookId == 0 {

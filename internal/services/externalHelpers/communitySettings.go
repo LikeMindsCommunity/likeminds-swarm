@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -146,4 +148,36 @@ func IsUserConnectionSettingEnabled(cacheHelper cache.Helper, userId string, com
 	}
 
 	return checkCommunitySettingEnabled(communitySettings, UserConnectionSettingType)
+}
+
+// Expose method to get community ids list for which particluar setting is enabled
+func GetCommunityIdsForCommunitySettingsEnabled(cacheHelper cache.Helper, communitySettingType string) []string {
+	communityIdsList := []string{}
+
+	communitySettingsAllKeys := cacheHelper.GetKeysFromPattern(cache.AllCommunitySettingsCacheKey)
+	communitySettingKeys := communitySettingsAllKeys.Val()
+
+	if communitySettingKeys == nil {
+		logging.Error(fmt.Sprintf("Community settings not found in cache for all the communities"))
+		return communityIdsList
+	}
+
+	re := regexp.MustCompile(CommunityIdFromCommunitySettingsRegex)
+
+	for _, communitySettingKey := range communitySettingKeys {
+		communityIdsMatchList := re.FindStringSubmatch(communitySettingKey)
+
+		if len(communityIdsMatchList) == 2 {
+			communityIdString := communityIdsMatchList[1]
+			communityId, err := strconv.Atoi(communityIdString)
+			if err == nil {
+				communitySettings := fetchCommunitySettingsFromCache(cacheHelper, communityId)
+				if checkCommunitySettingEnabled(communitySettings, communitySettingType) {
+					communityIdsList = append(communityIdsList, communityIdString)
+				}
+			}
+		}
+	}
+
+	return communityIdsList
 }

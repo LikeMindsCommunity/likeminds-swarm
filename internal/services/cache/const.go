@@ -2,13 +2,14 @@ package cache
 
 // Swarm cache keys
 const (
-	CommunityConfigurationsKey    = "%d_community_configurations"   // communityId
-	UserConnnectionCacheKey       = "connection_list_%s_%s"         // userId, communityId
-	ConnectionFeedBufferCacheKey  = "connection_feed_buffer_%s_%s"  // userId, communityId
-	InferdoApiFailsCountKey       = "inferdo_api_fails_count_%d"    // communityId
-	CommunityWebhooksCacheKey     = "%s_webhooks"                   // apiKey
-	PostTopLikedCommentKey        = "%d_%s_top_liked_comments"      // communityId, postId
-	CommunitySettingsCacheKey     = "%d_community_settings"         // communityId
+	CommunityConfigurationsKey    = "%d_community_configurations"  // communityId
+	UserConnnectionCacheKey       = "connection_list_%s_%s"        // userId, communityId
+	ConnectionFeedBufferCacheKey  = "connection_feed_buffer_%s_%s" // userId, communityId
+	InferdoApiFailsCountKey       = "inferdo_api_fails_count_%d"   // communityId
+	CommunityWebhooksCacheKey     = "%s_webhooks"                  // apiKey
+	PostTopLikedCommentKey        = "%d_%s_top_liked_comments"     // communityId, postId
+	CommunitySettingsCacheKey     = "%d_community_settings"        // communityId
+	AllCommunitySettingsCacheKey  = "*_community_settings"
 	UserCommunityChannelsCacheKey = "%d_%s_user_community_channels" // communityId, userId
 )
 
