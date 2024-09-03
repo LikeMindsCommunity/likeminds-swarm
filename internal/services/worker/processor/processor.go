@@ -48,10 +48,7 @@ func NewTaskProcessor(feedHandlers *handlers.FeedHandlers, QueueNames []string) 
 	config := worker.GetServerConfigurations(QueueNames)
 
 	// creates a new server to process tasks
-	server := asynq.NewServer(
-		redisOpt,
-		config,
-	)
+	server := asynq.NewServer(redisOpt, config)
 
 	return &RedisTaskProcessor{
 		server:       server,
