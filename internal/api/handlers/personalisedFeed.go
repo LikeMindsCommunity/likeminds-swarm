@@ -698,11 +698,12 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 			}
 
 		} else {
-			err = AsyncComputeCommunityDefaultFeed(handlers)
-			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
-			}
+
+			// Fetch community bot id
+			botId := externalHelpers.GetCommunityBotId(headers[utils.HeadersApiKey], "")
+
+			// compute and save community default feed
+			computeAndSaveCommunityDefaultFeed(handlers, communityId, botId)
 
 			cacheKey = fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
 			defaultFeed, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
@@ -718,7 +719,7 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 					return
 				}
 			} else {
-				utils.GeneralAPIValidationError(c, "Personalised feed is not yet computed. Please try again later.")
+				utils.GeneralAPIValidationError(c, "Personalised & Default feed is not yet computed. Please try again later.")
 				return
 			}
 		}
