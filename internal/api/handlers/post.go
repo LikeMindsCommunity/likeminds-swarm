@@ -2299,7 +2299,7 @@ func (handlers *FeedHandlers) removePostFromCommunityPinnedPostsCache(communityI
 }
 
 // Create new post topics in PostTopics collection
-func CreateOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllExisting bool) error {
+func createOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllExisting bool) error {
 
 	if postId == "" {
 		logging.Error("Invalid post ID!")
@@ -2377,6 +2377,35 @@ func DeletePostTopics(handlers *FeedHandlers, postId string) error {
 	if err := handlers.postTopicsHelper.DeletePostTopicsHelper(filter); err != nil {
 		logging.Error("Error in deleting Post Topics")
 		return nil
+	}
+
+	return nil
+}
+
+func CreatePostAsyncTasks(handlers *FeedHandlers, postId string) error {
+
+	// Create post topics in PostTopics collection and update post count in topics
+	err := createOrUpdatePostTopics(handlers, postId, false)
+	if err != nil {
+		return err
+	}
+
+	// Update personalised feed for the user
+	err = updateRecencyMetricForNewlycreatedPost(handlers.postHelper, handlers.cacheHelper, postId)
+	if err != nil {
+		logging.Error("Error in updating personalised feed for nearly created post: ", err)
+		return nil
+	}
+
+	return nil
+}
+
+func EditPostAsyncTasks(handlers *FeedHandlers, postId string) error {
+
+	// Create post topics in PostTopics collection and update post count in topics
+	err := createOrUpdatePostTopics(handlers, postId, true)
+	if err != nil {
+		return err
 	}
 
 	return nil

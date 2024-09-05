@@ -29,6 +29,7 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.HandleFunc(worker.TaskAsyncEditPostTasks, processor.editPostBackgroundTasks)
 	mux.HandleFunc(worker.TaskAsyncDeletePostTasks, processor.deletePostBackgroundTasks)
 	mux.HandleFunc(worker.TaskAsyncSendNotification, processor.sendNotification)
+	mux.HandleFunc(worker.TaskAsyncCommunityDefaultFeed, processor.computeCommunityDefaultFeed)
 
 	return processor.server.Run(mux)
 }
@@ -47,10 +48,7 @@ func NewTaskProcessor(feedHandlers *handlers.FeedHandlers, QueueNames []string) 
 	config := worker.GetServerConfigurations(QueueNames)
 
 	// creates a new server to process tasks
-	server := asynq.NewServer(
-		redisOpt,
-		config,
-	)
+	server := asynq.NewServer(redisOpt, config)
 
 	return &RedisTaskProcessor{
 		server:       server,

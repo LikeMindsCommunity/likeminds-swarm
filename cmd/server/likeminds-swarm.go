@@ -15,6 +15,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/processor"
+	"github.com/nateshr/likeminds-swarm/internal/services/worker/scheduler"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
@@ -27,7 +28,7 @@ import (
 )
 
 const (
-	AppVersion     string = "1.28.0" // Application Version
+	AppVersion     string = "1.29.0" // Application Version
 	GinPortAddress string = ":8080"  // Gin Port Address
 )
 
@@ -143,6 +144,13 @@ func main() {
 
 	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
+		// Start the schduler
+		go func() {
+			feedTaskScheduler := scheduler.NewTaskScheduler()
+
+			// Run Background worker to schedule tasks
+			logging.Fatal(feedTaskScheduler.Run())
+		}()
 
 		// get queue names from arguments
 		queues := []string{}

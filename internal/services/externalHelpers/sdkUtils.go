@@ -36,15 +36,21 @@ func GetCommunityId(c *gin.Context) int {
 }
 
 // Exposed method to get community bot/owner id using API Key
-func GetCommunityBotId(api_key string) string {
+func GetCommunityBotId(apiKey string, communityId string) string {
 
 	headers := map[string]interface{}{
-		"x-api-key":       api_key,
+		"x-api-key":       apiKey,
 		"x-platform-type": SwarmServiceHeader,
 	}
 
+	params := map[string]string{}
+
+	if communityId != "" {
+		params["community_id"] = communityId
+	}
+
 	// Send GET Request to api/sdk/user/bot
-	respBytes, statusCode, err := GetRequestResponse(CaravanService, SdkBotUserEndpoint, GETRequest, headers, nil, nil)
+	respBytes, statusCode, err := GetRequestResponse(CaravanService, SdkBotUserEndpoint, GETRequest, headers, params, nil)
 	if err != nil || statusCode != http.StatusOK {
 		logging.Error("Error fetching bot id from API: ", err, " Response: ", string(respBytes))
 		return ""

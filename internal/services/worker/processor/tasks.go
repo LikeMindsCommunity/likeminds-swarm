@@ -117,7 +117,7 @@ func (processor *RedisTaskProcessor) createPostBackgroundTasks(ctx context.Conte
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	return handlers.CreateOrUpdatePostTopics(processor.feedHandlers, payload.PostID, false)
+	return handlers.CreatePostAsyncTasks(processor.feedHandlers, payload.PostID)
 }
 
 // Task to trigger edit post
@@ -128,7 +128,7 @@ func (processor *RedisTaskProcessor) editPostBackgroundTasks(ctx context.Context
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	return handlers.CreateOrUpdatePostTopics(processor.feedHandlers, payload.PostID, true)
+	return handlers.EditPostAsyncTasks(processor.feedHandlers, payload.PostID)
 }
 
 // Task to trigger delete post
@@ -151,4 +151,9 @@ func (processor *RedisTaskProcessor) sendNotification(ctx context.Context, task 
 	}
 
 	return handlers.SendNotification(*processor.feedHandlers, payload.ActivityID, payload.PlatformCode, payload.VersionCode)
+}
+
+// Task to compute community default feed
+func (processor *RedisTaskProcessor) computeCommunityDefaultFeed(ctx context.Context, task *asynq.Task) error {
+	return handlers.AsyncComputeCommunityDefaultFeed(processor.feedHandlers)
 }

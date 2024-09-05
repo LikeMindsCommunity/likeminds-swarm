@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
+	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -58,9 +60,8 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 ) map[string]float64 {
 	postsMetricMap := map[string]float64{}
 
-	cacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
-
 	// Get data from cache
+	cacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
 	postsMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey)
 	if postsMetricMapCacheValue.Val() != "" && postsMetricMapCacheValue.Val() != "null" {
 		return postsMetricMap
@@ -68,9 +69,8 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 
 	// Get personalised weights
 	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
-
 	if err != nil {
-		logging.Error("Error in computation of recency metric: ", err)
+		logging.Error("Error in computation of recency metric when fetching weights: ", err)
 		return postsMetricMap
 	}
 
@@ -102,7 +102,7 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 		var metricScore float64
 
 		postCreatedAtInSeconds := float64(postData["created_at"].(primitive.DateTime).Time().Unix())
-		if personalisedFeedWeights.RecencyMetrics.MaxThreshold-(float64(time.Now().Unix())-postCreatedAtInSeconds) > 0 {
+		if personalisedFeedWeights.RecencyMetrics.MaxThreshold-(currentTimeInSeconds-postCreatedAtInSeconds) > 0 {
 			metricScore = computeRecencyMetricScore(
 				postCreatedAtInSeconds,
 				personalisedFeedWeights.RecencyMetrics.MaxThreshold,
@@ -135,9 +135,8 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 ) map[string]float64 {
 	postsLikesMetricMap := map[string]float64{}
 
-	cacheKey := fmt.Sprintf(cache.PostsLikesMetricsKey, communityId)
-
 	// Get data from cache
+	cacheKey := fmt.Sprintf(cache.PostsLikesMetricsKey, communityId)
 	postsLikesMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey) // Can use GetWithKeyExists to check if key exists
 	if postsLikesMetricMapCacheValue.Val() != "" && postsLikesMetricMapCacheValue.Val() != "null" {
 		return postsLikesMetricMap
@@ -146,9 +145,9 @@ func PostLikesMetricComputation(handlers *FeedHandlers, userId string, community
 	// Start of computation of post likes metric
 	var postRecencyMetricsMap map[string]float64
 	postIdsArray := []string{}
-	postsMetricMapCacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
 
 	// Get data from cache
+	postsMetricMapCacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, communityId)
 	postsMetricMapCacheValue := handlers.cacheHelper.Get(postsMetricMapCacheKey)
 	if postsMetricMapCacheValue.Val() == "" || postsMetricMapCacheValue.Val() == "null" {
 		return postsLikesMetricMap
@@ -231,9 +230,8 @@ func PostCommentsMetricComputation(handlers *FeedHandlers, userId string, commun
 ) map[string]float64 {
 	postsCommentsMetricMap := map[string]float64{}
 
-	cacheKey := fmt.Sprintf(cache.PostsCommentsMetricsKey, communityId)
-
 	// Get data from cache
+	cacheKey := fmt.Sprintf(cache.PostsCommentsMetricsKey, communityId)
 	postsCommentsMetricMapCacheValue := handlers.cacheHelper.Get(cacheKey)
 	if postsCommentsMetricMapCacheValue.Val() != "" && postsCommentsMetricMapCacheValue.Val() != "null" {
 		return postsCommentsMetricMap
@@ -696,9 +694,31 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 				return
 			}
 
-		} else { // If default feed not found, send error
-			utils.GeneralAPIValidationError(c, "Personalised feed is not yet computed. Please try again later.")
-			return
+		} else {
+
+			// Fetch community bot id
+			botId := externalHelpers.GetCommunityBotId(headers[utils.HeadersApiKey], "")
+
+			// compute and save community default feed
+			computeAndSaveCommunityDefaultFeed(handlers, communityId, botId)
+
+			cacheKey = fmt.Sprintf(cache.CommunityDefaultFeedKey, communityId)
+			defaultFeed, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
+			if err != nil {
+				utils.GeneralAPIInternalError(c, err.Error())
+				return
+			}
+
+			if exists {
+				err := json.Unmarshal([]byte(defaultFeed), &postIds)
+				if err != nil {
+					utils.GeneralAPIInternalError(c, err.Error())
+					return
+				}
+			} else {
+				utils.GeneralAPIValidationError(c, "Personalised & Default feed is not yet computed. Please try again later.")
+				return
+			}
 		}
 	}
 
@@ -816,30 +836,17 @@ func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId
 	}
 }
 
-// Exposed Method to compute community default feed | Should be run every 30 mins
-func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
-
-	// fetch headers and url params
-	headers := utils.GetHeaders(c)
-	userId := headers[utils.HeadersMemberId]
-
-	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
-	if communityId == externalHelpers.DefaultCommunityId {
-		return
-	}
-
+// Internal method to compute and save community default feed in cache
+func computeAndSaveCommunityDefaultFeed(handlers *FeedHandlers, communityId int, userId string) error {
 	// Fetch post scores map for the community
 	postScoreMap, err := fetchCommunityMetricPostScores(handlers, communityId, userId)
 	if err != nil {
 		logging.Error("Error in fetching post metrics for community: ", communityId, " err: ", err)
-		return
+		return err
 	}
 
 	if len(postScoreMap) == 0 {
-		// Return error in API
-		utils.GeneralAPIValidationError(c, "No community metric post scores found for community")
-		return
+		return nil
 	}
 
 	// Sort the post score map in descending order and get top 1000 posts
@@ -855,9 +862,49 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	setStatus := handlers.cacheHelper.Set(cacheKey, defaultFeedBytesValue, cache.DefaultCommunityFeedCacheTTLInMins*time.Minute)
 	if setStatus.Err() != nil {
 		logging.Error("Error in saving community default feed in cache", setStatus.Err())
+		return err
 	}
 
+	return nil
+}
+
+// Exposed Method to compute community default feed | Should be run every 30 mins
+func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
+
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// Call compute and save community default feed
+	computeAndSaveCommunityDefaultFeed(handlers, communityId, userId)
+
 	utils.GenerateSuccessResponse(c, nil)
+}
+
+// Exposed Method to compute community default feed in async every 30 mins
+func AsyncComputeCommunityDefaultFeed(handlers *FeedHandlers) error {
+	communityIdsList := externalHelpers.GetCommunityIdsForCommunitySettingsEnabled(handlers.cacheHelper, externalHelpers.PersonalisedFeedSettingType)
+
+	for _, communityId := range communityIdsList {
+		userId := externalHelpers.GetCommunityBotId("", communityId)
+
+		communityIdInt, err := strconv.Atoi(communityId)
+		if err != nil {
+			logging.Error(fmt.Sprintf("Error in converting the community id: %s to int", communityId))
+			continue
+		}
+
+		// Call compute and save community default feed
+		computeAndSaveCommunityDefaultFeed(handlers, communityIdInt, userId)
+	}
+
+	return nil
 }
 
 func fetchCommunityMetricPostScores(handlers *FeedHandlers, communityId int, userId string,
@@ -1007,4 +1054,73 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 	}
 
 	return userSpecificMetricScores, nil
+}
+
+// Internal method to compute and save recency metric for newly created post
+func updateRecencyMetricForNewlycreatedPost(postHelper interfaces.PostHelper, cacheHelper cache.Helper, postId string) error {
+
+	// Fetch post using postId
+	postfilter := gin.H{
+		"_id":        postId,
+		"is_deleted": false,
+	}
+
+	postData, err := postHelper.FindPostHelper(postfilter, nil)
+	if err != nil {
+		return fmt.Errorf("error in fetching post: %v", err)
+	}
+
+	if len(postData) == 0 {
+		return fmt.Errorf("post not found with postId: %s", postId)
+	}
+
+	// Get posts recency metrics data from cache
+	cacheKey := fmt.Sprintf(cache.PostsRecencyMetricsKey, postData[0].CommunityId)
+	postsMetricMapCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	if err != nil {
+		return fmt.Errorf("error in fetching posts recency metrics from cache: %v", err)
+	}
+
+	if !exists {
+		logging.Info("Posts recency metrics not present in cache for community: ", postData[0].CommunityId)
+		return nil
+	}
+
+	// Update the post recency metric score with the new post score in cache
+	var postRecencyMetricsMap map[string]float64
+	json.Unmarshal([]byte(postsMetricMapCacheValue), &postRecencyMetricsMap)
+
+	botId := externalHelpers.GetCommunityBotId("", fmt.Sprint(postData[0].CommunityId))
+	if botId == "" {
+		return fmt.Errorf("error in fetching botId")
+	}
+
+	// Get personalised weights
+	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper, botId, postData[0].CommunityId)
+	if err != nil {
+		return fmt.Errorf("error in fetching personalised feed weights: %v", err)
+	}
+
+	// Compute recency metric score for post
+	postCreatedAtInSeconds := float64(postData[0].CreatedAt.Unix())
+	currentTimeInSeconds := float64(time.Now().Unix())
+
+	metricScore := 0.0
+
+	if personalisedFeedWeights.RecencyMetrics.MaxThreshold-(currentTimeInSeconds-postCreatedAtInSeconds) > 0 {
+		metricScore = computeRecencyMetricScore(
+			postCreatedAtInSeconds, personalisedFeedWeights.RecencyMetrics.MaxThreshold,
+			personalisedFeedWeights.RecencyMetrics.Weight, currentTimeInSeconds)
+	}
+
+	postRecencyMetricsMap[postId] = metricScore
+
+	// Set the updated post metric score in cache
+	postsMetricMapBytesValue, _ := json.Marshal(postRecencyMetricsMap)
+	setStatus := cacheHelper.Set(cacheKey, postsMetricMapBytesValue, cache.CommunityMetricCacheTTLInMins*time.Minute)
+	if setStatus.Err() != nil {
+		logging.Error("Error in saving recency metric score in cache", setStatus.Err())
+	}
+
+	return nil
 }

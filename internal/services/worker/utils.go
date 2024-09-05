@@ -161,6 +161,18 @@ func GetServerConfigurations(QueueNames []string) asynq.Config {
 	return config
 }
 
+func GetSchedulerConfigurations() *asynq.SchedulerOpts {
+
+	// default configurations for the Task Processor
+	config := asynq.SchedulerOpts{
+
+		// Using custom logger for logging
+		Logger: logging.NewCustomLogger(),
+	}
+
+	return &config
+}
+
 func retryDelayFunctionForWebhookTasks(n int, e error, t *asynq.Task) time.Duration {
 
 	// If task is webhookRequest
