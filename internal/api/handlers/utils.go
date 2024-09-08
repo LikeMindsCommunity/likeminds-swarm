@@ -132,7 +132,7 @@ func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned boo
 		}
 
 		// Get users list who are blocked by userId or blocked the userId
-		blockUserValuesList, _ := externalHelpers.GetUserBlockList(cacheHelper, userId, communityId, "")
+		blockUserValuesList, _ := externalHelpers.GetUserBlockList(cacheHelper, userId, communityId)
 
 		isEntityOwnerBlocked := false
 		if len(utils.GetSimilarBetweenArray([]string{entityCreatorId}, blockUserValuesList.BlockedUsers)) > 0 {

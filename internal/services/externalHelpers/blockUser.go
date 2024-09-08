@@ -21,7 +21,7 @@ type BlockUserCache struct {
 }
 
 // Internal method to fetch block user list against userId from caravan service
-func GetUserBlockList(cacheHelper cache.Helper, userId string, communityId int, apiKey string) (*BlockUserCache, error) {
+func GetUserBlockList(cacheHelper cache.Helper, userId string, communityId int) (*BlockUserCache, error) {
 	var blockUserResponse BlockUserResponse
 	blockUserValue := BlockUserCache{
 		BlockingUsers: []string{},
@@ -42,20 +42,16 @@ func GetUserBlockList(cacheHelper cache.Helper, userId string, communityId int, 
 		return &blockUserValue, nil
 	}
 
-	if apiKey == "" {
-		logging.Info(fmt.Sprintf("API key is empty and block user data not found in cache for user: %s, community: %d", userId, communityId))
-		return &blockUserValue, nil
-	}
-
 	headers := gin.H{
-		"Content-Type": "application/json",
-		"x-member-id":  userId,
-		"x-api-key":    apiKey,
+		"Content-Type":    "application/json",
+		"x-platform-type": SwarmServiceHeader,
+		"x-member-id":     userId,
 	}
 
 	// Params to be sent in the api/community/configurations
 	params := map[string]string{
 		ParamBlockUserType: fmt.Sprintf("[%s, %s]", BlockingUserType, BlockedUserType),
+		ParamCommunityId:   fmt.Sprintf("%d", communityId),
 		ParamPage:          fmt.Sprintf("%d", DefaultGetBlockUserPageValue),
 		ParamPageSize:      fmt.Sprintf("%d", DefaultGetBlockUserPageSizeValue),
 	}

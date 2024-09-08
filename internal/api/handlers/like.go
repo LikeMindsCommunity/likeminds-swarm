@@ -368,7 +368,6 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 
 	// fetch url params
 	post_id := c.Param("post_id")
@@ -380,7 +379,7 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -598,7 +597,6 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 
 	// fetch url params
 	post_id := c.Param("post_id")
@@ -611,7 +609,7 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

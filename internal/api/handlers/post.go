@@ -1239,7 +1239,6 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
-	apiKey := headers[utils.HeadersApiKey]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -1255,7 +1254,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1490,7 +1489,6 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -1510,7 +1508,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -2211,7 +2209,6 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 
 	var searchPostRequest requests.SearchPostRequest
 
@@ -2239,7 +2236,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	parsedExcludedChatroomIds, _ := json.Marshal(excludedChatroomIds)
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

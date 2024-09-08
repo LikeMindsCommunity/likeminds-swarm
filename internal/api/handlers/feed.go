@@ -65,7 +65,6 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	memberRole := headers[utils.HeaderMemberRole]
 
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
@@ -105,7 +104,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

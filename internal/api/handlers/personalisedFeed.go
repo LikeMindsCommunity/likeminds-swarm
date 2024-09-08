@@ -34,8 +34,18 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// Compute recency metric and save it in cache
-	RecencyMetricComputation(handlers, userId, communityId)
+	RecencyMetricComputation(handlers, userId, communityId, excludedUserIds)
 
 	// Compute post likes metric and save it in cache
 	go PostLikesMetricComputation(handlers, userId, communityId)
@@ -56,7 +66,7 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 }
 
 // Recompute & save post ranking on the basis of recency metrics
-func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId int,
+func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId int, excludedUserIds []string,
 ) map[string]float64 {
 	postsMetricMap := map[string]float64{}
 
@@ -80,6 +90,9 @@ func RecencyMetricComputation(handlers *FeedHandlers, userId string, communityId
 			"$match": gin.H{
 				"community_id": communityId,
 				"is_deleted":   false,
+				"user_id": gin.H{
+					"$nin": excludedUserIds,
+				},
 			},
 		},
 		gin.H{
@@ -636,6 +649,7 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
+	apiKey := headers[utils.HeadersApiKey]
 	memberRole := headers[utils.HeaderMemberRole]
 
 	versionCode := headers[utils.HeadersVersionCode]
@@ -697,7 +711,7 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		} else {
 
 			// Fetch community bot id
-			botId := externalHelpers.GetCommunityBotId(headers[utils.HeadersApiKey], "")
+			botId := externalHelpers.GetCommunityBotId(apiKey, "")
 
 			// compute and save community default feed
 			computeAndSaveCommunityDefaultFeed(handlers, communityId, botId)
@@ -926,8 +940,18 @@ func fetchCommunityMetricPostScores(handlers *FeedHandlers, communityId int, use
 			return postScoreMap, fmt.Errorf("error in unmarshalling recency metrics from cache: %v", err)
 		}
 	} else { // Compute recency metric if not found in cache
+		// Get users list who are blocked by userId or blocked the userId
+		blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+		if err != nil {
+			logging.Error("Error in fetching block users from cache: ", err)
+			return postScoreMap, fmt.Errorf("error in unmarshalling recency metrics from cache: %v", err)
+		}
+
+		// Combine the above two lists to get excluded user lists
+		excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 		logging.Info("Recency metrics not found in cache. Computing recency metrics for community: ", communityId)
-		recentPostsMapData = RecencyMetricComputation(handlers, userId, communityId)
+		recentPostsMapData = RecencyMetricComputation(handlers, userId, communityId, excludedUserIds)
 	}
 
 	for postId := range recentPostsMapData {

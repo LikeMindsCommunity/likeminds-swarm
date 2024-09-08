@@ -433,7 +433,6 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -446,7 +445,7 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -568,7 +567,6 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -581,7 +579,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -655,7 +653,6 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
 	userId := headers[utils.HeadersMemberId]
-	apiKey := headers[utils.HeadersApiKey]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -673,7 +670,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1003,7 +1000,6 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	postId := c.Param("post_id")
 	commentId := c.Param("comment_id")
-	apiKey := headers[utils.HeadersApiKey]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -1021,7 +1017,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
-	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
