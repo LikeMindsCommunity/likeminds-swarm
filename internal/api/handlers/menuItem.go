@@ -66,6 +66,10 @@ func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalE
 		menuId = constants.DeletePendingPostMenuItemId
 		menuTitle = constants.DeletePendingPostMenuItemTitle
 
+	case constants.BlockUserMenuItemName:
+		menuId = constants.BlockUserMenuItemId
+		menuTitle = constants.BlockUserMenuItemTitle
+
 	}
 
 	return responses.MenuResponse{
@@ -107,7 +111,7 @@ func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalH
 }
 
 // Exposed Method to get Post Menu for CMs who are not owners
-func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
 	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
@@ -122,12 +126,22 @@ func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEn
 
 	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName, externalEntities))
 
+	if !isEntityOwnerBlocked {
+		// Block user menu item
+		menuItems = append(menuItems, getMenuItem(constants.BlockUserMenuItemName, externalEntities))
+	}
+
 	return menuItems
 }
 
 // Exposed Method to get Post Menu for members
-func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
 	menuItems := []responses.MenuResponse{getMenuItem(constants.ReportPostMenuItemName, externalEntities)}
+
+	if !isEntityOwnerBlocked {
+		// Block user menu item
+		menuItems = append(menuItems, getMenuItem(constants.BlockUserMenuItemName, externalEntities))
+	}
 
 	return menuItems
 

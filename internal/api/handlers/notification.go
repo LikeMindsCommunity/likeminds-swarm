@@ -126,7 +126,7 @@ func sendCreatePostPermissionAddedActionNotification(activity *entities.Activity
 func sendPostDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers, platform_code string, version_code string,
 ) {
 	// Fetch post data
-	post_data, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, false)
+	post_data, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, false, []string{})
 	if err != nil {
 		return
 	}
@@ -241,7 +241,7 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 	subTitle := ""
 
 	// Fetch comment data
-	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityID.Hex())
+	comment_data, err := fetchCommentByIdInternal(handlers.commentHelper, activity.EntityID.Hex(), []string{})
 	if err != nil {
 		return
 	}
@@ -282,7 +282,7 @@ func sendAlsoCommentActionNotification(activity *entities.Activity, handlers Fee
 	switch activity.EntityType {
 	case constants.Post:
 		// Fetch post details
-		post_data, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, true)
+		post_data, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, true, []string{})
 		if err != nil {
 			return
 		}
@@ -572,7 +572,7 @@ func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandle
 // Internal General Method to send notification on repost action on a post
 func sendRepostPostActionNotification(activity *entities.Activity, handlers FeedHandlers, platformCode string, versionCode string) {
 
-	postData, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, true)
+	postData, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, true, []string{})
 	if err != nil {
 		return
 	}

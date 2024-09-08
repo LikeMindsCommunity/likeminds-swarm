@@ -53,6 +53,21 @@ func GetDifferenceBetweenArray(a []primitive.ObjectID, b []primitive.ObjectID) [
 	return diff
 }
 
+// returns the elements in `a` that are in `b`.
+func GetSimilarBetweenArray(a []string, b []string) []string {
+	mb := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var similar []string
+	for _, x := range a {
+		if _, found := mb[x]; found {
+			similar = append(similar, x)
+		}
+	}
+	return similar
+}
+
 // This function returns the minimum number in the array
 func GetMinimumFromArray(vars ...float64) float64 {
 	min := vars[0]

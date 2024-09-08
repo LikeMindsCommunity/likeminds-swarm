@@ -788,7 +788,7 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.MenuItems = []responses.MenuResponse{}
 	if loggedInUser.MemberRole != utils.GuestRole {
 		response.MenuItems = getEntityMenuItems(constants.PostEntityType, loggedInUser.IsCm, loggedInUser.UserId == post.UserId,
-			post.IsPinned, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.UserId, post.CommunityId, handlers.cacheHelper)
+			post.IsPinned, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.UserId, post.CommunityId, handlers.cacheHelper, post.UserId)
 	}
 
 	if post.IsDeleted {
@@ -868,7 +868,7 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 }
 
 // Internal Method to fetch post using post_id
-func FetchPostData(helper interfaces.PostHelper, postId string, communityId int, isDeletedCheck bool,
+func FetchPostData(helper interfaces.PostHelper, postId string, communityId int, isDeletedCheck bool, excludedUserIds []string,
 ) (*entities.Post, error) {
 
 	// post filter data
@@ -882,6 +882,12 @@ func FetchPostData(helper interfaces.PostHelper, postId string, communityId int,
 
 	if isDeletedCheck {
 		postFilterData["is_deleted"] = false
+	}
+
+	if len(excludedUserIds) > 0 {
+		postFilterData["user_id"] = gin.H{
+			"$nin": excludedUserIds,
+		}
 	}
 
 	// fetch post using helper method
@@ -900,12 +906,12 @@ func FetchPostData(helper interfaces.PostHelper, postId string, communityId int,
 
 // Internal Method to fetch parsed post with replies
 func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int, filterOptions map[string]interface{},
-	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
+	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, memberRole string, excludedUserIds []string,
 ) (responses.PostWithRepliesResponse, error) {
 
 	var postWithRepliesResponse responses.PostWithRepliesResponse
 
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, excludedUserIds)
 	if err != nil {
 		return postWithRepliesResponse, err
 	}
@@ -914,6 +920,9 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 		"level":      constants.CommentBaseLevel,
 		"is_deleted": false,
 		"post_id":    postId,
+		"user_id": gin.H{
+			"$nin": excludedUserIds,
+		},
 	}
 
 	// fetch comment using helper method
@@ -1107,7 +1116,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	}
 
 	// fetch post data using new post_id
-	postData, err := FetchPostData(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId.(primitive.ObjectID).Hex(), communityId, true, []string{})
 	if err != nil {
 		return nil, err
 	}
@@ -1230,6 +1239,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
+	apiKey := headers[utils.HeadersApiKey]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -1242,6 +1252,31 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err := c.ShouldBindJSON(&createPostRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
+	// If users are tagged in post
+	if len(createPostRequest.UUIDs) > 0 {
+		similarUUIDs := utils.GetSimilarBetweenArray(createPostRequest.UUIDs, blockUserValuesList.BlockedUsers)
+		if len(similarUUIDs) > 0 {
+			utils.GeneralAPIValidationError(c, utils.BlockedUserTagError)
+			return
+		}
+
+		similarUUIDs = utils.GetSimilarBetweenArray(createPostRequest.UUIDs, blockUserValuesList.BlockingUsers)
+		if len(similarUUIDs) > 0 {
+			utils.GeneralAPIValidationError(c, utils.BlockingUserTagError)
+			return
+		}
 	}
 
 	// if on_behalf_of_uuid is not empty
@@ -1292,7 +1327,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch post response data
 	fetchPostData, err := fetchPostWithReplies(handlers, postData.ID.Hex(), communityId,
 		filterOptions, headers[utils.HeadersMemberId], createPostRequest.UserIsCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
+		headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
 	if err == nil {
 		response["post"] = fetchPostData
 		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
@@ -1454,6 +1489,8 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
+	userId := headers[utils.HeadersMemberId]
+	apiKey := headers[utils.HeadersApiKey]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -1472,6 +1509,16 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// reponse data
 	response := gin.H{
 		"success": true,
@@ -1480,7 +1527,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	// fetch post response data
 	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions,
 		headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
+		headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1518,7 +1565,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post data
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1649,7 +1696,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	// fetch post response data
 	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, headers[utils.HeadersMemberId],
 		editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, memberRole)
+		apiRevampV1Check, memberRole, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1718,7 +1765,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1986,7 +2033,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -2007,7 +2054,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 	}
 
 	// fetch updated post data using post_id
-	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -2163,6 +2210,8 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	userId := headers[utils.HeadersMemberId]
+	apiKey := headers[utils.HeadersApiKey]
 
 	var searchPostRequest requests.SearchPostRequest
 
@@ -2189,9 +2238,19 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	excludedChatroomIds := utils.ParseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
 	parsedExcludedChatroomIds, _ := json.Marshal(excludedChatroomIds)
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// dsl query to search posts
 	postQuery := GetPostFilterQuery(page, pageSize, searchPostRequest.SearchType,
-		searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId)
+		searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId, excludedUserIds)
 	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
@@ -2550,7 +2609,7 @@ func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId pri
 	}
 
 	// fetch post data
-	postData, err := FetchPostData(handlers.postHelper, postId.Hex(), communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId.Hex(), communityId, true, []string{})
 	if err != nil {
 		return nil, err
 	}

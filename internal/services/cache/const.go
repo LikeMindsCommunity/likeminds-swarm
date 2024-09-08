@@ -11,6 +11,7 @@ const (
 	CommunitySettingsCacheKey     = "%d_community_settings"        // communityId
 	AllCommunitySettingsCacheKey  = "*_community_settings"
 	UserCommunityChannelsCacheKey = "%d_%s_user_community_channels" // communityId, userId
+	BlockedUsersCacheKey          = "%d_%s_blocked_users"           // communityId, userId
 )
 
 // Swarm cache keys of personalised feed
@@ -36,6 +37,7 @@ const (
 	UserCommunityChannelsCacheTTLInHours   = 720 // 30 days
 	UserDampenedPostsCacheTTLInHours       = 720 // 30 days
 	UserMetricCacheTTLInHours              = 720 // 30 days
+	BlockUserCacheTTLInHours               = 720 // 30 days
 )
 
 // Cache TTLs (in Mins)

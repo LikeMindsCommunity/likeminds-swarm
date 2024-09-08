@@ -118,12 +118,15 @@ func fetchMultipleEntitiesLikesCount(helper interfaces.LikeHelper, entity_ids []
 
 // Internal Method to fetch the likes for a specific Entity
 func fetchEntityLikes(helper interfaces.LikeHelper, entity_id string, entity_type string,
-	filterOpts map[string]interface{}) ([]entities.Like, error) {
+	filterOpts map[string]interface{}, excludedUsersList []string) ([]entities.Like, error) {
 	// like filter data
 	like_filter_data := gin.H{
 		"entity_id":   entity_id,
 		"entity_type": entity_type,
 		"is_deleted":  false,
+		"liked_by": gin.H{
+			"$nin": excludedUsersList,
+		},
 	}
 
 	// fetch like using helper method
@@ -222,7 +225,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true)
+	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -364,18 +367,30 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	userId := headers[utils.HeadersMemberId]
+	apiKey := headers[utils.HeadersApiKey]
 
 	// fetch url params
 	post_id := c.Param("post_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// fetch post data
-	_, err := FetchPostData(handlers.postHelper, post_id, community_id, true)
+	_, err = FetchPostData(handlers.postHelper, post_id, communityId, true, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -392,7 +407,7 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	}
 
 	// fetch like using helper method
-	like_results, err := fetchEntityLikes(handlers.likeHelper, post_id, constants.PostEntityType, like_filter_options)
+	like_results, err := fetchEntityLikes(handlers.likeHelper, post_id, constants.PostEntityType, like_filter_options, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -427,14 +442,14 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	}
 
 	//fetch post using helper method
-	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true)
+	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment using helper method
-	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id)
+	comment_data, err := fetchComment(handlers.commentHelper, comment_id, post_id, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -582,26 +597,38 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	userId := headers[utils.HeadersMemberId]
+	apiKey := headers[utils.HeadersApiKey]
 
 	// fetch url params
 	post_id := c.Param("post_id")
 	comment_id := c.Param("comment_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId, apiKey)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// fetch post data
-	_, err := FetchPostData(handlers.postHelper, post_id, community_id, true)
+	_, err = FetchPostData(handlers.postHelper, post_id, communityId, true, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment using helper method
-	_, err = fetchComment(handlers.commentHelper, comment_id, post_id)
+	_, err = fetchComment(handlers.commentHelper, comment_id, post_id, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -618,7 +645,7 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	}
 
 	// fetch like using helper method
-	like_results, err := fetchEntityLikes(handlers.likeHelper, comment_id, constants.CommentEntityType, like_filter_options)
+	like_results, err := fetchEntityLikes(handlers.likeHelper, comment_id, constants.CommentEntityType, like_filter_options, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
