@@ -1448,7 +1448,7 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 }
 
 // Internal method to create mongo query to get top comments based on likes
-func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}) []map[string]interface{} {
+func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder int, commentsCount interface{}, excludedUserIds []string) []map[string]interface{} {
 	commentsFilterData := []map[string]interface{}{}
 
 	// Add match logic
@@ -1458,6 +1458,11 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 				{
 					"post_id": gin.H{
 						"$in": postIds,
+					},
+				},
+				{
+					"user_id": gin.H{
+						"$nin": excludedUserIds,
 					},
 				},
 				{
@@ -1540,13 +1545,22 @@ func createTopCommentsBasedOnLikesQuery(postIds []primitive.ObjectID, sortOrder 
 
 // Internal Method to get top n comments against posts based on sorting key, sort order
 func getTopCommentsAgainstPostsOnLikes(handlers *FeedHandlers, postIds []primitive.ObjectID, sortOrder int,
-	commentsCount interface{}, communityId int, memberRole string,
+	commentsCount interface{}, userId string, communityId int, memberRole string,
 ) (map[string]interface{}, []string, error) {
 
 	postsTopComments := map[string]interface{}{}
 	allCommentsIds := []string{}
 
-	commentsFilterData := createTopCommentsBasedOnLikesQuery(postIds, sortOrder, commentsCount)
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
+	commentsFilterData := createTopCommentsBasedOnLikesQuery(postIds, sortOrder, commentsCount, excludedUserIds)
 
 	// fetch post using helper method
 	commentResults, err := handlers.commentHelper.AggregateTopCommentsHelper(commentsFilterData)
@@ -1637,7 +1651,7 @@ func getTopCommentsAgainstPostsSortOnLikes(handlers *FeedHandlers, postsResponse
 	}
 
 	if !allPostsFetched {
-		topCommentsAgainstPostsData, allCommentIds, err = getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount, communityId, memberRole)
+		topCommentsAgainstPostsData, allCommentIds, err = getTopCommentsAgainstPostsOnLikes(handlers, postIds, commentSortOrderVal, commentCount, userId, communityId, memberRole)
 	}
 
 	if err != nil {
