@@ -39,6 +39,7 @@ const CommunityWebhooksEndpoint = "/api/webhook"
 const KettleCacheDeleteEndpoint = "/cache"
 const FetchCommunitySettingsEndpoint = "/api/community/fetch_community_settings"
 const SyncChatroomsEndpoint = "/api/sync/chatrooms"
+const BlockUserEndpoint = "/api/user/%s/block"
 
 const ParamMemberIds = "member_ids"
 const ParamCommunityId = "community_id"
@@ -48,12 +49,23 @@ const ParamsChatroomTypes = "chatroom_types"
 const ParamsIsLocalDb = "is_local_db"
 const ParamsMinimumTimestamp = "min_timestamp"
 const ParamsMaximumTimestamp = "max_timestamp"
+const ParamBlockUserType = "block_user_type"
 
 const ContentTypeHeader = "application/json"
 const SwarmServiceHeader = "swarm-service"
 
 const (
 	FeedroomChatroomType = 11
+)
+
+const (
+	BlockingUserType string = "BLOCKING"
+	BlockedUserType  string = "BLOCKED"
+)
+
+const (
+	DefaultGetBlockUserPageValue     int = 1
+	DefaultGetBlockUserPageSizeValue int = 50
 )
 
 const (

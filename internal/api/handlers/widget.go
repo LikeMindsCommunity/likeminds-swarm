@@ -171,7 +171,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		}
 
 		//fetch post to get creator
-		post, err := FetchPostData(handlers.postHelper, parentEntityId, communityId, true)
+		post, err := FetchPostData(handlers.postHelper, parentEntityId, communityId, true, []string{})
 		if err != nil {
 			return lmMeta
 		}

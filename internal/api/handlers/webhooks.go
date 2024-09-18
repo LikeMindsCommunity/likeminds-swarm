@@ -16,7 +16,7 @@ import (
 func generatePostPayloadForWebhook(handlers *FeedHandlers, postId string) (*responses.WebhookPostPayload, error) {
 
 	// Fetch post data
-	postData, err := FetchPostData(handlers.postHelper, postId, -1, false)
+	postData, err := FetchPostData(handlers.postHelper, postId, -1, false, []string{})
 	if err != nil {
 		return nil, err
 	}

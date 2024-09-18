@@ -85,7 +85,7 @@ func fetchMultiplePostsCommentsCount(helper interfaces.CommentHelper, postIds []
 
 // Internal Method to fetch replies count of a Comment
 func fetchCommentRepliesCount(helper interfaces.CommentHelper, commentId string) (int64, error) {
-	commentData, err := fetchCommentByIdInternal(helper, commentId)
+	commentData, err := fetchCommentByIdInternal(helper, commentId, []string{})
 	if err != nil {
 		return 0, err
 	}
@@ -131,11 +131,14 @@ func fetchParentComment(helper interfaces.CommentHelper, commentId primitive.Obj
 }
 
 // Internal Method to fetch a comment using comment_id
-func fetchCommentByIdInternal(helper interfaces.CommentHelper, commentId string) (*entities.Comment, error) {
+func fetchCommentByIdInternal(helper interfaces.CommentHelper, commentId string, excludedUserIds []string) (*entities.Comment, error) {
 	// comment filter data
 	commentFilterData := gin.H{
 		"_id":        commentId,
 		"is_deleted": false,
+		"user_id": gin.H{
+			"$nin": excludedUserIds,
+		},
 	}
 
 	// fetch comment using helper method
@@ -208,12 +211,15 @@ func fetchMultipleCommentsData(handlers *FeedHandlers, commentIds []string, comm
 }
 
 // Internal Method to fetch a comment using comment_id and post_id
-func fetchComment(helper interfaces.CommentHelper, commentId string, postId string) (*entities.Comment, error) {
+func fetchComment(helper interfaces.CommentHelper, commentId string, postId string, exlcudedUserIds []string) (*entities.Comment, error) {
 	// comment filter data
 	commentFilterData := gin.H{
 		"_id":        commentId,
 		"is_deleted": false,
 		"post_id":    postId,
+		"user_id": gin.H{
+			"$nin": exlcudedUserIds,
+		},
 	}
 
 	// fetch comment using helper method
@@ -254,7 +260,7 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.MenuItems = []responses.MenuResponse{}
 
 	if memberRole != utils.GuestRole {
-		response.MenuItems = getEntityMenuItems(constants.CommentEntityType, isCm, userId == comment.UserId, false, versionCode, platformCode, userId, comment.CommunityId, cacheHelper)
+		response.MenuItems = getEntityMenuItems(constants.CommentEntityType, isCm, userId == comment.UserId, false, versionCode, platformCode, userId, comment.CommunityId, cacheHelper, comment.UserId)
 	}
 
 	if comment.Level == constants.CommentBaseLevel {
@@ -362,11 +368,11 @@ func parseFetchCommentResponse(likeHelper interfaces.LikeHelper, commentHelper i
 // Internal Method to fetch comment data with postId
 func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, filterOptions map[string]interface{},
 	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, getPostData bool,
-	memberRole string) (responses.FetchCommentResponse, error) {
+	memberRole string, excludedUserIds []string) (responses.FetchCommentResponse, error) {
 
 	var response responses.FetchCommentResponse
 	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId, excludedUserIds)
 	if err != nil {
 		return response, err
 	}
@@ -377,6 +383,9 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 		},
 		"is_deleted": false,
 		"post_id":    postId,
+		"user_id": gin.H{
+			"$nin": excludedUserIds,
+		},
 	}
 
 	// fetch comment replies using helper method
@@ -392,7 +401,7 @@ func fetchCommentData(handlers *FeedHandlers, commentId string, postId string, f
 
 	// fetch post data if getPostData is true
 	if getPostData {
-		postData, err := FetchPostData(handlers.postHelper, postId, commentData.CommunityId, true)
+		postData, err := FetchPostData(handlers.postHelper, postId, commentData.CommunityId, true, []string{})
 		if err != nil {
 			return response, err
 		}
@@ -423,6 +432,7 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	userId := headers[utils.HeadersMemberId]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -434,8 +444,18 @@ func (handlers *FeedHandlers) FetchCommentById(c *gin.Context) {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// fetch comment data
-	commentData, err := fetchCommentByIdInternal(handlers.commentHelper, commentId)
+	commentData, err := fetchCommentByIdInternal(handlers.commentHelper, commentId, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -546,6 +566,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeaderMemberRole]
+	userId := headers[utils.HeadersMemberId]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -557,8 +578,18 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// fetch post data
-	_, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	_, err = FetchPostData(handlers.postHelper, postId, communityId, true, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -578,7 +609,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, memberRole)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, memberRole, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -638,6 +669,31 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
+	// If users are tagged in post
+	if len(createCommentRequest.UUIDs) > 0 {
+		similarUUIDs := utils.GetSimilarBetweenArray(createCommentRequest.UUIDs, blockUserValuesList.BlockedUsers)
+		if len(similarUUIDs) > 0 {
+			utils.GeneralAPIValidationError(c, utils.BlockedUserTagError)
+			return
+		}
+
+		similarUUIDs = utils.GetSimilarBetweenArray(createCommentRequest.UUIDs, blockUserValuesList.BlockingUsers)
+		if len(similarUUIDs) > 0 {
+			utils.GeneralAPIValidationError(c, utils.BlockingUserTagError)
+			return
+		}
+	}
+
 	// check if custom creation timestamp is used
 	var useCustomCreationTimestamp bool = false
 	if createCommentRequest.CreatedAt > 0 &&
@@ -646,14 +702,14 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// validate create comment request
-	err := validateCreateCommentRequest(handlers, communityId, &createCommentRequest, apiRevampV1Check)
+	err = validateCreateCommentRequest(handlers, communityId, &createCommentRequest, apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch post data
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -767,7 +823,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions, headers[utils.HeadersMemberId], false,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultRole)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultRole, excludedUserIds)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -803,13 +859,13 @@ func validateEditCommentRequest(handlers *FeedHandlers, communityId int, userId 
 	}
 
 	// Check if Post_id is valid
-	_, err = FetchPostData(handlers.postHelper, postId, communityId, true)
+	_, err = FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
 	if err != nil {
 		return nil, err
 	}
 
 	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId, []string{})
 	if err != nil {
 		return nil, err
 	}
@@ -877,7 +933,7 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, commentId, postId, commentFilterOptions, headers[utils.HeadersMemberId], editCommentRequest.UserIsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultRole)
+		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, false, utils.DefaultRole, []string{})
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -917,13 +973,13 @@ func validateCommentReplyRequest(handlers *FeedHandlers, communityId int, postId
 	}
 
 	// fetch post data
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId, []string{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -958,6 +1014,31 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	if err := c.ShouldBindJSON(&createCommentRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
+	// If users are tagged in post
+	if len(createCommentRequest.UUIDs) > 0 {
+		similarUUIDs := utils.GetSimilarBetweenArray(createCommentRequest.UUIDs, blockUserValuesList.BlockedUsers)
+		if len(similarUUIDs) > 0 {
+			utils.GeneralAPIValidationError(c, utils.BlockedUserTagError)
+			return
+		}
+
+		similarUUIDs = utils.GetSimilarBetweenArray(createCommentRequest.UUIDs, blockUserValuesList.BlockingUsers)
+		if len(similarUUIDs) > 0 {
+			utils.GeneralAPIValidationError(c, utils.BlockingUserTagError)
+			return
+		}
 	}
 
 	// check if custom creation timestamp is used
@@ -1098,7 +1179,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, newCommentId.(primitive.ObjectID).Hex(), postId, commentFilterOptions,
 		headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, false, utils.DefaultRole)
+		apiRevampV1Check, false, utils.DefaultRole, excludedUserIds)
 	if err == nil {
 		response["comment"] = fetchCommentResponse
 	}
@@ -1130,14 +1211,14 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	}
 
 	// fetch post data
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	// fetch comment data
-	commentData, err := fetchComment(handlers.commentHelper, commentId, postId)
+	commentData, err := fetchComment(handlers.commentHelper, commentId, postId, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
