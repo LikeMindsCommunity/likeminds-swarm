@@ -97,7 +97,7 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 						"user_id.keyword": %s
 					}
 				}
-			]`, utils.ParseStringArrayToString(excludedUserIds))
+			],`, utils.ParseStringArrayToString(excludedUserIds))
 	}
 
 	return fmt.Sprintf(`
@@ -109,7 +109,7 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 		],
 		"query": {
 			"bool": {
-				%s,
+				%s
 				"must": [
 					%s
 					%s
