@@ -126,10 +126,10 @@ func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEn
 
 	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName, externalEntities))
 
-	if !isEntityOwnerBlocked {
-		// Block user menu item
-		menuItems = append(menuItems, getMenuItem(constants.BlockUserMenuItemName, externalEntities))
-	}
+	// if !isEntityOwnerBlocked {
+	// 	// Block user menu item
+	// 	menuItems = append(menuItems, getMenuItem(constants.BlockUserMenuItemName, externalEntities))
+	// }
 
 	return menuItems
 }
