@@ -19,11 +19,14 @@ import (
 )
 
 // Internal Method to get Universal Feed Post Filter
-func getUniversalFeedPostFilter(communityId int, isPinned bool) gin.H {
+func getUniversalFeedPostFilter(communityId int, isPinned bool, excludedUserIds []string) gin.H {
 	return gin.H{
 		"is_pinned":    isPinned,
 		"is_deleted":   false,
 		"community_id": communityId,
+		"user_id": gin.H{
+			"$nin": excludedUserIds,
+		},
 		"$and": []gin.H{
 			{
 				"$or": []gin.H{
@@ -100,11 +103,21 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		return
 	}
 
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
 	// pinned posts filter data
-	pinnedPostFilterData := getUniversalFeedPostFilter(communityId, true)
+	pinnedPostFilterData := getUniversalFeedPostFilter(communityId, true, excludedUserIds)
 
 	// unpinned posts filter data
-	unpinnedPostFilterData := getUniversalFeedPostFilter(communityId, false)
+	unpinnedPostFilterData := getUniversalFeedPostFilter(communityId, false, excludedUserIds)
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {

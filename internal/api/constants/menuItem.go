@@ -39,6 +39,14 @@ const (
 )
 
 const (
+	BlockUserMenuItemName = "BlockUser"
+)
+
+const (
+	BlockUserMenuItemTitle = "Block"
+)
+
+const (
 	DeletePostMenuItemId int = iota + 1
 	PinPostMenuItemId
 	UnpinPostMenuItemId
@@ -49,4 +57,5 @@ const (
 	EditCommentMenuItemId
 	EditPendingPostMenuItemId
 	DeletePendingPostMenuItemId
+	BlockUserMenuItemId
 )

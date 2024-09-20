@@ -306,7 +306,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 		// If postIdForComment is not empty, fetch post data along with comment data
 		if postIdForComment != "" {
 			commentData, err := fetchCommentData(&handler, entityID.Hex(), postIdForComment, nil, userId, false,
-				"", "", apiRevampV1Check, true, utils.DefaultRole)
+				"", "", apiRevampV1Check, true, utils.DefaultRole, []string{})
 			if err != nil {
 				return nil, err
 			}

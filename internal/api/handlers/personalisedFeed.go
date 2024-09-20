@@ -636,6 +636,7 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
+	apiKey := headers[utils.HeadersApiKey]
 	memberRole := headers[utils.HeaderMemberRole]
 
 	versionCode := headers[utils.HeadersVersionCode]
@@ -697,7 +698,7 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		} else {
 
 			// Fetch community bot id
-			botId := externalHelpers.GetCommunityBotId(headers[utils.HeadersApiKey], "")
+			botId := externalHelpers.GetCommunityBotId(apiKey, "")
 
 			// compute and save community default feed
 			computeAndSaveCommunityDefaultFeed(handlers, communityId, botId)
@@ -825,6 +826,48 @@ func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId
 	if len(sortedPostIds) > 1000 {
 		sortedPostIds = sortedPostIds[:1000]
 	}
+
+	// Get users list who are blocked by userId or blocked the userId
+	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		logging.Error("Error in fetching block user list from cache", err.Error())
+		return
+	}
+
+	// Combine the above two lists to get excluded user lists
+	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
+
+	// Filter for all posts of community
+	allPostsOfCommunityFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"community_id": communityId,
+				"is_deleted":   false,
+				"user_id": gin.H{
+					"$in": excludedUserIds,
+				},
+			},
+		},
+		gin.H{
+			"$project": gin.H{
+				"_id":        1,
+				"created_at": 1,
+			},
+		},
+	}
+
+	blockedUserPostsData, err := handlers.postHelper.AggregatePostHelper(allPostsOfCommunityFilter)
+	if err != nil {
+		logging.Error("Error in fetching all blocked user posts of community: ", communityId, " err: ", err)
+		return
+	}
+
+	blockedUsersPostIdsList := []string{}
+	for _, postData := range blockedUserPostsData {
+		blockedUsersPostIdsList = append(blockedUsersPostIdsList, postData["_id"].(primitive.ObjectID).Hex())
+	}
+
+	sortedPostIds = utils.GetDifferenceBetweenStringArray(sortedPostIds, blockedUsersPostIdsList)
 
 	// Save user personalised feed (postIds) in cache
 	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)

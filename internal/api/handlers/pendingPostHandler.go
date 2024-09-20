@@ -39,7 +39,7 @@ func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.Pendi
 	postResponse := parseSinglePostResponse(handlers, &pendingPost.PostData, &loggedInUser)
 
 	postResponse.MenuItems = getEntityMenuItems(constants.PendingPostEntityType, isCm,
-		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, versionCode, platformCode, userId, pendingPost.PostData.CommunityId, handlers.cacheHelper)
+		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, versionCode, platformCode, userId, pendingPost.PostData.CommunityId, handlers.cacheHelper, pendingPost.UserId)
 
 	postResponse.IsPendingPost = true
 	postResponse.PostStatus = pendingPost.Status
@@ -799,7 +799,7 @@ func editPostFromPendingPost(handlers *FeedHandlers, communityId int, pendingPos
 	postId, _ := primitive.ObjectIDFromHex(pendingPostData.PostId)
 
 	// fetch post data
-	postData, err := FetchPostData(handlers.postHelper, postId.Hex(), communityId, true)
+	postData, err := FetchPostData(handlers.postHelper, postId.Hex(), communityId, true, []string{})
 	if err != nil {
 		return nil, err
 	}

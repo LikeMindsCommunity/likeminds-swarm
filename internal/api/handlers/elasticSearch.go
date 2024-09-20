@@ -37,7 +37,7 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 }
 
 // Exposed method to create post search query
-func GetPostFilterQuery(page int, page_size int, search_type string, search string, chatroom_ids string, community_id int) string {
+func GetPostFilterQuery(page int, page_size int, search_type string, search string, chatroom_ids string, community_id int, excludedUserIds []string) string {
 	from := page_size * (page - 1)
 
 	chatroomQuery := ""
@@ -88,6 +88,18 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 		},`, search_type, search)
 	}
 
+	excludedUserPostsQuery := ""
+	if len(excludedUserIds) > 0 {
+		excludedUserPostsQuery = fmt.Sprintf(`
+			"must_not": [
+				{
+					"terms": {
+						"user_id.keyword": %s
+					}
+				}
+			],`, utils.ParseStringArrayToString(excludedUserIds))
+	}
+
 	return fmt.Sprintf(`
 	{
 		"from": %d,
@@ -97,6 +109,7 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 		],
 		"query": {
 			"bool": {
+				%s
 				"must": [
 					%s
 					%s
@@ -105,7 +118,7 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 			}
 		}
 	}
-	`, from, page_size, communityQuery, searchQuery, chatroomQuery)
+	`, from, page_size, excludedUserPostsQuery, communityQuery, searchQuery, chatroomQuery)
 }
 
 // Exposed method to create post search query
