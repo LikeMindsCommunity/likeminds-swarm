@@ -774,6 +774,7 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.CreatedAt = int(post.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
 	response.IsPendingPost = false
+	response.PostShareCount = post.PostShareCount
 
 	response.Attachments = ParseAttachmentsforResponse(post.Attachments, loggedInUser.ApiRevampCheckV1)
 
@@ -2631,4 +2632,53 @@ func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId pri
 	}
 
 	return postData, nil
+}
+
+// Exposed Method to update post share count
+func (handlers *FeedHandlers) UpdatePostShareCount(c *gin.Context) {
+	// fetch headers and url params
+	postId := c.Param("post_id")
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var updatePostShareCountRequest requests.UpdatePostShareCountRequest
+	if err := c.ShouldBindJSON(&updatePostShareCountRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// fetch post data
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Update the post share count
+	if updatePostShareCountRequest.CountNumberType == enums.IncreasePostShareCountType {
+		postData.PostShareCount += updatePostShareCountRequest.ShareNumber
+	} else if updatePostShareCountRequest.CountNumberType == enums.DecreasePostShareCountType {
+		postData.PostShareCount -= updatePostShareCountRequest.ShareNumber
+	} else {
+		utils.GeneralAPIValidationError(c, "Invalid count number type")
+		return
+	}
+
+	// update data
+	updateData := gin.H{
+		"$set": gin.H{
+			"post_share_count": postData.PostShareCount,
+		},
+	}
+
+	// Update the post
+	handlers.postHelper.UpdatePostByIdHelper(postData.ID, updateData)
+
+	// return final response
+	utils.GenerateSuccessResponse(c, nil)
 }

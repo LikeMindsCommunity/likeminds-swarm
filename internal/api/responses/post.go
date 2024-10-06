@@ -37,6 +37,7 @@ type PostResponse struct {
 	DeleteReason       string               `json:"delete_reason,omitempty"`
 	IsLiked            bool                 `json:"is_liked"`
 	IsSaved            bool                 `json:"is_saved"`
+	PostShareCount     int                  `json:"post_share_count"`
 	MenuItems          []MenuResponse       `json:"menu_items"`
 	CreatedAt          int                  `json:"created_at"`
 	UpdatedAt          int                  `json:"updated_at"`

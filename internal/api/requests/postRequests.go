@@ -60,3 +60,9 @@ type FetchPostsQueryRequest struct {
 type MarkSeenPostsRequest struct {
 	PostIds []string `json:"post_ids" binding:"required"`
 }
+
+// Request Structure for update post share count
+type UpdatePostShareCountRequest struct {
+	CountNumberType string `json:"count_number_type" binding:"required"`
+	ShareNumber     int    `json:"share_number" binding:"required"`
+}
