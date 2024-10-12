@@ -209,13 +209,17 @@ func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds
 func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int, userIsCM bool,
 	userId string) (map[string]requests.WidgetResponse, error) {
 
+	widgetsResponse := map[string]requests.WidgetResponse{}
+
+	if len(widgetIds) == 0 {
+		return widgetsResponse, nil
+	}
+
 	// Fetch widgets using widget Ids
 	widgets, err := fetchWidgetsByIDs(handlers.widgetHelper, widgetIds, communityId)
 	if err != nil {
 		return nil, err
 	}
-
-	widgetsResponse := map[string]requests.WidgetResponse{}
 
 	// Parse all fetched widgets Data
 	for _, widget := range widgets {
@@ -542,11 +546,21 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 
 // Internal Method to get topics Data from Posts response
 func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]responses.TopicResponse {
+
+	topicsMap := map[string]responses.TopicResponse{}
+
 	topicIds := getTopicIdsFromPosts(response)
 
-	topicsData, _ := fetchAndParseTopicsForResponse(topicHelper, topicIds, communityId)
+	if len(topicIds) > 0 {
+		topicsData, err := fetchAndParseTopicsForResponse(topicHelper, topicIds, communityId)
+		if err != nil {
+			logging.Error("Error while fetching topics for posts: ", err)
+		}
 
-	return topicsData
+		topicsMap = topicsData
+	}
+
+	return topicsMap
 }
 
 // Internal Method to get widget Data from Posts response
@@ -574,9 +588,17 @@ func getOriginalPostForReposts(handlers *FeedHandlers, response interface{}, com
 	versionCode string, platformCode string, apiRevampV1Check bool,
 ) map[string]responses.PostResponse {
 
-	postIds := getPostIdsFromReposts(response, apiRevampV1Check)
+	postsResponseMap := map[string]responses.PostResponse{}
 
-	postsResponseMap, _ := fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, versionCode, platformCode, apiRevampV1Check)
+	postIds := getPostIdsFromReposts(response, apiRevampV1Check)
+	if len(postIds) > 0 {
+		postsResponse, err := fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, versionCode, platformCode, apiRevampV1Check)
+		if err != nil {
+			logging.Error("Error while fetching original posts for reposts: ", err)
+		}
+
+		postsResponseMap = postsResponse
+	}
 
 	return postsResponseMap
 }

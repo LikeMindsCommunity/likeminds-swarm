@@ -98,7 +98,6 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 
 	//Send Request
 	respBytes, _, err := GetRequestResponse(CaravanService, FetchCommunityConfigurationsEndpoint, GETRequest, headers, params, nil)
-
 	if respBytes == nil {
 		//If API fails or any other error
 		return nil, err
