@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -53,8 +54,21 @@ func addSortingOptions(options map[string]interface{}, orderBy string, order int
 		order = OrderTypeDescending
 	}
 
-	options["$sort"] = gin.H{
-		orderBy: order,
+	sortOpts, ok := options["$sort"]
+	if ok {
+		bsonSortOpts, ok := sortOpts.(bson.D)
+		if ok {
+			bsonSortOpts = append(bsonSortOpts, bson.E{Key: orderBy, Value: order})
+			options["$sort"] = bsonSortOpts
+		} else {
+			options["$sort"] = bson.D{
+				{Key: orderBy, Value: order},
+			}
+		}
+	} else {
+		options["$sort"] = bson.D{
+			{Key: orderBy, Value: order},
+		}
 	}
 
 	return options
