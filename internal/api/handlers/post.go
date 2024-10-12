@@ -1318,25 +1318,23 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// reponse data
-	response := gin.H{
-		"success": true,
+	// fetch post response data
+	fetchPostData, err := fetchPostWithReplies(handlers, postData.ID.Hex(), communityId, filterOptions, headers[utils.HeadersMemberId], createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
 	}
 
-	// fetch post response data
-	fetchPostData, err := fetchPostWithReplies(handlers, postData.ID.Hex(), communityId,
-		filterOptions, headers[utils.HeadersMemberId], createPostRequest.UserIsCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
-	if err == nil {
-		response["post"] = fetchPostData
-		response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-		response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
-			createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-		response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, createPostRequest.UserIsCm, headers[utils.HeadersMemberId])
+	response := gin.H{
+		"post": fetchPostData,
 	}
+
+	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, createPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
-	c.JSON(http.StatusOK, response)
+	utils.GenerateSuccessResponse(c, response)
 }
 
 func tasksAfterPostCreation(handlers *FeedHandlers, postData *entities.Post, postRequest requests.CreatePostRequest, userId string,
@@ -1517,26 +1515,23 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	// Combine the above two lists to get excluded user lists
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
-	// reponse data
-	response := gin.H{
-		"success": true,
-	}
-
 	// fetch post response data
-	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions,
-		headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
+	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
-	response["post"] = fetchPostData
+
+	response := gin.H{
+		"post": fetchPostData,
+	}
+
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
 	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// return final response
-	c.JSON(http.StatusOK, response)
+	utils.GenerateSuccessResponse(c, response)
 }
 
 // Exposed Method to edit a Post
@@ -1692,17 +1687,14 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, headers[utils.HeadersMemberId],
-		editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, memberRole, []string{})
+	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
 	response := gin.H{
-		"success": true,
-		"post":    fetchPostData,
+		"post": fetchPostData,
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
@@ -1710,8 +1702,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, editPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
-	c.JSON(http.StatusOK, response)
-
+	utils.GenerateSuccessResponse(c, response)
 }
 
 // updates the count of post in topics
