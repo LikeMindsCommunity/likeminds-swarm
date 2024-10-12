@@ -1085,7 +1085,7 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 	postId, err := handlers.postHelper.CreatePostHelper(postRequest.Text, postRequest.Heading,
 		communityId, userId, postRequest.Attachments, postRequest.ChatroomID,
 		postRequest.TempID, postRequest.ParsedTopicIds, postRequest.OriginalAuthor, postRequest.Visibility,
-		postRequest.IsRepost, postRequest.CreatedAt)
+		postRequest.IsRepost, postRequest.IsAnonymous, postRequest.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
