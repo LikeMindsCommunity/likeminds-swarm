@@ -766,14 +766,22 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.CommunityId = post.CommunityId
 	response.ChatroomId = post.ChatroomId
 	response.IsPinned = post.IsPinned
-	response.UserId = post.UserId
-	response.UUID = post.UserId
 	response.IsDeleted = post.IsDeleted
 	response.IsEdited = post.IsEdited
 	response.IsRepost = post.IsRepost
 	response.CreatedAt = int(post.CreatedAt.UnixMilli())
 	response.UpdatedAt = int(post.UpdatedAt.UnixMilli())
 	response.IsPendingPost = false
+	response.IsAnonymous = post.IsAnonymous
+
+	// if post is anonymous and user is not cm or creator, then set anonymous-user
+	if post.IsAnonymous && (post.UserId != loggedInUser.UserId && (loggedInUser.MemberRole != utils.CMRole || !loggedInUser.IsCm)) {
+		response.UserId = constants.AnonymousUserUserId
+	} else {
+		response.UserId = post.UserId
+	}
+
+	response.UUID = response.UserId
 
 	response.Attachments = ParseAttachmentsforResponse(post.Attachments, loggedInUser.ApiRevampCheckV1)
 
