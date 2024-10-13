@@ -167,6 +167,8 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	topicIds := []primitive.ObjectID{}
 	widgetIds := []primitive.ObjectID{}
 
+	anonymousUserPresent := false
+
 	for _, activity := range activities {
 		// Append actionOn in userIds
 		userIds = append(userIds, activity.ActionOn)
@@ -256,19 +258,30 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 
 		if postData != nil {
 
+			post := postData.(responses.PostResponse)
+
 			// Parse topicIds from postData
-			if postData.(responses.PostResponse).Topics != nil {
-				ids := postData.(responses.PostResponse).Topics
+			if post.Topics != nil {
+				ids := post.Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if postData.(responses.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(postData.(responses.PostResponse).Attachments)
+			if post.Attachments != nil {
+				ids := getWidgetIdsFromAttachments(post.Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
-		}
 
+			if post.IsAnonymous && post.UserId == constants.AnonymousUserUserId {
+				anonymousUserPresent = true
+			}
+		}
+	}
+
+	// If anonymous user is present in activity, add it to userDatas
+	if anonymousUserPresent {
+		anonUserMeta := externalHelpers.GetAnonymousUserMeta(handler.cacheHelper, userId, activities[0].CommunityID)
+		userDatas[anonUserMeta.UserUniqueId] = *anonUserMeta
 	}
 
 	// Parse topicsData from topicIds
