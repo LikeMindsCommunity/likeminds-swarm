@@ -21,6 +21,7 @@ type PostResponse struct {
 	CommunityId        int                  `json:"community_id,omitempty"`
 	ChatroomId         int                  `json:"feedroom_id,omitempty"`
 	IsPinned           bool                 `json:"is_pinned"`
+	IsHidden           bool                 `json:"is_hidden"`
 	UserId             string               `json:"user_id,omitempty"`
 	UUID               string               `json:"uuid,omitempty"`
 	Attachments        []AttachmentResponse `json:"attachments"`

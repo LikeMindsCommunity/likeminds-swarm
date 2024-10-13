@@ -795,6 +795,7 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.CommunityId = post.CommunityId
 	response.ChatroomId = post.ChatroomId
 	response.IsPinned = post.IsPinned
+	response.IsHidden = post.IsHidden
 	response.IsDeleted = post.IsDeleted
 	response.IsEdited = post.IsEdited
 	response.IsRepost = post.IsRepost
@@ -2060,6 +2061,11 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 		return
 	}
 
+	if postData.IsHidden {
+		utils.GeneralAPIValidationError(c, utils.PostHiddenCannotPinError)
+		return
+	}
+
 	// update data
 	updateData := gin.H{
 		"$set": gin.H{
@@ -2654,4 +2660,65 @@ func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId pri
 	}
 
 	return postData, nil
+}
+
+// Exposed Method to hide a Post
+func (handlers *FeedHandlers) HidePost(c *gin.Context) {
+
+	// fetch headers
+	headers := utils.GetHeaders(c)
+	memberRole := headers[utils.HeaderMemberRole]
+
+	// fetch url params
+	postId := c.Param("post_id")
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// CM Validation
+	if !utils.IsCMRole(memberRole) {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// fetch post using helper method
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// update data
+	updateData := gin.H{
+		"$set": gin.H{
+			"is_hidden": !postData.IsHidden,
+			"is_pinned": false,
+		},
+	}
+
+	// update post using the helper method
+	err = handlers.postHelper.UpdatePostByIdHelper(postData.ID, updateData)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// fetch updated post data using post_id
+	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// update post data in elastic search
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// return final response
+	utils.GenerateSuccessResponse(c, nil)
 }
