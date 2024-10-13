@@ -39,6 +39,8 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	topicIds := []primitive.ObjectID{}
 	widgetIds := []primitive.ObjectID{}
 
+	anonymousUserPresent := false
+
 	for _, activity := range activities {
 
 		// Append last user from actionBy
@@ -108,18 +110,32 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 
 		// Parse topicIds and widgetIds from post
 		if activity.EntityType == constants.Post {
+
+			post := activityEntityData.(responses.PostResponse)
+
 			// Parse topicIds from postData
-			if activityEntityData.(responses.PostResponse).Topics != nil {
-				ids := activityEntityData.(responses.PostResponse).Topics
+			if post.Topics != nil {
+				ids := post.Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if activityEntityData.(responses.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(activityEntityData.(responses.PostResponse).Attachments)
+			if post.Attachments != nil {
+				ids := getWidgetIdsFromAttachments(post.Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
+
+			// Check if anonymous user is present in activity
+			if post.IsAnonymous && post.UserId == constants.AnonymousUserUserId {
+				anonymousUserPresent = true
+			}
 		}
+	}
+
+	// If anonymous user is present in activity, add it to userDatas
+	if anonymousUserPresent {
+		anonUserMeta := externalHelpers.GetAnonymousUserMeta(handler.cacheHelper, userId, activities[0].CommunityID)
+		userDatas[anonUserMeta.UserUniqueId] = *anonUserMeta
 	}
 
 	// Parse topicsData from topicIds
@@ -412,7 +428,13 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		return activityText, nil
 
 	case constants.TaggedInPost:
-		activityText += getUserRoute(activityByUserData)
+
+		post, ok := activityEntityData.(responses.PostResponse)
+		if ok && post.IsAnonymous {
+			activityText += constants.AnonymousUserName
+		} else {
+			activityText += getUserRoute(activityByUserData)
+		}
 
 		activityText += " tagged you in their"
 
@@ -435,9 +457,15 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 		activityText += fmt.Sprintf(" also left a %s on", commentFeedMetadaValue)
 
-		activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
-		if activityEntityOwnerUserID != "" {
-			activityText += " " + getUserRoute(activityEntityOwnerUserData[activityEntityOwnerUserID]) + "'s"
+		// If post is anonymous, replace post owner name with "Anonymous User"
+		post, ok := activityEntityData.(responses.PostResponse)
+		if ok && post.IsAnonymous {
+			activityText += " " + constants.AnonymousUserName + "'s"
+		} else {
+			activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
+			if activityEntityOwnerUserID != "" {
+				activityText += " " + getUserRoute(activityEntityOwnerUserData[activityEntityOwnerUserID]) + "'s"
+			}
 		}
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)
