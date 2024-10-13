@@ -774,6 +774,13 @@ func updateOriginalPostWidgetForRepost(handlers *FeedHandlers, originalPostID st
 	handlers.postHelper.UpdatePostByIdHelper(originalPostIDPrimitiveObject, postUpdateData)
 }
 
+func getPostUserId(post *entities.Post, loggedInUser *LoggedInUserParams) string {
+	if post.IsAnonymous && (post.UserId != loggedInUser.UserId && !loggedInUser.IsCm) {
+		return constants.AnonymousUserUserId
+	}
+	return post.UserId
+}
+
 // Internal Method to parse post for response
 func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, post *entities.Post, postSecondaryData *PostSecondaryDataParams,
 ) responses.PostResponse {
@@ -797,12 +804,7 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.IsAnonymous = post.IsAnonymous
 
 	// if post is anonymous and user is not cm or creator, then set anonymous-user
-	if post.IsAnonymous && (post.UserId != loggedInUser.UserId && (loggedInUser.MemberRole != utils.CMRole || !loggedInUser.IsCm)) {
-		response.UserId = constants.AnonymousUserUserId
-	} else {
-		response.UserId = post.UserId
-	}
-
+	response.UserId = getPostUserId(post, loggedInUser)
 	response.UUID = response.UserId
 
 	response.Attachments = ParseAttachmentsforResponse(post.Attachments, loggedInUser.ApiRevampCheckV1)
