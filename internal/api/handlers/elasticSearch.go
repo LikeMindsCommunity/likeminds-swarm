@@ -37,7 +37,10 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 }
 
 // Exposed method to create post search query
-func GetPostFilterQuery(page int, page_size int, search_type string, search string, chatroom_ids string, community_id int, excludedUserIds []string) string {
+func GetPostFilterQuery(userId string, page int, page_size int, search_type string, search string, chatroom_ids string,
+	community_id int, excludedUserIds []string, isCm bool,
+) string {
+
 	from := page_size * (page - 1)
 
 	chatroomQuery := ""
@@ -91,13 +94,24 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 	excludedUserPostsQuery := ""
 	if len(excludedUserIds) > 0 {
 		excludedUserPostsQuery = fmt.Sprintf(`
-			"must_not": [
-				{
-					"terms": {
-						"user_id.keyword": %s
-					}
-				}
-			],`, utils.ParseStringArrayToString(excludedUserIds))
+		{
+			"terms": {
+				"user_id.keyword": %s
+			}
+		},`, utils.ParseStringArrayToString(excludedUserIds))
+	}
+
+	hiddenPostsQuery := ""
+	if !isCm {
+		hiddenPostsQuery = fmt.Sprintf(`
+		{
+        "bool": {
+          "must": [
+            { "term": { "is_hidden": true } },
+            { "term": { "user_id": { "value": "%s" } } }
+          ]
+        }
+      },`, userId)
 	}
 
 	return fmt.Sprintf(`
@@ -109,7 +123,10 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 		],
 		"query": {
 			"bool": {
-				%s
+				"must_not": [
+					%s
+					%s
+				],
 				"must": [
 					%s
 					%s
@@ -117,8 +134,7 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 				]
 			}
 		}
-	}
-	`, from, page_size, excludedUserPostsQuery, communityQuery, searchQuery, chatroomQuery)
+	}`, from, page_size, excludedUserPostsQuery, hiddenPostsQuery, communityQuery, searchQuery, chatroomQuery)
 }
 
 // Exposed method to create post search query

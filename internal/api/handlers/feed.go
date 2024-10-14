@@ -678,14 +678,28 @@ func getConnectionFeedItemFilter(communityId int, userId string) gin.H {
 }
 
 // Internal Method to get Connection Feed Post Filter
-func getConnectionFeedPostFilter(communityId int, postIds []primitive.ObjectID) gin.H {
-	return gin.H{
+func getConnectionFeedPostFilter(userId string, communityId int, postIds []primitive.ObjectID, isCm bool) gin.H {
+	connectionFeedPostFilter := gin.H{
 		"is_deleted":   false,
 		"community_id": communityId,
 		"_id": gin.H{
 			"$in": postIds,
 		},
 	}
+
+	// Add filter for hidden posts
+	if !isCm {
+		connectionFeedPostFilter["$nor"] = []gin.H{
+			{
+				"is_hidden": true,
+				"user_id": gin.H{
+					"$ne": userId,
+				},
+			},
+		}
+	}
+
+	return connectionFeedPostFilter
 }
 
 // Exposed Method to Fetch Connection Feed for a User
@@ -762,7 +776,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	}
 
 	// connection feed post filter data
-	connectionFeedPostFilterData := getConnectionFeedPostFilter(communityId, connectionFeedPostIds)
+	connectionFeedPostFilterData := getConnectionFeedPostFilter(userId, communityId, connectionFeedPostIds, loggedInUser.IsCm)
 
 	// connection feed post filter options
 	connectionFeedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)

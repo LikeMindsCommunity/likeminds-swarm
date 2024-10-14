@@ -112,6 +112,8 @@ func InitiateDB() *mongo.Database {
 					{"is_deleted", 1},
 					{"created_at", 1},
 					{"is_anonymous", 1},
+					{"is_hidden", 1},
+					{"user_id", 1},
 				},
 			},
 			{

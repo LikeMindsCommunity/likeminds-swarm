@@ -2249,6 +2249,9 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
+	memberRole := headers[utils.HeaderMemberRole]
+
+	isCm := utils.IsCMRole(memberRole)
 
 	var searchPostRequest requests.SearchPostRequest
 
@@ -2286,8 +2289,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
 	// dsl query to search posts
-	postQuery := GetPostFilterQuery(page, pageSize, searchPostRequest.SearchType,
-		searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId, excludedUserIds)
+	postQuery := GetPostFilterQuery(userId, page, pageSize, searchPostRequest.SearchType, searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId, excludedUserIds, isCm)
 	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
