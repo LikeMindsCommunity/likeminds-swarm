@@ -62,6 +62,10 @@ func GetRepostCountForMultiplePosts(widgetHelper interfaces.WidgetHelper, posts 
 		}
 	}
 
+	if len(repostWidgetIds) == 0 {
+		return postRepostCount
+	}
+
 	widgetFilter := gin.H{
 		"_id": bson.M{
 			"$in": repostWidgetIds,
@@ -124,6 +128,10 @@ func getIsRepostedByUserForMultiplePosts(widgetHelper interfaces.WidgetHelper, u
 		if postRepostWidgetData.AttachmentType == enums.RepostWidget {
 			repostWidgetIds = append(repostWidgetIds, postRepostWidgetData.AttachmentMeta.EntityID)
 		}
+	}
+
+	if len(repostWidgetIds) == 0 {
+		return isRepostedByUserMap
 	}
 
 	widgetFilter := gin.H{
