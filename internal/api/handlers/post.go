@@ -1018,7 +1018,16 @@ func fetchPostResponseMapFromPostIds(handlers *FeedHandlers, postIds []string, c
 	// Make key value pair of post_id -> PostResponse
 	postResponse := map[string]responses.PostResponse{}
 	for _, post := range parsedPosts {
-		postResponse[post.ID.Hex()] = post
+
+		// if post is hidden and user is not cm or creator, then only show isHidden flag
+		if !isCm && post.IsHidden && userId != post.UserId {
+			postResponse[post.ID.Hex()] = responses.PostResponse{
+				ID:       post.ID,
+				IsHidden: true,
+			}
+		} else {
+			postResponse[post.ID.Hex()] = post
+		}
 	}
 
 	return postResponse, nil

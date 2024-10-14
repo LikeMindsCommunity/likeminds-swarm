@@ -1341,9 +1341,7 @@ func (handlers *FeedHandlers) FetchUserComments(c *gin.Context) {
 		}
 	}
 
-	postIdsDataMap, err = fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check)
-
+	postIdsDataMap, err = fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
