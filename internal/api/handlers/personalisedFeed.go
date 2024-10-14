@@ -781,6 +781,7 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
+	MemberRole := headers[utils.HeaderMemberRole]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -788,14 +789,16 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
+	isCm := utils.IsCMRole(MemberRole)
+
 	// Reorder user personalised feed and update in cache
-	reorderUserPersonalisedFeed(handlers, communityId, userId) // TODO: Can move this to background service
+	reorderUserPersonalisedFeed(handlers, communityId, userId, isCm) // TODO: Can move this to background service
 
 	utils.GenerateSuccessResponse(c, nil)
 }
 
 // method to reorder user personalised feed and update in cache
-func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId string) {
+func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId string, isCm bool) {
 
 	// fetch community metric post scores
 	postScoreMap, err := fetchCommunityMetricPostScores(handlers, communityId, userId)
@@ -843,8 +846,14 @@ func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId
 			"$match": gin.H{
 				"community_id": communityId,
 				"is_deleted":   false,
-				"user_id": gin.H{
-					"$in": excludedUserIds,
+				"$and": []gin.H{
+					{
+						"$or": []gin.H{
+							{
+								"user_id": gin.H{"$in": excludedUserIds},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -856,18 +865,28 @@ func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId
 		},
 	}
 
-	blockedUserPostsData, err := handlers.postHelper.AggregatePostHelper(allPostsOfCommunityFilter)
+	// Add hidden post filter for non-CM users
+	if !isCm {
+		hiddenPostFilter := gin.H{
+			"is_hidden": true,
+			"user_id":   gin.H{"$ne": userId},
+		}
+
+		allPostsOfCommunityFilter[0]["$match"].(gin.H)["$and"].([]gin.H)[0]["$or"] = append(allPostsOfCommunityFilter[0]["$match"].(gin.H)["$and"].([]gin.H)[0]["$or"].([]gin.H), hiddenPostFilter)
+	}
+
+	toExcludePostData, err := handlers.postHelper.AggregatePostHelper(allPostsOfCommunityFilter)
 	if err != nil {
 		logging.Error("Error in fetching all blocked user posts of community: ", communityId, " err: ", err)
 		return
 	}
 
-	blockedUsersPostIdsList := []string{}
-	for _, postData := range blockedUserPostsData {
-		blockedUsersPostIdsList = append(blockedUsersPostIdsList, postData["_id"].(primitive.ObjectID).Hex())
+	toExcludePostIds := []string{}
+	for _, postData := range toExcludePostData {
+		toExcludePostIds = append(toExcludePostIds, postData["_id"].(primitive.ObjectID).Hex())
 	}
 
-	sortedPostIds = utils.GetDifferenceBetweenStringArray(sortedPostIds, blockedUsersPostIdsList)
+	sortedPostIds = utils.GetDifferenceBetweenStringArray(sortedPostIds, toExcludePostIds)
 
 	// Save user personalised feed (postIds) in cache
 	cacheKey := fmt.Sprintf(cache.UserPersonalisedFeedKey, communityId, userId)

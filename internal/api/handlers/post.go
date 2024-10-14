@@ -2138,6 +2138,17 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		"community_id": communityId,
 	}
 
+	if !isCm {
+		postFilterData["$nor"] = []gin.H{
+			{
+				"is_hidden": true,
+				"user_id": gin.H{
+					"$ne": userId,
+				},
+			},
+		}
+	}
+
 	// fetch posts count using helper method
 	postsCount, err := handlers.postHelper.CountPostHelper(postFilterData)
 	if err != nil {
