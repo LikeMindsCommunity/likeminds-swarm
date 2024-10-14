@@ -19,6 +19,7 @@ const (
 	BlockedUserTagError        = "You cannot tag a blocked user!"
 	BlockingUserTagError       = "You cannot tag a user who blocked you!"
 	PostHiddenCannotPinError   = "This post cannot be pinned because it is currently hidden. Please unhide the post."
+	PostIsHiddenError          = "The post is hidden."
 )
 
 // Exposed Method to send General Validation Error in API Response

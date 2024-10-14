@@ -565,7 +565,7 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 	userId := headers[utils.HeadersMemberId]
 
 	if paramIsCm == "true" {
@@ -589,9 +589,15 @@ func (handlers *FeedHandlers) FetchComment(c *gin.Context) {
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
 	// fetch post data
-	_, err = FetchPostData(handlers.postHelper, postId, communityId, true, excludedUserIds)
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		utils.GeneralAPIValidationError(c, utils.PostIsHiddenError)
 		return
 	}
 
@@ -653,7 +659,9 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
 	userId := headers[utils.HeadersMemberId]
+	memberRole := headers[utils.HeadersMemberRole]
 
+	isCm := utils.IsCMRole(memberRole)
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
@@ -712,6 +720,12 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		utils.GeneralAPIValidationError(c, utils.PostIsHiddenError)
 		return
 	}
 
@@ -951,8 +965,8 @@ func (handlers *FeedHandlers) EditComment(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func validateCommentReplyRequest(handlers *FeedHandlers, communityId int, postId string, commentId string,
-	createCommentRequest *requests.CreateCommentRequest, apiRevampV1Check bool,
+func validateCommentReplyRequest(handlers *FeedHandlers, userId string, communityId int, postId string, commentId string,
+	createCommentRequest *requests.CreateCommentRequest, apiRevampV1Check bool, isCm bool,
 ) (*entities.Comment, *entities.Post, error) {
 
 	// strip text and check if it is empty
@@ -978,6 +992,11 @@ func validateCommentReplyRequest(handlers *FeedHandlers, communityId int, postId
 		return nil, nil, err
 	}
 
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		return nil, nil, fmt.Errorf(utils.PostIsHiddenError)
+	}
+
 	// fetch comment data
 	commentData, err := fetchComment(handlers.commentHelper, commentId, postId, []string{})
 	if err != nil {
@@ -1000,7 +1019,9 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	postId := c.Param("post_id")
 	commentId := c.Param("comment_id")
+	memberRole := headers[utils.HeadersMemberRole]
 
+	isCm := utils.IsCMRole(memberRole)
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
@@ -1048,7 +1069,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		useCustomCreationTimestamp = true
 	}
 
-	commentData, postData, err := validateCommentReplyRequest(handlers, communityId, postId, commentId, &createCommentRequest, apiRevampV1Check)
+	commentData, postData, err := validateCommentReplyRequest(handlers, userId, communityId, postId, commentId, &createCommentRequest, apiRevampV1Check, isCm)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

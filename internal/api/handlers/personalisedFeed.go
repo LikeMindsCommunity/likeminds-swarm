@@ -637,7 +637,7 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
 	apiKey := headers[utils.HeadersApiKey]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	versionCode := headers[utils.HeadersVersionCode]
 	platformCode := headers[utils.HeadersPlatformCode]
@@ -781,7 +781,7 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
-	MemberRole := headers[utils.HeaderMemberRole]
+	MemberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)

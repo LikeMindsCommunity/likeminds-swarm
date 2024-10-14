@@ -10,7 +10,7 @@ const (
 	HeadersApiKey        string = "x-api-key"
 	HeadersAcceptVersion string = "x-accept-version"
 	HeadersApiVersion    string = "x-api-version"
-	HeaderMemberRole     string = "x-member-role"
+	HeadersMemberRole    string = "x-member-role"
 	HeaderContentType    string = "Content-Type"
 )
 

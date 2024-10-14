@@ -203,9 +203,14 @@ func fetchUserLikedStatusForMultipleEntities(helper interfaces.LikeHelper, entit
 
 // Exposed Method to like a Post
 func (handlers *FeedHandlers) LikePost(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
+	memberRole := headers[utils.HeadersMemberRole]
+	userId := headers[utils.HeadersMemberId]
 	post_id := c.Param("post_id")
+
+	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
 	community_id := externalHelpers.GetCommunityId(c)
@@ -225,9 +230,15 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
+	postData, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		utils.GeneralAPIValidationError(c, utils.PostIsHiddenError)
 		return
 	}
 
@@ -241,7 +252,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 
 	if len(like_results) == 0 {
 		// create like using the helper method
-		_, err := handlers.likeHelper.CreateLikeHelper(constants.PostEntityType, post_data.ID,
+		_, err := handlers.likeHelper.CreateLikeHelper(constants.PostEntityType, postData.ID,
 			headers[utils.HeadersMemberId], likePostRequest.CreatedAt)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
@@ -249,7 +260,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		}
 
 		if !useCustomCreationTimestamp {
-			createUserPostLikeActivity(handlers, post_data, c, headers)
+			createUserPostLikeActivity(handlers, postData, c, headers)
 
 			// Trigger post liked webhook
 			err := handlers.taskDistributor.TriggerPostLikedWebhook(post_id, headers[utils.HeadersMemberId], headers[utils.HeadersApiKey])
@@ -277,9 +288,9 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 
 		if !useCustomCreationTimestamp {
 			if !like_data.IsDeleted {
-				deleteUserPostLikeActivity(handlers, post_data, c, headers)
+				deleteUserPostLikeActivity(handlers, postData, c, headers)
 			} else {
-				createUserPostLikeActivity(handlers, post_data, c, headers)
+				createUserPostLikeActivity(handlers, postData, c, headers)
 			}
 		}
 	}
@@ -368,6 +379,9 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
+	memberRole := headers[utils.HeadersMemberRole]
+
+	isCm := utils.IsCMRole(memberRole)
 
 	// fetch url params
 	post_id := c.Param("post_id")
@@ -389,9 +403,15 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
 	// fetch post data
-	_, err = FetchPostData(handlers.postHelper, post_id, communityId, true, excludedUserIds)
+	postData, err := FetchPostData(handlers.postHelper, post_id, communityId, true, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		utils.GeneralAPIValidationError(c, utils.PostIsHiddenError)
 		return
 	}
 

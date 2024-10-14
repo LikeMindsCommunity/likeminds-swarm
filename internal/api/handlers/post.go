@@ -957,6 +957,11 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 		return postWithRepliesResponse, err
 	}
 
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		return postWithRepliesResponse, fmt.Errorf(utils.PostIsHiddenError)
+	}
+
 	commentFilterData := gin.H{
 		"level":      constants.CommentBaseLevel,
 		"is_deleted": false,
@@ -1288,7 +1293,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -1528,6 +1533,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 // Exposed Method to fetch a Post using post_id
 func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
@@ -1535,7 +1541,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 	userId := headers[utils.HeadersMemberId]
 
 	if paramIsCm == "true" {
@@ -1592,7 +1598,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -2128,6 +2134,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 
 // Exposed Method to fetch all the Posts created by a User
 func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
+
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
 	userId := c.Param("user_id")
@@ -2266,7 +2273,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	isCm := utils.IsCMRole(memberRole)
 
@@ -2538,12 +2545,12 @@ func (handlers *FeedHandlers) MarkPostsSeen(c *gin.Context) {
 		return
 	}
 
-	isCm := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCm := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// Create logged in user params
 	loggedInUser := LoggedInUserParams{
 		UserId:           headers[utils.HeadersMemberId],
-		MemberRole:       headers[utils.HeaderMemberRole],
+		MemberRole:       headers[utils.HeadersMemberRole],
 		CommunityId:      communityId,
 		IsCm:             isCm,
 		PlatformCode:     headers[utils.HeadersPlatformCode],
@@ -2697,7 +2704,7 @@ func (handlers *FeedHandlers) HidePost(c *gin.Context) {
 
 	// fetch headers
 	headers := utils.GetHeaders(c)
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	// fetch url params
 	postId := c.Param("post_id")

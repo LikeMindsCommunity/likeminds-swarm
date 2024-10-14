@@ -75,7 +75,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
@@ -567,7 +567,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -709,7 +709,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
