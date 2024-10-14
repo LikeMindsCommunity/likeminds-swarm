@@ -259,7 +259,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			return
 		}
 
-		if !useCustomCreationTimestamp {
+		if !useCustomCreationTimestamp && !postData.IsHidden {
 			createUserPostLikeActivity(handlers, postData, c, headers)
 
 			// Trigger post liked webhook
@@ -286,7 +286,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 			return
 		}
 
-		if !useCustomCreationTimestamp {
+		if !useCustomCreationTimestamp && !postData.IsHidden {
 			if !like_data.IsDeleted {
 				deleteUserPostLikeActivity(handlers, postData, c, headers)
 			} else {

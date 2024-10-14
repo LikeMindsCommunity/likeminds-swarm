@@ -757,7 +757,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 	var isCreatorTagged bool = false
 
-	if !useCustomCreationTimestamp {
+	if !useCustomCreationTimestamp && !postData.IsHidden {
 
 		// cta data for activity
 		ctaData := gin.H{
@@ -1119,7 +1119,7 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 	var isCreatorTagged bool = false
 
-	if !useCustomCreationTimestamp {
+	if !useCustomCreationTimestamp && !postData.IsHidden {
 
 		// cta data for activity
 		ctaData := gin.H{
