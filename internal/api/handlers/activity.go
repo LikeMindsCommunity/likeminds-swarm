@@ -12,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -19,8 +20,8 @@ import (
 )
 
 // Internal Method to parse User activity list
-func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
+func parseUserActivity(handler FeedHandlers, activities []entities.Activity, apiRevampV1Check bool, userId string,
+) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	response := []interface{}{}
 	userDatas := map[string]externalHelpers.MemberMeta{}
@@ -67,7 +68,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityText, err := getActivityText(activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue, likePastValue)
+		activityText, err := getActivityText(handler.cacheHelper, userId, activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue, likePastValue)
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -357,8 +358,11 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 	return nil, nil
 }
 
-func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEntityData interface{}, activity entities.Activity,
-	postFeedMetadatValue string, commentFeedMetadaValue string, likePastValue string) (string, error) {
+func getActivityText(cacheHelper cache.Helper, userId string, activityByUserData externalHelpers.MemberMeta,
+	activityEntityData interface{}, activity entities.Activity, postFeedMetadatValue string, commentFeedMetadaValue string,
+	likePastValue string,
+) (string, error) {
+
 	activityText := ""
 
 	switch activity.Action {
@@ -473,7 +477,8 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		// If post is anonymous, replace post owner name with "Anonymous User"
 		post, ok := activityEntityData.(responses.PostResponse)
 		if ok && post.IsAnonymous {
-			activityText += " " + constants.AnonymousUserName + "'s"
+			anonUserMeta := externalHelpers.GetAnonymousUserMeta(cacheHelper, userId, activity.CommunityID)
+			activityText += " " + anonUserMeta.Name + "'s"
 		} else {
 			activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
 			if activityEntityOwnerUserID != "" {
