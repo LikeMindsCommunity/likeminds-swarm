@@ -101,6 +101,7 @@ const (
 	FeedMetadataUniversalFeedCommentSortKey      = "comment_sort_order_key"
 	FeedMetadataUniversalFeedCommentSortOrderKey = "comment_sort_order"
 	FeedMetadataUniversalFeedCommentCountKey     = "comment_count"
+	FeedMetadataAnonymousUserMetaKey             = "anonymous_user_meta"
 )
 
 const (

@@ -30,6 +30,7 @@ type PostResponse struct {
 	IsDeleted          bool                 `json:"is_deleted,omitempty"`
 	IsEdited           bool                 `json:"is_edited"`
 	IsRepost           bool                 `json:"is_repost"`
+	IsAnonymous        bool                 `json:"is_anonymous"`
 	IsRepostedByUser   bool                 `json:"is_reposted_by_user"`
 	OriginalAuthorUUID string               `json:"original_author_uuid,omitempty"`
 	DeletedBy          string               `json:"deleted_by,omitempty"`

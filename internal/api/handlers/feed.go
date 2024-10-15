@@ -19,9 +19,8 @@ import (
 )
 
 // Internal Method to get Universal Feed Post Filter
-func getUniversalFeedPostFilter(communityId int, isPinned bool, excludedUserIds []string) gin.H {
+func getUniversalFeedPostFilter(communityId int, excludedUserIds []string) gin.H {
 	return gin.H{
-		"is_pinned":    isPinned,
 		"is_deleted":   false,
 		"community_id": communityId,
 		"user_id": gin.H{
@@ -96,13 +95,6 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Parse widget ids string array
 	widgetIds := utils.ParseStringArrayParam(universalFeedRequest.WidgetIds)
 
-	// fetch pagination query params
-	page, _, err := fetchPaginationParams(c)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
 	// Get users list who are blocked by userId or blocked the userId
 	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
@@ -113,16 +105,12 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Combine the above two lists to get excluded user lists
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
-	// pinned posts filter data
-	pinnedPostFilterData := getUniversalFeedPostFilter(communityId, true, excludedUserIds)
-
-	// unpinned posts filter data
-	unpinnedPostFilterData := getUniversalFeedPostFilter(communityId, false, excludedUserIds)
+	// posts filter data
+	postFilterData := getUniversalFeedPostFilter(communityId, excludedUserIds)
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
 		postObjectIdsList, err := getPostIdsBasedOnTopicsFilter(handlers, topicIds)
-
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -131,7 +119,6 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		if len(postObjectIdsList) == 0 {
 			finalParsedResponse := gin.H{
 				"posts":             []responses.PostResponse{},
-				"success":           true,
 				"topics":            map[string]responses.TopicResponse{},
 				"widgets":           map[string]requests.WidgetResponse{},
 				"reposted_posts":    map[string]responses.PostResponse{},
@@ -139,15 +126,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			}
 
 			// return final response
-			c.JSON(http.StatusOK, finalParsedResponse)
+			utils.GenerateSuccessResponse(c, finalParsedResponse)
 			return
 		}
 
-		pinnedPostFilterData["_id"] = gin.H{
-			"$in": postObjectIdsList,
-		}
-
-		unpinnedPostFilterData["_id"] = gin.H{
+		postFilterData["_id"] = gin.H{
 			"$in": postObjectIdsList,
 		}
 	}
@@ -164,50 +147,27 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			},
 		}
 
-		pinnedPostFilterData["attachments"] = widgetQuery
-		unpinnedPostFilterData["attachments"] = widgetQuery
+		postFilterData["attachments"] = widgetQuery
 	}
 
 	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
+	postFilterOptions, err := generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	parsedPosts := []responses.PostResponse{}
+	// Add post filter options
+	postFilterOptions = addSortingOptions(postFilterOptions, "created_at", OrderTypeDescending)
 
-	if page == 1 {
-		// pinned post filter options
-		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
-
-		// fetch pinned post using helper method
-		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData, pinnedPostFilterOptions)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
-
-		// parse pinned posts
-		pinnedPostResponse := parseMultiplePostResponse(handlers, pinnedPostResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm,
-			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
-
-		parsedPosts = append(parsedPosts, pinnedPostResponse...)
-	}
-
-	// fetch unpinned post using helper method
-	unpinnedPostResults, err := handlers.postHelper.FindPostHelper(unpinnedPostFilterData,
-		postFilterOptions)
+	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, postFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// parse unpinned posts
-	unpinnedPostResponse := parseMultiplePostResponse(handlers, unpinnedPostResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
-
-	parsedPosts = append(parsedPosts, unpinnedPostResponse...)
+	// parse posts
+	parsedPosts := parseMultiplePostResponse(handlers, postResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
 
 	// parse posts for final response (topics, widgets, comments, etc)
 	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUserParams, parsedPosts)
@@ -924,7 +884,6 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 
 	// fetch posts count using helper method
 	postsCount, err := handlers.postHelper.CountPostHelper(postFilterData)
-
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

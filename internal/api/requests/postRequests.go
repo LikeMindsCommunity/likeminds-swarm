@@ -17,6 +17,7 @@ type CreatePostRequest struct {
 	Visibility     string               `json:"visibility"`
 	UserIsCm       bool                 `json:"user_is_cm,omitempty"`
 	IsRepost       bool                 `json:"is_repost"`
+	IsAnonymous    bool                 `json:"is_anonymous"`
 	CreatedAt      int                  `json:"created_at"`
 	ParsedTopicIds []primitive.ObjectID `json:"-"` // field to be updated internally
 	OriginalAuthor string               `json:"-"` // field to be updated internally

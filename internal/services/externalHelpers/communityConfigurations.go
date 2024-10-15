@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
@@ -98,7 +99,6 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 
 	//Send Request
 	respBytes, _, err := GetRequestResponse(CaravanService, FetchCommunityConfigurationsEndpoint, GETRequest, headers, params, nil)
-
 	if respBytes == nil {
 		//If API fails or any other error
 		return nil, err
@@ -282,4 +282,40 @@ func GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper cache.Helper, userId
 
 	return &personalisedFeedWeights, nil
 
+}
+
+// Exposed method to fetch AnonymousUserMeta from community configurations
+func GetAnonymousUserMeta(cacheHelper cache.Helper, userId string, communityId int) *MemberMeta {
+
+	anonUserMeta := MemberMeta{
+		Name:         constants.AnonymousUserName,
+		UserUniqueId: constants.AnonymousUserUserId,
+		UUID:         constants.AnonymousUserUserId,
+		SDKClientInfo: SDKClientInfo{
+			UserUniqueID: constants.AnonymousUserUserId,
+			UUID:         constants.AnonymousUserUserId,
+		},
+	}
+
+	communityConfigurationResponse, _ := GetCommunityConfigurations(cacheHelper, userId, communityId)
+
+	if communityConfigurationResponse != nil {
+		externalEntities := ExternalEntities{
+			CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
+		}
+
+		feedMetaConfigs, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations, FeedMetadataCommunityConfigurationType)
+
+		anonUserMetaConfig := feedMetaConfigs.Value[FeedMetadataAnonymousUserMetaKey].(map[string]interface{})
+		if anonUserMetaConfig != nil {
+			if name, ok := anonUserMetaConfig["name"]; ok {
+				anonUserMeta.Name = name.(string)
+			}
+			if imageUrl, ok := anonUserMetaConfig["image_url"]; ok {
+				anonUserMeta.ImageUrl = imageUrl.(string)
+			}
+		}
+	}
+
+	return &anonUserMeta
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
@@ -19,8 +20,8 @@ import (
 )
 
 // Internal Method to parse User activity list
-func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
-	apiRevampV1Check bool, userId string) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
+func parseUserActivity(handler FeedHandlers, activities []entities.Activity, apiRevampV1Check bool, userId string,
+) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	response := []interface{}{}
 	userDatas := map[string]externalHelpers.MemberMeta{}
@@ -38,6 +39,8 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 	userIds := []string{}
 	topicIds := []primitive.ObjectID{}
 	widgetIds := []primitive.ObjectID{}
+
+	anonymousUserPresent := false
 
 	for _, activity := range activities {
 
@@ -65,7 +68,7 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityText, err := getActivityText(activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue, likePastValue)
+		activityText, err := getActivityText(handler.cacheHelper, userId, activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue, likePastValue)
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
@@ -108,18 +111,32 @@ func parseUserActivity(handler FeedHandlers, activities []entities.Activity,
 
 		// Parse topicIds and widgetIds from post
 		if activity.EntityType == constants.Post {
+
+			post := activityEntityData.(responses.PostResponse)
+
 			// Parse topicIds from postData
-			if activityEntityData.(responses.PostResponse).Topics != nil {
-				ids := activityEntityData.(responses.PostResponse).Topics
+			if post.Topics != nil {
+				ids := post.Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if activityEntityData.(responses.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(activityEntityData.(responses.PostResponse).Attachments)
+			if post.Attachments != nil {
+				ids := getWidgetIdsFromAttachments(post.Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
+
+			// Check if anonymous user is present in activity
+			if post.IsAnonymous && post.UserId == constants.AnonymousUserUserId {
+				anonymousUserPresent = true
+			}
 		}
+	}
+
+	// If anonymous user is present in activity, add it to userDatas
+	if anonymousUserPresent {
+		anonUserMeta := externalHelpers.GetAnonymousUserMeta(handler.cacheHelper, userId, activities[0].CommunityID)
+		userDatas[anonUserMeta.UserUniqueId] = *anonUserMeta
 	}
 
 	// Parse topicsData from topicIds
@@ -150,6 +167,8 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 	userIds := []string{uuid}
 	topicIds := []primitive.ObjectID{}
 	widgetIds := []primitive.ObjectID{}
+
+	anonymousUserPresent := false
 
 	for _, activity := range activities {
 		// Append actionOn in userIds
@@ -240,19 +259,30 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 
 		if postData != nil {
 
+			post := postData.(responses.PostResponse)
+
 			// Parse topicIds from postData
-			if postData.(responses.PostResponse).Topics != nil {
-				ids := postData.(responses.PostResponse).Topics
+			if post.Topics != nil {
+				ids := post.Topics
 				topicIds = append(topicIds, ids...)
 			}
 
 			// Parse widgetIds from postData
-			if postData.(responses.PostResponse).Attachments != nil {
-				ids := getWidgetIdsFromAttachments(postData.(responses.PostResponse).Attachments)
+			if post.Attachments != nil {
+				ids := getWidgetIdsFromAttachments(post.Attachments)
 				widgetIds = append(widgetIds, ids...)
 			}
-		}
 
+			if post.IsAnonymous && post.UserId == constants.AnonymousUserUserId {
+				anonymousUserPresent = true
+			}
+		}
+	}
+
+	// If anonymous user is present in activity, add it to userDatas
+	if anonymousUserPresent {
+		anonUserMeta := externalHelpers.GetAnonymousUserMeta(handler.cacheHelper, userId, activities[0].CommunityID)
+		userDatas[anonUserMeta.UserUniqueId] = *anonUserMeta
 	}
 
 	// Parse topicsData from topicIds
@@ -328,8 +358,11 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 	return nil, nil
 }
 
-func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEntityData interface{}, activity entities.Activity,
-	postFeedMetadatValue string, commentFeedMetadaValue string, likePastValue string) (string, error) {
+func getActivityText(cacheHelper cache.Helper, userId string, activityByUserData externalHelpers.MemberMeta,
+	activityEntityData interface{}, activity entities.Activity, postFeedMetadatValue string, commentFeedMetadaValue string,
+	likePastValue string,
+) (string, error) {
+
 	activityText := ""
 
 	switch activity.Action {
@@ -412,7 +445,13 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 		return activityText, nil
 
 	case constants.TaggedInPost:
-		activityText += getUserRoute(activityByUserData)
+
+		post, ok := activityEntityData.(responses.PostResponse)
+		if ok && post.IsAnonymous {
+			activityText += constants.AnonymousUserName
+		} else {
+			activityText += getUserRoute(activityByUserData)
+		}
 
 		activityText += " tagged you in their"
 
@@ -435,9 +474,16 @@ func getActivityText(activityByUserData externalHelpers.MemberMeta, activityEnti
 
 		activityText += fmt.Sprintf(" also left a %s on", commentFeedMetadaValue)
 
-		activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
-		if activityEntityOwnerUserID != "" {
-			activityText += " " + getUserRoute(activityEntityOwnerUserData[activityEntityOwnerUserID]) + "'s"
+		// If post is anonymous, replace post owner name with "Anonymous User"
+		post, ok := activityEntityData.(responses.PostResponse)
+		if ok && post.IsAnonymous {
+			anonUserMeta := externalHelpers.GetAnonymousUserMeta(cacheHelper, userId, activity.CommunityID)
+			activityText += " " + anonUserMeta.Name + "'s"
+		} else {
+			activityEntityOwnerUserData, activityEntityOwnerUserID := fetchActivityEntityOwnerUserData(activity)
+			if activityEntityOwnerUserID != "" {
+				activityText += " " + getUserRoute(activityEntityOwnerUserData[activityEntityOwnerUserID]) + "'s"
+			}
 		}
 
 		activityText += getEntityText(activity.EntityType, activityEntityData, postFeedMetadatValue)

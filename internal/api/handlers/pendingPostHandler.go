@@ -126,7 +126,7 @@ func createPendingPostAfterValidation(handlers *FeedHandlers, userId string, com
 	// Create pending post
 	postId, err := handlers.pendingPostHelper.CreatePendingPostHelper(postRequest.Text, postRequest.Heading, communityId,
 		userId, postRequest.Attachments, postRequest.ChatroomID, postRequest.TempID, postRequest.ParsedTopicIds, "",
-		postRequest.Visibility, false, postRequest.CreatedAt, enums.UnderReview, postRequest.UUIDs)
+		postRequest.Visibility, false, postRequest.IsAnonymous, postRequest.CreatedAt, enums.UnderReview, postRequest.UUIDs)
 	if err != nil {
 		return nil, err
 	}
