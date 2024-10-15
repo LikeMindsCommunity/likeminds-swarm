@@ -62,3 +62,8 @@ const (
 	HidePostMenuItemId
 	UnHidePostMenuItemId
 )
+
+// Menu Items Config
+const (
+	HidePostMenuItemConfig = "hide_post"
+)
