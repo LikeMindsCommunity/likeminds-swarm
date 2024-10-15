@@ -69,7 +69,12 @@ func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalE
 	case constants.BlockUserMenuItemName:
 		menuId = constants.BlockUserMenuItemId
 		menuTitle = constants.BlockUserMenuItemTitle
-
+	case constants.HidePostMenuItemName:
+		menuId = constants.HidePostMenuItemId
+		menuTitle = fmt.Sprintf(constants.HidePostMenuItemTitle, postFeedMetadataValues)
+	case constants.UnHidePostMenuItemName:
+		menuId = constants.UnHidePostMenuItemId
+		menuTitle = fmt.Sprintf(constants.UnHidePostMenuItemTitle, postFeedMetadataValues)
 	}
 
 	return responses.MenuResponse{
@@ -79,7 +84,9 @@ func getMenuItem(menuItemName string, externalEntities externalHelpers.ExternalE
 }
 
 // Exposed Method to get Post Menu for Owner who are CMs also
-func GetIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities) []responses.MenuResponse {
+func GetIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities,
+) []responses.MenuResponse {
+
 	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
@@ -88,10 +95,16 @@ func GetIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntit
 
 	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName, externalEntities))
 
-	if is_pinned {
+	if isPinned {
 		menuItems = append(menuItems, getMenuItem(constants.UnpinPostMenuItemName, externalEntities))
 	} else {
 		menuItems = append(menuItems, getMenuItem(constants.PinPostMenuItemName, externalEntities))
+	}
+
+	if isHidden {
+		menuItems = append(menuItems, getMenuItem(constants.UnHidePostMenuItemName, externalEntities))
+	} else {
+		menuItems = append(menuItems, getMenuItem(constants.HidePostMenuItemName, externalEntities))
 	}
 
 	return menuItems
@@ -111,17 +124,23 @@ func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities externalH
 }
 
 // Exposed Method to get Post Menu for CMs who are not owners
-func GetNotIsOwnerIsCmPostMenuItems(is_pinned bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
+func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
 	menuItems := []responses.MenuResponse{}
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
 	}
 
-	if is_pinned {
+	if isPinned {
 		menuItems = append(menuItems, getMenuItem(constants.UnpinPostMenuItemName, externalEntities))
 	} else {
 		menuItems = append(menuItems, getMenuItem(constants.PinPostMenuItemName, externalEntities))
+	}
+
+	if isHidden {
+		menuItems = append(menuItems, getMenuItem(constants.UnHidePostMenuItemName, externalEntities))
+	} else {
+		menuItems = append(menuItems, getMenuItem(constants.HidePostMenuItemName, externalEntities))
 	}
 
 	menuItems = append(menuItems, getMenuItem(constants.DeletePostMenuItemName, externalEntities))

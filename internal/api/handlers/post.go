@@ -829,7 +829,8 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.MenuItems = []responses.MenuResponse{}
 	if loggedInUser.MemberRole != utils.GuestRole {
 		response.MenuItems = getEntityMenuItems(constants.PostEntityType, loggedInUser.IsCm, loggedInUser.UserId == post.UserId,
-			post.IsPinned, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.UserId, post.CommunityId, handlers.cacheHelper, post.UserId)
+			post.IsPinned, post.IsHidden, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.UserId,
+			post.CommunityId, handlers.cacheHelper, post.UserId)
 	}
 
 	if post.IsDeleted {

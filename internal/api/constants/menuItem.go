@@ -8,6 +8,8 @@ const (
 	ReportPostMenuItemName = "ReportPost"
 	EditPostMenuItemName   = "EditPost"
 	BlockUserMenuItemName  = "BlockUser"
+	HidePostMenuItemName   = "HidePost"
+	UnHidePostMenuItemName = "UnhidePost"
 )
 
 const (
@@ -17,6 +19,8 @@ const (
 	ReportPostMenuItemTitle = "Report"
 	EditPostMenuItemTitle   = "Edit %s"
 	BlockUserMenuItemTitle  = "Block"
+	HidePostMenuItemTitle   = "Hide This %s"
+	UnHidePostMenuItemTitle = "Unhide this %s"
 )
 
 // Comment Menu Items
@@ -55,4 +59,6 @@ const (
 	EditPendingPostMenuItemId
 	DeletePendingPostMenuItemId
 	BlockUserMenuItemId
+	HidePostMenuItemId
+	UnHidePostMenuItemId
 )

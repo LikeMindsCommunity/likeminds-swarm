@@ -123,7 +123,7 @@ func getTaggedUsers(text string) ([]string, error) {
 }
 
 // Internal Method to fetch menu items for a user on an Entity
-func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned bool,
+func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned bool, isHidden bool,
 	versionCode string, platformCode string, userId string, communityId int, cacheHelper cache.Helper,
 	entityCreatorId string) []responses.MenuResponse {
 
@@ -154,7 +154,7 @@ func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned boo
 		}
 
 		if isOwner && isCm {
-			output_menu_items = GetIsOwnerIsCmPostMenuItems(isPinned, isEditEnabled, externalEntities)
+			output_menu_items = GetIsOwnerIsCmPostMenuItems(isPinned, isHidden, isEditEnabled, externalEntities)
 		}
 
 		if isOwner && !isCm {
@@ -162,7 +162,7 @@ func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned boo
 		}
 
 		if !isOwner && isCm {
-			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(isPinned, isEditEnabled, externalEntities, isEntityOwnerBlocked)
+			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(isPinned, isHidden, isEditEnabled, externalEntities, isEntityOwnerBlocked)
 		}
 
 		if !isOwner && !isCm {
