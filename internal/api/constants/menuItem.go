@@ -1,7 +1,6 @@
 package constants
 
 // Post Menu Items
-// Post Menu Items
 const (
 	DeletePostMenuItemName = "DeletePost"
 	PinPostMenuItemName    = "PinPost"
