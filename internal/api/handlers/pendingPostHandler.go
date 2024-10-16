@@ -39,7 +39,8 @@ func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.Pendi
 	postResponse := parseSinglePostResponse(handlers, &pendingPost.PostData, &loggedInUser)
 
 	postResponse.MenuItems = getEntityMenuItems(constants.PendingPostEntityType, isCm,
-		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, versionCode, platformCode, userId, pendingPost.PostData.CommunityId, handlers.cacheHelper, pendingPost.UserId)
+		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, pendingPost.PostData.IsHidden,
+		versionCode, platformCode, userId, pendingPost.PostData.CommunityId, handlers.cacheHelper, pendingPost.UserId)
 
 	postResponse.IsPendingPost = true
 	postResponse.PostStatus = pendingPost.Status
@@ -194,7 +195,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 	versionCode := headers[utils.HeadersVersionCode]
 	platformCode := headers[utils.HeadersPlatformCode]
 
@@ -450,7 +451,7 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	pendingPostId := c.Param("pending_post_id")
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -595,7 +596,7 @@ func (handlers *FeedHandlers) FetchPendingPost(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 	platformCode := headers[utils.HeadersPlatformCode]
 	versionCode := headers[utils.HeadersVersionCode]
 

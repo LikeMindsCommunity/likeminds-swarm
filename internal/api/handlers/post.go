@@ -62,6 +62,10 @@ func GetRepostCountForMultiplePosts(widgetHelper interfaces.WidgetHelper, posts 
 		}
 	}
 
+	if len(repostWidgetIds) == 0 {
+		return postRepostCount
+	}
+
 	widgetFilter := gin.H{
 		"_id": bson.M{
 			"$in": repostWidgetIds,
@@ -124,6 +128,10 @@ func getIsRepostedByUserForMultiplePosts(widgetHelper interfaces.WidgetHelper, u
 		if postRepostWidgetData.AttachmentType == enums.RepostWidget {
 			repostWidgetIds = append(repostWidgetIds, postRepostWidgetData.AttachmentMeta.EntityID)
 		}
+	}
+
+	if len(repostWidgetIds) == 0 {
+		return isRepostedByUserMap
 	}
 
 	widgetFilter := gin.H{
@@ -795,6 +803,7 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.CommunityId = post.CommunityId
 	response.ChatroomId = post.ChatroomId
 	response.IsPinned = post.IsPinned
+	response.IsHidden = post.IsHidden
 	response.IsDeleted = post.IsDeleted
 	response.IsEdited = post.IsEdited
 	response.IsRepost = post.IsRepost
@@ -820,7 +829,8 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.MenuItems = []responses.MenuResponse{}
 	if loggedInUser.MemberRole != utils.GuestRole {
 		response.MenuItems = getEntityMenuItems(constants.PostEntityType, loggedInUser.IsCm, loggedInUser.UserId == post.UserId,
-			post.IsPinned, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.UserId, post.CommunityId, handlers.cacheHelper, post.UserId)
+			post.IsPinned, post.IsHidden, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.UserId,
+			post.CommunityId, handlers.cacheHelper, post.UserId)
 	}
 
 	if post.IsDeleted {
@@ -948,6 +958,11 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 		return postWithRepliesResponse, err
 	}
 
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		return postWithRepliesResponse, fmt.Errorf(utils.PostIsHiddenError)
+	}
+
 	commentFilterData := gin.H{
 		"level":      constants.CommentBaseLevel,
 		"is_deleted": false,
@@ -1009,7 +1024,16 @@ func fetchPostResponseMapFromPostIds(handlers *FeedHandlers, postIds []string, c
 	// Make key value pair of post_id -> PostResponse
 	postResponse := map[string]responses.PostResponse{}
 	for _, post := range parsedPosts {
-		postResponse[post.ID.Hex()] = post
+
+		// if post is hidden and user is not cm or creator, then only show isHidden flag
+		if !isCm && post.IsHidden && userId != post.UserId {
+			postResponse[post.ID.Hex()] = responses.PostResponse{
+				ID:       post.ID,
+				IsHidden: true,
+			}
+		} else {
+			postResponse[post.ID.Hex()] = post
+		}
 	}
 
 	return postResponse, nil
@@ -1270,7 +1294,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -1510,6 +1534,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 // Exposed Method to fetch a Post using post_id
 func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
@@ -1517,7 +1542,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 	userId := headers[utils.HeadersMemberId]
 
 	if paramIsCm == "true" {
@@ -1574,7 +1599,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
@@ -2060,6 +2085,11 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 		return
 	}
 
+	if postData.IsHidden {
+		utils.GeneralAPIValidationError(c, utils.PostHiddenCannotPinError)
+		return
+	}
+
 	// update data
 	updateData := gin.H{
 		"$set": gin.H{
@@ -2105,6 +2135,7 @@ func (handlers *FeedHandlers) PinPost(c *gin.Context) {
 
 // Exposed Method to fetch all the Posts created by a User
 func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
+
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
 	userId := c.Param("user_id")
@@ -2130,6 +2161,17 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		"user_id":      userId,
 		"is_deleted":   false,
 		"community_id": communityId,
+	}
+
+	if !isCm {
+		postFilterData["$nor"] = []gin.H{
+			{
+				"is_hidden": true,
+				"user_id": gin.H{
+					"$ne": userId,
+				},
+			},
+		}
 	}
 
 	// fetch posts count using helper method
@@ -2232,6 +2274,9 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
+	memberRole := headers[utils.HeadersMemberRole]
+
+	isCm := utils.IsCMRole(memberRole)
 
 	var searchPostRequest requests.SearchPostRequest
 
@@ -2269,8 +2314,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
 	// dsl query to search posts
-	postQuery := GetPostFilterQuery(page, pageSize, searchPostRequest.SearchType,
-		searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId, excludedUserIds)
+	postQuery := GetPostFilterQuery(userId, page, pageSize, searchPostRequest.SearchType, searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId, excludedUserIds, isCm)
 	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
 	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
@@ -2502,12 +2546,12 @@ func (handlers *FeedHandlers) MarkPostsSeen(c *gin.Context) {
 		return
 	}
 
-	isCm := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCm := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// Create logged in user params
 	loggedInUser := LoggedInUserParams{
 		UserId:           headers[utils.HeadersMemberId],
-		MemberRole:       headers[utils.HeaderMemberRole],
+		MemberRole:       headers[utils.HeadersMemberRole],
 		CommunityId:      communityId,
 		IsCm:             isCm,
 		PlatformCode:     headers[utils.HeadersPlatformCode],
@@ -2654,4 +2698,65 @@ func editPostAfterValidation(handlers *FeedHandlers, communityId int, postId pri
 	}
 
 	return postData, nil
+}
+
+// Exposed Method to hide a Post
+func (handlers *FeedHandlers) HidePost(c *gin.Context) {
+
+	// fetch headers
+	headers := utils.GetHeaders(c)
+	memberRole := headers[utils.HeadersMemberRole]
+
+	// fetch url params
+	postId := c.Param("post_id")
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// CM Validation
+	if !utils.IsCMRole(memberRole) {
+		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
+		return
+	}
+
+	// fetch post using helper method
+	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// update data
+	updateData := gin.H{
+		"$set": gin.H{
+			"is_hidden": !postData.IsHidden,
+			"is_pinned": false,
+		},
+	}
+
+	// update post using the helper method
+	err = handlers.postHelper.UpdatePostByIdHelper(postData.ID, updateData)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// fetch updated post data using post_id
+	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// update post data in elastic search
+	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(), constants.PostIndexName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// return final response
+	utils.GenerateSuccessResponse(c, nil)
 }

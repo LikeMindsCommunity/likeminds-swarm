@@ -16,6 +16,7 @@ type Post struct {
 	CommunityId        int                  `json:"community_id" bson:"community_id"`
 	ChatroomId         int                  `json:"chatroom_id" bson:"chatroom_id"`
 	IsPinned           bool                 `json:"is_pinned" bson:"is_pinned"`
+	IsHidden           bool                 `json:"is_hidden" bson:"is_hidden"`
 	UserId             string               `json:"user_id" bson:"user_id"`
 	Attachments        []Attachment         `json:"attachments" bson:"attachments"`
 	IsDeleted          bool                 `json:"is_deleted" bson:"is_deleted"`
@@ -50,6 +51,7 @@ func NewPost(text string, heading string, communityId int, userId string, attach
 		CommunityId: communityId,
 		ChatroomId:  chatroomId,
 		IsPinned:    false,
+		IsHidden:    false,
 		UserId:      userId,
 		Attachments: attachments,
 		IsDeleted:   false,
