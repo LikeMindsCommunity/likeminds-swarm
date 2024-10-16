@@ -306,12 +306,13 @@ func GetAnonymousUserMeta(cacheHelper cache.Helper, userId string, communityId i
 
 		feedMetaConfigs, _ := GetCommunityConfigurationAgainstType(externalEntities.CommunityConfigurations, FeedMetadataCommunityConfigurationType)
 
-		anonUserMetaConfig := feedMetaConfigs.Value[FeedMetadataAnonymousUserMetaKey].(map[string]interface{})
-		if anonUserMetaConfig != nil {
-			if name, ok := anonUserMetaConfig["name"]; ok {
+		anonUserMetaConfig, ok := feedMetaConfigs.Value[FeedMetadataAnonymousUserMetaKey]
+		if ok && anonUserMetaConfig != nil {
+
+			if name, ok := anonUserMetaConfig.(map[string]interface{})["name"]; ok {
 				anonUserMeta.Name = name.(string)
 			}
-			if imageUrl, ok := anonUserMetaConfig["image_url"]; ok {
+			if imageUrl, ok := anonUserMetaConfig.(map[string]interface{})["image_url"]; ok {
 				anonUserMeta.ImageUrl = imageUrl.(string)
 			}
 		}
