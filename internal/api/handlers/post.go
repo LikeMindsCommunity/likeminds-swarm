@@ -1545,7 +1545,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	memberRole := headers[utils.HeadersMemberRole]
 	userId := headers[utils.HeadersMemberId]
 
-	if paramIsCm == "true" {
+	if paramIsCm == "true" || utils.IsCMRole(memberRole) {
 		isCm = true
 	}
 
@@ -1796,7 +1796,6 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
-
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c)
 	if communityId == externalHelpers.DefaultCommunityId {

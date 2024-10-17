@@ -308,9 +308,9 @@ func GetMenuItemsConfig(communityConfigurations []externalHelpers.CommunityConfi
 
 	config, ok := feedSettings.Value[externalHelpers.FeedSettingsMenuItemConfigKey]
 	if ok {
-		hidePostValue, ok := config.(map[string]bool)[constants.HidePostMenuItemConfig]
+		hidePostValue, ok := config.(map[string]interface{})[constants.HidePostMenuItemConfig]
 		if ok {
-			menuItemsConfig[constants.HidePostMenuItemConfig] = hidePostValue
+			menuItemsConfig[constants.HidePostMenuItemConfig] = hidePostValue.(bool)
 		}
 	}
 

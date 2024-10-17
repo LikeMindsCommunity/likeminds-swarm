@@ -92,7 +92,7 @@ const (
 )
 
 const (
-	FeedSettingsMenuItemConfigKey = "menu_items_Config"
+	FeedSettingsMenuItemConfigKey = "menu_items_config"
 )
 
 const (
