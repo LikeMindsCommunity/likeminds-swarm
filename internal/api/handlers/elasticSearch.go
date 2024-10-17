@@ -23,6 +23,7 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 		CommunityId: Post.CommunityId,
 		IsPinned:    Post.IsPinned,
 		IsRepost:    Post.IsRepost,
+		IsAnonymous: Post.IsAnonymous,
 		IsHidden:    Post.IsHidden,
 		UserId:      Post.UserId,
 		Attachments: Post.Attachments,

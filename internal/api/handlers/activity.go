@@ -609,7 +609,12 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 
 	// if post text is nil, add attachment type as text
 	if entityType == constants.Post && entityTextData == "" {
-		return " " + getPostAttachmentType(activityEntityData.(responses.PostResponse)) + "."
+		postAttachmentType := getPostAttachmentType(activityEntityData.(responses.PostResponse))
+		if postAttachmentType != "" {
+			return " " + postAttachmentType + "."
+		} else {
+			return " " + postFeedMetadatValue + "."
+		}
 	}
 
 	// if comment text is nil, add attachment type as text

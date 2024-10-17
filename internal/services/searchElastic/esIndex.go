@@ -17,6 +17,7 @@ type PostIndex struct {
 	CommunityId        int                  `json:"community_id"`
 	IsPinned           bool                 `json:"is_pinned"`
 	IsRepost           bool                 `json:"is_repost"`
+	IsAnonymous        bool                 `json:"is_anonymous"`
 	IsHidden           bool                 `json:"is_hidden"`
 	UserId             string               `json:"user_id"`
 	OriginalAuthorUUID string               `json:"original_author_uuid,omitempty"`

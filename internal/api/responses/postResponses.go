@@ -18,12 +18,12 @@ type PostResponse struct {
 	Topics             []primitive.ObjectID `json:"topics"`
 	Text               string               `json:"text"`
 	Heading            string               `json:"heading"`
-	CommunityId        int                  `json:"community_id,omitempty"`
+	CommunityId        int                  `json:"community_id"`
 	ChatroomId         int                  `json:"feedroom_id,omitempty"`
 	IsPinned           bool                 `json:"is_pinned"`
 	IsHidden           bool                 `json:"is_hidden"`
-	UserId             string               `json:"user_id,omitempty"`
-	UUID               string               `json:"uuid,omitempty"`
+	UserId             string               `json:"user_id"`
+	UUID               string               `json:"uuid"`
 	Attachments        []AttachmentResponse `json:"attachments"`
 	LikesCount         int                  `json:"likes_count"`
 	CommentsCount      int                  `json:"comments_count"`
