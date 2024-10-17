@@ -321,7 +321,7 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 		return
 	}
 
-	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	widgetResponse := parseWidgetResponse(handlers, widgetData, communityId, isCM, headers[utils.HeadersMemberId])
 
@@ -465,7 +465,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
 
-	isCm := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCm := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// parse fetch Widget request
 	var fetchWidgetRequest requests.FetchWidgetRequest
@@ -548,7 +548,7 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 		return
 	}
 
-	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// Fetch Updated Widget Response
 	widgetResponse := parseWidgetResponse(handlers, widget, communityId, isCM, headers[utils.HeadersMemberId])

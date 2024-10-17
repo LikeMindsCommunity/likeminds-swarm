@@ -94,6 +94,11 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	post_id := c.Param("post_id")
 
+	userId := headers[utils.HeadersMemberId]
+	memberRole := headers[utils.HeadersMemberRole]
+
+	isCm := utils.IsCMRole(memberRole)
+
 	// validation of api_key
 	community_id := externalHelpers.GetCommunityId(c)
 	if community_id == externalHelpers.DefaultCommunityId {
@@ -101,9 +106,15 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	}
 
 	// fetch post using helper method
-	post_data, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
+	postData, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// If post is hidden and user is not cm or creator, then throw error
+	if !isCm && postData.IsHidden && userId != postData.UserId {
+		utils.GeneralAPIValidationError(c, utils.PostIsHiddenError)
 		return
 	}
 
@@ -117,7 +128,7 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 
 	if len(save_results) == 0 {
 		// create save using the helper method
-		_, err := handlers.saveHelper.CreateSaveHelper(constants.PostEntityType, post_data.ID,
+		_, err := handlers.saveHelper.CreateSaveHelper(constants.PostEntityType, postData.ID,
 			headers[utils.HeadersMemberId], community_id)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
