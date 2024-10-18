@@ -15,6 +15,7 @@ func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup.GET("/:post_id", handler.FetchPost)
 	postGroup.DELETE("/:post_id", handler.DeletePost)
 	postGroup.PUT("/:post_id/pin", handler.PinPost)
+	postGroup.PUT("/:post_id/hide", handler.HidePost)
 	postGroup.GET("/:post_id/like", handler.FetchPostLikes)
 	postGroup.PUT("/:post_id/like", handler.LikePost)
 	postGroup.PUT("/:post_id/save", handler.SavePost)

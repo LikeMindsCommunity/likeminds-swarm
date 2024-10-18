@@ -18,11 +18,12 @@ type PostResponse struct {
 	Topics             []primitive.ObjectID `json:"topics"`
 	Text               string               `json:"text"`
 	Heading            string               `json:"heading"`
-	CommunityId        int                  `json:"community_id,omitempty"`
+	CommunityId        int                  `json:"community_id"`
 	ChatroomId         int                  `json:"feedroom_id,omitempty"`
 	IsPinned           bool                 `json:"is_pinned"`
-	UserId             string               `json:"user_id,omitempty"`
-	UUID               string               `json:"uuid,omitempty"`
+	IsHidden           bool                 `json:"is_hidden"`
+	UserId             string               `json:"user_id"`
+	UUID               string               `json:"uuid"`
 	Attachments        []AttachmentResponse `json:"attachments"`
 	LikesCount         int                  `json:"likes_count"`
 	CommentsCount      int                  `json:"comments_count"`
@@ -30,6 +31,7 @@ type PostResponse struct {
 	IsDeleted          bool                 `json:"is_deleted,omitempty"`
 	IsEdited           bool                 `json:"is_edited"`
 	IsRepost           bool                 `json:"is_repost"`
+	IsAnonymous        bool                 `json:"is_anonymous"`
 	IsRepostedByUser   bool                 `json:"is_reposted_by_user"`
 	OriginalAuthorUUID string               `json:"original_author_uuid,omitempty"`
 	DeletedBy          string               `json:"deleted_by,omitempty"`

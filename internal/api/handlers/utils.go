@@ -5,11 +5,8 @@ import (
 	"regexp"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -53,8 +50,21 @@ func addSortingOptions(options map[string]interface{}, orderBy string, order int
 		order = OrderTypeDescending
 	}
 
-	options["$sort"] = gin.H{
-		orderBy: order,
+	sortOpts, ok := options["$sort"]
+	if ok {
+		bsonSortOpts, ok := sortOpts.(bson.D)
+		if ok {
+			bsonSortOpts = append(bsonSortOpts, bson.E{Key: orderBy, Value: order})
+			options["$sort"] = bsonSortOpts
+		} else {
+			options["$sort"] = bson.D{
+				{Key: orderBy, Value: order},
+			}
+		}
+	} else {
+		options["$sort"] = bson.D{
+			{Key: orderBy, Value: order},
+		}
 	}
 
 	return options
@@ -106,73 +116,6 @@ func getTaggedUsers(text string) ([]string, error) {
 	}
 
 	return tagged_members, nil
-}
-
-// Internal Method to fetch menu items for a user on an Entity
-func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned bool,
-	versionCode string, platformCode string, userId string, communityId int, cacheHelper cache.Helper,
-	entityCreatorId string) []responses.MenuResponse {
-
-	var output_menu_items []responses.MenuResponse
-	var externalEntities externalHelpers.ExternalEntities
-
-	isEditEnabled := utils.CheckVersion(utils.EditFeedEntityVersions, versionCode, platformCode)
-
-	switch entityType {
-	case constants.PostEntityType:
-		// Get community configurations
-		communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(cacheHelper, userId, communityId)
-		isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(cacheHelper, userId, communityId)
-
-		if communityConfigurationResponse != nil {
-			externalEntities = externalHelpers.ExternalEntities{
-				CommunityConfigurations:      communityConfigurationResponse.CommunityConfigurations,
-				IsPostApprovalSettingEnabled: isPostApprovalSettingEnabled,
-			}
-		}
-
-		// Get users list who are blocked by userId or blocked the userId
-		blockUserValuesList, _ := externalHelpers.GetUserBlockList(cacheHelper, userId, communityId)
-
-		isEntityOwnerBlocked := false
-		if len(utils.GetSimilarBetweenArray([]string{entityCreatorId}, blockUserValuesList.BlockedUsers)) > 0 {
-			isEntityOwnerBlocked = true
-		}
-
-		if isOwner && isCm {
-			output_menu_items = GetIsOwnerIsCmPostMenuItems(isPinned, isEditEnabled, externalEntities)
-		}
-
-		if isOwner && !isCm {
-			output_menu_items = GetIsOwnerNotIsCmPostMenuItems(isEditEnabled, externalEntities)
-		}
-
-		if !isOwner && isCm {
-			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(isPinned, isEditEnabled, externalEntities, isEntityOwnerBlocked)
-		}
-
-		if !isOwner && !isCm {
-			output_menu_items = GetNotIsOwnerNotIsCmPostMenuItems(isEditEnabled, externalEntities, isEntityOwnerBlocked)
-		}
-
-	case constants.CommentEntityType:
-		if isOwner {
-			output_menu_items = GetIsOwnerCommentMenuItems(isEditEnabled, externalEntities)
-		}
-
-		if !isOwner && isCm {
-			output_menu_items = GetNotIsOwnerIsCmCommentMenuItems(isEditEnabled, externalEntities)
-		}
-
-		if !isOwner && !isCm {
-			output_menu_items = GetNotIsOwnerNotIsCmCommentMenuItems(isEditEnabled, externalEntities)
-		}
-
-	case constants.PendingPostEntityType:
-		output_menu_items = GetPendingPostMenuItems(isEditEnabled, externalEntities)
-	}
-
-	return output_menu_items
 }
 
 // Internal Method to check if a number lies in Fibonacci Series

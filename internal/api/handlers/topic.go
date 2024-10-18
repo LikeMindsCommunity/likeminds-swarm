@@ -386,7 +386,7 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 
 	response["topics"] = topicsResponse
 
-	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// parse widget data if exists
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCM, "")
@@ -474,7 +474,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 		return
 	}
 
-	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	minPosts, filterIsEnabled, isEnabled, orderByParams, parentTopicsIds, err := validateFetchTopicsRequest(fetchTopicRequest)
 	if err != nil {
@@ -637,7 +637,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 		"widgets": gin.H{},
 	}
 
-	isCM := utils.IsCMRole(headers[utils.HeaderMemberRole])
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// Fetch widget data from response if exists
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCM, "")

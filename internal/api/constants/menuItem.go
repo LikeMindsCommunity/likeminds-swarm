@@ -1,11 +1,15 @@
 package constants
 
+// Post Menu Items
 const (
 	DeletePostMenuItemName = "DeletePost"
 	PinPostMenuItemName    = "PinPost"
 	UnpinPostMenuItemName  = "UnpinPost"
 	ReportPostMenuItemName = "ReportPost"
 	EditPostMenuItemName   = "EditPost"
+	BlockUserMenuItemName  = "BlockUser"
+	HidePostMenuItemName   = "HidePost"
+	UnHidePostMenuItemName = "UnhidePost"
 )
 
 const (
@@ -14,8 +18,12 @@ const (
 	UnpinPostMenuItemTitle  = "Unpin This %s"
 	ReportPostMenuItemTitle = "Report"
 	EditPostMenuItemTitle   = "Edit %s"
+	BlockUserMenuItemTitle  = "Block"
+	HidePostMenuItemTitle   = "Hide This %s"
+	UnHidePostMenuItemTitle = "Unhide this %s"
 )
 
+// Comment Menu Items
 const (
 	DeleteCommentMenuItemName = "DeleteComment"
 	ReportCommentMenuItemName = "ReportComment"
@@ -28,6 +36,7 @@ const (
 	EditCommentMenuItemTitle   = "Edit"
 )
 
+// Pending Post Menu Items
 const (
 	EditPendingPostMenuItemName   = "EditPendingPost"
 	DeletePendingPostMenuItemName = "DeletePendingPost"
@@ -36,14 +45,6 @@ const (
 const (
 	EditPendingPostMenuItemTitle   = "Edit"
 	DeletePendingPostMenuItemTitle = "Delete"
-)
-
-const (
-	BlockUserMenuItemName = "BlockUser"
-)
-
-const (
-	BlockUserMenuItemTitle = "Block"
 )
 
 const (
@@ -58,4 +59,11 @@ const (
 	EditPendingPostMenuItemId
 	DeletePendingPostMenuItemId
 	BlockUserMenuItemId
+	HidePostMenuItemId
+	UnHidePostMenuItemId
+)
+
+// Menu Items Config
+const (
+	HidePostMenuItemConfig = "hide_post"
 )

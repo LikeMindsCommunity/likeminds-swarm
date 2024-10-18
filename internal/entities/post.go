@@ -16,11 +16,13 @@ type Post struct {
 	CommunityId        int                  `json:"community_id" bson:"community_id"`
 	ChatroomId         int                  `json:"chatroom_id" bson:"chatroom_id"`
 	IsPinned           bool                 `json:"is_pinned" bson:"is_pinned"`
+	IsHidden           bool                 `json:"is_hidden" bson:"is_hidden"`
 	UserId             string               `json:"user_id" bson:"user_id"`
 	Attachments        []Attachment         `json:"attachments" bson:"attachments"`
 	IsDeleted          bool                 `json:"is_deleted" bson:"is_deleted"`
 	IsEdited           bool                 `json:"is_edited" bson:"is_edited"`
 	IsRepost           bool                 `json:"is_repost" bson:"is_repost"`
+	IsAnonymous        bool                 `json:"is_anonymous" bson:"is_anonymous"`
 	DeletedBy          string               `json:"deleted_by" bson:"deleted_by,omitempty"`
 	OriginalAuthorUUID string               `json:"original_author_uuid" bson:"original_author_uuid,omitempty"`
 	DeleteReason       string               `json:"delete_reason" bson:"delete_reason,omitempty"`
@@ -33,7 +35,7 @@ type Post struct {
 // Exposed Method to Create a New Post
 func NewPost(text string, heading string, communityId int, userId string, attachments []Attachment,
 	chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, isRepost bool, CreatedAt int) Post {
+	visibility string, isRepost bool, isAnonymous bool, CreatedAt int) Post {
 
 	createdAt := time.Now()
 
@@ -50,11 +52,13 @@ func NewPost(text string, heading string, communityId int, userId string, attach
 		CommunityId: communityId,
 		ChatroomId:  chatroomId,
 		IsPinned:    false,
+		IsHidden:    false,
 		UserId:      userId,
 		Attachments: attachments,
 		IsDeleted:   false,
 		IsEdited:    false,
 		IsRepost:    isRepost,
+		IsAnonymous: isAnonymous,
 		Visibility:  visibility,
 		CreatedAt:   createdAt,
 		UpdatedAt:   createdAt,

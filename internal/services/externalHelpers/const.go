@@ -88,6 +88,11 @@ const (
 	FeedMetadataCommunityConfigurationType   = "feed_metadata"
 	NSFWFilteringCommunityConfigurationType  = "nsfw_filtering"
 	PersonalisedFeedWeightsConfigurationType = "personalised_feed_weights"
+	FeedSettingsCommunityConfigurations      = "feed_settings"
+)
+
+const (
+	FeedSettingsMenuItemConfigKey = "menu_items_config"
 )
 
 const (
@@ -101,6 +106,7 @@ const (
 	FeedMetadataUniversalFeedCommentSortKey      = "comment_sort_order_key"
 	FeedMetadataUniversalFeedCommentSortOrderKey = "comment_sort_order"
 	FeedMetadataUniversalFeedCommentCountKey     = "comment_count"
+	FeedMetadataAnonymousUserMetaKey             = "anonymous_user_meta"
 )
 
 const (
