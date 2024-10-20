@@ -23,6 +23,8 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 		CommunityId: Post.CommunityId,
 		IsPinned:    Post.IsPinned,
 		IsRepost:    Post.IsRepost,
+		IsAnonymous: Post.IsAnonymous,
+		IsHidden:    Post.IsHidden,
 		UserId:      Post.UserId,
 		Attachments: Post.Attachments,
 		CreatedAt:   Post.CreatedAt,
@@ -37,7 +39,10 @@ func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 }
 
 // Exposed method to create post search query
-func GetPostFilterQuery(page int, page_size int, search_type string, search string, chatroom_ids string, community_id int, excludedUserIds []string) string {
+func GetPostFilterQuery(userId string, page int, page_size int, search_type string, search string, chatroom_ids string,
+	community_id int, excludedUserIds []string, isCm bool,
+) string {
+
 	from := page_size * (page - 1)
 
 	chatroomQuery := ""
@@ -91,13 +96,28 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 	excludedUserPostsQuery := ""
 	if len(excludedUserIds) > 0 {
 		excludedUserPostsQuery = fmt.Sprintf(`
-			"must_not": [
-				{
-					"terms": {
-						"user_id.keyword": %s
-					}
+		{
+			"terms": {
+				"user_id.keyword": %s
+			}
+		}`, utils.ParseStringArrayToString(excludedUserIds))
+	}
+
+	hiddenPostsQuery := ""
+	if !isCm {
+		hiddenPostsQuery = fmt.Sprintf(`,
+		"should": [
+			{ "term": { "is_hidden": false}},
+			{
+				"bool": {
+					"must": [
+						{ "term": { "is_hidden": true} },
+						{ "term": { "user_id.keyword": "%s" }}
+					]
 				}
-			],`, utils.ParseStringArrayToString(excludedUserIds))
+			}
+		],
+		"minimum_should_match": 1`, userId)
 	}
 
 	return fmt.Sprintf(`
@@ -109,16 +129,18 @@ func GetPostFilterQuery(page int, page_size int, search_type string, search stri
 		],
 		"query": {
 			"bool": {
-				%s
+				"must_not": [
+					%s
+				],
 				"must": [
 					%s
 					%s
 					%s
 				]
+					%s
 			}
 		}
-	}
-	`, from, page_size, excludedUserPostsQuery, communityQuery, searchQuery, chatroomQuery)
+	}`, from, page_size, excludedUserPostsQuery, communityQuery, searchQuery, chatroomQuery, hiddenPostsQuery)
 }
 
 // Exposed method to create post search query

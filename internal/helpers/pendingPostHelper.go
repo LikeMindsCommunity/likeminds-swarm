@@ -13,8 +13,9 @@ import (
 
 // Exposed Helper Method to Create Pending Post
 func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading string, communityId int, userId string,
-	attachments []requests.AttachmentRequest, chatroomId int, tempId *string, topicIds []primitive.ObjectID, originalAuthorUUID string,
-	visibility string, isRepost bool, createdAt int, status string, UUIDs []string) (interface{}, error) {
+	attachments []requests.AttachmentRequest, chatroomId int, tempId *string, topicIds []primitive.ObjectID,
+	originalAuthorUUID string, visibility string, isRepost bool, isAnonymous bool, createdAt int, status string, UUIDs []string,
+) (interface{}, error) {
 
 	// parse attachments
 	postAttachments := parseAttachments(attachments)
@@ -24,7 +25,7 @@ func (helper *pendingPostHelper) CreatePendingPostHelper(text string, heading st
 	}
 
 	pendingPost := entities.NewPendingPost(text, heading, communityId, userId, postAttachments, chatroomId, tempId,
-		topicIds, originalAuthorUUID, visibility, isRepost, createdAt, status, UUIDs)
+		topicIds, originalAuthorUUID, visibility, isRepost, isAnonymous, createdAt, status, UUIDs)
 	id, err := helper.pendingPostRepository.Create(&pendingPost)
 
 	return id, err

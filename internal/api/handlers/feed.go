@@ -19,9 +19,8 @@ import (
 )
 
 // Internal Method to get Universal Feed Post Filter
-func getUniversalFeedPostFilter(communityId int, isPinned bool, excludedUserIds []string) gin.H {
-	return gin.H{
-		"is_pinned":    isPinned,
+func getUniversalFeedPostFilter(communityId int, userId string, excludedUserIds []string, isCm bool) gin.H {
+	universalPostFilter := gin.H{
 		"is_deleted":   false,
 		"community_id": communityId,
 		"user_id": gin.H{
@@ -54,6 +53,20 @@ func getUniversalFeedPostFilter(communityId int, isPinned bool, excludedUserIds 
 			},
 		},
 	}
+
+	// Add filter for hidden posts
+	if !isCm {
+		universalPostFilter["$nor"] = []gin.H{
+			{
+				"is_hidden": true,
+				"user_id": gin.H{
+					"$ne": userId,
+				},
+			},
+		}
+	}
+
+	return universalPostFilter
 }
 
 // Exposed Method to fetch the Universal Feed for a User
@@ -62,7 +75,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	userId := headers[utils.HeadersMemberId]
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
@@ -96,13 +109,6 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Parse widget ids string array
 	widgetIds := utils.ParseStringArrayParam(universalFeedRequest.WidgetIds)
 
-	// fetch pagination query params
-	page, _, err := fetchPaginationParams(c)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
 	// Get users list who are blocked by userId or blocked the userId
 	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
@@ -113,16 +119,12 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Combine the above two lists to get excluded user lists
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
-	// pinned posts filter data
-	pinnedPostFilterData := getUniversalFeedPostFilter(communityId, true, excludedUserIds)
-
-	// unpinned posts filter data
-	unpinnedPostFilterData := getUniversalFeedPostFilter(communityId, false, excludedUserIds)
+	// posts filter data
+	postFilterData := getUniversalFeedPostFilter(communityId, userId, excludedUserIds, loggedInUserParams.IsCm)
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
 		postObjectIdsList, err := getPostIdsBasedOnTopicsFilter(handlers, topicIds)
-
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -131,7 +133,6 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		if len(postObjectIdsList) == 0 {
 			finalParsedResponse := gin.H{
 				"posts":             []responses.PostResponse{},
-				"success":           true,
 				"topics":            map[string]responses.TopicResponse{},
 				"widgets":           map[string]requests.WidgetResponse{},
 				"reposted_posts":    map[string]responses.PostResponse{},
@@ -139,15 +140,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			}
 
 			// return final response
-			c.JSON(http.StatusOK, finalParsedResponse)
+			utils.GenerateSuccessResponse(c, finalParsedResponse)
 			return
 		}
 
-		pinnedPostFilterData["_id"] = gin.H{
-			"$in": postObjectIdsList,
-		}
-
-		unpinnedPostFilterData["_id"] = gin.H{
+		postFilterData["_id"] = gin.H{
 			"$in": postObjectIdsList,
 		}
 	}
@@ -164,50 +161,27 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			},
 		}
 
-		pinnedPostFilterData["attachments"] = widgetQuery
-		unpinnedPostFilterData["attachments"] = widgetQuery
+		postFilterData["attachments"] = widgetQuery
 	}
 
 	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
+	postFilterOptions, err := generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	parsedPosts := []responses.PostResponse{}
+	// Add post filter options
+	postFilterOptions = addSortingOptions(postFilterOptions, "created_at", OrderTypeDescending)
 
-	if page == 1 {
-		// pinned post filter options
-		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
-
-		// fetch pinned post using helper method
-		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData, pinnedPostFilterOptions)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
-
-		// parse pinned posts
-		pinnedPostResponse := parseMultiplePostResponse(handlers, pinnedPostResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm,
-			headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
-
-		parsedPosts = append(parsedPosts, pinnedPostResponse...)
-	}
-
-	// fetch unpinned post using helper method
-	unpinnedPostResults, err := handlers.postHelper.FindPostHelper(unpinnedPostFilterData,
-		postFilterOptions)
+	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, postFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// parse unpinned posts
-	unpinnedPostResponse := parseMultiplePostResponse(handlers, unpinnedPostResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
-
-	parsedPosts = append(parsedPosts, unpinnedPostResponse...)
+	// parse posts
+	parsedPosts := parseMultiplePostResponse(handlers, postResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
 
 	// parse posts for final response (topics, widgets, comments, etc)
 	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUserParams, parsedPosts)
@@ -549,9 +523,8 @@ func (handlers *FeedHandlers) FetchExploreFeed(c *gin.Context) {
 }
 
 // Internal Method to get Group Feed Post Filter
-func getGroupFeedPostFilter(communityId int, isPinned bool, feedroomId int) gin.H {
-	return gin.H{
-		"is_pinned":    isPinned,
+func getGroupFeedPostFilter(communityId int, userId string, feedroomId int, isCm bool) gin.H {
+	groupFeedPostFilter := gin.H{
 		"is_deleted":   false,
 		"community_id": communityId,
 		"chatroom_id":  feedroomId,
@@ -570,6 +543,20 @@ func getGroupFeedPostFilter(communityId int, isPinned bool, feedroomId int) gin.
 			},
 		},
 	}
+
+	// Add filter for hidden posts
+	if !isCm {
+		groupFeedPostFilter["$nor"] = []gin.H{
+			{
+				"is_hidden": true,
+				"user_id": gin.H{
+					"$ne": userId,
+				},
+			},
+		}
+	}
+
+	return groupFeedPostFilter
 }
 
 // Exposed Method to fetch the Group Feed
@@ -580,7 +567,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -619,75 +606,38 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	// Parse topic Ids string array
 	topicIds := utils.ParseStringArrayParam(groupFeedRequest.TopicIds)
 
-	// fetch pagination query params
-	page, _, err := fetchPaginationParams(c)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
-	// pinned posts filter data
-	pinnedPostFilterData := getGroupFeedPostFilter(communityId, true, feedroomId)
-
 	// unpinned posts filter data
-	unpinnedPostFilterData := getGroupFeedPostFilter(communityId, false, feedroomId)
+	groupFeedPostFilter := getGroupFeedPostFilter(communityId, userId, feedroomId, loggedInUser.IsCm)
 
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
 		topicObjectIds := helpers.ConvertIdsToObjectIds(topicIds)
 
-		pinnedPostFilterData["topic_ids"] = gin.H{
-			"$in": topicObjectIds,
-		}
-
-		unpinnedPostFilterData["topic_ids"] = gin.H{
+		groupFeedPostFilter["topic_ids"] = gin.H{
 			"$in": topicObjectIds,
 		}
 	}
 
 	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "", OrderTypeDefault)
+	postFilterOptions, err := generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	parsedPosts := []responses.PostResponse{}
+	// Add post filter options
+	postFilterOptions = addSortingOptions(postFilterOptions, "created_at", OrderTypeDescending)
 
-	if page == 1 {
-		// pinned post filter options
-		pinnedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
-
-		// fetch pinned post using helper method
-		pinnedPostResults, err := handlers.postHelper.FindPostHelper(pinnedPostFilterData,
-			pinnedPostFilterOptions)
-		if err != nil {
-			utils.GeneralAPIInternalError(c, err.Error())
-			return
-		}
-
-		// parse pinned posts
-		pinnedPostResponse := parseMultiplePostResponse(handlers, pinnedPostResults, headers[utils.HeadersMemberId],
-			groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-			apiRevampV1Check, utils.DefaultRole)
-
-		parsedPosts = append(parsedPosts, pinnedPostResponse...)
-	}
-
-	// fetch unpinned post using helper method
-	unpinnedPostResults, err := handlers.postHelper.FindPostHelper(unpinnedPostFilterData,
+	// fetch posts using helper method
+	postResults, err := handlers.postHelper.FindPostHelper(groupFeedPostFilter,
 		postFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// parse unpinned posts
-	unpinnedPostResponse := parseMultiplePostResponse(handlers, unpinnedPostResults, headers[utils.HeadersMemberId],
-		groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, utils.DefaultRole)
-
-	parsedPosts = append(parsedPosts, unpinnedPostResponse...)
+	// parse posts
+	parsedPosts := parseMultiplePostResponse(handlers, postResults, headers[utils.HeadersMemberId], groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
 	// parse posts for final response (topics, widgets, comments, etc)
 	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
@@ -728,14 +678,28 @@ func getConnectionFeedItemFilter(communityId int, userId string) gin.H {
 }
 
 // Internal Method to get Connection Feed Post Filter
-func getConnectionFeedPostFilter(communityId int, postIds []primitive.ObjectID) gin.H {
-	return gin.H{
+func getConnectionFeedPostFilter(userId string, communityId int, postIds []primitive.ObjectID, isCm bool) gin.H {
+	connectionFeedPostFilter := gin.H{
 		"is_deleted":   false,
 		"community_id": communityId,
 		"_id": gin.H{
 			"$in": postIds,
 		},
 	}
+
+	// Add filter for hidden posts
+	if !isCm {
+		connectionFeedPostFilter["$nor"] = []gin.H{
+			{
+				"is_hidden": true,
+				"user_id": gin.H{
+					"$ne": userId,
+				},
+			},
+		}
+	}
+
+	return connectionFeedPostFilter
 }
 
 // Exposed Method to Fetch Connection Feed for a User
@@ -745,7 +709,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
-	memberRole := headers[utils.HeaderMemberRole]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -812,7 +776,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	}
 
 	// connection feed post filter data
-	connectionFeedPostFilterData := getConnectionFeedPostFilter(communityId, connectionFeedPostIds)
+	connectionFeedPostFilterData := getConnectionFeedPostFilter(userId, communityId, connectionFeedPostIds, loggedInUser.IsCm)
 
 	// connection feed post filter options
 	connectionFeedPostFilterOptions := addSortingOptions(map[string]interface{}{}, "created_at", OrderTypeDescending)
@@ -924,7 +888,6 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 
 	// fetch posts count using helper method
 	postsCount, err := handlers.postHelper.CountPostHelper(postFilterData)
-
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
