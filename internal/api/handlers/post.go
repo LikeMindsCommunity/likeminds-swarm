@@ -2745,6 +2745,13 @@ func (handlers *FeedHandlers) UpdatePostShareCount(c *gin.Context) {
 	// Update the post
 	handlers.postHelper.UpdatePostByIdHelper(postData.ID, updateData)
 
+	// fetch updated post data using post_id
+	postData, err = FetchPostData(handlers.postHelper, postId, communityId, true, []string{})
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
 	// insert post data in elastic search
 	err = handlers.esHelper.IndexDocument(ParsePostIndexData(postData), postData.ID.Hex(),
 		constants.PostIndexName)
