@@ -64,10 +64,9 @@ func createPostTopicsFilter(postId primitive.ObjectID, topicIds []primitive.Obje
 		var filterWithUpdate []gin.H
 
 		filter := gin.H{
-			"post_id":           postId,
-			"topic_id":          topicId,
-			"if_original_topic": ifOriginalTopics,
-			"community_id":      communityId,
+			"post_id":      postId,
+			"topic_id":     topicId,
+			"community_id": communityId,
 			"created_at": gin.H{
 				"$exists": true,
 			},
@@ -78,8 +77,9 @@ func createPostTopicsFilter(postId primitive.ObjectID, topicIds []primitive.Obje
 
 		update := gin.H{
 			"$set": gin.H{
-				"created_at": time.Now(),
-				"updated_at": time.Now(),
+				"created_at":        time.Now(),
+				"updated_at":        time.Now(),
+				"if_original_topic": ifOriginalTopics,
 			},
 		}
 
