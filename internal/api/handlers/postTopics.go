@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -20,29 +21,66 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 			"topics": bson.M{
 				"$addToSet": "$topic_id",
 			},
+			"original_topics": bson.M{
+				"$addToSet": bson.M{
+					"$cond": bson.A{
+						"$if_original_topic",
+						"$topic_id",
+						nil,
+					},
+				},
+			},
 		},
 	})
 
 	// Build and add match query
-	var topicsWithOrList [][]primitive.ObjectID
 	var filterQueryList []gin.H
 
+	// Define regex pattern for special delimiters
+	delimiterPattern := regexp.MustCompile(`#\$(.*?)\$#`)
+
 	for _, topicId := range topicIds {
-		var topicsObjectIdWithAndList []primitive.ObjectID
 
-		topicsWithAndList := strings.Split(string(topicId), constants.TopicsSplitterKeyWithAndValue)
-		if len(topicsWithAndList) > 0 {
-			topicsObjectIdWithAndList = helpers.ConvertIdsToObjectIds(topicsWithAndList)
-			topicsWithOrList = append(topicsWithOrList, topicsObjectIdWithAndList)
+		filterQuery := gin.H{}
+
+		// Check if topic contains any special delimiters
+		match := delimiterPattern.FindString(topicId)
+		if match != "" {
+
+			switch match {
+			case constants.TopicsSplitterKeyWithAndValue:
+				topicsWithAndList := strings.Split(topicId, constants.TopicsSplitterKeyWithAndValue)
+				if len(topicsWithAndList) > 0 {
+					filterQuery = gin.H{
+						"topics": gin.H{
+							"$all": helpers.ConvertIdsToObjectIds(topicsWithAndList),
+						},
+					}
+				}
+			case constants.TopicsSplitterKeyWithOnlyValue:
+				topicsWithOnlyList := strings.Split(topicId, constants.TopicsSplitterKeyWithOnlyValue)
+				if len(topicsWithOnlyList) > 1 {
+					objectId, _ := primitive.ObjectIDFromHex(topicsWithOnlyList[1])
+
+					filterQuery = gin.H{
+						"original_topics": gin.H{
+							"$eq": objectId,
+						},
+					}
+				}
+			}
+		} else {
+			filterQuery = gin.H{
+				"topics": gin.H{
+					"$all": helpers.ConvertIdsToObjectIds([]string{topicId}),
+				},
+			}
 		}
 
-		filterQuery := gin.H{
-			"topics": gin.H{
-				"$all": topicsObjectIdWithAndList,
-			},
+		if len(filterQuery) > 0 {
+			filterQueryList = append(filterQueryList, filterQuery)
 		}
 
-		filterQueryList = append(filterQueryList, filterQuery)
 	}
 
 	postIdsFilterData = append(postIdsFilterData, bson.M{"$match": bson.M{"$or": filterQueryList}})

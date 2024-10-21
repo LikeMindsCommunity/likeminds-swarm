@@ -14,9 +14,12 @@ import (
 )
 
 // Exposed Helper Method to Create Post Topics Instance
-func (helper *postTopicsHelper) CreatePostTopicsHelper(postId primitive.ObjectID, topicId primitive.ObjectID, community_id int) (interface{}, error) {
+func (helper *postTopicsHelper) CreatePostTopicsHelper(postId primitive.ObjectID, topicId primitive.ObjectID,
+	ifOriginalTopic bool, community_id int,
+) (interface{}, error) {
+
 	// Create a new Topic Document
-	postTopic := entities.NewPostTopic(postId, topicId, community_id)
+	postTopic := entities.NewPostTopic(postId, topicId, ifOriginalTopic, community_id)
 
 	// Insert the document in the collection
 	postTopicId, err := helper.postTopicsRepository.Create(postTopic)
@@ -25,42 +28,66 @@ func (helper *postTopicsHelper) CreatePostTopicsHelper(postId primitive.ObjectID
 }
 
 // Exposed Helper Method to Create or Update Many Post Topics Instances
-func (helper *postTopicsHelper) CreateOrUpdateManyPostTopicsHelper(postTopicIdsMap map[primitive.ObjectID][]primitive.ObjectID, communityId int) error {
-	var filterWithMapList [][]gin.H
+func (helper *postTopicsHelper) CreateOrUpdateManyPostTopicsHelper(
+	postId primitive.ObjectID, originalTopicIds []primitive.ObjectID, parentTopicIds []primitive.ObjectID, communityId int,
+) error {
 
-	for postId, topicIds := range postTopicIdsMap {
+	if len(originalTopicIds) > 0 {
+		filterWithMapList := createPostTopicsFilter(postId, originalTopicIds, true, communityId)
 
-		for _, topicId := range topicIds {
-			var filterWithUpdate []gin.H
-
-			filter := gin.H{
-				"post_id":      postId,
-				"topic_id":     topicId,
-				"community_id": communityId,
-				"created_at": gin.H{
-					"$exists": true,
-				},
-				"updated_at": gin.H{
-					"$exists": true,
-				},
-			}
-
-			update := gin.H{
-				"$set": gin.H{
-					"created_at": time.Now(),
-					"updated_at": time.Now(),
-				},
-			}
-
-			filterWithUpdate = append(filterWithUpdate, filter, update)
-			filterWithMapList = append(filterWithMapList, filterWithUpdate)
+		err := helper.postTopicsRepository.CreateorUpdateMany(filterWithMapList)
+		if err != nil {
+			logging.Error(fmt.Sprintf(`Error in CreateorUpdateMany for original topics. Error: %v`, err))
+			return err
 		}
 	}
 
-	// Insert or Update the document in the collection
-	err := helper.postTopicsRepository.CreateorUpdateMany(filterWithMapList)
+	if len(parentTopicIds) > 0 {
+		filterWithMapList := createPostTopicsFilter(postId, parentTopicIds, false, communityId)
 
-	return err
+		err := helper.postTopicsRepository.CreateorUpdateMany(filterWithMapList)
+		if err != nil {
+			logging.Error(fmt.Sprintf(`Error in CreateorUpdateMany for parent topics. Error: %v`, err))
+			return err
+		}
+	}
+
+	return nil
+}
+
+func createPostTopicsFilter(postId primitive.ObjectID, topicIds []primitive.ObjectID, ifOriginalTopics bool, communityId int,
+) [][]gin.H {
+
+	var filterWithMapList [][]gin.H
+
+	for _, topicId := range topicIds {
+		var filterWithUpdate []gin.H
+
+		filter := gin.H{
+			"post_id":           postId,
+			"topic_id":          topicId,
+			"if_original_topic": ifOriginalTopics,
+			"community_id":      communityId,
+			"created_at": gin.H{
+				"$exists": true,
+			},
+			"updated_at": gin.H{
+				"$exists": true,
+			},
+		}
+
+		update := gin.H{
+			"$set": gin.H{
+				"created_at": time.Now(),
+				"updated_at": time.Now(),
+			},
+		}
+
+		filterWithUpdate = append(filterWithUpdate, filter, update)
+		filterWithMapList = append(filterWithMapList, filterWithUpdate)
+	}
+
+	return filterWithMapList
 }
 
 // Exposed Helper Method to Find Post Topics
@@ -132,6 +159,10 @@ func (helper *postTopicsHelper) CountPostTopicsHelper(filter map[string]interfac
 // Exposed Helper Method to perform Aggregration on Posts
 func (helper *postTopicsHelper) AggregatePostTopicsHelper(query []map[string]interface{}) ([]responses.PostIdsBasedonTopics, error) {
 	results, err := helper.postTopicsRepository.Aggregate(query)
+	if err != nil {
+		logging.Error(fmt.Sprintf(`Error in aggregation of postTopics. Error: %v`, err))
+		return nil, err
+	}
 
 	var postIdsList []responses.PostIdsBasedonTopics
 

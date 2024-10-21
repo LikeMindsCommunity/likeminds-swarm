@@ -22,9 +22,9 @@ type PostTopicsRepository interface {
 
 // Interface for Post Topics Helper
 type PostTopicsHelper interface {
-	CreatePostTopicsHelper(postId primitive.ObjectID, topicId primitive.ObjectID, community_id int) (interface{}, error)
+	CreatePostTopicsHelper(postId primitive.ObjectID, topicId primitive.ObjectID, ifOriginalTopic bool, community_id int) (interface{}, error)
 	FindPostTopicsHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.PostTopic, error)
-	CreateOrUpdateManyPostTopicsHelper(postTopicIdsMap map[primitive.ObjectID][]primitive.ObjectID, communityId int) error
+	CreateOrUpdateManyPostTopicsHelper(postId primitive.ObjectID, originalTopicIds []primitive.ObjectID, parentTopicIds []primitive.ObjectID, communityId int) error
 	UpdatePostTopicsByIdHelper(topicId primitive.ObjectID, update map[string]interface{}) error
 	CountPostTopicsHelper(filter map[string]interface{}) (int64, error)
 	DeletePostTopicsHelper(filter gin.H) error

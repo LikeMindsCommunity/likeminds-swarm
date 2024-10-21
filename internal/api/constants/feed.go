@@ -7,6 +7,9 @@ const (
 	GroupOrderTypeMostParticipants = 3
 )
 
-const TopicsSplitterKeyWithAndValue = "#$AND$#"
+const (
+	TopicsSplitterKeyWithAndValue  = "#$AND$#"
+	TopicsSplitterKeyWithOnlyValue = "#$ONLY$#"
+)
 
 const FetchingTopCommentsErrorMessage = "Error in fetching top comments against posts"
