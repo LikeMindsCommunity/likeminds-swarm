@@ -15,11 +15,11 @@ import (
 
 // Exposed Helper Method to Create Post Topics Instance
 func (helper *postTopicsHelper) CreatePostTopicsHelper(postId primitive.ObjectID, topicId primitive.ObjectID,
-	ifOriginalTopic bool, community_id int,
+	IsOriginalTopic bool, community_id int,
 ) (interface{}, error) {
 
 	// Create a new Topic Document
-	postTopic := entities.NewPostTopic(postId, topicId, ifOriginalTopic, community_id)
+	postTopic := entities.NewPostTopic(postId, topicId, IsOriginalTopic, community_id)
 
 	// Insert the document in the collection
 	postTopicId, err := helper.postTopicsRepository.Create(postTopic)
@@ -55,7 +55,7 @@ func (helper *postTopicsHelper) CreateOrUpdateManyPostTopicsHelper(
 	return nil
 }
 
-func createPostTopicsFilter(postId primitive.ObjectID, topicIds []primitive.ObjectID, ifOriginalTopics bool, communityId int,
+func createPostTopicsFilter(postId primitive.ObjectID, topicIds []primitive.ObjectID, IsOriginalTopics bool, communityId int,
 ) [][]gin.H {
 
 	var filterWithMapList [][]gin.H
@@ -79,7 +79,7 @@ func createPostTopicsFilter(postId primitive.ObjectID, topicIds []primitive.Obje
 			"$set": gin.H{
 				"created_at":        time.Now(),
 				"updated_at":        time.Now(),
-				"if_original_topic": ifOriginalTopics,
+				"is_original_topic": IsOriginalTopics,
 			},
 		}
 

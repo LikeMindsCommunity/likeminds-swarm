@@ -24,7 +24,7 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 			"original_topics": bson.M{
 				"$addToSet": bson.M{
 					"$cond": bson.A{
-						"$if_original_topic",
+						"$is_original_topic",
 						"$topic_id",
 						nil,
 					},
