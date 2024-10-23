@@ -27,7 +27,6 @@ type Post struct {
 	OriginalAuthorUUID string               `json:"original_author_uuid" bson:"original_author_uuid,omitempty"`
 	DeleteReason       string               `json:"delete_reason" bson:"delete_reason,omitempty"`
 	Visibility         string               `json:"visibility" bson:"visibility,omitempty"`
-	PostShareCount     int                  `json:"post_share_count" bson:"post_share_count"`
 	CreatedAt          time.Time            `json:"created_at" bson:"created_at"`
 	UpdatedAt          time.Time            `json:"updated_at" bson:"updated_at"`
 }
