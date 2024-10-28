@@ -15,20 +15,21 @@ import (
 
 func ParsePostIndexData(Post *entities.Post) searchElastic.PostIndex {
 	postEntity := searchElastic.PostIndex{
-		Id:          Post.ID.Hex(),
-		Text:        Post.Text,
-		Heading:     Post.Heading,
-		TopicIds:    Post.TopicIds,
-		ChatroomId:  Post.ChatroomId,
-		CommunityId: Post.CommunityId,
-		IsPinned:    Post.IsPinned,
-		IsRepost:    Post.IsRepost,
-		IsAnonymous: Post.IsAnonymous,
-		IsHidden:    Post.IsHidden,
-		UserId:      Post.UserId,
-		Attachments: Post.Attachments,
-		CreatedAt:   Post.CreatedAt,
-		UpdatedAt:   Post.UpdatedAt,
+		Id:             Post.ID.Hex(),
+		Text:           Post.Text,
+		Heading:        Post.Heading,
+		TopicIds:       Post.TopicIds,
+		ChatroomId:     Post.ChatroomId,
+		CommunityId:    Post.CommunityId,
+		IsPinned:       Post.IsPinned,
+		IsRepost:       Post.IsRepost,
+		IsAnonymous:    Post.IsAnonymous,
+		IsHidden:       Post.IsHidden,
+		UserId:         Post.UserId,
+		Attachments:    Post.Attachments,
+		PostShareCount: Post.PostShareCount,
+		CreatedAt:      Post.CreatedAt,
+		UpdatedAt:      Post.UpdatedAt,
 	}
 
 	if Post.OriginalAuthorUUID != "" {
