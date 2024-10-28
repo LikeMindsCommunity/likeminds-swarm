@@ -20,7 +20,7 @@ import (
 )
 
 // Internal Method to parse User activity list
-func parseUserActivity(handler FeedHandlers, activities []entities.Activity, apiRevampV1Check bool, userId string, isCm bool,
+func parseActivitiesForNotificationFeed(handler FeedHandlers, activities []entities.Activity, apiRevampV1Check bool, userId string, isCm bool,
 ) ([]interface{}, map[string]externalHelpers.MemberMeta, map[string]responses.TopicResponse, map[string]requests.WidgetResponse, error) {
 
 	response := []interface{}{}
@@ -887,8 +887,8 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	})
 }
 
-// FetchUserActivity | method to Fetch User Activity
-func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
+// FetchNotificationFeed | method to Fetch User Notifciation Feed
+func (handlers *FeedHandlers) FetchNotificationFeed(c *gin.Context) {
 
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
@@ -920,15 +920,15 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 		return
 	}
 
-	// fetch activity using helper method
+	// fetch activities using helper method
 	activityResults, err := handlers.activityHelper.FindActivityHelper(activityFilterData, activityFilterOptions)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
-	// parse user activity response
-	activityResponse, userDatas, topicDatas, widgetDatas, err := parseUserActivity(*handlers, activityResults,
+	// parse actitivies for Notification Feed
+	activityResponse, userDatas, topicDatas, widgetDatas, err := parseActivitiesForNotificationFeed(*handlers, activityResults,
 		apiRevampV1Check, headers[utils.HeadersMemberId], isCm)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
@@ -945,11 +945,11 @@ func (handlers *FeedHandlers) FetchUserActivity(c *gin.Context) {
 	})
 }
 
-// UserActivityMarkRead | Mark user activity as read
-func (handlers *FeedHandlers) UserActivityMarkRead(c *gin.Context) {
+// NotificationFeedActivityMarkRead | Mark user Notification Feed activity as read
+func (handlers *FeedHandlers) NotificationFeedActivityMarkRead(c *gin.Context) {
 
 	headers := utils.GetHeaders(c)
-	userID := c.Param("user_id")
+	userID := headers[utils.HeadersMemberId]
 	activityID := c.Param("activity_id")
 
 	// validation of api_key
@@ -998,12 +998,12 @@ func (handlers *FeedHandlers) UserActivityMarkRead(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// UserActivityFeedUnreadCount | Get user activity feed unread count
-func (handlers *FeedHandlers) UserActivityFeedUnreadCount(c *gin.Context) {
+// NotificationFeedUnreadCount | Get Notification feed unread count
+func (handlers *FeedHandlers) NotificationFeedUnreadCount(c *gin.Context) {
 
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
-	userID := c.Param("user_id")
+	userID := headers[utils.HeadersMemberId]
 
 	// validation of api_key
 	communityID := externalHelpers.GetCommunityId(c)
