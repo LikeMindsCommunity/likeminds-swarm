@@ -549,7 +549,7 @@ func computeUserConnectionMetricScore(userConnectionMetricMaxThreshold float64, 
 }
 
 // Compute post dampening metrics for user
-func fetchUserDampenedPosts(cacheHelper cache.Helper, userId string, communityId int) (map[string]float64, error) {
+func UserDampenedMetricsComputation(cacheHelper cache.Helper, userId string, communityId int) (map[string]float64, error) {
 	userPostDampeningMetricMap := map[string]float64{}
 
 	// Get dampened posts data from cache
@@ -598,6 +598,13 @@ func computeUserPostDampeningMetricScore(postDampenedUntil int64, userTopicsMetr
 	}
 }
 
+// Internal method to fetch user dampened posts list
+func fetchUserDampenedPosts(userId string) []string {
+	postIds := []string{}
+
+	return postIds
+}
+
 // Internal method to save dampened posts for user in cache
 func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, communityId int, postIds []string) {
 
@@ -628,6 +635,14 @@ func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, co
 	if setStatus.Err() != nil {
 		logging.Error("error while saving user dampened posts: ", setStatus.Err().Error())
 	}
+}
+
+// Internal method to save dampened posts for user in DB
+func saveDampenedPostsForUserInDb(handlers *FeedHandlers, userId string, postIds []string) {
+	// Add the posts with updated timestamp to map
+	currentEpochTime := time.Now().Unix()
+	handlers.userEntityTimestampHelper.CreateUserEntityTimestampHelper(userId, enums.EntityTypePost,
+		helpers.ConvertIdsToObjectIds(postIds), int(currentEpochTime))
 }
 
 // Exposed Method to Fetch Personalised Feed
@@ -1086,13 +1101,13 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 	}
 
 	// fetch user dampened posts score map
-	userDampenedPostsMap, err := fetchUserDampenedPosts(cacheHelper, userId, communityId)
+	userDampenedPostsScoreMap, err := UserDampenedMetricsComputation(cacheHelper, userId, communityId)
 	if err != nil {
 		return nil, fmt.Errorf("error in fetching user dampened posts: %v", err)
 	}
 
 	// reduce the score of dampened posts
-	for postId, score := range userDampenedPostsMap {
+	for postId, score := range userDampenedPostsScoreMap {
 		userSpecificMetricScores[postId] -= score
 	}
 
