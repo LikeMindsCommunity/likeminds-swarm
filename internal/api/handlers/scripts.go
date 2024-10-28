@@ -172,7 +172,7 @@ func (handlers *FeedHandlers) BackfillPostTopicsInDB() error {
 
 	for _, post := range postsResults {
 		// Create new data in post topics
-		if err := createOrUpdatePostTopics(handlers, post.ID.Hex(), true); err != nil {
+		if err := createOrUpdatePostTopics(handlers, post.ID.Hex(), false); err != nil {
 			log.Error(fmt.Sprintf("Error while creating post topics data for post: %s, %s", post.ID.Hex(), err.Error()))
 			continue
 		}

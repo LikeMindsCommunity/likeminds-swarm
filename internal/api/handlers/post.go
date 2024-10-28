@@ -2454,24 +2454,27 @@ func createOrUpdatePostTopics(handlers *FeedHandlers, postId string, deleteAllEx
 	}
 
 	if len(originalPost.TopicIds) > 0 {
+
 		// Fetch topics
 		topicResults, err := handlers.topicHelper.FindTopicHelper(gin.H{"_id": gin.H{"$in": originalPost.TopicIds}}, gin.H{})
 		if err != nil {
 			return err
 		}
 
-		var allTopicIds []primitive.ObjectID
-
-		for _, topicResult := range topicResults {
-			allTopicIds = append(allTopicIds, topicResult.AllParentIds...)
-			allTopicIds = append(allTopicIds, topicResult.ID)
+		if len(topicResults) == 0 {
+			logging.Error("No topics found for the post")
+			return nil
 		}
 
-		if len(allTopicIds) > 0 {
-			var postTopicsMap = map[primitive.ObjectID][]primitive.ObjectID{
-				postObjectId: allTopicIds,
-			}
-			return handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(postTopicsMap, originalPost.CommunityId)
+		var parentTopicIds []primitive.ObjectID
+		for _, topicResult := range topicResults {
+			parentTopicIds = append(parentTopicIds, topicResult.AllParentIds...)
+		}
+
+		err = handlers.postTopicsHelper.CreateOrUpdateManyPostTopicsHelper(originalPost.ID, originalPost.TopicIds, parentTopicIds, originalPost.CommunityId)
+		if err != nil {
+			logging.Error("Error in creating Post Topics: ", err)
+			return nil
 		}
 	}
 
