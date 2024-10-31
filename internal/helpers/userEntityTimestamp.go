@@ -11,12 +11,12 @@ import (
 )
 
 // Exposed Helper Method to Create many User Topic Instances
-func (helper *UserEntityTimestampHelper) CreateUserEntityTimestampHelper(userId string, entityType string, entityIds []primitive.ObjectID, epochTimeStamp int) ([]primitive.ObjectID, error) {
+func (helper *UserEntityTimestampHelper) CreateUserEntityTimestampHelper(userId string, communityId int, entityType string, entityIds []primitive.ObjectID, epochTimeStamp int) ([]primitive.ObjectID, error) {
 
 	var userEntityTimestamp []interface{}
 
 	for _, entityId := range entityIds {
-		userEntityTimestamp = append(userEntityTimestamp, entities.NewUserEntityTimestamps(userId, entityType, entityId, epochTimeStamp, 0))
+		userEntityTimestamp = append(userEntityTimestamp, entities.NewUserEntityTimestamps(userId, communityId, entityType, entityId, epochTimeStamp, 0))
 	}
 
 	userEntityTimestamp, err := helper.UserEntityTimestampRepository.CreateMany(userEntityTimestamp)

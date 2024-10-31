@@ -7,6 +7,7 @@ import (
 )
 
 type UserEntityTimestamps struct {
+	CommunityId    int                `json:"community_id" bson:"community_id"`
 	UserId         string             `json:"user_id" bson:"user_id"`
 	EntityType     string             `json:"entity_type" bson:"entity_type"`
 	EntityID       primitive.ObjectID `json:"entity_id" bson:"entity_id"`
@@ -15,7 +16,7 @@ type UserEntityTimestamps struct {
 	UpdatedAt      time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
-func NewUserEntityTimestamps(userId string, entityType string, entityId primitive.ObjectID, epochTimestamp int,
+func NewUserEntityTimestamps(userId string, communityId int, entityType string, entityId primitive.ObjectID, epochTimestamp int,
 	createdAtInInt int) UserEntityTimestamps {
 	createdAt := time.Now()
 
@@ -25,6 +26,7 @@ func NewUserEntityTimestamps(userId string, entityType string, entityId primitiv
 
 	// Create UserEntityTimestamps entity
 	return UserEntityTimestamps{
+		CommunityId:    communityId,
 		UserId:         userId,
 		EntityType:     entityType,
 		EntityID:       entityId,

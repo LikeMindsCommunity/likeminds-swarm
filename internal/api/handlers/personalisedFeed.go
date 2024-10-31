@@ -549,99 +549,79 @@ func computeUserConnectionMetricScore(userConnectionMetricMaxThreshold float64, 
 }
 
 // Compute post dampening metrics for user
-func UserDampenedMetricsComputation(cacheHelper cache.Helper, userId string, communityId int) (map[string]float64, error) {
+func UserDampenedMetricsComputation(handlers *FeedHandlers, userId string, communityId int) (map[string]float64, error) {
 	userPostDampeningMetricMap := map[string]float64{}
 
-	// Get dampened posts data from cache
-	cacheKey := fmt.Sprintf(cache.UserSeenDampenedPostsKey, communityId, userId)
-	userDampenedPostsCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
-	if err != nil {
-		logging.Error("error while fetching cache for User dampened posts: ", err.Error())
-		return userPostDampeningMetricMap, err
+	// Last 24hours unix timestamp
+	dampenedPostsTimestampFrom := time.Now().Add(time.Duration(-24) * time.Hour).Unix()
+
+	// Filter for all user dampened posts
+	allDampenedPostsOfUserFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"entity_type":  enums.EntityTypePost,
+				"community_id": communityId,
+				"user_id":      userId,
+				"epoch_timestamp": gin.H{
+					"$gte": dampenedPostsTimestampFrom,
+				},
+			},
+		},
+		gin.H{
+			"$group": gin.H{
+				"_id": "",
+				"post_ids": gin.H{
+					"$addToSet": "$entity_id",
+				},
+			},
+		},
+		gin.H{
+			"$unset": "_id",
+		},
 	}
 
-	var dampenedPostsMap map[string]int64
-	if exists {
-		err = json.Unmarshal([]byte(userDampenedPostsCacheValue), &dampenedPostsMap)
-		if err != nil {
-			logging.Error("error while unmarshalling user dampened posts: ", err.Error())
-		}
+	allDampenedPostsData, err := handlers.userEntityTimestampHelper.AggregateUserEntityTimestampHelper(allDampenedPostsOfUserFilter)
+	if err != nil {
+		logging.Error("Error in fetching all dampened posts of user:, ", userId, " in community: ", communityId, " err: ", err)
+		return nil, err
+	}
+
+	if len(allDampenedPostsData) == 0 {
+		logging.Error("No dampened posts found in db!")
+		return userPostDampeningMetricMap, nil
 	}
 
 	// Get personalised weights
-	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(cacheHelper, userId, communityId)
+	personalisedFeedWeights, err := externalHelpers.GetPersonalisedFeedWeightsAgainstCommunity(handlers.cacheHelper, userId, communityId)
 	if err != nil {
 		logging.Error("Error in computation of recency metric: ", err)
 		return userPostDampeningMetricMap, err
 	}
 
-	for postId, dampenedUntil := range dampenedPostsMap {
+	dampenedPostIdsList := allDampenedPostsData[0]["post_ids"].(primitive.A)
 
+	for _, postId := range dampenedPostIdsList {
+		postIdObject := postId.(primitive.ObjectID)
 		metricScore := computeUserPostDampeningMetricScore(
-			dampenedUntil,
 			personalisedFeedWeights.PostDampeningMetrics.MaxThreshold,
 			personalisedFeedWeights.PostDampeningMetrics.Weight)
 
-		userPostDampeningMetricMap[postId] = metricScore
+		userPostDampeningMetricMap[postIdObject.Hex()] = metricScore
 	}
 
 	return userPostDampeningMetricMap, nil
 }
 
 // Compute user post dampening metric score
-func computeUserPostDampeningMetricScore(postDampenedUntil int64, userTopicsMetricMaxThreshold float64, userTopicsMetricWeight float64) float64 {
-
-	if postDampenedUntil >= time.Now().Unix() {
-		return userTopicsMetricMaxThreshold * userTopicsMetricWeight
-	} else {
-		return 0
-	}
-}
-
-// Internal method to fetch user dampened posts list
-func fetchUserDampenedPosts(userId string) []string {
-	postIds := []string{}
-
-	return postIds
-}
-
-// Internal method to save dampened posts for user in cache
-func saveDampenedPostsForUserInCache(cacheHelper cache.Helper, userId string, communityId int, postIds []string) {
-
-	cacheKey := fmt.Sprintf(cache.UserSeenDampenedPostsKey, communityId, userId)
-	dampenedPostsBytes, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
-	if err != nil {
-		logging.Error("error while fetching cache for User dampened posts: ", err.Error())
-		return
-	}
-
-	dampenedPostsMap := map[string]int64{}
-	if exists {
-		err = json.Unmarshal([]byte(dampenedPostsBytes), &dampenedPostsMap)
-		if err != nil {
-			logging.Error("error while unmarshalling user dampened posts: ", err.Error())
-		}
-	}
-
-	// add the posts with updated timestamp to map
-	timeIn24Hours := time.Now().Add(time.Duration(24) * time.Hour).Unix() // now + 24 hours
-	for _, postId := range postIds {
-		dampenedPostsMap[postId] = timeIn24Hours
-	}
-
-	// save the updated map
-	bytesValue, _ := json.Marshal(dampenedPostsMap)
-	setStatus := cacheHelper.Set(cacheKey, bytesValue, cache.UserDampenedPostsCacheTTLInHours*time.Hour)
-	if setStatus.Err() != nil {
-		logging.Error("error while saving user dampened posts: ", setStatus.Err().Error())
-	}
+func computeUserPostDampeningMetricScore(userTopicsMetricMaxThreshold float64, userTopicsMetricWeight float64) float64 {
+	return userTopicsMetricMaxThreshold * userTopicsMetricWeight
 }
 
 // Internal method to save dampened posts for user in DB
-func saveDampenedPostsForUserInDb(handlers *FeedHandlers, userId string, postIds []string) {
+func saveDampenedPostsForUserInDb(handlers *FeedHandlers, userId string, communityId int, postIds []string) {
 	// Add the posts with updated timestamp to map
 	currentEpochTime := time.Now().Unix()
-	handlers.userEntityTimestampHelper.CreateUserEntityTimestampHelper(userId, enums.EntityTypePost,
+	handlers.userEntityTimestampHelper.CreateUserEntityTimestampHelper(userId, communityId, enums.EntityTypePost,
 		helpers.ConvertIdsToObjectIds(postIds), int(currentEpochTime))
 }
 
@@ -828,7 +808,7 @@ func reorderUserPersonalisedFeed(handlers *FeedHandlers, communityId int, userId
 	}
 
 	// fetch user specific metric scores map
-	userSpecificMetricScores, err := fetchUserSpecificMetricScores(handlers.cacheHelper, userId, communityId)
+	userSpecificMetricScores, err := fetchUserSpecificMetricScores(handlers, userId, communityId)
 	if err != nil {
 		logging.Error("Error in fetching user specific metric scores: ", err)
 		return
@@ -1057,14 +1037,14 @@ func fetchCommunityMetricPostScores(handlers *FeedHandlers, communityId int, use
 	return postScoreMap, nil
 }
 
-func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, communityId int,
+func fetchUserSpecificMetricScores(handlers *FeedHandlers, userId string, communityId int,
 ) (map[string]float64, error) {
 
 	userSpecificMetricScores := map[string]float64{}
 
 	// fetch user groups metric score map for user
 	cacheKey := fmt.Sprintf(cache.UserGroupsMetricsKey, communityId, userId)
-	userGroupsMetricMapCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	userGroupsMetricMapCacheValue, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		return nil, fmt.Errorf("error in fetching user groups metric score from cache: %v", err)
 	}
@@ -1083,7 +1063,7 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 
 	// fetch user topics metric score map for user
 	cacheKey = fmt.Sprintf(cache.UserTopicsMetricsKey, communityId, userId)
-	userTopicsMetricMapCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	userTopicsMetricMapCacheValue, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		return nil, fmt.Errorf("error in fetching user topics metric score from cache: %v", err)
 	}
@@ -1101,7 +1081,7 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 	}
 
 	// fetch user dampened posts score map
-	userDampenedPostsScoreMap, err := UserDampenedMetricsComputation(cacheHelper, userId, communityId)
+	userDampenedPostsScoreMap, err := UserDampenedMetricsComputation(handlers, userId, communityId)
 	if err != nil {
 		return nil, fmt.Errorf("error in fetching user dampened posts: %v", err)
 	}
@@ -1113,7 +1093,7 @@ func fetchUserSpecificMetricScores(cacheHelper cache.Helper, userId string, comm
 
 	// fetch user connection metric score map for user
 	cacheKey = fmt.Sprintf(cache.UserConnectionMetricsKey, communityId, userId)
-	userConnectionMetricMapCacheValue, exists, err := cacheHelper.GetWithKeyExists(cacheKey)
+	userConnectionMetricMapCacheValue, exists, err := handlers.cacheHelper.GetWithKeyExists(cacheKey)
 	if err != nil {
 		return nil, fmt.Errorf("error in fetching user connection metric score from cache: %v", err)
 	}

@@ -20,7 +20,7 @@ type UserEntityTimestampRepository interface {
 }
 
 type UserEntityTimestampHelper interface {
-	CreateUserEntityTimestampHelper(userId string, entityType string, entityIds []primitive.ObjectID, epochTimeStamp int) ([]primitive.ObjectID, error)
+	CreateUserEntityTimestampHelper(userId string, communityId int, entityType string, entityIds []primitive.ObjectID, epochTimeStamp int) ([]primitive.ObjectID, error)
 	FindUserEntityTimestampHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.UserTopic, error)
 	UpdateManyUserEntityTimestampHelper(filter map[string]interface{}, update map[string]interface{}) error
 	CountUserEntityTimestampHelper(filter map[string]interface{}) (int64, error)
