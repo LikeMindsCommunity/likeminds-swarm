@@ -826,6 +826,8 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.IsRepostedByUser = postSecondaryData.IsRepostedByUser
 	response.IsLiked = postSecondaryData.IsLikedByUser
 	response.IsSaved = postSecondaryData.IsSavedByUser
+	response.ImpressionCount = postSecondaryData.PostImpressions.ImpressionsCount
+	response.ReachCount = postSecondaryData.PostImpressions.ReachCount
 
 	response.MenuItems = []responses.MenuResponse{}
 	if loggedInUser.MemberRole != utils.GuestRole {
@@ -852,6 +854,8 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, loggedInUser *LoggedInUserParams,
 ) responses.PostResponse {
 
+	postImpressionsData, _ := computePostImpressionReachCount(handlers, []primitive.ObjectID{postData.ID})
+
 	postSecondaryData := PostSecondaryDataParams{
 		LikesCount:       fetchEntityLikesCount(handlers.likeHelper, postData.ID.Hex(), constants.PostEntityType),
 		RepliesCount:     fetchPostCommentsCount(handlers.commentHelper, postData.ID.Hex()),
@@ -859,6 +863,7 @@ func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, lo
 		IsRepostedByUser: getIsRepostedByUser(handlers.widgetHelper, loggedInUser.UserId, postData),
 		IsLikedByUser:    fetchUserLikedStatusByEntity(handlers.likeHelper, postData.ID.Hex(), constants.PostEntityType, loggedInUser.UserId),
 		IsSavedByUser:    fetchUserSavedStatusByPostId(handlers.saveHelper, postData.ID.Hex(), loggedInUser.UserId),
+		PostImpressions:  postImpressionsData[postData.ID],
 	}
 
 	postResponse := parsePostResponse(handlers, loggedInUser, postData, &postSecondaryData)
@@ -891,6 +896,7 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 	isRepostedByUserMap := getIsRepostedByUserForMultiplePosts(handlers.widgetHelper, userId, posts)
 	isLikedByUserMap := fetchUserLikedStatusForMultipleEntities(handlers.likeHelper, postIds, constants.PostEntityType, userId)
 	isSavedByUserMap := fetchUserSavedStatusByPostIds(handlers.saveHelper, postIds, userId)
+	postImpressionsData, _ := computePostImpressionReachCount(handlers, postIds)
 
 	response := []responses.PostResponse{}
 	for _, post := range posts {
@@ -902,6 +908,7 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 			IsRepostedByUser: isRepostedByUserMap[post.ID],
 			IsLikedByUser:    isLikedByUserMap[post.ID],
 			IsSavedByUser:    isSavedByUserMap[post.ID],
+			PostImpressions:  postImpressionsData[post.ID],
 		}
 
 		response = append(response, parsePostResponse(handlers, &loggedInUser, &post, &postSecondaryData))
