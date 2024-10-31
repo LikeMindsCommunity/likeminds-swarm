@@ -22,6 +22,7 @@ type PostIndex struct {
 	UserId             string               `json:"user_id"`
 	OriginalAuthorUUID string               `json:"original_author_uuid,omitempty"`
 	Attachments        interface{}          `json:"attachments"`
+	PostShareCount     int                  `json:"post_share_count"`
 	CreatedAt          time.Time            `json:"created_at"`
 	UpdatedAt          time.Time            `json:"updated_at"`
 }

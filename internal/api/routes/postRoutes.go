@@ -30,6 +30,8 @@ func PostRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	postGroup.GET("/:post_id/comment/:comment_id/like", handler.FetchCommentLikes)
 	postGroup.PUT("/:post_id/comment/:comment_id/like", handler.LikeComment)
 
+	postGroup.PUT("/:post_id/share/count", handler.UpdatePostShareCount)
+
 	postGroup.GET("/search", handler.SearchPost)
 	postGroup.GET("/search/user/:user_id", handler.SearchUserCreatedPost)
 
