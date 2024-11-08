@@ -851,6 +851,56 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	return response
 }
 
+// Internal method to compute post impressions and reach count
+func computePostImpressionReachCount(handlers *FeedHandlers, postIds []primitive.ObjectID) (map[primitive.ObjectID]PostImpressionsData, error) {
+	postImpressionReachMap := map[primitive.ObjectID]PostImpressionsData{}
+
+	postImpressionsFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"entity_type": enums.EntityTypePost,
+				"entity_id": gin.H{
+					"$in": postIds,
+				},
+			},
+		},
+		gin.H{
+			"$group": gin.H{
+				"_id": "$entity_id",
+				"impressions_count": gin.H{
+					"$sum": 1,
+				},
+				"unique_users_list": gin.H{
+					"$addToSet": "$user_id",
+				},
+			},
+		},
+		gin.H{
+			"$project": gin.H{
+				"impressions_count": "$impressions_count",
+				"reach_count": gin.H{
+					"$size": "$unique_users_list",
+				},
+			},
+		},
+	}
+
+	postImpressionsData, err := handlers.userEntityTimestampHelper.AggregateUserEntityTimestampHelper(postImpressionsFilter)
+	if err != nil {
+		logging.Error("Error in fetching post impressions, err: ", err)
+		return nil, err
+	}
+
+	for _, postImpressionData := range postImpressionsData {
+		postImpressionReachMap[postImpressionData["_id"].(primitive.ObjectID)] = PostImpressionsData{
+			ImpressionsCount: int(postImpressionData["impressions_count"].(int32)),
+			ReachCount:       int(postImpressionData["reach_count"].(int32)),
+		}
+	}
+
+	return postImpressionReachMap, nil
+}
+
 func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, loggedInUser *LoggedInUserParams,
 ) responses.PostResponse {
 
