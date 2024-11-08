@@ -826,6 +826,8 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	response.IsRepostedByUser = postSecondaryData.IsRepostedByUser
 	response.IsLiked = postSecondaryData.IsLikedByUser
 	response.IsSaved = postSecondaryData.IsSavedByUser
+	response.ImpressionCount = postSecondaryData.PostImpressions.ImpressionsCount
+	response.ReachCount = postSecondaryData.PostImpressions.ReachCount
 
 	response.MenuItems = []responses.MenuResponse{}
 	if loggedInUser.MemberRole != utils.GuestRole {
@@ -849,8 +851,60 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 	return response
 }
 
+// Internal method to compute post impressions and reach count
+func computePostImpressionReachCount(handlers *FeedHandlers, postIds []primitive.ObjectID) (map[primitive.ObjectID]PostImpressionsData, error) {
+	postImpressionReachMap := map[primitive.ObjectID]PostImpressionsData{}
+
+	postImpressionsFilter := []map[string]interface{}{
+		gin.H{
+			"$match": gin.H{
+				"entity_type": enums.EntityTypePost,
+				"entity_id": gin.H{
+					"$in": postIds,
+				},
+			},
+		},
+		gin.H{
+			"$group": gin.H{
+				"_id": "$entity_id",
+				"impressions_count": gin.H{
+					"$sum": 1,
+				},
+				"unique_users_list": gin.H{
+					"$addToSet": "$user_id",
+				},
+			},
+		},
+		gin.H{
+			"$project": gin.H{
+				"impressions_count": "$impressions_count",
+				"reach_count": gin.H{
+					"$size": "$unique_users_list",
+				},
+			},
+		},
+	}
+
+	postImpressionsData, err := handlers.userEntityTimestampHelper.AggregateUserEntityTimestampHelper(postImpressionsFilter)
+	if err != nil {
+		logging.Error("Error in fetching post impressions, err: ", err)
+		return nil, err
+	}
+
+	for _, postImpressionData := range postImpressionsData {
+		postImpressionReachMap[postImpressionData["_id"].(primitive.ObjectID)] = PostImpressionsData{
+			ImpressionsCount: int(postImpressionData["impressions_count"].(int32)),
+			ReachCount:       int(postImpressionData["reach_count"].(int32)),
+		}
+	}
+
+	return postImpressionReachMap, nil
+}
+
 func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, loggedInUser *LoggedInUserParams,
 ) responses.PostResponse {
+
+	postImpressionsData, _ := computePostImpressionReachCount(handlers, []primitive.ObjectID{postData.ID})
 
 	postSecondaryData := PostSecondaryDataParams{
 		LikesCount:       fetchEntityLikesCount(handlers.likeHelper, postData.ID.Hex(), constants.PostEntityType),
@@ -859,6 +913,7 @@ func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, lo
 		IsRepostedByUser: getIsRepostedByUser(handlers.widgetHelper, loggedInUser.UserId, postData),
 		IsLikedByUser:    fetchUserLikedStatusByEntity(handlers.likeHelper, postData.ID.Hex(), constants.PostEntityType, loggedInUser.UserId),
 		IsSavedByUser:    fetchUserSavedStatusByPostId(handlers.saveHelper, postData.ID.Hex(), loggedInUser.UserId),
+		PostImpressions:  postImpressionsData[postData.ID],
 	}
 
 	postResponse := parsePostResponse(handlers, loggedInUser, postData, &postSecondaryData)
@@ -891,6 +946,7 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 	isRepostedByUserMap := getIsRepostedByUserForMultiplePosts(handlers.widgetHelper, userId, posts)
 	isLikedByUserMap := fetchUserLikedStatusForMultipleEntities(handlers.likeHelper, postIds, constants.PostEntityType, userId)
 	isSavedByUserMap := fetchUserSavedStatusByPostIds(handlers.saveHelper, postIds, userId)
+	postImpressionsData, _ := computePostImpressionReachCount(handlers, postIds)
 
 	response := []responses.PostResponse{}
 	for _, post := range posts {
@@ -902,6 +958,7 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 			IsRepostedByUser: isRepostedByUserMap[post.ID],
 			IsLikedByUser:    isLikedByUserMap[post.ID],
 			IsSavedByUser:    isSavedByUserMap[post.ID],
+			PostImpressions:  postImpressionsData[post.ID],
 		}
 
 		response = append(response, parsePostResponse(handlers, &loggedInUser, &post, &postSecondaryData))
@@ -2576,7 +2633,7 @@ func (handlers *FeedHandlers) MarkPostsSeen(c *gin.Context) {
 	}
 
 	// Call helper method to mark posts as seen in Background
-	go saveDampenedPostsForUserInCache(handlers.cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds) // TODO: Can Move this to background service
+	go saveDampenedPostsForUserInDb(handlers, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds)
 
 	utils.GenerateSuccessResponse(c, nil)
 }

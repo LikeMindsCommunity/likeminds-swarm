@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
@@ -100,11 +99,14 @@ func (helper *UserTopicsHelper) DeleteUserTopicsHelper(filter map[string]interfa
 // Exposed Helper Method to perform Aggregration on Posts
 func (helper *UserTopicsHelper) AggregateUserTopicsHelper(query []map[string]interface{}) ([]gin.H, error) {
 	results, err := helper.UserTopicsRepository.Aggregate(query)
+	if err != nil {
+		return nil, err
+	}
 
 	var topicIdsList []gin.H
 
 	if err = results.All(context.TODO(), &topicIdsList); err != nil {
-		return topicIdsList, fmt.Errorf("Error in conversion!")
+		return topicIdsList, err
 	}
 
 	return topicIdsList, nil

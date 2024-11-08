@@ -40,6 +40,8 @@ type PostResponse struct {
 	IsLiked            bool                 `json:"is_liked"`
 	IsSaved            bool                 `json:"is_saved"`
 	PostShareCount     int                  `json:"post_share_count"`
+	ImpressionCount    int                  `json:"impression_count"`
+	ReachCount         int                  `json:"reach_count"`
 	MenuItems          []MenuResponse       `json:"menu_items"`
 	CreatedAt          int                  `json:"created_at"`
 	UpdatedAt          int                  `json:"updated_at"`
