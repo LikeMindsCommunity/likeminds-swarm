@@ -15,10 +15,9 @@ func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 	userGroup.GET("/:user_id/comment", handler.FetchUserComments)
 
 	userGroup.GET("/activity", handler.FetchNotificationFeed)
+	userGroup.POST("/activity", handler.ExternalCreateNotificationActivity)
 	userGroup.POST("/activity/:activity_id/mark_read", handler.NotificationFeedActivityMarkRead)
 	userGroup.GET("/activity/unread_count", handler.NotificationFeedUnreadCount)
-
-	userGroup.POST("/:user_id/activity", handler.ExternalCreateActivity) // TODO: Confirm if user_id is needed or not
 
 	userGroup.GET("/:user_id/activity", handler.FetchUserProfileActivity)
 

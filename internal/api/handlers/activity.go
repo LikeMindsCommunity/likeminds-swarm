@@ -68,12 +68,12 @@ func parseActivitiesForNotificationFeed(handler FeedHandlers, activities []entit
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityText, err := getActivityText(handler.cacheHelper, userId, activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue, likePastValue)
+		activityText, err := getActivityTextForNotificationFeed(handler.cacheHelper, userId, activityUserData, activityEntityData, activity, postMetatadataValue, commentMetatadataValue, likePastValue)
 		if err != nil {
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityCTA := getActivityCTA(handler, activity)
+		activityCTA := getActivityCTAForPendingPost(handler, activity)
 
 		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
@@ -358,7 +358,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 	return nil, nil
 }
 
-func getActivityText(cacheHelper cache.Helper, userId string, activityByUserData externalHelpers.MemberMeta,
+func getActivityTextForNotificationFeed(cacheHelper cache.Helper, userId string, activityByUserData externalHelpers.MemberMeta,
 	activityEntityData interface{}, activity entities.Activity, postFeedMetadatValue string, commentFeedMetadaValue string,
 	likePastValue string,
 ) (string, error) {
@@ -506,7 +506,7 @@ func getActivityText(cacheHelper cache.Helper, userId string, activityByUserData
 	return activityText, nil
 }
 
-func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
+func getActivityCTAForPendingPost(handlers FeedHandlers, activity entities.Activity) string {
 	activityCTA := activity.CTA
 
 	if activity.EntityType == constants.PendingPost && activity.Action != constants.PendingPostRejected {
@@ -721,7 +721,6 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		handlers.activityHelper.PushActivitytoCache(activityID)
 
 		return activityID, err
-
 	}
 
 	return nil, nil
@@ -819,7 +818,7 @@ func parseCTAData(cta_data map[string]interface{}) string {
 }
 
 // // Exposed Method to create new Activity
-func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
+func (handlers *FeedHandlers) ExternalCreateNotificationActivity(c *gin.Context) {
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	user_id := c.Param("user_id")
@@ -838,31 +837,19 @@ func (handlers *FeedHandlers) ExternalCreateActivity(c *gin.Context) {
 	}
 
 	// validation of valid actions
-	var isActionValid bool = false
-	var action constants.ActivityAction = constants.DefaultAction
+	var action constants.ActivityAction
 
 	switch externalCreateActivityRequest.Action {
 	case constants.CreatePostPermitAddedAction:
 		action = constants.CreatePostPermitAdded
-		isActionValid = true
 	case constants.CreatePostPermitRemovedAction:
 		action = constants.CreatePostPermitRemoved
-		isActionValid = true
 	case constants.CreateCommentPermissionAddedAction:
 		action = constants.CreateCommentPermitAdded
-		isActionValid = true
 	case constants.CreateCommentPermitRemovedAction:
 		action = constants.CreateCommentPermitRemoved
-		isActionValid = true
-	}
-
-	if !isActionValid {
+	default:
 		utils.GeneralAPIValidationError(c, "Invalid action sent")
-		return
-	}
-
-	if user_id == "" {
-		utils.GeneralAPIValidationError(c, "Send valid user_id")
 		return
 	}
 
@@ -909,6 +896,14 @@ func (handlers *FeedHandlers) FetchNotificationFeed(c *gin.Context) {
 		"action_on":    userID,
 		"community_id": communityID,
 		"is_deleted":   false,
+	}
+
+	//TODO: Filter action with not in
+	actionNotIn := []int{int(constants.CreatePostPermitAdded), int(constants.CreatePostPermitRemoved),
+		int(constants.CreateCommentPermitAdded), int(constants.CreateCommentPermitRemoved)}
+
+	activityFilterData["action"] = gin.H{
+		"$nin": actionNotIn,
 	}
 
 	activitySortKey := "updated_at"
