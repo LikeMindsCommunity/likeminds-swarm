@@ -695,6 +695,12 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		return nil, nil
 	}
 
+	// If activity action is disabled, do not create activity
+	disabledActions := externalHelpers.GetDisabledNotificationFeedActions(handlers.cacheHelper, actionOn, communityID)
+	if !disabledActions[enums.NewActivityActionFromInt(int(action), false).ToString()] {
+		return nil, nil
+	}
+
 	cta := fetchActivityCtaForAction(action, ctaData)
 
 	switch action {
