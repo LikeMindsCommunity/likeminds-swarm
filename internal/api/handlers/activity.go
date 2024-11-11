@@ -73,7 +73,7 @@ func parseActivitiesForNotificationFeed(handler FeedHandlers, activities []entit
 			return response, userDatas, topicDatas, widgetDatas, err
 		}
 
-		activityCTA := getActivityCTAForPendingPost(handler, activity)
+		activityCTA := getActivityCTA(handler, activity)
 
 		userActivity := requests.UserActivityResponse{
 			ID:                 activity.ID,
@@ -366,6 +366,8 @@ func getActivityTextForNotificationFeed(cacheHelper cache.Helper, userId string,
 	activityText := ""
 
 	switch activity.Action {
+	case constants.CustomActivity:
+		activityText += activity.ActivityText
 	case constants.CreatePostPermitAdded:
 		activityText += fmt.Sprintf("You now have the permission to create %s in the community. Start posting now.", utils.GetPluralOfString(postFeedMetadatValue))
 		return activityText, nil
@@ -506,7 +508,8 @@ func getActivityTextForNotificationFeed(cacheHelper cache.Helper, userId string,
 	return activityText, nil
 }
 
-func getActivityCTAForPendingPost(handlers FeedHandlers, activity entities.Activity) string {
+func getActivityCTA(handlers FeedHandlers, activity entities.Activity) string {
+
 	activityCTA := activity.CTA
 
 	if activity.EntityType == constants.PendingPostEntity && activity.Action != constants.PendingPostRejected {
@@ -961,14 +964,6 @@ func (handlers *FeedHandlers) FetchNotificationFeed(c *gin.Context) {
 		"action_on":    userID,
 		"community_id": communityID,
 		"is_deleted":   false,
-	}
-
-	//TODO: Filter action with not in
-	actionNotIn := []int{int(constants.CreatePostPermitAdded), int(constants.CreatePostPermitRemoved),
-		int(constants.CreateCommentPermitAdded), int(constants.CreateCommentPermitRemoved)}
-
-	activityFilterData["action"] = gin.H{
-		"$nin": actionNotIn,
 	}
 
 	activitySortKey := "updated_at"
