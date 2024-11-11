@@ -364,15 +364,15 @@ func GetDisabledNotificationFeedActions(cacheHelper cache.Helper, userId string,
 		return disabledActions
 	}
 
-	notificationFeedActivties, ok := feedSettingConfigs.Value["notification_feed_activities"].(map[string]bool)
+	notificationFeedActions, ok := feedSettingConfigs.Value[FeedSettingsNotificationFeedActions].(map[string]bool)
 	if !ok {
 		return disabledActions
 	}
 
 	// Add all the activities which are disabled
-	for activity, bool := range notificationFeedActivties {
+	for action, bool := range notificationFeedActions {
 		if !bool {
-			disabledActions[activity] = bool
+			disabledActions[action] = bool
 		}
 	}
 

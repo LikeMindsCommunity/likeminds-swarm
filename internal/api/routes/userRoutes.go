@@ -16,6 +16,7 @@ func UserRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) {
 
 	userGroup.GET("/activity", handler.FetchNotificationFeed)
 	userGroup.POST("/activity", handler.ExternalCreateNotificationActivity)
+
 	userGroup.POST("/activity/:activity_id/mark_read", handler.NotificationFeedActivityMarkRead)
 	userGroup.GET("/activity/unread_count", handler.NotificationFeedUnreadCount)
 

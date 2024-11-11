@@ -110,7 +110,7 @@ func parseActivitiesForNotificationFeed(handler FeedHandlers, activities []entit
 		}
 
 		// Parse topicIds and widgetIds from post
-		if activity.EntityType == constants.Post {
+		if activity.EntityType == constants.PostEntity {
 
 			post := activityEntityData.(responses.PostResponse)
 
@@ -195,7 +195,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 		// if action is comment on post, fetch comment data along with its post data
 		switch activity.Action {
 		case constants.CommentOnPost:
-			activityEntityData, err = getEntityData(handler, constants.Comment, actionByMetadata.EntityId, activity.CommunityID,
+			activityEntityData, err = getEntityData(handler, constants.CommentEntity, actionByMetadata.EntityId, activity.CommunityID,
 				apiRevampV1Check, userId, isCm, activity.EntityID.Hex())
 			if err != nil {
 				continue
@@ -206,7 +206,7 @@ func parseUserProfileActivity(handler FeedHandlers, activities []entities.Activi
 			// Update activity data
 			activity.CTA = fmt.Sprintf(utils.CommentDetailRoute, activity.EntityID.Hex(), actionByMetadata.EntityId.Hex())
 			activity.EntityID = actionByMetadata.EntityId
-			activity.EntityType = constants.Comment
+			activity.EntityType = constants.CommentEntity
 			activity.EntityOwnerID = uuid
 
 		// Fetch entity data for other activities
@@ -298,7 +298,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 	apiRevampV1Check bool, userId string, isCm bool, postIdForComment string) (interface{}, error) {
 
 	switch entityType {
-	case constants.Post:
+	case constants.PostEntity:
 		postData, err := fetchPostResponseMapFromPostIds(&handler, []string{entityID.Hex()}, communityID, userId, isCm, "", "",
 			apiRevampV1Check)
 		if err != nil {
@@ -307,7 +307,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 
 		return postData[entityID.Hex()], nil
 
-	case constants.PendingPost:
+	case constants.PendingPostEntity:
 		pendingPost, err := fetchPendingPost(handler.pendingPostHelper, entityID.Hex(), communityID)
 		if err != nil {
 			return nil, err
@@ -331,7 +331,7 @@ func getEntityData(handler FeedHandlers, entityType constants.EntityType, entity
 			return postData[pendingPost.PostId], nil
 		}
 
-	case constants.Comment:
+	case constants.CommentEntity:
 
 		// If postIdForComment is not empty, fetch post data along with comment data
 		if postIdForComment != "" {
@@ -509,7 +509,7 @@ func getActivityTextForNotificationFeed(cacheHelper cache.Helper, userId string,
 func getActivityCTAForPendingPost(handlers FeedHandlers, activity entities.Activity) string {
 	activityCTA := activity.CTA
 
-	if activity.EntityType == constants.PendingPost && activity.Action != constants.PendingPostRejected {
+	if activity.EntityType == constants.PendingPostEntity && activity.Action != constants.PendingPostRejected {
 		pendingPostData, _ := fetchPendingPost(handlers.pendingPostHelper, activity.EntityID.Hex(), activity.CommunityID)
 
 		if pendingPostData.Status == enums.Approved {
@@ -593,8 +593,8 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	entityTextData := ""
 
 	switch entityType {
-	case constants.Post,
-		constants.PendingPost:
+	case constants.PostEntity,
+		constants.PendingPostEntity:
 		postResponse := activityEntityData.(responses.PostResponse)
 
 		if postResponse.Heading != "" {
@@ -603,12 +603,12 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 			entityTextData = activityEntityData.(responses.PostResponse).Text
 		}
 
-	case constants.Comment:
+	case constants.CommentEntity:
 		entityTextData = activityEntityData.(responses.CommentResponse).Text
 	}
 
 	// if post text is nil, add attachment type as text
-	if entityType == constants.Post && entityTextData == "" {
+	if entityType == constants.PostEntity && entityTextData == "" {
 		postAttachmentType := getPostAttachmentType(activityEntityData.(responses.PostResponse))
 		if postAttachmentType != "" {
 			return " " + postAttachmentType + "."
@@ -618,13 +618,13 @@ func getEntityText(entityType constants.EntityType, activityEntityData interface
 	}
 
 	// if comment text is nil, add attachment type as text
-	if entityType == constants.Comment && entityTextData == "" {
+	if entityType == constants.CommentEntity && entityTextData == "" {
 		return " " + getCommentAttachmentType(activityEntityData.(responses.CommentResponse)) + "."
 	}
 
-	if entityType == constants.Post && entityTextData != "" && postFeedMetadatValue != "" {
+	if entityType == constants.PostEntity && entityTextData != "" && postFeedMetadatValue != "" {
 		return fmt.Sprintf(" %s: \"", postFeedMetadatValue) + entityTextData + "\""
-	} else if entityType == constants.Post && entityTextData != "" {
+	} else if entityType == constants.PostEntity && entityTextData != "" {
 		return " \"" + entityTextData + "\""
 	}
 
@@ -689,15 +689,15 @@ func fetchActivity(helper interfaces.ActivityHelper, activity_id string) (*entit
 // CreateActivity | method to create an activity record
 func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
 	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{},
-	isRead bool, isDeleted bool, actionByEntityId primitive.ObjectID) (interface{}, error) {
+	isRead bool, isDeleted bool, actionByEntityId primitive.ObjectID, activityText string,
+) (interface{}, error) {
 
 	if len(actionBy) > 0 && actionBy[0] == actionOn {
 		return nil, nil
 	}
 
-	// If activity action is disabled, do not create activity
-	disabledActions := externalHelpers.GetDisabledNotificationFeedActions(handlers.cacheHelper, actionOn, communityID)
-	if !disabledActions[enums.NewActivityActionFromInt(int(action), false).ToString()] {
+	// If action is disabled, do not create activity
+	if isNotificationFeedActionDisabled(handlers.cacheHelper, actionOn, communityID, action) {
 		return nil, nil
 	}
 
@@ -722,9 +722,16 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 		constants.PendingPostRejected:
 
 		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
-			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId)
+			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId, activityText)
 
 		handlers.activityHelper.PushActivitytoCache(activityID)
+
+		return activityID, err
+
+	case constants.CustomActivity:
+
+		activityID, err := handlers.activityHelper.CreateActivityHelper(communityID, actionBy, actionOn, entityType,
+			entityID, entityOwnerID, action, cta, isRead, isDeleted, actionByEntityId, activityText)
 
 		return activityID, err
 	}
@@ -732,37 +739,17 @@ func (handlers *FeedHandlers) CreateActivity(communityID int, actionBy []string,
 	return nil, nil
 }
 
-func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post,
-	headers map[string]string, ctaData gin.H) {
+// internal method to check if action is disabled from configurations
+func isNotificationFeedActionDisabled(cacheHelper cache.Helper, userId string, communityID int, action constants.ActivityAction,
+) bool {
 
-	postCommentActivity, err := fetchActivity(handlers.activityHelper, activityID.(primitive.ObjectID).Hex())
-	if err != nil {
-		return
-	}
+	disabledActions := externalHelpers.GetDisabledNotificationFeedActions(cacheHelper, userId, communityID)
+	activityAction := enums.NewActivityActionFromInt(int(action), false).ToString()
 
-	latestCommentUser := postCommentActivity.ActionBy[len(postCommentActivity.ActionBy)-1]
-	previousCommentUsers := utils.RemoveAllOccurenceStringList(postCommentActivity.ActionBy, latestCommentUser)
-
-	// if previousCommentUsers = [], no need to create activity
-	if len(previousCommentUsers) == 0 {
-		return
-	}
-
-	for _, previousCommentUser := range previousCommentUsers {
-
-		// create also commented activity
-		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{latestCommentUser}, previousCommentUser,
-			constants.Post, postData.ID, postData.UserId, constants.AlsoCommentOnPost, ctaData, false, false, primitive.NilObjectID)
-		if err != nil {
-			return
-		}
-
-		if activityID != nil {
-			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
-			if err != nil {
-				logging.Error("Failed to enqueue send notification : ", err)
-			}
-		}
+	if !disabledActions[activityAction] {
+		return true
+	} else {
+		return false
 	}
 }
 
@@ -794,6 +781,8 @@ func fetchActivityCtaForAction(action constants.ActivityAction, ctaData map[stri
 
 	case constants.CreateCommentPermitAdded:
 		cta = utils.HomeFeedRoute
+	case constants.CustomActivity:
+		cta = parseCTAData(ctaData)
 	}
 
 	return cta
@@ -825,27 +814,76 @@ func parseCTAData(cta_data map[string]interface{}) string {
 
 // // Exposed Method to create new Activity
 func (handlers *FeedHandlers) ExternalCreateNotificationActivity(c *gin.Context) {
-	// fetch headers and url params
+
+	// fetch headers
 	headers := utils.GetHeaders(c)
-	user_id := c.Param("user_id")
+	platformCode := headers[utils.HeadersPlatformCode]
+	versionCode := headers[utils.HeadersVersionCode]
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
-	if community_id == externalHelpers.DefaultCommunityId {
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
 	// validation of request body
-	var externalCreateActivityRequest requests.CreateActivityRequest
-	if err := c.ShouldBindJSON(&externalCreateActivityRequest); err != nil {
+	var car requests.CreateActivityRequest
+	if err := c.ShouldBindJSON(&car); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// validation of valid actions
-	var action constants.ActivityAction
+	// validate request
+	actionBy, actionOn, entityType, entityID, action, activityText, cta, err := validateCreateActivityRequest(handlers,
+		&car, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
 
-	switch externalCreateActivityRequest.Action {
+	// Create activities in goroutine
+	go func() {
+		for _, actionOn := range actionOn {
+
+			// create activity using the helper method
+			activityID, err := handlers.CreateActivity(communityId, []string{actionBy}, actionOn,
+				entityType, entityID, actionOn, action, cta, false, false, primitive.NilObjectID, activityText)
+			if err != nil {
+				logging.Error("Failed to create activity: ", err)
+				return
+			}
+
+			if activityID != nil {
+				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
+				if err != nil {
+					logging.Error("Failed to enqueue send notification : ", err)
+				}
+			}
+		}
+	}()
+
+	utils.GenerateSuccessResponse(c, nil)
+}
+
+func validateCreateActivityRequest(handlers *FeedHandlers, car *requests.CreateActivityRequest, communityId int,
+) (string, []string, constants.EntityType, primitive.ObjectID, constants.ActivityAction, string, gin.H, error) {
+
+	var actionBy string
+	var actionOn []string
+	var entityType constants.EntityType
+	var entityId primitive.ObjectID
+	var action constants.ActivityAction
+	var cta gin.H
+	var activityText = car.ActivityText
+	var err error
+
+	entityType = enums.NewIntEntityTypeFromString(car.EntityType)
+	if entityType == constants.DefaultEntity {
+		err = fmt.Errorf("invalid entity_type sent")
+		return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
+	}
+
+	switch car.Action {
 	case constants.CreatePostPermitAddedAction:
 		action = constants.CreatePostPermitAdded
 	case constants.CreatePostPermitRemovedAction:
@@ -854,30 +892,51 @@ func (handlers *FeedHandlers) ExternalCreateNotificationActivity(c *gin.Context)
 		action = constants.CreateCommentPermitAdded
 	case constants.CreateCommentPermitRemovedAction:
 		action = constants.CreateCommentPermitRemoved
-	default:
-		utils.GeneralAPIValidationError(c, "Invalid action sent")
-		return
-	}
+	case constants.CustomActivityAction:
 
-	// create activity using the helper method
-	activityID, err := handlers.CreateActivity(community_id, []string{headers[utils.HeadersMemberId]}, user_id,
-		constants.User, primitive.NilObjectID, user_id, action, gin.H{}, false, false, primitive.NilObjectID)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	if activityID != nil {
-		err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
-		if err != nil {
-			logging.Error("Failed to enqueue send notification : ", err)
+		if car.ActivityText == "" {
+			err = fmt.Errorf("activity_text is required")
+			return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
 		}
+
+		// validate entity type and entity id
+		switch entityType {
+		case constants.PostEntity:
+			_, err = FetchPostData(handlers.postHelper, car.EntityId, communityId, true, nil)
+			if err != nil {
+				err = fmt.Errorf("invalid entity_id sent: %v", err.Error())
+				return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
+			}
+
+			cta = gin.H{
+				"entity_type": constants.PostEntityType,
+				"post_id":     car.EntityId,
+			}
+
+		case constants.CommentEntity:
+			commentData, err := fetchCommentByIdInternal(handlers.commentHelper, car.EntityId, nil)
+			if err != nil {
+				err = fmt.Errorf("invalid entity_id sent: %v", err.Error())
+				return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
+			}
+
+			cta = gin.H{
+				"entity_type": constants.CommentEntityType,
+				"post_id":     commentData.PostId,
+				"comment_id":  commentData.ID,
+			}
+
+		case constants.UserEntity:
+			entityId = primitive.NilObjectID
+		}
+
+		action = constants.CustomActivity
+	default:
+		err = fmt.Errorf("invalid action sent")
+		return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
 	}
 
-	// 	// return final response
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-	})
+	return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
 }
 
 // FetchNotificationFeed | method to Fetch User Notifciation Feed
@@ -1009,11 +1068,6 @@ func (handlers *FeedHandlers) NotificationFeedUnreadCount(c *gin.Context) {
 	// validation of api_key
 	communityID := externalHelpers.GetCommunityId(c)
 	if communityID == externalHelpers.DefaultCommunityId {
-		return
-	}
-
-	if userID != headers[utils.HeadersMemberId] {
-		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
 	}
 

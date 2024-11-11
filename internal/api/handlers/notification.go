@@ -186,10 +186,10 @@ func sendCommentDeleteActionNotification(activity *entities.Activity, handlers F
 func sendDeleteActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.Post:
+	case constants.PostEntity:
 		sendPostDeleteActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.Comment:
+	case constants.CommentEntity:
 		sendCommentDeleteActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
@@ -268,10 +268,10 @@ func sendCommentTagActionNotification(activity *entities.Activity, handlers Feed
 func sendTagActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.Post:
+	case constants.PostEntity:
 		sendPostTagActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.Comment:
+	case constants.CommentEntity:
 		sendCommentTagActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
@@ -280,7 +280,7 @@ func sendTagActionNotification(activity *entities.Activity, handlers FeedHandler
 func sendAlsoCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.Post:
+	case constants.PostEntity:
 		// Fetch post details
 		post_data, err := FetchPostData(handlers.postHelper, activity.EntityID.Hex(), activity.CommunityID, true, []string{})
 		if err != nil {
@@ -440,10 +440,10 @@ func sendCommentReplyActionNotification(activity *entities.Activity, handlers Fe
 func sendCommentActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platform_code string, version_code string) {
 	switch activity.EntityType {
-	case constants.Post:
+	case constants.PostEntity:
 		sendPostCommentActionNotification(activity, handlers, platform_code, version_code)
 
-	case constants.Comment:
+	case constants.CommentEntity:
 		sendCommentReplyActionNotification(activity, handlers, platform_code, version_code)
 	}
 }
@@ -454,11 +454,11 @@ func sendPostLikeActionNoitification(activity *entities.Activity, handlers FeedH
 
 	entityType := ""
 	switch activity.EntityType {
-	case constants.Post:
+	case constants.PostEntity:
 		entityType = "post"
-	case constants.Comment:
+	case constants.CommentEntity:
 		entityType = "comment"
-	case constants.User:
+	case constants.UserEntity:
 		entityType = "user"
 	}
 
@@ -509,11 +509,11 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 
 	entityType := ""
 	switch activity.EntityType {
-	case constants.Post:
+	case constants.PostEntity:
 		entityType = "post"
-	case constants.Comment:
+	case constants.CommentEntity:
 		entityType = "comment"
-	case constants.User:
+	case constants.UserEntity:
 		entityType = "user"
 	}
 	// Fetch likes count
@@ -561,10 +561,10 @@ func sendCommentLikeActionNotification(activity *entities.Activity, handlers Fee
 func sendLikeActionNotification(activity *entities.Activity, handlers FeedHandlers,
 	platformCode string, versionCode string) {
 	switch activity.EntityType {
-	case constants.Post:
+	case constants.PostEntity:
 		sendPostLikeActionNoitification(activity, handlers, platformCode, versionCode)
 
-	case constants.Comment:
+	case constants.CommentEntity:
 		sendCommentLikeActionNotification(activity, handlers, platformCode, versionCode)
 	}
 }

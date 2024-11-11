@@ -1089,8 +1089,8 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 
 		OriginalPostIDObject, _ := primitive.ObjectIDFromHex(originalPostID)
 
-		activityID, err := handlers.CreateActivity(communityId, []string{userId}, OriginalPostUserID, constants.Post,
-			OriginalPostIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID)
+		activityID, err := handlers.CreateActivity(communityId, []string{userId}, OriginalPostUserID, constants.PostEntity,
+			OriginalPostIDObject, OriginalPostUserID, constants.RepostOnPost, ctaData, false, false, primitive.NilObjectID, "")
 		if err != nil {
 			// utils.GeneralAPIInternalError(c, err.Error())
 			return err
@@ -1115,8 +1115,8 @@ func createActivitiesAndSendNotificationAfterPostCreation(handlers *FeedHandlers
 
 		for _, member := range postRequest.UUIDs {
 			// create tag activity
-			activityID, err := handlers.CreateActivity(communityId, []string{userId}, member, constants.Post,
-				postData.ID, userId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID)
+			activityID, err := handlers.CreateActivity(communityId, []string{userId}, member, constants.PostEntity,
+				postData.ID, userId, constants.TaggedInPost, ctaData, false, false, primitive.NilObjectID, "")
 			if err != nil {
 				return err
 			}
@@ -1874,7 +1874,7 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 
 	// remove activity for the post
 	deleteActivityFilter := gin.H{
-		"entity_type": constants.Post,
+		"entity_type": constants.PostEntity,
 		"entity_id":   postData.ID,
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
@@ -1886,8 +1886,8 @@ func (handlers *FeedHandlers) DeletePost(c *gin.Context) {
 	// if deleted by CM, create delete activity
 	if deletePostRequest.UserIsCm && headers[utils.HeadersMemberId] != postData.UserId {
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
-			postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CMDeletedPost, gin.H{},
-			false, false, primitive.NilObjectID)
+			postData.UserId, constants.PostEntity, postData.ID, postData.UserId, constants.CMDeletedPost, gin.H{},
+			false, false, primitive.NilObjectID, "")
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -1992,7 +1992,7 @@ func deleteUserPostRepostActivity(handlers *FeedHandlers, repostPostData *entiti
 
 	activityFilterData := gin.H{
 		"community_id": repostPostData.CommunityId,
-		"entity_type":  constants.Post,
+		"entity_type":  constants.PostEntity,
 		"entity_id":    OriginalPostID,
 		"action":       constants.RepostOnPost,
 	}
@@ -2054,7 +2054,7 @@ func (handlers *FeedHandlers) removePostCommentActivityData(postID primitive.Obj
 
 	// remove activity for the comment
 	deleteActivityFilter := gin.H{
-		"entity_type": constants.Comment,
+		"entity_type": constants.CommentEntity,
 		"entity_id": gin.H{
 			"$in": postCommentIds,
 		},

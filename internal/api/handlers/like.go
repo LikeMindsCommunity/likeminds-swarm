@@ -310,8 +310,8 @@ func createUserPostLikeActivity(handlers *FeedHandlers, postData *entities.Post,
 
 	// create post like activity
 	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
-		postData.UserId, constants.Post, postData.ID, postData.UserId, constants.LikeOnPost, ctaData,
-		false, false, primitive.NilObjectID)
+		postData.UserId, constants.PostEntity, postData.ID, postData.UserId, constants.LikeOnPost, ctaData,
+		false, false, primitive.NilObjectID, "")
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -329,7 +329,7 @@ func deleteUserPostLikeActivity(handlers *FeedHandlers, postData *entities.Post,
 
 	activityFilterData := gin.H{
 		"community_id": postData.CommunityId,
-		"entity_type":  constants.Post,
+		"entity_type":  constants.PostEntity,
 		"entity_id":    postData.ID,
 		"action":       constants.LikeOnPost,
 	}
@@ -546,8 +546,8 @@ func createUserCommentLikeActivity(handlers *FeedHandlers, postData *entities.Po
 
 	// create comment like activity
 	activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
-		commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.LikeOnComment, ctaData,
-		false, false, primitive.NilObjectID)
+		commentData.UserId, constants.CommentEntity, commentData.ID, commentData.UserId, constants.LikeOnComment, ctaData,
+		false, false, primitive.NilObjectID, "")
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -566,7 +566,7 @@ func deleteUserCommentLikeActivity(handlers *FeedHandlers, postData *entities.Po
 
 	activityFilterData := gin.H{
 		"community_id": postData.CommunityId,
-		"entity_type":  constants.Comment,
+		"entity_type":  constants.CommentEntity,
 		"entity_id":    commentData.ID,
 		"action":       constants.LikeOnComment,
 	}
