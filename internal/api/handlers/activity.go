@@ -902,11 +902,13 @@ func validateCreateActivityRequest(handlers *FeedHandlers, car *requests.CreateA
 		// validate entity type and entity id
 		switch entityType {
 		case constants.PostEntity:
-			_, err = FetchPostData(handlers.postHelper, car.EntityId, communityId, true, nil)
+			postData, err := FetchPostData(handlers.postHelper, car.EntityId, communityId, true, nil)
 			if err != nil {
 				err = fmt.Errorf("invalid entity_id sent: %v", err.Error())
 				return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
 			}
+
+			entityId = postData.ID
 
 			cta = gin.H{
 				"entity_type": constants.PostEntityType,
@@ -919,6 +921,8 @@ func validateCreateActivityRequest(handlers *FeedHandlers, car *requests.CreateA
 				err = fmt.Errorf("invalid entity_id sent: %v", err.Error())
 				return actionBy, actionOn, entityType, entityId, action, activityText, cta, err
 			}
+
+			entityId = commentData.ID
 
 			cta = gin.H{
 				"entity_type": constants.CommentEntityType,
