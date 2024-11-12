@@ -749,11 +749,7 @@ func isNotificationFeedActionDisabled(cacheHelper cache.Helper, userId string, c
 	disabledActions := externalHelpers.GetDisabledNotificationFeedActions(cacheHelper, userId, communityID)
 	activityAction := enums.NewActivityActionFromInt(int(action), false).ToString()
 
-	if !disabledActions[activityAction] {
-		return true
-	} else {
-		return false
-	}
+	return disabledActions[activityAction]
 }
 
 // DeleteActivity | delete activity records with filter

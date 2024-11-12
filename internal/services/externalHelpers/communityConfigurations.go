@@ -30,6 +30,7 @@ type UniversalFeedConfigurations struct {
 
 type CommunityConfirgurationResponse struct {
 	Success                 bool                     `json:"success"`
+	ErrorMessage            string                   `json:"error_message"`
 	CommunityConfigurations []CommunityConfiguration `json:"community_configurations"`
 }
 
@@ -107,6 +108,14 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	if err := json.Unmarshal(respBytes, &communityConfigurationResponse); err != nil {
 		//Internal unmarshal error
 		return nil, err
+	}
+
+	if !communityConfigurationResponse.Success {
+
+		//API response error
+		logging.Error(fmt.Sprintf("Error in fetching community configurations for %d", communityId, "Error: ", communityConfigurationResponse.ErrorMessage))
+
+		return nil, fmt.Errorf(communityConfigurationResponse.ErrorMessage)
 	}
 
 	// Save data to cache
@@ -364,15 +373,15 @@ func GetDisabledNotificationFeedActions(cacheHelper cache.Helper, userId string,
 		return disabledActions
 	}
 
-	notificationFeedActions, ok := feedSettingConfigs.Value[FeedSettingsNotificationFeedActions].(map[string]bool)
+	notificationFeedActions, ok := feedSettingConfigs.Value[FeedSettingsNotificationFeedActions].(map[string]interface{})
 	if !ok {
 		return disabledActions
 	}
 
 	// Add all the activities which are disabled
 	for action, bool := range notificationFeedActions {
-		if !bool {
-			disabledActions[action] = bool
+		if bool == false {
+			disabledActions[action] = true
 		}
 	}
 
