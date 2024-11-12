@@ -131,14 +131,19 @@ func fetchParentComment(helper interfaces.CommentHelper, commentId primitive.Obj
 }
 
 // Internal Method to fetch a comment using comment_id
-func fetchCommentByIdInternal(helper interfaces.CommentHelper, commentId string, excludedUserIds []string) (*entities.Comment, error) {
+func fetchCommentByIdInternal(helper interfaces.CommentHelper, commentId string, excludedUserIds []string,
+) (*entities.Comment, error) {
+
 	// comment filter data
 	commentFilterData := gin.H{
 		"_id":        commentId,
 		"is_deleted": false,
-		"user_id": gin.H{
+	}
+
+	if len(excludedUserIds) > 0 {
+		commentFilterData["user_id"] = gin.H{
 			"$nin": excludedUserIds,
-		},
+		}
 	}
 
 	// fetch comment using helper method
