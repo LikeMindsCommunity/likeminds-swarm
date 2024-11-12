@@ -323,8 +323,8 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 			"post_id":     postData.ID.Hex(),
 		}
 
-		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.Post,
-			postData.ID, postData.UserId, constants.PendingPostAccepted, ctaData, false, false, primitive.NilObjectID)
+		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.PostEntity,
+			postData.ID, postData.UserId, constants.PendingPostAccepted, ctaData, false, false, primitive.NilObjectID, "")
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -341,8 +341,9 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 			"post_id":     pendingPostData.ID.Hex(),
 		}
 
-		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.PendingPost,
-			pendingPostData.ID, pendingPostData.UserId, constants.PendingPostRejected, ctaData, false, false, primitive.NilObjectID)
+		activityID, err := handlers.CreateActivity(communityId, []string{userId}, pendingPostData.UserId, constants.PendingPostEntity,
+			pendingPostData.ID, pendingPostData.UserId, constants.PendingPostRejected, ctaData, false, false,
+			primitive.NilObjectID, "")
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -752,7 +753,7 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 
 	// remove activity for the pending post
 	deleteActivityFilter := gin.H{
-		"entity_type": constants.PendingPost,
+		"entity_type": constants.PendingPostEntity,
 		"entity_id":   pendingPostData.ID,
 	}
 	err = handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)

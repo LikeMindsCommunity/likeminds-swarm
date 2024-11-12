@@ -9,21 +9,22 @@ import (
 
 // Feed Handlers structure for all Helper classes
 type FeedHandlers struct {
-	likeHelper           interfaces.LikeHelper
-	commentHelper        interfaces.CommentHelper
-	postHelper           interfaces.PostHelper
-	pendingPostHelper    interfaces.PendingPostHelper
-	activityHelper       interfaces.ActivityHelper
-	saveHelper           interfaces.SaveHelper
-	topicHelper          interfaces.TopicHelper
-	widgetHelper         interfaces.WidgetHelper
-	pollVotesHelper      interfaces.PollVotesHelper
-	connectionFeedHelper interfaces.ConnectionFeedHelper
-	esHelper             searchElastic.EsHelper
-	cacheHelper          cache.Helper
-	taskDistributor      distributor.FeedTaskDistributor
-	postTopicsHelper     interfaces.PostTopicsHelper
-	userTopicsHelper     interfaces.UserTopicsHelper
+	likeHelper                interfaces.LikeHelper
+	commentHelper             interfaces.CommentHelper
+	postHelper                interfaces.PostHelper
+	pendingPostHelper         interfaces.PendingPostHelper
+	activityHelper            interfaces.ActivityHelper
+	saveHelper                interfaces.SaveHelper
+	topicHelper               interfaces.TopicHelper
+	widgetHelper              interfaces.WidgetHelper
+	pollVotesHelper           interfaces.PollVotesHelper
+	connectionFeedHelper      interfaces.ConnectionFeedHelper
+	esHelper                  searchElastic.EsHelper
+	cacheHelper               cache.Helper
+	taskDistributor           distributor.FeedTaskDistributor
+	postTopicsHelper          interfaces.PostTopicsHelper
+	userTopicsHelper          interfaces.UserTopicsHelper
+	userEntityTimestampHelper interfaces.UserEntityTimestampHelper
 }
 
 // Exposed Method to get an instance for Feed Handlers
@@ -42,23 +43,25 @@ func NewFeedHandlers(
 	cacheHelper cache.Helper,
 	taskDistributor distributor.FeedTaskDistributor,
 	postTopicsHelper interfaces.PostTopicsHelper,
-	userTopicsHelper interfaces.UserTopicsHelper) *FeedHandlers {
+	userTopicsHelper interfaces.UserTopicsHelper,
+	userEntityTimestampHelper interfaces.UserEntityTimestampHelper) *FeedHandlers {
 
 	return &FeedHandlers{
-		likeHelper:           likeHelper,
-		commentHelper:        commentHelper,
-		postHelper:           postHelper,
-		pendingPostHelper:    pendingPostHelper,
-		saveHelper:           saveHelper,
-		activityHelper:       activityHelper,
-		topicHelper:          topicHelper,
-		widgetHelper:         widgetHelper,
-		pollVotesHelper:      pollVotesHelper,
-		connectionFeedHelper: connectionFeedHelper,
-		esHelper:             esHelper,
-		cacheHelper:          cacheHelper,
-		taskDistributor:      taskDistributor,
-		postTopicsHelper:     postTopicsHelper,
-		userTopicsHelper:     userTopicsHelper,
+		likeHelper:                likeHelper,
+		commentHelper:             commentHelper,
+		postHelper:                postHelper,
+		pendingPostHelper:         pendingPostHelper,
+		saveHelper:                saveHelper,
+		activityHelper:            activityHelper,
+		topicHelper:               topicHelper,
+		widgetHelper:              widgetHelper,
+		pollVotesHelper:           pollVotesHelper,
+		connectionFeedHelper:      connectionFeedHelper,
+		esHelper:                  esHelper,
+		cacheHelper:               cacheHelper,
+		taskDistributor:           taskDistributor,
+		postTopicsHelper:          postTopicsHelper,
+		userTopicsHelper:          userTopicsHelper,
+		userEntityTimestampHelper: userEntityTimestampHelper,
 	}
 }

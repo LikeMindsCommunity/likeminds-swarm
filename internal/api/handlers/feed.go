@@ -790,9 +790,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	}
 
 	// parse connection feed posts
-	parsedPosts := parseMultiplePostResponse(handlers, connectionFeedPostResults, headers[utils.HeadersMemberId],
-		connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check, utils.DefaultRole)
+	parsedPosts := parseMultiplePostResponse(handlers, connectionFeedPostResults, headers[utils.HeadersMemberId], connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
 
 	// parse posts for final response (topics, widgets, comments, etc)
 	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)

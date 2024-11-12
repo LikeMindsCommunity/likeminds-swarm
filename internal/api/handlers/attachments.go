@@ -329,7 +329,7 @@ func validateGIFAttachment(attachment requests.AttachmentRequest) error {
 // Internal method to validate reel attachment
 func validateReelAttachment(attachment requests.AttachmentRequest) error {
 	if attachment.AttachmentMeta.Url == "" {
-		return fmt.Errorf("Send url in attachment_meta for reel")
+		return fmt.Errorf("send url in attachment_meta for reel")
 	}
 
 	return nil

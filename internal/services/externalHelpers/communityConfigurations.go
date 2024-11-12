@@ -30,6 +30,7 @@ type UniversalFeedConfigurations struct {
 
 type CommunityConfirgurationResponse struct {
 	Success                 bool                     `json:"success"`
+	ErrorMessage            string                   `json:"error_message"`
 	CommunityConfigurations []CommunityConfiguration `json:"community_configurations"`
 }
 
@@ -107,6 +108,14 @@ func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communi
 	if err := json.Unmarshal(respBytes, &communityConfigurationResponse); err != nil {
 		//Internal unmarshal error
 		return nil, err
+	}
+
+	if !communityConfigurationResponse.Success {
+
+		//API response error
+		logging.Error(fmt.Sprintf("Error in fetching community configurations for %d", communityId, "Error: ", communityConfigurationResponse.ErrorMessage))
+
+		return nil, fmt.Errorf(communityConfigurationResponse.ErrorMessage)
 	}
 
 	// Save data to cache
@@ -319,4 +328,62 @@ func GetAnonymousUserMeta(cacheHelper cache.Helper, userId string, communityId i
 	}
 
 	return &anonUserMeta
+}
+
+// Exposed method to fetch MenuItemsConfig from community configurations
+func GetMenuItemsConfig(communityConfigurations []CommunityConfiguration) map[string]bool {
+
+	menuItemsConfig := map[string]bool{
+		constants.HidePostMenuItemConfig: false,
+	}
+
+	if len(communityConfigurations) == 0 {
+		logging.Error("No community configurations found when fetching menu Items config")
+		return menuItemsConfig
+	}
+
+	feedSettings, err := GetCommunityConfigurationAgainstType(communityConfigurations, FeedSettingsCommunityConfigurationsType)
+	if err != nil {
+		logging.Error("Error when fetching feedSettings against configurations: ", err.Error())
+		return menuItemsConfig
+	}
+
+	config, ok := feedSettings.Value[FeedSettingsMenuItemConfigKey]
+	if ok {
+		hidePostValue, ok := config.(map[string]interface{})[constants.HidePostMenuItemConfig]
+		if ok {
+			menuItemsConfig[constants.HidePostMenuItemConfig] = hidePostValue.(bool)
+		}
+	}
+
+	return menuItemsConfig
+}
+
+// Exposed method to fetch Notification Feed Activities from community configurations
+func GetDisabledNotificationFeedActions(cacheHelper cache.Helper, userId string, communityId int) map[string]bool {
+	disabledActions := map[string]bool{}
+
+	communityConfigurationResponse, err := GetCommunityConfigurations(cacheHelper, userId, communityId)
+	if err != nil {
+		return disabledActions
+	}
+
+	feedSettingConfigs, err := GetCommunityConfigurationAgainstType(communityConfigurationResponse.CommunityConfigurations, FeedSettingsCommunityConfigurationsType)
+	if err != nil {
+		return disabledActions
+	}
+
+	notificationFeedActions, ok := feedSettingConfigs.Value[FeedSettingsNotificationFeedActions].(map[string]interface{})
+	if !ok {
+		return disabledActions
+	}
+
+	// Add all the activities which are disabled
+	for action, bool := range notificationFeedActions {
+		if bool == false {
+			disabledActions[action] = true
+		}
+	}
+
+	return disabledActions
 }

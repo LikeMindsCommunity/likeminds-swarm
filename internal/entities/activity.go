@@ -23,6 +23,7 @@ type Activity struct {
 	EntityID         primitive.ObjectID          `json:"entity_id" bson:"entity_id"`
 	EntityOwnerID    string                      `json:"entity_owner_id" bson:"entity_owner_id"`
 	Action           constants.ActivityAction    `json:"action" bson:"action"`
+	ActivityText     string                      `json:"activity_text" bson:"activity_text"`
 	CTA              string                      `json:"cta" bson:"cta"`
 	IsRead           bool                        `json:"is_read" bson:"is_read"`
 	IsDeleted        bool                        `json:"is_deleted" bson:"is_deleted"`
@@ -33,7 +34,7 @@ type Activity struct {
 // NewActivity | Constructor method to create activity instance
 func NewActivity(CommunityID int, ActionBy []string, ActionOn string, EntityType constants.EntityType, EntityID primitive.ObjectID,
 	EntityOwnerID string, Action constants.ActivityAction, CTA string, IsRead bool, IsDeleted bool,
-	ActionByMetadata map[string]ActionByMetadata) Activity {
+	ActionByMetadata map[string]ActionByMetadata, activityText string) Activity {
 
 	TimeNow := time.Now()
 	return Activity{
@@ -45,6 +46,7 @@ func NewActivity(CommunityID int, ActionBy []string, ActionOn string, EntityType
 		EntityID:         EntityID,
 		EntityOwnerID:    EntityOwnerID,
 		Action:           Action,
+		ActivityText:     activityText,
 		CTA:              CTA,
 		IsRead:           IsRead,
 		IsDeleted:        IsDeleted,

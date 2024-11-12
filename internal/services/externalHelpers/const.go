@@ -88,11 +88,12 @@ const (
 	FeedMetadataCommunityConfigurationType   = "feed_metadata"
 	NSFWFilteringCommunityConfigurationType  = "nsfw_filtering"
 	PersonalisedFeedWeightsConfigurationType = "personalised_feed_weights"
-	FeedSettingsCommunityConfigurations      = "feed_settings"
+	FeedSettingsCommunityConfigurationsType  = "feed_settings"
 )
 
 const (
-	FeedSettingsMenuItemConfigKey = "menu_items_config"
+	FeedSettingsMenuItemConfigKey       = "menu_items_config"
+	FeedSettingsNotificationFeedActions = "notification_feed_actions"
 )
 
 const (

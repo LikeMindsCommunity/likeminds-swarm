@@ -11,6 +11,11 @@ type LoggedInUserParams struct {
 	MemberRole       string
 }
 
+type PostImpressionsData struct {
+	ImpressionsCount int `json:"impressions_count"`
+	ReachCount       int `json:"reach_count"`
+}
+
 // Params Structure for Secondary Post Data
 type PostSecondaryDataParams struct {
 	LikesCount       int
@@ -19,4 +24,5 @@ type PostSecondaryDataParams struct {
 	IsRepostedByUser bool
 	IsLikedByUser    bool
 	IsSavedByUser    bool
+	PostImpressions  PostImpressionsData
 }

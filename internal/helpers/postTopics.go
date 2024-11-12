@@ -167,7 +167,7 @@ func (helper *postTopicsHelper) AggregatePostTopicsHelper(query []map[string]int
 	var postIdsList []responses.PostIdsBasedonTopics
 
 	if err = results.All(context.TODO(), &postIdsList); err != nil {
-		return postIdsList, fmt.Errorf("Error in conversion!")
+		return postIdsList, err
 	}
 
 	return postIdsList, nil
