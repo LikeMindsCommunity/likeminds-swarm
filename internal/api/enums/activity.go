@@ -6,23 +6,42 @@ import "github.com/nateshr/likeminds-swarm/internal/api/constants"
 type EntityType string
 
 const (
-	Post    EntityType = "post"
-	Comment EntityType = "comment"
-	User    EntityType = "user"
+	Post        EntityType = "post"
+	Comment     EntityType = "comment"
+	User        EntityType = "user"
+	PendingPost EntityType = "pending_post"
 )
 
 // constructor method to creates EntityType from int
 func NewEntityTypeFromInt(entity_type int) EntityType {
 	switch entity_type {
-	case int(constants.Post):
+	case int(constants.PostEntity):
 		return Post
-	case int(constants.Comment):
+	case int(constants.CommentEntity):
 		return Comment
-	case int(constants.User):
+	case int(constants.UserEntity):
 		return User
+	case int(constants.PendingPostEntity):
+		return PendingPost
 	}
 
 	return ""
+}
+
+// constructor method to creates EntityType from string
+func NewIntEntityTypeFromString(entityType string) constants.EntityType {
+	switch entityType {
+	case Post.ToString():
+		return constants.PostEntity
+	case Comment.ToString():
+		return constants.CommentEntity
+	case User.ToString():
+		return constants.UserEntity
+	case PendingPost.ToString():
+		return constants.PendingPostEntity
+	}
+
+	return constants.DefaultEntity
 }
 
 // To string method for EntityType
@@ -34,7 +53,7 @@ func (et EntityType) ToString() string {
 type ActivityAction string
 
 const (
-	DefaultAction              ActivityAction = "default"
+	CustomActivity             ActivityAction = "custom_activity"
 	CreatePostPermitAdded      ActivityAction = "create_post_permit_added"
 	CreatePostPermitRemoved    ActivityAction = "create_post_permit_removed"
 	CreateCommentPermitAdded   ActivityAction = "create_comment_permit_added"
@@ -60,6 +79,8 @@ const (
 // constructor method to creates ActivityAction from int
 func NewActivityActionFromInt(activity_action int, userProfileActivity bool) ActivityAction {
 	switch activity_action {
+	case int(constants.CustomActivity):
+		return CustomActivity
 	case int(constants.CreatePostPermitAdded):
 		return CreatePostPermitAdded
 	case int(constants.CreatePostPermitRemoved):

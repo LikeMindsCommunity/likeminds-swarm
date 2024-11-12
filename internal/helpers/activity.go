@@ -18,30 +18,41 @@ import (
 // CreateActivityHelper | create activity entry
 func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []string, actionOn string, entityType constants.EntityType,
 	entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, cta string, isRead bool, isDeleted bool,
-	actionByEntityId primitive.ObjectID) (interface{}, error) {
+	actionByEntityId primitive.ObjectID, activityText string,
+) (interface{}, error) {
 
-	// filter to find existing activity
-	activityFilter := gin.H{
-		"community_id": communityID,
-		"action_on":    actionOn,
-		"entity_id":    entityID,
-		"action":       action,
-	}
+	existingActivity := &entities.Activity{}
 
-	existingActivity, err := helper.FindActivityHelper(activityFilter, gin.H{})
-	if err != nil {
-		return nil, err
+	// Find existing activity if action is not custom
+	if action != constants.CustomActivity {
+
+		// filter to find existing activity
+		activityFilter := gin.H{
+			"community_id": communityID,
+			"action_on":    actionOn,
+			"entity_id":    entityID,
+			"action":       action,
+		}
+
+		existingActivities, err := helper.FindActivityHelper(activityFilter, gin.H{})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(existingActivities) > 0 {
+			existingActivity = &existingActivities[0]
+		}
 	}
 
 	// If activity exist, update activity
-	if len(existingActivity) > 0 {
+	if existingActivity.ID != primitive.NilObjectID {
 
 		//remove user from action_by list, if exist from previous actions
-		existingActionBy := utils.RemoveAllOccurenceStringList(existingActivity[0].ActionBy, actionBy[0])
+		existingActionBy := utils.RemoveAllOccurenceStringList(existingActivity.ActionBy, actionBy[0])
 		updatedActionBy := append(existingActionBy, actionBy...)
 
 		// Add action_by's metadata to activity
-		updatedActionByMetadata := existingActivity[0].ActionByMetadata
+		updatedActionByMetadata := existingActivity.ActionByMetadata
 		if updatedActionByMetadata == nil {
 			updatedActionByMetadata = map[string]entities.ActionByMetadata{}
 		}
@@ -58,11 +69,10 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 				"is_deleted":         false,
 			},
 		}
-		helper.UpdateActivityByIDHelper(existingActivity[0].ID, updateData, false, true)
+		helper.UpdateActivityByIDHelper(existingActivity.ID, updateData, false, true)
 
-		return existingActivity[0].ID, nil
-
-	} else { // If activity does not exist, create new activity
+		return existingActivity.ID, nil
+	} else {
 
 		// Add action_by's metadata to activity
 		actionByMetadata := map[string]entities.ActionByMetadata{
@@ -72,8 +82,9 @@ func (helper *activityHelper) CreateActivityHelper(communityID int, actionBy []s
 			},
 		}
 
-		activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, cta, isRead, isDeleted,
-			actionByMetadata)
+		activity := entities.NewActivity(communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action,
+			cta, isRead, isDeleted, actionByMetadata, activityText)
+
 		activityID, err := helper.activityRepository.Create(&activity)
 
 		return activityID, err

@@ -3,6 +3,7 @@ package constants
 // Not being used anywhere | can be deprecated
 const ActivityEntityType string = "activity"
 const (
+	CustomActivityAction               string = "custom_activity"
 	LikeAction                         string = "like"
 	CommentAction                      string = "comment"
 	AlsoCommentAction                  string = "also_comment"
@@ -20,18 +21,19 @@ const (
 type EntityType uint8
 
 const (
+	DefaultEntity EntityType = 99
 
-	// Post | post entity
-	Post EntityType = 0
+	// PostEntity | post entity
+	PostEntity EntityType = 0
 
-	// Comment | comment entity
-	Comment EntityType = 1
+	// CommentEntity | comment entity
+	CommentEntity EntityType = 1
 
-	// User | user entity
-	User EntityType = 2
+	// UserEntity | user entity
+	UserEntity EntityType = 2
 
-	// PendingPost | Pending post entity
-	PendingPost EntityType = 3
+	// PendingPostEntity | Pending post entity
+	PendingPostEntity EntityType = 3
 )
 
 // ActivityAction | constants for activity actions
@@ -40,7 +42,7 @@ type ActivityAction uint8
 const (
 
 	// DefaultAction | placeholder value
-	DefaultAction ActivityAction = 99
+	CustomActivity ActivityAction = 99
 
 	// CreatePostPermitAdded | create post permission added
 	CreatePostPermitAdded ActivityAction = 0

@@ -773,8 +773,8 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 			// create tag activity
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member,
-				constants.Comment, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
-				false, false, primitive.NilObjectID)
+				constants.CommentEntity, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
+				false, false, primitive.NilObjectID, "")
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -791,8 +791,8 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 		if !isCreatorTagged {
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
-				postData.UserId, constants.Post, postData.ID, postData.UserId, constants.CommentOnPost, ctaData,
-				false, false, commentId.(primitive.ObjectID))
+				postData.UserId, constants.PostEntity, postData.ID, postData.UserId, constants.CommentOnPost, ctaData,
+				false, false, commentId.(primitive.ObjectID), "")
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -1135,8 +1135,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 
 			// create tag activity
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member,
-				constants.Comment, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
-				false, false, primitive.NilObjectID)
+				constants.CommentEntity, newCommentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
+				false, false, primitive.NilObjectID, "")
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -1154,8 +1154,8 @@ func (handlers *FeedHandlers) ReplyComment(c *gin.Context) {
 		if !isCreatorTagged {
 			// create comment activity
 			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
-				commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CommentOnComment, ctaData,
-				false, false, newCommentId.(primitive.ObjectID))
+				commentData.UserId, constants.CommentEntity, commentData.ID, commentData.UserId, constants.CommentOnComment, ctaData,
+				false, false, newCommentId.(primitive.ObjectID), "")
 			if err != nil {
 				utils.GeneralAPIInternalError(c, err.Error())
 				return
@@ -1272,7 +1272,7 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 
 	// remove other activity for the comment
 	deleteActivityFilter := gin.H{
-		"entity_type": constants.Comment,
+		"entity_type": constants.CommentEntity,
 		"entity_id":   commentData.ID,
 	}
 	handlers.activityHelper.DeleteActivityHelper(deleteActivityFilter)
@@ -1280,8 +1280,8 @@ func (handlers *FeedHandlers) DeleteComment(c *gin.Context) {
 	// create delete activity if deleted by CM
 	if deleteCommentRequest.UserIsCm && headers[utils.HeadersMemberId] != commentData.UserId {
 		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
-			commentData.UserId, constants.Comment, commentData.ID, commentData.UserId, constants.CMDeletedComment,
-			gin.H{}, false, false, primitive.NilObjectID)
+			commentData.UserId, constants.CommentEntity, commentData.ID, commentData.UserId, constants.CMDeletedComment,
+			gin.H{}, false, false, primitive.NilObjectID, "")
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -1386,7 +1386,7 @@ func deleteUserPostCommentActivity(handlers *FeedHandlers, postData *entities.Po
 
 	activityFilterData := gin.H{
 		"community_id": postData.CommunityId,
-		"entity_type":  constants.Post,
+		"entity_type":  constants.PostEntity,
 		"entity_id":    postData.ID,
 		"action":       constants.CommentOnPost,
 	}
@@ -1689,4 +1689,39 @@ func getTopCommentsAgainstPostsSortOnLikes(handlers *FeedHandlers, postsResponse
 		versionCode, platformCode, apiRevampV1Check, memberRole)
 
 	return updatedPostsWithComments, filtered_comments, nil
+}
+
+func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}, postData *entities.Post,
+	headers map[string]string, ctaData gin.H) {
+
+	postCommentActivity, err := fetchActivity(handlers.activityHelper, activityID.(primitive.ObjectID).Hex())
+	if err != nil {
+		return
+	}
+
+	latestCommentUser := postCommentActivity.ActionBy[len(postCommentActivity.ActionBy)-1]
+	previousCommentUsers := utils.RemoveAllOccurenceStringList(postCommentActivity.ActionBy, latestCommentUser)
+
+	// if previousCommentUsers = [], no need to create activity
+	if len(previousCommentUsers) == 0 {
+		return
+	}
+
+	for _, previousCommentUser := range previousCommentUsers {
+
+		// create also commented activity
+		activityID, err := handlers.CreateActivity(postData.CommunityId, []string{latestCommentUser}, previousCommentUser,
+			constants.PostEntity, postData.ID, postData.UserId, constants.AlsoCommentOnPost, ctaData, false, false,
+			primitive.NilObjectID, "")
+		if err != nil {
+			return
+		}
+
+		if activityID != nil {
+			err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
+			if err != nil {
+				logging.Error("Failed to enqueue send notification : ", err)
+			}
+		}
+	}
 }

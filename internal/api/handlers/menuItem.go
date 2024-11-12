@@ -7,7 +7,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
@@ -92,7 +91,7 @@ func GetIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool,
 
 	menuItems := []responses.MenuResponse{}
 
-	menuItemsConfig := GetMenuItemsConfig(externalEntities.CommunityConfigurations)
+	menuItemsConfig := externalHelpers.GetMenuItemsConfig(externalEntities.CommunityConfigurations)
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
@@ -135,7 +134,7 @@ func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *external
 func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities *externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
 	menuItems := []responses.MenuResponse{}
 
-	menuItemsConfig := GetMenuItemsConfig(externalEntities.CommunityConfigurations)
+	menuItemsConfig := externalHelpers.GetMenuItemsConfig(externalEntities.CommunityConfigurations)
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
@@ -286,33 +285,4 @@ func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned boo
 	}
 
 	return output_menu_items
-}
-
-// Exposed method to fetch MenuItemsConfig from community configurations
-func GetMenuItemsConfig(communityConfigurations []externalHelpers.CommunityConfiguration) map[string]bool {
-
-	menuItemsConfig := map[string]bool{
-		constants.HidePostMenuItemConfig: false,
-	}
-
-	if len(communityConfigurations) == 0 {
-		logging.Error("No community configurations found when fetching menu Items config")
-		return menuItemsConfig
-	}
-
-	feedSettings, err := externalHelpers.GetCommunityConfigurationAgainstType(communityConfigurations, externalHelpers.FeedSettingsCommunityConfigurations)
-	if err != nil {
-		logging.Error("Error when fetching feedSettings against configurations: ", err.Error())
-		return menuItemsConfig
-	}
-
-	config, ok := feedSettings.Value[externalHelpers.FeedSettingsMenuItemConfigKey]
-	if ok {
-		hidePostValue, ok := config.(map[string]interface{})[constants.HidePostMenuItemConfig]
-		if ok {
-			menuItemsConfig[constants.HidePostMenuItemConfig] = hidePostValue.(bool)
-		}
-	}
-
-	return menuItemsConfig
 }
