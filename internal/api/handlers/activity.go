@@ -867,14 +867,15 @@ func (handlers *FeedHandlers) ExternalCreateNotificationActivity(c *gin.Context)
 func validateCreateActivityRequest(handlers *FeedHandlers, car *requests.CreateActivityRequest, communityId int,
 ) (string, []string, constants.EntityType, primitive.ObjectID, constants.ActivityAction, string, gin.H, error) {
 
-	var actionBy string
-	var actionOn []string
 	var entityType constants.EntityType
 	var entityId primitive.ObjectID
 	var action constants.ActivityAction
 	var cta gin.H
-	var activityText = car.ActivityText
 	var err error
+
+	activityText := car.ActivityText
+	actionOn := car.ActionOn
+	actionBy := car.ActionBy
 
 	entityType = enums.NewIntEntityTypeFromString(car.EntityType)
 	if entityType == constants.DefaultEntity {
