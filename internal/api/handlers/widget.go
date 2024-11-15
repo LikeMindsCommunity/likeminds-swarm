@@ -105,7 +105,7 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 		// Invalidate kettle cache for widget meta
 		cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widget.ID.Hex())
-		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
+		utils.SafeGo(func() { externalHelpers.InvalidateKettleCache([]string{cacheKey}) })
 	}
 
 	return widget, nil
@@ -113,8 +113,9 @@ func editWidget(handlers *FeedHandlers, widgetId string, parentEntityId string, 
 
 // Internal Method to fetch pollVotes Data Map for poll options
 func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map[string]interface{},
-	userIsCm bool, communityId int, uniqueVotersOnPoll int64, postCreatorId string, userId string) (gin.H, bool, error) {
-	pollVotesData := []gin.H{}
+	userIsCm bool, communityId int, uniqueVotersOnPoll int64, postCreatorId string, userId string,
+) (gin.H, bool, error) {
+
 	parsedPollVotesData := gin.H{}
 	var err error
 
@@ -137,7 +138,7 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 	}
 
 	// Fetch poll Votes Data
-	pollVotesData, err = getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, userId)
+	pollVotesData, err := getPollVotesDataUsingAggregation(handlers, entityId, communityId, uniqueVotersOnPoll, userId)
 	if err != nil {
 		return parsedPollVotesData, toShowResults, err
 	}
@@ -610,7 +611,7 @@ func deleteWidgetById(widgetHelper interfaces.WidgetHelper, esHelper searchElast
 
 	// Invalidate kettle cache for widget meta
 	cacheKey := fmt.Sprintf(cache.WidgetMetaCacheKeyKettle, communityId, widgetId.Hex())
-	go externalHelpers.InvalidateKettleCache([]string{cacheKey})
+	utils.SafeGo(func() { externalHelpers.InvalidateKettleCache([]string{cacheKey}) })
 
 	return nil
 }
@@ -658,7 +659,7 @@ func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchEla
 		keyPatternsForWidgetsMeta = append(keyPatternsForWidgetsMeta, cacheKey)
 	}
 
-	go externalHelpers.InvalidateKettleCache(keyPatternsForWidgetsMeta)
+	utils.SafeGo(func() { externalHelpers.InvalidateKettleCache(keyPatternsForWidgetsMeta) })
 
 	return nil
 }

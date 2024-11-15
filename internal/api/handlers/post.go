@@ -1226,7 +1226,9 @@ func createPostAfterValidation(handlers *FeedHandlers, userId string, communityI
 
 	userConnectionData, _ = getUserConnectionDataFromCache(handlers, userId, communityId)
 	for connectionData := range userConnectionData {
-		go updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
+		utils.SafeGo(func() {
+			updateConnectionFeedBuffer(handlers, connectionData, communityId, postId.(primitive.ObjectID).Hex(), true)
+		})
 	}
 
 	// fetch post data using new post_id
@@ -2633,7 +2635,9 @@ func (handlers *FeedHandlers) MarkPostsSeen(c *gin.Context) {
 	}
 
 	// Call helper method to mark posts as seen in Background
-	go saveDampenedPostsForUserInDb(handlers, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds)
+	utils.SafeGo(func() {
+		saveDampenedPostsForUserInDb(handlers, loggedInUser.UserId, loggedInUser.CommunityId, markPostsSeenRequest.PostIds)
+	})
 
 	utils.GenerateSuccessResponse(c, nil)
 }

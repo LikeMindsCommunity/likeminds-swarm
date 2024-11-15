@@ -10,6 +10,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 type InferdoNsfwApiResponse struct {
@@ -59,7 +60,7 @@ func GetNsfwScoreForImage(cacheHelper cache.Helper, userId string, communityId i
 		} else if count == 10 {
 
 			// Send mail to team notifying about inferdo api errors [In background]
-			go sendMailtoTeamForInferdoAPIErrors(userId, communityId, parsedResponse)
+			utils.SafeGo(func() { sendMailtoTeamForInferdoAPIErrors(userId, communityId, parsedResponse) })
 		}
 
 		return -1, err
