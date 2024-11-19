@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 // CommunitySetting | schema for community settings
@@ -110,7 +111,7 @@ func fetchCommunitySettings(cacheHelper cache.Helper, userId string, communityId
 		}
 
 		// save in cache
-		go saveCommunitySettingsInCache(cacheHelper, communityId, communitySettings)
+		utils.SafeGo(func() { saveCommunitySettingsInCache(cacheHelper, communityId, communitySettings) })
 	}
 
 	return communitySettings, nil

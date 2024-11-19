@@ -629,20 +629,21 @@ func getNsfwScoresFromImageAttachmentsInParallel(cacheHelper cache.Helper, userI
 			wg.Add(1)
 
 			// Launch a goroutine with closure to fetch NSFW score for the image and send the index on the channel
-			go func(index int, attachment requests.AttachmentRequest) {
+			utils.SafeGo(func() {
+				func(index int, attachment requests.AttachmentRequest) {
 
-				// Decrement the counter when the goroutine completes.
-				defer wg.Done()
+					// Decrement the counter when the goroutine completes.
+					defer wg.Done()
 
-				nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId, attachment.AttachmentMeta.Url, inferdoApiKey)
+					nsfwScore, err := externalHelpers.GetNsfwScoreForImage(cacheHelper, userId, communityId, attachment.AttachmentMeta.Url, inferdoApiKey)
 
-				// if no error and score is greater than 0.0, update the score in the array
-				if err == nil && nsfwScore > 0.0 {
-					nsfwScores[index] = nsfwScore
-				}
+					// if no error and score is greater than 0.0, update the score in the array
+					if err == nil && nsfwScore > 0.0 {
+						nsfwScores[index] = nsfwScore
+					}
 
-			}(index, attachment)
-
+				}(index, attachment)
+			})
 		}
 	}
 

@@ -78,10 +78,10 @@ func removePostInConnectionFeedBufferInCache(handlers *FeedHandlers, userId stri
 func warmUpConnectionFeedBuffer(handlers *FeedHandlers, userId string, communityId int) {
 	var errorMessage string
 
-	go func() {
+	utils.SafeGo(func() {
 		userConnectionFeedCacheKeyName := getConnectionFeedBufferCacheKeyName(userId, communityId)
 		handlers.cacheHelper.Del(userConnectionFeedCacheKeyName)
-	}()
+	})
 
 	userConnectionData, _ := getUserConnectionDataFromCache(handlers, userId, communityId)
 	if len(userConnectionData) == 0 {

@@ -38,19 +38,19 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 	RecencyMetricComputation(handlers, userId, communityId)
 
 	// Compute post likes metric and save it in cache
-	go PostLikesMetricComputation(handlers, userId, communityId)
+	utils.SafeGo(func() { PostLikesMetricComputation(handlers, userId, communityId) })
 
 	// Compute post comments metric and save it in cache
-	go PostCommentsMetricComputation(handlers, userId, communityId)
+	utils.SafeGo(func() { PostCommentsMetricComputation(handlers, userId, communityId) })
 
 	// Compute user groups metric and save it in cache
-	go UserGroupsMetricComputation(handlers, userId, communityId, apiKey)
+	utils.SafeGo(func() { UserGroupsMetricComputation(handlers, userId, communityId, apiKey) })
 
 	// Compute user topics metric and save it in cache
-	go UserTopicsMetricComputation(handlers, userId, communityId)
+	utils.SafeGo(func() { UserTopicsMetricComputation(handlers, userId, communityId) })
 
 	// Compute user connection metric and save it in cache
-	go UserConnectionMetricComputation(handlers, userId, communityId)
+	utils.SafeGo(func() { UserConnectionMetricComputation(handlers, userId, communityId) })
 
 	utils.GenerateSuccessResponse(c, gin.H{})
 }

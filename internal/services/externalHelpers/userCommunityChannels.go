@@ -114,7 +114,7 @@ func FetchUserCommunityChannels(cacheHelper cache.Helper, userId string, communi
 		}
 
 		// save in cache
-		go saveUserCommunityChannelsInCache(cacheHelper, userId, communityId, channelIdsList)
+		utils.SafeGo(func() { saveUserCommunityChannelsInCache(cacheHelper, userId, communityId, channelIdsList) })
 	}
 
 	return userCommunityChannels, nil
