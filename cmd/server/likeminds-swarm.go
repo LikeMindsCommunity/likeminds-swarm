@@ -16,6 +16,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/processor"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker/scheduler"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/cors"
@@ -28,7 +29,7 @@ import (
 )
 
 const (
-	AppVersion     string = "1.34.0" // Application Version
+	AppVersion     string = "1.35.0" // Application Version
 	GinPortAddress string = ":8080"  // Gin Port Address
 )
 
@@ -58,6 +59,9 @@ func initGin() *gin.Engine {
 
 	// Enable Logging Middleware
 	router.Use(middlewares.LoggingMiddleware())
+
+	// Add custom recovery middleware
+	router.Use(gin.CustomRecovery(middlewares.CustomRecoveryMiddleware))
 
 	return router
 }
@@ -146,13 +150,14 @@ func main() {
 
 	// runworker | Run background worker to process tasks
 	case os.Args[1] == "runworker":
+
 		// Start the schduler
-		go func() {
+		utils.SafeGo(func() {
 			feedTaskScheduler := scheduler.NewTaskScheduler()
 
 			// Run Background worker to schedule tasks
 			logging.Fatal(feedTaskScheduler.Run())
-		}()
+		})
 
 		// get queue names from arguments
 		queues := []string{}

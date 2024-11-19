@@ -841,7 +841,7 @@ func (handlers *FeedHandlers) ExternalCreateNotificationActivity(c *gin.Context)
 	}
 
 	// Create activities in goroutine
-	go func() {
+	utils.SafeGo(func() {
 		for _, actionOn := range actionOn {
 
 			// create activity using the helper method
@@ -859,7 +859,7 @@ func (handlers *FeedHandlers) ExternalCreateNotificationActivity(c *gin.Context)
 				}
 			}
 		}
-	}()
+	})
 
 	utils.GenerateSuccessResponse(c, nil)
 }

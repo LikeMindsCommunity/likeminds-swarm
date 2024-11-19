@@ -290,7 +290,10 @@ func SendWebhookRequestWithPayload(handlers *FeedHandlers, apiKey string, url st
 			logging.Error("Disabling Webhook as retry limit reached for URL: ", url)
 
 			payloadBytes, _ := json.MarshalIndent(payload, "", " ")
-			go externalHelpers.DisableWebhookAndSendMail(handlers.cacheHelper, apiKey, webhookType, url, string(respbytes), string(payloadBytes))
+
+			utils.SafeGo(func() {
+				externalHelpers.DisableWebhookAndSendMail(handlers.cacheHelper, apiKey, webhookType, url, string(respbytes), string(payloadBytes))
+			})
 		}
 
 	} else {

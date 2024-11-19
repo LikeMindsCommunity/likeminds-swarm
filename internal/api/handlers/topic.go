@@ -695,7 +695,7 @@ func editTopicInternal(handlers *FeedHandlers, topicUpdateData gin.H, metadata m
 
 		// invalidate kettle cache for topic meta
 		cacheKey := fmt.Sprintf(cache.TopicMetaCacheKeyKettle, communityId, topic.ID.Hex())
-		go externalHelpers.InvalidateKettleCache([]string{cacheKey})
+		utils.SafeGo(func() { externalHelpers.InvalidateKettleCache([]string{cacheKey}) })
 	}
 
 	return topic, nil
