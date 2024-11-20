@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -60,11 +61,32 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 			case constants.TopicsSplitterKeyWithOnlyValue:
 				topicsWithOnlyList := strings.Split(topicId, constants.TopicsSplitterKeyWithOnlyValue)
 				if len(topicsWithOnlyList) > 1 {
-					objectId, _ := primitive.ObjectIDFromHex(topicsWithOnlyList[1])
+					objectId, err := primitive.ObjectIDFromHex(topicsWithOnlyList[1])
+					if err != nil {
+						fmt.Printf("Error converting to ObjectID: %v\n", err)
+						continue
+					}
 
 					filterQuery = gin.H{
 						"original_topics": gin.H{
 							"$eq": objectId,
+						},
+					}
+				}
+			case constants.TopicsSplitterKeyWithNotValue:
+				topicsWithNotList := strings.Split(topicId, constants.TopicsSplitterKeyWithNotValue)
+				if len(topicsWithNotList) > 1 {
+					objectId, err := primitive.ObjectIDFromHex(topicsWithNotList[1])
+					if err != nil {
+						fmt.Printf("Error converting to ObjectID: %v\n", err)
+						continue
+					}
+
+					filterQuery = gin.H{
+						"topics": gin.H{
+							"$not": bson.M{
+								"$eq": objectId,
+							},
 						},
 					}
 				}

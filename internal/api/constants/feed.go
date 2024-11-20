@@ -10,6 +10,7 @@ const (
 const (
 	TopicsSplitterKeyWithAndValue  = "#$AND$#"
 	TopicsSplitterKeyWithOnlyValue = "#$ONLY$#"
+	TopicsSplitterKeyWithNotValue  = "#$NOT$#"
 )
 
 const FetchingTopCommentsErrorMessage = "Error in fetching top comments against posts"
