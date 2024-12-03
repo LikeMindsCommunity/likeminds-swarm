@@ -35,7 +35,7 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 	})
 
 	// Build and add match query
-	var filterQueryList []gin.H
+	orQueryList, notQueryList := []gin.H{}, []gin.H{}
 
 	// Define regex pattern for special delimiters
 	delimiterPattern := regexp.MustCompile(`#\$(.*?)\$#`)
@@ -82,13 +82,15 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 						continue
 					}
 
-					filterQuery = gin.H{
+					notQuery := gin.H{
 						"topics": gin.H{
 							"$not": bson.M{
 								"$eq": objectId,
 							},
 						},
 					}
+
+					notQueryList = append(notQueryList, notQuery)
 				}
 			}
 		} else {
@@ -100,12 +102,22 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 		}
 
 		if len(filterQuery) > 0 {
-			filterQueryList = append(filterQueryList, filterQuery)
+			orQueryList = append(orQueryList, filterQuery)
 		}
 
 	}
 
-	postIdsFilterData = append(postIdsFilterData, bson.M{"$match": bson.M{"$or": filterQueryList}})
+	finalFilterQuery := bson.M{}
+
+	if len(orQueryList) > 0 {
+		finalFilterQuery["$or"] = orQueryList
+	}
+
+	if len(notQueryList) > 0 {
+		finalFilterQuery["$and"] = notQueryList
+	}
+
+	postIdsFilterData = append(postIdsFilterData, bson.M{"$match": finalFilterQuery})
 
 	// Add group query
 	postIdsFilterData = append(postIdsFilterData, gin.H{
