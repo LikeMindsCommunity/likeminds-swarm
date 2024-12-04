@@ -1759,8 +1759,8 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		return
 	}
 
-	isPostApprovalSettingEnabled := externalHelpers.IsPostApprovalNeeded(handlers.cacheHelper, userId, communityId)
-	if isPostApprovalSettingEnabled {
+	postApprovalNeeded := externalHelpers.IsPostApprovalNeeded(handlers.cacheHelper, userId, communityId, editPostRequest.UserIsCm)
+	if postApprovalNeeded {
 		pendingPostData, err := fetchPendingPostFromPostId(handlers.pendingPostHelper, postData.ID.Hex())
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())

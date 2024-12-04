@@ -359,6 +359,46 @@ func GetMenuItemsConfig(communityConfigurations []CommunityConfiguration) map[st
 	return menuItemsConfig
 }
 
+// Exposed method to check if pending post setting is enabled for a community
+func IsPostApprovalNeeded(cacheHelper cache.Helper, userId string, communityId int, isCm bool) bool {
+
+	// fetch communityConfigurations
+	communityConfigurationResponse, err := GetCommunityConfigurations(cacheHelper, userId, communityId)
+	if err != nil {
+		logging.Error(fmt.Sprintf("Error while fetching community configurations, err: %v", err))
+		return false
+	}
+
+	// Get the feed_settings configurations
+	feedSettingConfigs, err := GetCommunityConfigurationAgainstType(communityConfigurationResponse.CommunityConfigurations, FeedSettingsCommunityConfigurationsType)
+	if err != nil {
+		logging.Error(fmt.Sprintf("Error while fetching feed settings configurations, err: %v", err))
+		return false
+	}
+
+	autoApprovePostValue, ok := feedSettingConfigs.Value[FeedSettingsAutoApprovePostKey].(string)
+	if !ok || autoApprovePostValue == "" {
+		return false
+	}
+
+	switch autoApprovePostValue {
+	case AutoApprovePostEveryone:
+		return false
+
+	case AutoApprovePostOnlyCM:
+		if isCm {
+			return false
+		} else {
+			return true
+		}
+
+	case AutoApprovePostNoOne:
+		return true
+	}
+
+	return false
+}
+
 // Exposed method to fetch Notification Feed Activities from community configurations
 func GetDisabledNotificationFeedActions(cacheHelper cache.Helper, userId string, communityId int) map[string]bool {
 	disabledActions := map[string]bool{}
