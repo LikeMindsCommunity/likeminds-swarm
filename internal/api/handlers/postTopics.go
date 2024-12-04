@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -34,7 +35,7 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 	})
 
 	// Build and add match query
-	var filterQueryList []gin.H
+	orQueryList, notQueryList := []gin.H{}, []gin.H{}
 
 	// Define regex pattern for special delimiters
 	delimiterPattern := regexp.MustCompile(`#\$(.*?)\$#`)
@@ -60,13 +61,36 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 			case constants.TopicsSplitterKeyWithOnlyValue:
 				topicsWithOnlyList := strings.Split(topicId, constants.TopicsSplitterKeyWithOnlyValue)
 				if len(topicsWithOnlyList) > 1 {
-					objectId, _ := primitive.ObjectIDFromHex(topicsWithOnlyList[1])
+					objectId, err := primitive.ObjectIDFromHex(topicsWithOnlyList[1])
+					if err != nil {
+						fmt.Printf("Error converting to ObjectID: %v\n", err)
+						continue
+					}
 
 					filterQuery = gin.H{
 						"original_topics": gin.H{
 							"$eq": objectId,
 						},
 					}
+				}
+			case constants.TopicsSplitterKeyWithNotValue:
+				topicsWithNotList := strings.Split(topicId, constants.TopicsSplitterKeyWithNotValue)
+				if len(topicsWithNotList) > 1 {
+					objectId, err := primitive.ObjectIDFromHex(topicsWithNotList[1])
+					if err != nil {
+						fmt.Printf("Error converting to ObjectID: %v\n", err)
+						continue
+					}
+
+					notQuery := gin.H{
+						"topics": gin.H{
+							"$not": bson.M{
+								"$eq": objectId,
+							},
+						},
+					}
+
+					notQueryList = append(notQueryList, notQuery)
 				}
 			}
 		} else {
@@ -78,12 +102,22 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 		}
 
 		if len(filterQuery) > 0 {
-			filterQueryList = append(filterQueryList, filterQuery)
+			orQueryList = append(orQueryList, filterQuery)
 		}
 
 	}
 
-	postIdsFilterData = append(postIdsFilterData, bson.M{"$match": bson.M{"$or": filterQueryList}})
+	finalFilterQuery := bson.M{}
+
+	if len(orQueryList) > 0 {
+		finalFilterQuery["$or"] = orQueryList
+	}
+
+	if len(notQueryList) > 0 {
+		finalFilterQuery["$and"] = notQueryList
+	}
+
+	postIdsFilterData = append(postIdsFilterData, bson.M{"$match": finalFilterQuery})
 
 	// Add group query
 	postIdsFilterData = append(postIdsFilterData, gin.H{

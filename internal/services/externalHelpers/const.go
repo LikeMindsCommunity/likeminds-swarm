@@ -94,6 +94,7 @@ const (
 const (
 	FeedSettingsMenuItemConfigKey       = "menu_items_config"
 	FeedSettingsNotificationFeedActions = "notification_feed_actions"
+	FeedSettingsAutoApprovePostKey      = "auto_approve_post"
 )
 
 const (
@@ -108,6 +109,13 @@ const (
 	FeedMetadataUniversalFeedCommentSortOrderKey = "comment_sort_order"
 	FeedMetadataUniversalFeedCommentCountKey     = "comment_count"
 	FeedMetadataAnonymousUserMetaKey             = "anonymous_user_meta"
+)
+
+// Auto Approve Post values for Feed settings Confiugration
+const (
+	AutoApprovePostEveryone = "everyone"
+	AutoApprovePostOnlyCM   = "only_cm"
+	AutoApprovePostNoOne    = "no_one"
 )
 
 const (
