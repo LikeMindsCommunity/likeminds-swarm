@@ -97,14 +97,12 @@ func LoggingMiddleware() gin.HandlerFunc {
 			}
 
 			// Marshalling the final Data
-			marshelledData, _ := json.Marshal(data)
-
 			if statusCode >= http.StatusOK && statusCode < http.StatusBadRequest {
 				// Logging the generated request data as Info
-				logging.Info(string(marshelledData))
+				logging.InfoWithFields(data)
 			} else {
 				// Logging the generated request data as Error
-				logging.Error(string(marshelledData))
+				logging.ErrorWithFields(data)
 			}
 
 			c.Next()
