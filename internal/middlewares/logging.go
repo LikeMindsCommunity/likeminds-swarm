@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 // responseBodyWriter | Custom Response Writer
@@ -47,6 +49,21 @@ func processRequest(c *gin.Context) interface{} {
 	}
 }
 
+// sanitizeRequestHeaders removes sensitive headers and returns a sanitized copy
+func sanitizeRequestHeaders(requestData gin.H) {
+	if headers, ok := requestData["headers"].(http.Header); ok {
+		headersCopy := make(map[string]string)
+		for key, values := range headers {
+			if len(values) > 0 {
+				// Remove hyphens from header keys
+				sanitizedKey := strings.ReplaceAll(key, "-", "_")
+				headersCopy[sanitizedKey] = values[0]
+			}
+		}
+		requestData["headers"] = headersCopy
+	}
+}
+
 // LoggingMiddleware will log the request and response of API
 func LoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -67,6 +84,8 @@ func LoggingMiddleware() gin.HandlerFunc {
 
 			// Updating Request Data
 			data["request"] = processRequest(c)
+
+			sanitizeRequestHeaders(data["request"].(gin.H))
 
 			// Processing request
 			c.Next()
