@@ -63,6 +63,9 @@ func Debug(v ...interface{}) {
 func Info(v ...interface{}) {
 	log.Info(v...)
 }
+func InfoWithFields(data map[string]interface{}) {
+	log.WithFields(logrus.Fields(data)).Info()
+}
 
 // Warn
 func Warn(v ...interface{}) {
@@ -72,6 +75,9 @@ func Warn(v ...interface{}) {
 // Error
 func Error(v ...interface{}) {
 	log.Error(v...)
+}
+func ErrorWithFields(data map[string]interface{}) {
+	log.WithFields(logrus.Fields(data)).Error()
 }
 
 // Fatal
