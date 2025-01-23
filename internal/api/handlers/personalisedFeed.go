@@ -10,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
+	"github.com/nateshr/likeminds-swarm/internal/api/requests"
+	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
@@ -725,46 +727,59 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
+	finalParsedResponse := gin.H{
+		"posts":             []responses.PostResponse{},
+		"topics":            map[string]responses.TopicResponse{},
+		"reposted_posts":    map[string]responses.PostResponse{},
+		"widgets":           map[string]requests.WidgetResponse{},
+		"filtered_comments": map[string]responses.CommentWithParentResponse{},
+	}
+
+	postIdsLen := float64(len(postIds))
+
 	// slice postIds based on pagination
-	startIndex := (page - 1) * pageSize
-	endIndex := int(math.Min(float64(len(postIds)), float64(page*pageSize)))
+	startIndex := int(math.Min(postIdsLen, float64((page-1)*pageSize)))
+	endIndex := int(math.Min(postIdsLen, float64(page*pageSize)))
 
-	postIds = postIds[startIndex:endIndex]
-	postObjectIds := helpers.ConvertIdsToObjectIds(postIds)
+	if startIndex < endIndex {
 
-	// Fetch posts data from post service
-	postFilter := gin.H{
-		"_id": gin.H{
-			"$in": postObjectIds,
-		},
-		"is_deleted":   false,
-		"community_id": communityId,
-	}
+		postIds = postIds[startIndex:endIndex]
+		postObjectIds := helpers.ConvertIdsToObjectIds(postIds)
 
-	postsData, err := handlers.postHelper.FindPostHelper(postFilter, nil)
-	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
-		return
-	}
-
-	// sort the posts based on postIds order
-	postsMap := make(map[primitive.ObjectID]entities.Post, len(postsData))
-	for _, postData := range postsData {
-		postsMap[postData.ID] = postData
-	}
-
-	sortedPosts := []entities.Post{}
-	for _, postId := range postObjectIds {
-		if post, ok := postsMap[postId]; ok {
-			sortedPosts = append(sortedPosts, post)
+		// Fetch posts data from post service
+		postFilter := gin.H{
+			"_id": gin.H{
+				"$in": postObjectIds,
+			},
+			"is_deleted":   false,
+			"community_id": communityId,
 		}
+
+		postsData, err := handlers.postHelper.FindPostHelper(postFilter, nil)
+		if err != nil {
+			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		// sort the posts based on postIds order
+		postsMap := make(map[primitive.ObjectID]entities.Post, len(postsData))
+		for _, postData := range postsData {
+			postsMap[postData.ID] = postData
+		}
+
+		sortedPosts := []entities.Post{}
+		for _, postId := range postObjectIds {
+			if post, ok := postsMap[postId]; ok {
+				sortedPosts = append(sortedPosts, post)
+			}
+		}
+
+		// parse posts for multiple post response
+		parsedPosts := parseMultiplePostResponse(handlers, sortedPosts, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
+
+		// parse posts for final response (topics, widgets, comments, etc)
+		finalParsedResponse = parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
 	}
-
-	// parse posts for multiple post response
-	parsedPosts := parseMultiplePostResponse(handlers, sortedPosts, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
-
-	// parse posts for final response (topics, widgets, comments, etc)
-	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
 
 	// return final response
 	utils.GenerateSuccessResponse(c, finalParsedResponse)
