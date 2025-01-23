@@ -553,7 +553,8 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 }
 
 // Internal Method to get topics Data from Posts response
-func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int) map[string]responses.TopicResponse {
+func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int,
+) map[string]responses.TopicResponse {
 
 	topicsMap := map[string]responses.TopicResponse{}
 
