@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -163,8 +164,13 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
 	communityId int, userIsCm bool, userId string, parentEntityId string) map[string]interface{} {
-	// If option exists in LM Meta, it is a poll widget
-	if _, exists := lmMeta["options"]; exists {
+	widgetType, exists := lmMeta["type"]
+
+	if exists && widgetType == enums.ReplyPrivatelyLMWidget {
+		return lmMeta
+
+	} else if _, exists := lmMeta["options"]; exists {
+		// If option exists in LM Meta, it is a poll widget
 		uniqueVotersOnPoll, err := getUniqueVotersOnPoll(handlers, entityId, communityId)
 		if err != nil {
 			fmt.Println("err: ", err)
@@ -662,4 +668,108 @@ func deleteWidgetsByIds(widgetHelper interfaces.WidgetHelper, esHelper searchEla
 	utils.SafeGo(func() { externalHelpers.InvalidateKettleCache(keyPatternsForWidgetsMeta) })
 
 	return nil
+}
+
+func validateLMWidget(metadata map[string]interface{}) (bool, error) {
+	widgetType, exists := metadata["type"]
+	if !exists || widgetType != enums.ReplyPrivatelyLMWidget {
+		return false, errors.New("Invalid widget type!")
+	}
+
+	return true, nil
+}
+
+// Exposes a method to Create a LM Widget
+func (handlers *FeedHandlers) CreateLMWidget(c *gin.Context) {
+	// fetch headers
+	headers := utils.GetHeaders(c)
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var createWidgetRequest requests.CreateWidgetRequest
+	if err := c.ShouldBindJSON(&createWidgetRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Validate LM widget data
+	isValid, err := validateLMWidget(createWidgetRequest.MetaData)
+	if !isValid {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// create Widget
+	widgetData, err := createWidget(handlers, true, createWidgetRequest.ParentEntityID, createWidgetRequest.ParentEntityType,
+		nil, createWidgetRequest.MetaData, communityId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
+
+	widgetResponse := parseWidgetResponse(handlers, widgetData, communityId, isCM, headers[utils.HeadersMemberId])
+
+	// response data
+	response := gin.H{
+		"success": true,
+		"widget":  widgetResponse,
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
+}
+
+// Exposed Method to Edit a LM Widget
+func (handlers *FeedHandlers) EditLMWidget(c *gin.Context) {
+	// fetch headers and url params
+	headers := utils.GetHeaders(c)
+	widgetId := c.Param("widget_id")
+
+	// validation of api_key
+	communityId := externalHelpers.GetCommunityId(c)
+	if communityId == externalHelpers.DefaultCommunityId {
+		return
+	}
+
+	// validation of request body
+	var editWidgetRequest requests.EditWidgetRequest
+	if err := c.ShouldBindJSON(&editWidgetRequest); err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// Validate LM widget data
+	isValid, err := validateLMWidget(editWidgetRequest.MetaData)
+	if !isValid {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	// edit Widget
+	widget, err := editWidget(handlers, widgetId, "", "", true, nil, editWidgetRequest.MetaData, communityId)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
+
+	// Fetch Updated Widget Response
+	widgetResponse := parseWidgetResponse(handlers, widget, communityId, isCM, headers[utils.HeadersMemberId])
+
+	// reponse data
+	response := gin.H{
+		"success": true,
+		"widget":  widgetResponse,
+	}
+
+	// return final response
+	c.JSON(http.StatusOK, response)
 }

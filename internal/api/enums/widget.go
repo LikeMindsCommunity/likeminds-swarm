@@ -8,3 +8,8 @@ const (
 	WidgetParentEntityTypeTopic   string = "topic"
 	WidgetParentEntityTypeComment string = "comment"
 )
+
+// LM Meta Widget Types
+const (
+	ReplyPrivatelyLMWidget string = "REPLY_PRIVATELY"
+)
