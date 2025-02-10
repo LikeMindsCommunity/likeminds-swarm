@@ -13,4 +13,6 @@ func WidgetRouter(routerGroup *gin.RouterGroup, handler *handlers.FeedHandlers) 
 	widgetGroup.GET("/", handler.FetchWidget)
 	widgetGroup.PUT("/:widget_id", handler.EditWidget)
 	widgetGroup.DELETE("/:widget_id", handler.DeleteWidget)
+	widgetGroup.POST("/lm", handler.CreateLMWidget)
+	widgetGroup.PATCH("/lm/:widget_id", handler.EditLMWidget)
 }
