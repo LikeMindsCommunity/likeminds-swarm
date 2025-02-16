@@ -108,9 +108,15 @@ func LoggingMiddleware() gin.HandlerFunc {
 				data["response"].(gin.H)["content"] = gin.H{}
 			}
 
+			// Calculating Latency in Milliseconds
+			latency := endTime.Sub(startTime).Milliseconds()
+			if latency < 0 {
+				latency = -latency
+			}
+
 			// Updating Request Meta Data
 			data["meta"] = gin.H{
-				"latency":   endTime.Sub(startTime),
+				"latency":   latency,
 				"client_ip": c.ClientIP(),
 			}
 
