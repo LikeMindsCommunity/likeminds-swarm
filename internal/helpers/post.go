@@ -8,6 +8,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -89,6 +90,9 @@ func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string,
 
 // Exposed Helper Method to Find Post
 func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error) {
+
+	defer utils.Timer("FindPostHelper")()
+
 	fOpts := mergeFilterOptions(filterOptions)
 
 	err := convertHexIdsToObjectIds(filter, []string{"_id"})

@@ -1,6 +1,10 @@
 package utils
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
 
 func ConvertNumberToString(number int) string {
 	return strconv.Itoa(number)
@@ -19,4 +23,12 @@ func GetOrdinal(number int) string {
 		return strconv.Itoa(number) + "rd"
 	}
 	return strconv.Itoa(number) + "th"
+}
+
+// defer timer("sum")()
+func Timer(name string) func() {
+	start := time.Now()
+	return func() {
+		fmt.Printf("TIMER | %s took %v\n", name, time.Since(start).Milliseconds())
+	}
 }

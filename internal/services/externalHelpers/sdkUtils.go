@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 type FetchBotUserResponse struct {
@@ -15,6 +16,9 @@ type FetchBotUserResponse struct {
 
 // Exposed Method to get Community ID from API Key
 func GetCommunityId(c *gin.Context) int {
+
+	defer utils.Timer("GetCommunityId")()
+
 	//Send Request
 	respBytes, statusCode, err := GetRequestResponse(CaravanService, SdkAuthenticateEndPoint, GETRequest, CreateHeaders(c, ""), nil, nil)
 	if respBytes == nil {

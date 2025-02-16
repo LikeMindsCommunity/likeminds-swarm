@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 type BlockUserResponse struct {
@@ -22,6 +23,9 @@ type BlockUserCache struct {
 
 // Internal method to fetch block user list against userId from caravan service
 func GetUserBlockList(cacheHelper cache.Helper, userId string, communityId int) (*BlockUserCache, error) {
+
+	defer utils.Timer("GetUserBlockList")()
+
 	var blockUserResponse BlockUserResponse
 	blockUserValue := BlockUserCache{
 		BlockingUsers: []string{},

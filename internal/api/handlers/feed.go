@@ -72,6 +72,8 @@ func getUniversalFeedPostFilter(communityId int, userId string, excludedUserIds 
 // Exposed Method to fetch the Universal Feed for a User
 func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
+	defer utils.Timer("FetchUniversalFeed")()
+
 	headers := utils.GetHeaders(c)
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
@@ -194,6 +196,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 func parsePostsAndGenerateFinalResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, parsedPosts []responses.PostResponse,
 ) gin.H {
 
+	defer utils.Timer("parsePostsAndGenerateFinalResponse")()
+
 	// final reponse data
 	finalParsedResponse := gin.H{
 		"posts": parsedPosts,
@@ -219,6 +223,8 @@ func parsePostsAndGenerateFinalResponse(handlers *FeedHandlers, loggedInUser *Lo
 // Internal Method to filter top comments against Posts based on community config
 func filterTopCommentsForPosts(handlers *FeedHandlers, parsedPosts []responses.PostResponse, LoggedInUser LoggedInUserParams,
 ) ([]responses.PostResponse, map[string]responses.CommentWithParentResponse) {
+
+	defer utils.Timer("filterTopCommentsForPosts")()
 
 	// Get community configurations
 	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, LoggedInUser.UserId, LoggedInUser.CommunityId)
