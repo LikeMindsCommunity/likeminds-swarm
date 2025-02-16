@@ -123,7 +123,20 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 	pollType, pollTypeExists := metaData["poll_type"]
 	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, userId)
 
-	pollExpiryTime := metaData["expiry_time"].(float64)
+	pollExpiryTime := 0.0
+
+	switch v := metaData["expiry_time"].(type) {
+	case float64:
+		pollExpiryTime = v
+	case int:
+		pollExpiryTime = float64(v)
+	case int64:
+		pollExpiryTime = float64(v)
+	case int32:
+		pollExpiryTime = float64(v)
+	default:
+		pollExpiryTime = 0
+	}
 
 	toShowResults := false
 
