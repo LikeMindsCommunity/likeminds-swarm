@@ -177,8 +177,10 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
 	communityId int, userIsCm bool, userId string, parentEntityId string) map[string]interface{} {
-	widgetType, exists := lmMeta["type"]
 
+	defer utils.Timer("parseLMMeta")()
+
+	widgetType, exists := lmMeta["type"]
 	if exists && widgetType == enums.ReplyPrivatelyLMWidget {
 		return lmMeta
 
@@ -191,6 +193,7 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 		}
 
 		//fetch post to get creator
+		fmt.Println("DEBUG_LOAD_TEST | Fetching post to get creator. metadata: ", metaData, " lmMeta: ", lmMeta)
 		post, err := FetchPostData(handlers.postHelper, parentEntityId, communityId, true, []string{})
 		if err != nil {
 			return lmMeta
@@ -262,6 +265,8 @@ func getAnswerTextForPoll(uniqueVotersOnPoll int64) string {
 func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, userId string) requests.WidgetResponse {
 	var response requests.WidgetResponse
 
+	defer utils.Timer("parseWidgetResponse")()
+
 	response.ID = widget.ID
 	response.ParentEntityID = widget.ParentEntityID
 	response.ParentEntityType = widget.ParentEntityType
@@ -275,6 +280,9 @@ func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, commun
 
 // Internal Method to fetch widgets using widgetIds and communityId
 func fetchWidgetsByIDs(helper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) ([]entities.Widget, error) {
+
+	defer utils.Timer("fetchWidgetsByIDs")()
+
 	// widget filter data
 	widgetFilterData := gin.H{
 		"_id": gin.H{
