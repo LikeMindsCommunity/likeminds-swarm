@@ -227,6 +227,8 @@ func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned boo
 	versionCode string, platformCode string, userId string, communityId int, cacheHelper cache.Helper, entityCreatorId string,
 ) []responses.MenuResponse {
 
+	defer utils.Timer("getEntityMenuItems")()
+
 	var output_menu_items []responses.MenuResponse
 	var externalEntities externalHelpers.ExternalEntities
 

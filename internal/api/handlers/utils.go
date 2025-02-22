@@ -72,6 +72,9 @@ func addSortingOptions(options map[string]interface{}, orderBy string, order int
 
 // Internal Method to generate filter from page params from an API
 func generatePageFilterOptions(c *gin.Context, sortKeyParam string, sortKeyOrderParam int) (map[string]interface{}, error) {
+
+	defer utils.Timer("generatePageFilterOptions")()
+
 	// fetch pagination query params
 	page, page_size, err := fetchPaginationParams(c)
 	if err != nil {
