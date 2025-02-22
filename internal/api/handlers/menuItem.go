@@ -89,6 +89,8 @@ func getMenuItem(menuItemName string, externalEntities *externalHelpers.External
 func GetIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities *externalHelpers.ExternalEntities,
 ) []responses.MenuResponse {
 
+	defer utils.Timer("GetIsOwnerIsCmPostMenuItems")()
+
 	menuItems := []responses.MenuResponse{}
 
 	menuItemsConfig := externalHelpers.GetMenuItemsConfig(externalEntities.CommunityConfigurations)
@@ -121,6 +123,8 @@ func GetIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool,
 func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *externalHelpers.ExternalEntities) []responses.MenuResponse {
 	menuItems := []responses.MenuResponse{}
 
+	defer utils.Timer("GetIsOwnerNotIsCmPostMenuItems")()
+
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
 	}
@@ -132,6 +136,9 @@ func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *external
 
 // Exposed Method to get Post Menu for CMs who are not owners
 func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities *externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
+
+	defer utils.Timer("GetNotIsOwnerIsCmPostMenuItems")()
+
 	menuItems := []responses.MenuResponse{}
 
 	menuItemsConfig := externalHelpers.GetMenuItemsConfig(externalEntities.CommunityConfigurations)
@@ -166,6 +173,9 @@ func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bo
 
 // Exposed Method to get Post Menu for members
 func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
+
+	defer utils.Timer("GetNotIsOwnerNotIsCmPostMenuItems")()
+
 	menuItems := []responses.MenuResponse{getMenuItem(constants.ReportPostMenuItemName, externalEntities)}
 
 	// if !isEntityOwnerBlocked {

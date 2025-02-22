@@ -29,6 +29,6 @@ func GetOrdinal(number int) string {
 func Timer(name string) func() {
 	start := time.Now()
 	return func() {
-		fmt.Printf("TIMER | %s took %v\n", name, time.Since(start).Milliseconds())
+		fmt.Printf("DEBUG_LOAD_TEST | %s took %v\n", name, time.Since(start).Milliseconds())
 	}
 }
