@@ -218,8 +218,8 @@ func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds
 }
 
 // Internal Method to parse widgets response
-func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int, userIsCM bool,
-	userId string) (map[string]requests.WidgetResponse, error) {
+func parseWidgetsResponse(handlers *FeedHandlers, widgetIds []primitive.ObjectID, communityId int, userIsCM bool, userId string,
+) (map[string]requests.WidgetResponse, error) {
 
 	widgetsResponse := map[string]requests.WidgetResponse{}
 
@@ -1009,19 +1009,19 @@ func FetchPostData(helper interfaces.PostHelper, postId string, communityId int,
 }
 
 // Internal Method to fetch parsed post with replies
-func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int, filterOptions map[string]interface{},
-	userId string, isCm bool, versionCode string, platformCode string, apiRevampV1Check bool, memberRole string, excludedUserIds []string,
+func fetchPostWithReplies(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, postId string,
+	filterOptions map[string]interface{}, excludedUserIds []string,
 ) (responses.PostWithRepliesResponse, error) {
 
 	var postWithRepliesResponse responses.PostWithRepliesResponse
 
-	postData, err := FetchPostData(handlers.postHelper, postId, communityId, true, excludedUserIds)
+	postData, err := FetchPostData(handlers.postHelper, postId, loggedInUser.CommunityId, true, excludedUserIds)
 	if err != nil {
 		return postWithRepliesResponse, err
 	}
 
 	// If post is hidden and user is not cm or creator, then throw error
-	if !isCm && postData.IsHidden && userId != postData.UserId {
+	if !loggedInUser.IsCm && postData.IsHidden && loggedInUser.UserId != postData.UserId {
 		return postWithRepliesResponse, fmt.Errorf(utils.PostIsHiddenError)
 	}
 
@@ -1040,17 +1040,10 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 		return postWithRepliesResponse, err
 	}
 
-	loggedInUser := LoggedInUserParams{
-		UserId:           userId,
-		IsCm:             isCm,
-		PlatformCode:     platformCode,
-		VersionCode:      versionCode,
-		ApiRevampCheckV1: apiRevampV1Check,
-		MemberRole:       memberRole,
-	}
-
-	postResponse := parseSinglePostResponse(handlers, postData, &loggedInUser)
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults, userId, isCm, versionCode, platformCode, apiRevampV1Check, handlers.cacheHelper, memberRole)
+	postResponse := parseSinglePostResponse(handlers, postData, loggedInUser)
+	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults,
+		loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1,
+		handlers.cacheHelper, loggedInUser.MemberRole)
 
 	postWithRepliesResponse.PostResponse = postResponse
 	postWithRepliesResponse.Replies = repliesResponse
@@ -1450,7 +1443,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetchPostData, err := fetchPostWithReplies(handlers, postData.ID.Hex(), communityId, filterOptions, headers[utils.HeadersMemberId], createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
+	fetchPostData, err := fetchPostWithReplies(handlers, loggedInUser, postData.ID.Hex(), filterOptions, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -1672,7 +1665,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
 	// fetch post response data
-	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, excludedUserIds)
+	fetchPostData, err := fetchPostWithReplies(handlers, loggedInUser, postId, commentFilterOptions, excludedUserIds)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1857,7 +1850,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, userId, editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, []string{})
+	fetchPostData, err := fetchPostWithReplies(handlers, loggedInUser, postId, commentFilterOptions, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return

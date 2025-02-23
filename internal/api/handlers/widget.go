@@ -176,7 +176,8 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
-	communityId int, userIsCm bool, userId string, parentEntityId string) map[string]interface{} {
+	communityId int, userIsCm bool, userId string, parentEntityId string,
+) map[string]interface{} {
 
 	defer utils.Timer("parseLMMeta")()
 
@@ -262,7 +263,9 @@ func getAnswerTextForPoll(uniqueVotersOnPoll int64) string {
 }
 
 // Internal Method to parse Widget for response
-func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, userId string) requests.WidgetResponse {
+func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, userId string,
+) requests.WidgetResponse {
+
 	var response requests.WidgetResponse
 
 	defer utils.Timer("parseWidgetResponse")()
