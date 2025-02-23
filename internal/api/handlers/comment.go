@@ -266,7 +266,18 @@ func parseCommentResponse(likeHelper interfaces.LikeHelper, commentHelper interf
 	response.MenuItems = []responses.MenuResponse{}
 
 	if memberRole != utils.GuestRole {
-		response.MenuItems = getEntityMenuItems(constants.CommentEntityType, isCm, userId == comment.UserId, false, false, versionCode, platformCode, userId, comment.CommunityId, cacheHelper, comment.UserId)
+		loggedInUser := &LoggedInUserParams{
+			UserId:           userId,
+			CommunityId:      comment.CommunityId,
+			IsCm:             isCm,
+			VersionCode:      versionCode,
+			PlatformCode:     platformCode,
+			ApiRevampCheckV1: apiRevampV1Check,
+			MemberRole:       memberRole,
+		}
+
+		response.MenuItems = getEntityMenuItems(cacheHelper, loggedInUser, constants.CommentEntityType,
+			userId == comment.UserId, false, false, comment.UserId)
 	}
 
 	if comment.Level == constants.CommentBaseLevel {
