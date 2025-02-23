@@ -89,7 +89,7 @@ func getMenuItem(menuItemName string, externalEntities *externalHelpers.External
 func GetIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities *externalHelpers.ExternalEntities,
 ) []responses.MenuResponse {
 
-	defer utils.Timer("GetIsOwnerIsCmPostMenuItems")()
+	// defer utils.Timer("GetIsOwnerIsCmPostMenuItems")()
 
 	menuItems := []responses.MenuResponse{}
 
@@ -123,7 +123,7 @@ func GetIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool,
 func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *externalHelpers.ExternalEntities) []responses.MenuResponse {
 	menuItems := []responses.MenuResponse{}
 
-	defer utils.Timer("GetIsOwnerNotIsCmPostMenuItems")()
+	// defer utils.Timer("GetIsOwnerNotIsCmPostMenuItems")()
 
 	if isEditCheck {
 		menuItems = append(menuItems, getMenuItem(constants.EditPostMenuItemName, externalEntities))
@@ -137,7 +137,7 @@ func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *external
 // Exposed Method to get Post Menu for CMs who are not owners
 func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities *externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
 
-	defer utils.Timer("GetNotIsOwnerIsCmPostMenuItems")()
+	// defer utils.Timer("GetNotIsOwnerIsCmPostMenuItems")()
 
 	menuItems := []responses.MenuResponse{}
 
@@ -174,7 +174,7 @@ func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bo
 // Exposed Method to get Post Menu for members
 func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
 
-	defer utils.Timer("GetNotIsOwnerNotIsCmPostMenuItems")()
+	// defer utils.Timer("GetNotIsOwnerNotIsCmPostMenuItems")()
 
 	menuItems := []responses.MenuResponse{getMenuItem(constants.ReportPostMenuItemName, externalEntities)}
 
@@ -261,7 +261,6 @@ func getEntityMenuItems(cacheHelper cache.Helper, loggedInUser *LoggedInUserPara
 		// Get users list who are blocked by userId or blocked the userId
 		blockUserValuesList := loggedInUser.BlockedUsersList
 		if blockUserValuesList == nil {
-			println("DEBUG_LOAD_TEST | Did not find blockUsersValuesList in loggedInParams") //TODO: Remove this
 			blockUserValuesList, _ = externalHelpers.GetUserBlockList(cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId)
 		}
 
