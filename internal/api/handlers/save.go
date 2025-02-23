@@ -163,6 +163,7 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 
 // Exposed Method to fetch Posts saved by a User
 func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	userId := c.Param("user_id")
@@ -172,6 +173,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -186,6 +188,16 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	if userId != headers[utils.HeadersMemberId] {
 		utils.GeneralAPIValidationError(c, "You are not authorized to perform this operation.")
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// save filter data
@@ -232,8 +244,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 		return
 	}
 
-	parsedPosts := parseMultiplePostResponse(handlers, postResults, userId, isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
+	parsedPosts := parseMultiplePostResponse(handlers, loggedInUser, postResults)
 
 	// final response data
 	finalResponse := gin.H{
@@ -243,8 +254,8 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
-	finalResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
+	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, finalResponse)
+	finalResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalResponse, communityId, isCm, userId)
 
 	// Get community configurations
 	universalFeedConfig := externalHelpers.GetUniversalFeedConfigurationsData(handlers.cacheHelper, userId, communityId)
@@ -260,9 +271,8 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
 		var updatedPostsWithComments []responses.PostResponse
-		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
-			parsedPosts, userId, isCm, communityId, commentSortOrderVal,
-			universalFeedConfig.CommentCount, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, loggedInUser,
+			parsedPosts, commentSortOrderVal, universalFeedConfig.CommentCount)
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())

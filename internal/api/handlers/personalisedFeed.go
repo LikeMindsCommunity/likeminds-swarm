@@ -649,7 +649,7 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
-	loggedInUser := LoggedInUserParams{
+	loggedInUser := &LoggedInUserParams{
 		UserId:           userId,
 		CommunityId:      communityId,
 		IsCm:             isCm,
@@ -775,10 +775,10 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		}
 
 		// parse posts for multiple post response
-		parsedPosts := parseMultiplePostResponse(handlers, sortedPosts, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
+		parsedPosts := parseMultiplePostResponse(handlers, loggedInUser, sortedPosts)
 
 		// parse posts for final response (topics, widgets, comments, etc)
-		finalParsedResponse = parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
+		finalParsedResponse = parsePostsAndGenerateFinalResponse(handlers, loggedInUser, parsedPosts)
 	}
 
 	// return final response

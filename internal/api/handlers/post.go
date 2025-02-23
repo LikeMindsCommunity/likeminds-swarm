@@ -601,17 +601,16 @@ func getWidgetDataFromFeedResponse(handlers *FeedHandlers, response interface{},
 	return widgetsData
 }
 
-func getOriginalPostForReposts(handlers *FeedHandlers, response interface{}, communityId int, userId string, isCm bool,
-	versionCode string, platformCode string, apiRevampV1Check bool,
+func getOriginalPostForReposts(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, response interface{},
 ) map[string]responses.PostResponse {
 
 	defer utils.Timer("getOriginalPostForReposts")()
 
 	postsResponseMap := map[string]responses.PostResponse{}
 
-	postIds := getPostIdsFromReposts(response, apiRevampV1Check)
+	postIds := getPostIdsFromReposts(response, loggedInUser.ApiRevampCheckV1)
 	if len(postIds) > 0 {
-		postsResponse, err := fetchPostResponseMapFromPostIds(handlers, postIds, communityId, userId, isCm, versionCode, platformCode, apiRevampV1Check)
+		postsResponse, err := fetchPostResponseMapFromPostIds(handlers, loggedInUser, postIds)
 		if err != nil {
 			logging.Error("Error while fetching original posts for reposts: ", err)
 		}
@@ -671,13 +670,12 @@ func getPostIdsFromReposts(response interface{}, apiRevampV1Check bool) []string
 }
 
 // Internal method of adding topics, reposted_posts, widgets data in response
-func addMetadataInResponse(handlers *FeedHandlers, response gin.H, communityId int, memberId string, platformCode string,
-	versionCode string, userIsCM bool, apiRevampV1Check bool) gin.H {
+func addMetadataInResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, response gin.H,
+) gin.H {
 
-	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, memberId, userIsCM,
-		versionCode, platformCode, apiRevampV1Check)
-	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, userIsCM, memberId)
+	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, loggedInUser.CommunityId)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, loggedInUser.CommunityId, loggedInUser.IsCm, loggedInUser.UserId)
 
 	return response
 }
@@ -937,20 +935,19 @@ func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, lo
 }
 
 // Internal Method to parse multiple post for response
-func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, userId string, isCm bool, versionCode string, platformCode string,
-	apiRevampV1Check bool, memberRole string,
+func parseMultiplePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, posts []entities.Post,
 ) []responses.PostResponse {
 
 	defer utils.Timer("parseMultiplePostResponse")()
 
-	loggedInUser := LoggedInUserParams{
-		UserId:           userId,
-		IsCm:             isCm,
-		VersionCode:      versionCode,
-		PlatformCode:     platformCode,
-		ApiRevampCheckV1: apiRevampV1Check,
-		MemberRole:       memberRole,
-	}
+	// loggedInUser := LoggedInUserParams{
+	// 	UserId:           userId,
+	// 	IsCm:             isCm,
+	// 	VersionCode:      versionCode,
+	// 	PlatformCode:     platformCode,
+	// 	ApiRevampCheckV1: apiRevampV1Check,
+	// 	MemberRole:       memberRole,
+	// }
 
 	postIds := []primitive.ObjectID{}
 	for _, post := range posts {
@@ -960,15 +957,15 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 	likesCountMap := fetchMultipleEntitiesLikesCount(handlers.likeHelper, postIds, constants.PostEntityType)
 	repliesCountMap := fetchMultiplePostsCommentsCount(handlers.commentHelper, postIds)
 	repostCountMap := GetRepostCountForMultiplePosts(handlers.widgetHelper, posts)
-	isRepostedByUserMap := getIsRepostedByUserForMultiplePosts(handlers.widgetHelper, userId, posts)
-	isLikedByUserMap := fetchUserLikedStatusForMultipleEntities(handlers.likeHelper, postIds, constants.PostEntityType, userId)
-	isSavedByUserMap := fetchUserSavedStatusByPostIds(handlers.saveHelper, postIds, userId)
+	isRepostedByUserMap := getIsRepostedByUserForMultiplePosts(handlers.widgetHelper, loggedInUser.UserId, posts)
+	isLikedByUserMap := fetchUserLikedStatusForMultipleEntities(handlers.likeHelper, postIds, constants.PostEntityType, loggedInUser.UserId)
+	isSavedByUserMap := fetchUserSavedStatusByPostIds(handlers.saveHelper, postIds, loggedInUser.UserId)
 	postImpressionsData, _ := computePostImpressionReachCount(handlers, postIds)
 
 	response := []responses.PostResponse{}
 	for _, post := range posts {
 
-		postSecondaryData := PostSecondaryDataParams{
+		postSecondaryData := &PostSecondaryDataParams{
 			LikesCount:       likesCountMap[post.ID],
 			RepliesCount:     repliesCountMap[post.ID],
 			RepostCount:      repostCountMap[post.ID],
@@ -978,7 +975,7 @@ func parseMultiplePostResponse(handlers *FeedHandlers, posts []entities.Post, us
 			PostImpressions:  postImpressionsData[post.ID],
 		}
 
-		response = append(response, parsePostResponse(handlers, &loggedInUser, &post, &postSecondaryData))
+		response = append(response, parsePostResponse(handlers, loggedInUser, &post, postSecondaryData))
 	}
 
 	return response
@@ -1072,8 +1069,7 @@ func fetchPostWithReplies(handlers *FeedHandlers, postId string, communityId int
 }
 
 // Internal Method to fetch multiple posts data using post_ids
-func fetchPostResponseMapFromPostIds(handlers *FeedHandlers, postIds []string, communityId int, userId string, isCm bool,
-	versionCode string, platformCode string, apiRevampV1Check bool,
+func fetchPostResponseMapFromPostIds(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, postIds []string,
 ) (map[string]responses.PostResponse, error) {
 
 	// convert post_ids to object ids
@@ -1084,7 +1080,7 @@ func fetchPostResponseMapFromPostIds(handlers *FeedHandlers, postIds []string, c
 		"_id": gin.H{
 			"$in": postObjectIds,
 		},
-		"community_id": communityId,
+		"community_id": loggedInUser.CommunityId,
 	}
 
 	// fetch posts using helper method
@@ -1094,14 +1090,14 @@ func fetchPostResponseMapFromPostIds(handlers *FeedHandlers, postIds []string, c
 	}
 
 	// parse fetched posts
-	parsedPosts := parseMultiplePostResponse(handlers, postsLists, userId, isCm, versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
+	parsedPosts := parseMultiplePostResponse(handlers, loggedInUser, postsLists)
 
 	// Make key value pair of post_id -> PostResponse
 	postResponse := map[string]responses.PostResponse{}
 	for _, post := range parsedPosts {
 
 		// if post is hidden and user is not cm or creator, then only show isHidden flag
-		if !isCm && post.IsHidden && userId != post.UserId {
+		if !loggedInUser.IsCm && post.IsHidden && loggedInUser.UserId != post.UserId {
 			postResponse[post.ID.Hex()] = responses.PostResponse{
 				ID:       post.ID,
 				IsHidden: true,
@@ -1370,9 +1366,11 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	// fetch headers
 	headers := utils.GetHeaders(c)
 	userId := headers[utils.HeadersMemberId]
-	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	memberRole := headers[utils.HeadersMemberRole]
+	versionCode := headers[utils.HeadersVersionCode]
+	platformCode := headers[utils.HeadersPlatformCode]
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -1384,6 +1382,16 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	if err := c.ShouldBindJSON(&createPostRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             createPostRequest.UserIsCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// Get users list who are blocked by userId or blocked the userId
@@ -1463,7 +1471,7 @@ func (handlers *FeedHandlers) CreatePost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], createPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, createPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
@@ -1512,6 +1520,10 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	// fetch headers
 	headers := utils.GetHeaders(c)
+	userId := headers[utils.HeadersMemberId]
+	versionCode := headers[utils.HeadersVersionCode]
+	platformCode := headers[utils.HeadersPlatformCode]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -1527,6 +1539,16 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             fetchPostQueryRequest.UserIsCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// If user is not cm, return error
@@ -1558,8 +1580,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 
 	if len(postIds) > 0 {
 		// fetch multiple posts data using internal method
-		postsResponse, err = fetchPostResponseMapFromPostIds(handlers, postIds, communityId, headers[utils.HeadersMemberId],
-			true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		postsResponse, err = fetchPostResponseMapFromPostIds(handlers, loggedInUser, postIds)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -1571,8 +1592,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	if len(pendingPostIds) > 0 {
 
 		// Fetch posts data from pending posts using internal method
-		pendingPostData, err := fetchMultiplePendingPostsData(handlers, pendingPostIds, communityId, headers[utils.HeadersMemberId],
-			true, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+		pendingPostData, err := fetchMultiplePendingPostsData(handlers, loggedInUser, pendingPostIds)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
@@ -1601,8 +1621,7 @@ func (handlers *FeedHandlers) FetchPosts(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, parsedResponse, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId],
-		fetchPostQueryRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, parsedResponse, communityId, fetchPostQueryRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
@@ -1618,10 +1637,13 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	paramIsCm := c.Query("user_is_cm")
 	isCm := false
 
-	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	versionCode := headers[utils.HeadersVersionCode]
+	platformCode := headers[utils.HeadersPlatformCode]
+
 	memberRole := headers[utils.HeadersMemberRole]
 	userId := headers[utils.HeadersMemberId]
 
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	if paramIsCm == "true" || utils.IsCMRole(memberRole) {
 		isCm = true
 	}
@@ -1630,6 +1652,16 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// filter options
@@ -1661,7 +1693,7 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// return final response
@@ -1670,13 +1702,17 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 
 // Exposed Method to edit a Post
 func (handlers *FeedHandlers) EditPost(c *gin.Context) {
+
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	postId := c.Param("post_id")
 	userId := headers[utils.HeadersMemberId]
 
-	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
+	versionCode := headers[utils.HeadersVersionCode]
+	platformCode := headers[utils.HeadersPlatformCode]
+
 	memberRole := headers[utils.HeadersMemberRole]
+	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
@@ -1699,9 +1735,19 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// Check if user is cm or post creator
-	if !editPostRequest.UserIsCm && postData.UserId != headers[utils.HeadersMemberId] {
+	if !editPostRequest.UserIsCm && postData.UserId != userId {
 		utils.GeneralAPIValidationError(c, utils.NotAuthorizedError)
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             editPostRequest.UserIsCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// validation of attachment objects
@@ -1719,7 +1765,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// If NSFW Filtering is enabled & attachments are present, check for NSFW content
 	if len(editPostRequest.Attachments) > 0 {
-		errorMeta, err := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, headers[utils.HeadersMemberId], communityId,
+		errorMeta, err := validateAndUpdatePostImagesForNSFWContent(handlers.cacheHelper, userId, communityId,
 			&editPostRequest.Attachments, &postData.Attachments)
 		if errorMeta != nil {
 			utils.CustomAPIErrorWithMeta(c, http.StatusBadRequest, err.Error(), errorMeta)
@@ -1760,7 +1806,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 
 	// process attachments for widgets
 	updatedAttachments, err := ProcessAttachmentsForWidgets(handlers, constants.PostEntityType, editPostRequest.Attachments,
-		postId, communityId, headers[utils.HeadersMemberId])
+		postId, communityId, userId)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1821,7 +1867,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	// fetch post response data
-	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, []string{})
+	fetchPostData, err := fetchPostWithReplies(handlers, postId, communityId, commentFilterOptions, userId, editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole, []string{})
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -1832,7 +1878,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 	}
 
 	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, response, communityId, headers[utils.HeadersMemberId], editPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, editPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
@@ -2221,6 +2267,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
+	memberRole := headers[utils.HeadersMemberRole]
 
 	if paramIsCm == "true" {
 		isCm = true
@@ -2230,6 +2277,16 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// post filter data
@@ -2271,8 +2328,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 		return
 	}
 
-	parsedPosts := parseMultiplePostResponse(handlers, postResults, userId, isCm, headers[utils.HeadersVersionCode],
-		headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
+	parsedPosts := parseMultiplePostResponse(handlers, loggedInUser, postResults)
 
 	// final response data
 	finalResponse := gin.H{
@@ -2282,7 +2338,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	}
 
 	finalResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalResponse, communityId)
-	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalResponse, communityId, headers[utils.HeadersMemberId], isCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	finalResponse["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, finalResponse)
 	finalResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalResponse, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// Get community configurations
@@ -2299,9 +2355,8 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 
 	if universalFeedConfig.CommentSortOn == enums.UniversalFeedTopLikedComments {
 		var updatedPostsWithComments []responses.PostResponse
-		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers,
-			parsedPosts, userId, isCm, communityId, commentSortOrderVal, universalFeedConfig.CommentCount,
-			versionCode, platformCode, apiRevampV1Check, utils.DefaultRole)
+		updatedPostsWithComments, filtered_comments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, loggedInUser,
+			parsedPosts, commentSortOrderVal, universalFeedConfig.CommentCount)
 
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
@@ -2320,8 +2375,9 @@ func (handlers *FeedHandlers) FetchUserCreatedPosts(c *gin.Context) {
 	c.JSON(http.StatusOK, finalResponse)
 }
 
-func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, userId string,
-	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) []responses.PostResponse {
+func processPostSearchData(handlers *FeedHandlers, loggedInUserParams *LoggedInUserParams, data map[string]interface{},
+) []responses.PostResponse {
+
 	postDetails := data["hits"].(map[string]interface{})["hits"].([]interface{})
 	var postList []entities.Post
 
@@ -2337,8 +2393,7 @@ func processPostSearchData(handlers *FeedHandlers, data map[string]interface{}, 
 		postList = append(postList, post)
 	}
 
-	postResponse := parseMultiplePostResponse(handlers, postList, userId, isCm, versionCode, platformCode,
-		apiRevampV1Check, utils.DefaultRole)
+	postResponse := parseMultiplePostResponse(handlers, loggedInUserParams, postList)
 
 	return postResponse
 }
@@ -2350,6 +2405,8 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	userId := headers[utils.HeadersMemberId]
+	platformCode := headers[utils.HeadersPlatformCode]
+	versionCode := headers[utils.HeadersVersionCode]
 	memberRole := headers[utils.HeadersMemberRole]
 
 	isCm := utils.IsCMRole(memberRole)
@@ -2375,6 +2432,16 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 		return
 	}
 
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
+	}
+
 	// parsing of chatroom ids
 	excludedChatroomIds := utils.ParseIntArrayParam(searchPostRequest.ExcludedChatroomIDs)
 	parsedExcludedChatroomIds, _ := json.Marshal(excludedChatroomIds)
@@ -2393,9 +2460,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	postQuery := GetPostFilterQuery(userId, page, pageSize, searchPostRequest.SearchType, searchPostRequest.Search, fmt.Sprintf("%v", string(parsedExcludedChatroomIds)), communityId, excludedUserIds, isCm)
 	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
-	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
-		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check)
+	finalResponse := processPostSearchData(handlers, loggedInUser, response)
 
 	finalParsedResponse := gin.H{
 		"success": true,
@@ -2403,7 +2468,7 @@ func (handlers *FeedHandlers) SearchPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, finalParsedResponse)
 	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response
@@ -2415,6 +2480,11 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	// fetch query params and headers
 	userId := c.Param("user_id")
 	headers := utils.GetHeaders(c)
+	platformCode := headers[utils.HeadersPlatformCode]
+	versionCode := headers[utils.HeadersVersionCode]
+	memberRole := headers[utils.HeadersMemberRole]
+
+	isCm := utils.IsCMRole(memberRole)
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 
@@ -2444,14 +2514,22 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 		return
 	}
 
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
+	}
+
 	// dsl query to search posts
 	postQuery := GetSelfPostFilterQuery(page, pageSize, searchPostRequest.SearchType,
 		searchPostRequest.Search, userId, communityId)
 	response := handlers.esHelper.ExecuteQuery(postQuery, constants.PostIndexName)
 
-	finalResponse := processPostSearchData(handlers, response, headers[utils.HeadersMemberId],
-		searchPostRequest.UserIsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode],
-		apiRevampV1Check)
+	finalResponse := processPostSearchData(handlers, loggedInUser, response)
 
 	finalParsedResponse := gin.H{
 		"success": true,
@@ -2459,7 +2537,7 @@ func (handlers *FeedHandlers) SearchUserCreatedPost(c *gin.Context) {
 	}
 
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, communityId)
-	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, communityId, headers[utils.HeadersMemberId], false, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check)
+	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, finalParsedResponse)
 	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, communityId, searchPostRequest.UserIsCm, headers[utils.HeadersMemberId])
 
 	// return final response

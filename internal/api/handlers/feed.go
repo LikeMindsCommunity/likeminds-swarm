@@ -95,7 +95,7 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		return
 	}
 
-	loggedInUserParams := LoggedInUserParams{
+	loggedInUserParams := &LoggedInUserParams{
 		UserId:           userId,
 		CommunityId:      communityId,
 		IsCm:             universalFeedRequest.IsCm,
@@ -183,10 +183,10 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	}
 
 	// parse posts
-	parsedPosts := parseMultiplePostResponse(handlers, postResults, headers[utils.HeadersMemberId], universalFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, memberRole)
+	parsedPosts := parseMultiplePostResponse(handlers, loggedInUserParams, postResults)
 
 	// parse posts for final response (topics, widgets, comments, etc)
-	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUserParams, parsedPosts)
+	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, loggedInUserParams, parsedPosts)
 
 	// return final response
 	utils.GenerateSuccessResponse(c, finalParsedResponse)
@@ -207,7 +207,7 @@ func parsePostsAndGenerateFinalResponse(handlers *FeedHandlers, loggedInUser *Lo
 	finalParsedResponse["topics"] = getTopicDataFromPosts(handlers.topicHelper, finalParsedResponse, loggedInUser.CommunityId)
 
 	// get reposted posts data
-	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, finalParsedResponse, loggedInUser.CommunityId, loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1)
+	finalParsedResponse["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, finalParsedResponse)
 
 	// get widget data from feed response data
 	finalParsedResponse["widgets"] = getWidgetDataFromFeedResponse(handlers, finalParsedResponse, loggedInUser.CommunityId, loggedInUser.IsCm, loggedInUser.UserId)
@@ -243,9 +243,8 @@ func filterTopCommentsForPosts(handlers *FeedHandlers, parsedPosts []responses.P
 		var updatedPostsWithComments []responses.PostResponse
 		var err error
 
-		updatedPostsWithComments, filteredComments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, parsedPosts,
-			LoggedInUser.UserId, LoggedInUser.IsCm, LoggedInUser.CommunityId, commentSortOrderVal, universalFeedConfig.CommentCount,
-			LoggedInUser.VersionCode, LoggedInUser.PlatformCode, LoggedInUser.ApiRevampCheckV1, LoggedInUser.MemberRole)
+		updatedPostsWithComments, filteredComments, err = getTopCommentsAgainstPostsSortOnLikes(handlers, &LoggedInUser,
+			parsedPosts, commentSortOrderVal, universalFeedConfig.CommentCount)
 		if err != nil {
 			logging.Error(constants.FetchingTopCommentsErrorMessage, err)
 			return parsedPosts, filteredComments
@@ -590,7 +589,7 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 		return
 	}
 
-	loggedInUser := LoggedInUserParams{
+	loggedInUser := &LoggedInUserParams{
 		UserId:           userId,
 		CommunityId:      communityId,
 		IsCm:             groupFeedRequest.IsCm,
@@ -643,10 +642,10 @@ func (handlers *FeedHandlers) FetchGroupFeed(c *gin.Context) {
 	}
 
 	// parse posts
-	parsedPosts := parseMultiplePostResponse(handlers, postResults, headers[utils.HeadersMemberId], groupFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
+	parsedPosts := parseMultiplePostResponse(handlers, loggedInUser, postResults)
 
 	// parse posts for final response (topics, widgets, comments, etc)
-	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
+	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, loggedInUser, parsedPosts)
 
 	// return final response
 	utils.GenerateSuccessResponse(c, finalParsedResponse)
@@ -732,7 +731,7 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 		return
 	}
 
-	loggedInUser := LoggedInUserParams{
+	loggedInUser := &LoggedInUserParams{
 		UserId:           userId,
 		CommunityId:      communityId,
 		IsCm:             connectionFeedRequest.IsCm,
@@ -796,10 +795,10 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 	}
 
 	// parse connection feed posts
-	parsedPosts := parseMultiplePostResponse(handlers, connectionFeedPostResults, headers[utils.HeadersMemberId], connectionFeedRequest.IsCm, headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
+	parsedPosts := parseMultiplePostResponse(handlers, loggedInUser, connectionFeedPostResults)
 
 	// parse posts for final response (topics, widgets, comments, etc)
-	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
+	finalParsedResponse := parsePostsAndGenerateFinalResponse(handlers, loggedInUser, parsedPosts)
 
 	// return final response
 	utils.GenerateSuccessResponse(c, finalParsedResponse)
