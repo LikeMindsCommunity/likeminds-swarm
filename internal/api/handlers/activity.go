@@ -820,7 +820,7 @@ func (handlers *FeedHandlers) ExternalCreateNotificationActivity(c *gin.Context)
 	versionCode := headers[utils.HeadersVersionCode]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -955,7 +955,7 @@ func (handlers *FeedHandlers) FetchNotificationFeed(c *gin.Context) {
 	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
-	communityID := externalHelpers.GetCommunityId(c)
+	communityID := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityID == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -1009,7 +1009,7 @@ func (handlers *FeedHandlers) NotificationFeedActivityMarkRead(c *gin.Context) {
 	activityID := c.Param("activity_id")
 
 	// validation of api_key
-	communityID := externalHelpers.GetCommunityId(c)
+	communityID := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityID == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -1062,7 +1062,7 @@ func (handlers *FeedHandlers) NotificationFeedUnreadCount(c *gin.Context) {
 	userID := headers[utils.HeadersMemberId]
 
 	// validation of api_key
-	communityID := externalHelpers.GetCommunityId(c)
+	communityID := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityID == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -1098,7 +1098,7 @@ func (handlers *FeedHandlers) FetchUserProfileActivity(c *gin.Context) {
 	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
-	communityID := externalHelpers.GetCommunityId(c)
+	communityID := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityID == externalHelpers.DefaultCommunityId {
 		return
 	}

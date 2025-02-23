@@ -70,7 +70,7 @@ func (handlers *FeedHandlers) AddPollOption(c *gin.Context) {
 	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -264,7 +264,7 @@ func (handlers *FeedHandlers) VoteOnPoll(c *gin.Context) {
 	pollId := c.Param("poll_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -559,7 +559,7 @@ func (handlers *FeedHandlers) GetPollVotes(c *gin.Context) {
 	pollId := c.Param("poll_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

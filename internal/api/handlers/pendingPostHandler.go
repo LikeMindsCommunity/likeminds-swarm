@@ -200,7 +200,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	platformCode := headers[utils.HeadersPlatformCode]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -253,7 +253,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	pendingPostId := c.Param("pending_post_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -455,7 +455,7 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	memberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -602,7 +602,7 @@ func (handlers *FeedHandlers) FetchPendingPost(c *gin.Context) {
 	versionCode := headers[utils.HeadersVersionCode]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -643,7 +643,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
 	platformCode := headers[utils.HeadersPlatformCode]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -706,7 +706,7 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

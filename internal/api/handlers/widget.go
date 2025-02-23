@@ -329,7 +329,7 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -504,7 +504,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	}
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -557,7 +557,7 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	widgetId := c.Param("widget_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -598,7 +598,7 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 	widgetId := c.Param("widget_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -706,7 +706,7 @@ func (handlers *FeedHandlers) CreateLMWidget(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -754,7 +754,7 @@ func (handlers *FeedHandlers) EditLMWidget(c *gin.Context) {
 	widgetId := c.Param("widget_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

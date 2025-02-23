@@ -103,7 +103,7 @@ func (handlers *FeedHandlers) SavePost(c *gin.Context) {
 	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
+	community_id := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if community_id == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -178,7 +178,7 @@ func (handlers *FeedHandlers) FetchUserSavedPosts(c *gin.Context) {
 	}
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
