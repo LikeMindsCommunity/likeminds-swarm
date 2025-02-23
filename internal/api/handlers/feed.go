@@ -118,6 +118,8 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		return
 	}
 
+	loggedInUserParams.BlockedUsersList = blockUserValuesList
+
 	// Combine the above two lists to get excluded user lists
 	excludedUserIds := append(blockUserValuesList.BlockedUsers, blockUserValuesList.BlockingUsers...)
 
@@ -181,6 +183,20 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	// Get Community Configurations and set it in loggedInUserParams
+	communityConfigurations, err := externalHelpers.GetCommunityConfigurations(handlers.cacheHelper, userId, communityId)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	if communityConfigurations.CommunityConfigurations == nil {
+		utils.GeneralAPIValidationError(c, "Community configurations not found")
+		return
+	}
+
+	loggedInUserParams.CommunityConfigurations = communityConfigurations.CommunityConfigurations
 
 	// parse posts
 	parsedPosts := parseMultiplePostResponse(handlers, loggedInUserParams, postResults)

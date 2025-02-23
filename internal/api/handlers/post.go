@@ -939,15 +939,6 @@ func parseMultiplePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUse
 
 	defer utils.Timer("parseMultiplePostResponse")()
 
-	// loggedInUser := LoggedInUserParams{
-	// 	UserId:           userId,
-	// 	IsCm:             isCm,
-	// 	VersionCode:      versionCode,
-	// 	PlatformCode:     platformCode,
-	// 	ApiRevampCheckV1: apiRevampV1Check,
-	// 	MemberRole:       memberRole,
-	// }
-
 	postIds := []primitive.ObjectID{}
 	for _, post := range posts {
 		postIds = append(postIds, post.ID)
