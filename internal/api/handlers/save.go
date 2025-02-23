@@ -65,8 +65,6 @@ func fetchUserSavedStatusByPostId(helper interfaces.SaveHelper, post_id string, 
 func fetchUserSavedStatusByPostIds(helper interfaces.SaveHelper, postIds []primitive.ObjectID, savedBy string,
 ) map[primitive.ObjectID]bool {
 
-	defer utils.Timer("fetchUserSavedStatusByPostIds")()
-
 	userSavedStatusMap := make(map[primitive.ObjectID]bool, len(postIds))
 
 	saveFilterData := gin.H{

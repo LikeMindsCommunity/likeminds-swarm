@@ -80,8 +80,6 @@ func fetchEntityLikesCount(helper interfaces.LikeHelper, entity_id string, entit
 func fetchMultipleEntitiesLikesCount(helper interfaces.LikeHelper, entity_ids []primitive.ObjectID, entity_type string,
 ) map[primitive.ObjectID]int {
 
-	defer utils.Timer("fetchMultipleEntitiesLikesCount")()
-
 	counts := make(map[primitive.ObjectID]int, len(entity_ids))
 
 	// fetch likes count using helper method
@@ -180,8 +178,6 @@ func fetchUserLikedStatusByEntity(helper interfaces.LikeHelper, entity_id string
 
 func fetchUserLikedStatusForMultipleEntities(helper interfaces.LikeHelper, entityIds []primitive.ObjectID, entityType string, likedBy string,
 ) map[primitive.ObjectID]bool {
-
-	defer utils.Timer("fetchUserLikedStatusForMultipleEntities")()
 
 	likedStatus := make(map[primitive.ObjectID]bool, len(entityIds))
 

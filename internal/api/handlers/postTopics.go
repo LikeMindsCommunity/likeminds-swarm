@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -138,9 +137,8 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 	return postIdsFilterData
 }
 
-func getPostIdsBasedOnTopicsFilter(handlers *FeedHandlers, topicIds []string) ([]primitive.ObjectID, error) {
-
-	defer utils.Timer("getPostIdsBasedOnTopicsFilter")()
+func getPostIdsBasedOnTopicsFilter(handlers *FeedHandlers, topicIds []string,
+) ([]primitive.ObjectID, error) {
 
 	var postIds []primitive.ObjectID
 

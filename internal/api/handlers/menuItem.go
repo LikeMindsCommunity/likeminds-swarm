@@ -237,8 +237,6 @@ func getEntityMenuItems(cacheHelper cache.Helper, loggedInUser *LoggedInUserPara
 	isPinned bool, isHidden bool, entityCreatorId string,
 ) []responses.MenuResponse {
 
-	defer utils.Timer("getEntityMenuItems")()
-
 	var output_menu_items []responses.MenuResponse
 	externalEntities := &externalHelpers.ExternalEntities{}
 

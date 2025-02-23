@@ -45,7 +45,6 @@ func fetchPostCommentsCount(helper interfaces.CommentHelper, postId string) int 
 // Internal Method to fetch comments count of multiple posts
 func fetchMultiplePostsCommentsCount(helper interfaces.CommentHelper, postIds []primitive.ObjectID) map[primitive.ObjectID]int {
 
-	defer utils.Timer("fetchMultiplePostsCommentsCount")()
 	count := make(map[primitive.ObjectID]int, len(postIds))
 
 	// fetch comments count for each post

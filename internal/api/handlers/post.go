@@ -50,9 +50,8 @@ func getPostRepostCount(widgetHelper interfaces.WidgetHelper, post *entities.Pos
 }
 
 // Internal Method to fetch repost count for multiple posts
-func GetRepostCountForMultiplePosts(widgetHelper interfaces.WidgetHelper, posts []entities.Post) map[primitive.ObjectID]int {
-
-	defer utils.Timer("GetRepostCountForMultiplePosts")()
+func GetRepostCountForMultiplePosts(widgetHelper interfaces.WidgetHelper, posts []entities.Post,
+) map[primitive.ObjectID]int {
 
 	postRepostCount := make(map[primitive.ObjectID]int, len(posts))
 
@@ -121,8 +120,6 @@ func getIsRepostedByUser(widgetHelper interfaces.WidgetHelper, userID string, po
 
 func getIsRepostedByUserForMultiplePosts(widgetHelper interfaces.WidgetHelper, userID string, posts []entities.Post,
 ) map[primitive.ObjectID]bool {
-
-	defer utils.Timer("getIsRepostedByUserForMultiplePosts")()
 
 	isRepostedByUserMap := make(map[primitive.ObjectID]bool, len(posts))
 
@@ -560,8 +557,6 @@ func getWidgetIdsFromPosts(response interface{}) []primitive.ObjectID {
 func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interface{}, communityId int,
 ) map[string]responses.TopicResponse {
 
-	defer utils.Timer("getTopicDataFromPosts")()
-
 	topicsMap := map[string]responses.TopicResponse{}
 
 	topicIds := getTopicIdsFromPosts(response)
@@ -582,8 +577,6 @@ func getTopicDataFromPosts(topicHelper interfaces.TopicHelper, response interfac
 func getWidgetDataFromFeedResponse(handlers *FeedHandlers, response interface{}, communityId int, userIsCM bool, userId string,
 ) map[string]requests.WidgetResponse {
 
-	defer utils.Timer("getWidgetDataFromFeedResponse")()
-
 	// get widget ids from posts
 	widgetIds := getWidgetIdsFromPosts(response)
 
@@ -603,8 +596,6 @@ func getWidgetDataFromFeedResponse(handlers *FeedHandlers, response interface{},
 
 func getOriginalPostForReposts(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, response interface{},
 ) map[string]responses.PostResponse {
-
-	defer utils.Timer("getOriginalPostForReposts")()
 
 	postsResponseMap := map[string]responses.PostResponse{}
 
@@ -802,8 +793,6 @@ func getPostUserId(post *entities.Post, loggedInUser *LoggedInUserParams) string
 func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, post *entities.Post, postSecondaryData *PostSecondaryDataParams,
 ) responses.PostResponse {
 
-	defer utils.Timer("parsePostResponse")()
-
 	var response responses.PostResponse
 
 	response.ID = post.ID
@@ -862,10 +851,10 @@ func parsePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams,
 }
 
 // Internal method to compute post impressions and reach count
-func computePostImpressionReachCount(handlers *FeedHandlers, postIds []primitive.ObjectID) (map[primitive.ObjectID]PostImpressionsData, error) {
-	postImpressionReachMap := map[primitive.ObjectID]PostImpressionsData{}
+func computePostImpressionReachCount(handlers *FeedHandlers, postIds []primitive.ObjectID,
+) (map[primitive.ObjectID]PostImpressionsData, error) {
 
-	defer utils.Timer("computePostImpressionReachCount")()
+	postImpressionReachMap := map[primitive.ObjectID]PostImpressionsData{}
 
 	postImpressionsFilter := []map[string]interface{}{
 		gin.H{
@@ -936,8 +925,6 @@ func parseSinglePostResponse(handlers *FeedHandlers, postData *entities.Post, lo
 // Internal Method to parse multiple post for response
 func parseMultiplePostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, posts []entities.Post,
 ) []responses.PostResponse {
-
-	defer utils.Timer("parseMultiplePostResponse")()
 
 	postIds := []primitive.ObjectID{}
 	for _, post := range posts {

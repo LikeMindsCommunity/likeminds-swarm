@@ -25,10 +25,10 @@ func GetOrdinal(number int) string {
 	return strconv.Itoa(number) + "th"
 }
 
-// defer timer("sum")()
+// Measure the time taken by a function | usage: defer Timer("functionName")() at the beginning of the function
 func Timer(name string) func() {
 	start := time.Now()
 	return func() {
-		fmt.Printf("DEBUG_LOAD_TEST | %s took %v\n", name, time.Since(start).Milliseconds())
+		fmt.Printf("%s took %v\n", name, time.Since(start).Milliseconds())
 	}
 }

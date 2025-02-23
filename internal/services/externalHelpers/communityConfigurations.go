@@ -9,7 +9,6 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 type ExternalEntities struct {
@@ -72,9 +71,8 @@ func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityCon
 }
 
 // Exposed Method to fetch community configurations from cache and if not found then from API
-func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communityId int) (*CommunityConfirgurationResponse, error) {
-
-	defer utils.Timer("GetCommunityConfigurations")()
+func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communityId int,
+) (*CommunityConfirgurationResponse, error) {
 
 	var communityConfigurationResponse CommunityConfirgurationResponse
 

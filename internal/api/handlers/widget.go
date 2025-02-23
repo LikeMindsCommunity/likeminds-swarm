@@ -179,8 +179,6 @@ func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]in
 	communityId int, userIsCm bool, userId string, parentEntityId string,
 ) map[string]interface{} {
 
-	defer utils.Timer("parseLMMeta")()
-
 	widgetType, exists := lmMeta["type"]
 	if exists && widgetType == enums.ReplyPrivatelyLMWidget {
 		return lmMeta
@@ -267,8 +265,6 @@ func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, commun
 
 	var response requests.WidgetResponse
 
-	defer utils.Timer("parseWidgetResponse")()
-
 	response.ID = widget.ID
 	response.ParentEntityID = widget.ParentEntityID
 	response.ParentEntityType = widget.ParentEntityType
@@ -282,8 +278,6 @@ func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, commun
 
 // Internal Method to fetch widgets using widgetIds and communityId
 func fetchWidgetsByIDs(helper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) ([]entities.Widget, error) {
-
-	defer utils.Timer("fetchWidgetsByIDs")()
 
 	// widget filter data
 	widgetFilterData := gin.H{

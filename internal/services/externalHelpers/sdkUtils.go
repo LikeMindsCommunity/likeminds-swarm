@@ -53,8 +53,6 @@ func setCommunityIdAgainstApiKeyInCache(cacheHelper cache.Helper, apiKey string,
 // Exposed Method to get Community ID from API Key
 func GetCommunityId(c *gin.Context, cacheHelper cache.Helper) int {
 
-	defer utils.Timer("GetCommunityId")()
-
 	apiKey := c.GetHeader(utils.HeadersApiKey)
 
 	// Fetch community_id from cache
