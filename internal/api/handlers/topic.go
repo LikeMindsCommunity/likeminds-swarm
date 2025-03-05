@@ -346,7 +346,7 @@ func (handlers *FeedHandlers) CreateTopics(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -461,7 +461,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -607,7 +607,7 @@ func (handlers *FeedHandlers) EditTopic(c *gin.Context) {
 	topicId := c.Param("topic_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -750,7 +750,7 @@ func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, delete
 func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

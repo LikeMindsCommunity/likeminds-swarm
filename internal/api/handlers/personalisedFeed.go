@@ -31,7 +31,7 @@ func (handlers *FeedHandlers) RecomputePersonalisedFeed(c *gin.Context) {
 	apiKey := headers[utils.HeadersApiKey]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -644,12 +644,12 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
 
-	loggedInUser := LoggedInUserParams{
+	loggedInUser := &LoggedInUserParams{
 		UserId:           userId,
 		CommunityId:      communityId,
 		IsCm:             isCm,
@@ -775,10 +775,10 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		}
 
 		// parse posts for multiple post response
-		parsedPosts := parseMultiplePostResponse(handlers, sortedPosts, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole)
+		parsedPosts := parseMultiplePostResponse(handlers, loggedInUser, sortedPosts)
 
 		// parse posts for final response (topics, widgets, comments, etc)
-		finalParsedResponse = parsePostsAndGenerateFinalResponse(handlers, &loggedInUser, parsedPosts)
+		finalParsedResponse = parsePostsAndGenerateFinalResponse(handlers, loggedInUser, parsedPosts)
 	}
 
 	// return final response
@@ -794,7 +794,7 @@ func (handlers *FeedHandlers) ReorderPersonalisedFeed(c *gin.Context) {
 	MemberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -948,7 +948,7 @@ func (handlers *FeedHandlers) ComputeCommunityDefaultFeed(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

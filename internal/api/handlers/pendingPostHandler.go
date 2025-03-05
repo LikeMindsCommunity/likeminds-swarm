@@ -21,26 +21,13 @@ import (
 )
 
 // Internal Method to parse pending post for response
-func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.PendingPost, userId string, isCm bool,
-	versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
+func parsePendingPostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, pendingPost entities.PendingPost,
 ) responses.PostResponse {
 
-	memberRole = utils.GuestRole
+	postResponse := parseSinglePostResponse(handlers, &pendingPost.PostData, loggedInUser)
 
-	loggedInUser := LoggedInUserParams{
-		UserId:           userId,
-		IsCm:             isCm,
-		PlatformCode:     platformCode,
-		VersionCode:      versionCode,
-		ApiRevampCheckV1: apiRevampV1Check,
-		MemberRole:       memberRole,
-	}
-
-	postResponse := parseSinglePostResponse(handlers, &pendingPost.PostData, &loggedInUser)
-
-	postResponse.MenuItems = getEntityMenuItems(constants.PendingPostEntityType, isCm,
-		userId == pendingPost.UserId, pendingPost.PostData.IsPinned, pendingPost.PostData.IsHidden,
-		versionCode, platformCode, userId, pendingPost.PostData.CommunityId, handlers.cacheHelper, pendingPost.UserId)
+	postResponse.MenuItems = getEntityMenuItems(handlers.cacheHelper, loggedInUser, constants.PendingPostEntityType,
+		loggedInUser.UserId == pendingPost.UserId, pendingPost.PostData.IsPinned, pendingPost.PostData.IsHidden, pendingPost.UserId)
 
 	postResponse.IsPendingPost = true
 	postResponse.PostStatus = pendingPost.Status
@@ -50,14 +37,13 @@ func parsePendingPostResponse(handlers *FeedHandlers, pendingPost entities.Pendi
 }
 
 // Internal Method to parse multiple pending posts for response
-func parseMultiplePendingPostResponse(handlers *FeedHandlers, pendingPosts []entities.PendingPost, userId string, isCm bool,
-	versionCode string, platformCode string, apiRevampV1Check bool, memberRole string,
+func parseMultiplePendingPostResponse(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, pendingPosts []entities.PendingPost,
 ) []responses.PostResponse {
 
 	response := []responses.PostResponse{}
 
 	for _, pendingPost := range pendingPosts {
-		response = append(response, parsePendingPostResponse(handlers, pendingPost, userId, isCm, versionCode, platformCode, apiRevampV1Check, memberRole))
+		response = append(response, parsePendingPostResponse(handlers, loggedInUser, pendingPost))
 	}
 
 	return response
@@ -88,8 +74,8 @@ func fetchPendingPost(helper interfaces.PendingPostHelper, pendingPostId string,
 }
 
 // Internal Method to fetch multiple posts data using post_ids
-func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []string, communityId int, userId string,
-	isCm bool, versionCode string, platformCode string, apiRevampV1Check bool) (map[string]responses.PostResponse, error) {
+func fetchMultiplePendingPostsData(handlers *FeedHandlers, loggedInUser *LoggedInUserParams, pendingPostIds []string,
+) (map[string]responses.PostResponse, error) {
 
 	// convert post_ids to object ids
 	pendingPostObjectIds := helpers.ConvertIdsToObjectIds(pendingPostIds)
@@ -99,7 +85,7 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 		"_id": gin.H{
 			"$in": pendingPostObjectIds,
 		},
-		"community_id": communityId,
+		"community_id": loggedInUser.CommunityId,
 	}
 
 	// fetch posts using helper method
@@ -113,8 +99,7 @@ func fetchMultiplePendingPostsData(handlers *FeedHandlers, pendingPostIds []stri
 
 	// parse post data from pending posts
 	for _, pendingPost := range pendingPostLists {
-		postResponse[pendingPost.ID.Hex()] = parsePendingPostResponse(handlers, pendingPost, userId, isCm, versionCode,
-			platformCode, apiRevampV1Check, utils.DefaultRole)
+		postResponse[pendingPost.ID.Hex()] = parsePendingPostResponse(handlers, loggedInUser, pendingPost)
 	}
 
 	return postResponse, nil
@@ -200,7 +185,7 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	platformCode := headers[utils.HeadersPlatformCode]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -210,6 +195,16 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	if err := c.ShouldBindJSON(&cppr); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             cppr.UserIsCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// Validate create post request
@@ -232,11 +227,9 @@ func (handlers *FeedHandlers) CreatePendingPostForReview(c *gin.Context) {
 	pendingPostData, err := fetchPendingPost(handlers.pendingPostHelper, postData.ID.Hex(), communityId)
 	if err == nil {
 		response := gin.H{
-			"post": parsePendingPostResponse(handlers, *pendingPostData, headers[utils.HeadersMemberId], cppr.UserIsCm,
-				versionCode, platformCode, apiRevampV1Check, memberRole),
+			"post": parsePendingPostResponse(handlers, loggedInUser, *pendingPostData),
 		}
-		response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, cppr.UserIsCm,
-			apiRevampV1Check)
+		response = addMetadataInResponse(handlers, loggedInUser, response)
 
 		// Generate success response
 		utils.GenerateSuccessResponse(c, response)
@@ -253,7 +246,7 @@ func (handlers *FeedHandlers) ApproveOrRejectPendingPost(c *gin.Context) {
 	pendingPostId := c.Param("pending_post_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -455,7 +448,7 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	memberRole := headers[utils.HeadersMemberRole]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -465,6 +458,16 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	if err := c.ShouldBindJSON(&editPendingPostRequest); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             editPendingPostRequest.UserIsCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// fetch pending post data
@@ -575,12 +578,10 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 	pendingPostData, err = fetchPendingPost(handlers.pendingPostHelper, pendingPostId, communityId)
 	if err == nil {
 		response := gin.H{
-			"post": parsePendingPostResponse(handlers, *pendingPostData, headers[utils.HeadersMemberId], false,
-				versionCode, platformCode, apiRevampV1Check, memberRole),
+			"post": parsePendingPostResponse(handlers, loggedInUser, *pendingPostData),
 		}
 
-		response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
-			apiRevampV1Check)
+		response = addMetadataInResponse(handlers, loggedInUser, response)
 
 		// Generate success response
 		utils.GenerateSuccessResponse(c, response)
@@ -601,10 +602,22 @@ func (handlers *FeedHandlers) FetchPendingPost(c *gin.Context) {
 	platformCode := headers[utils.HeadersPlatformCode]
 	versionCode := headers[utils.HeadersVersionCode]
 
+	isCm := utils.IsCMRole(memberRole)
+
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// fetch pending post data
@@ -620,12 +633,10 @@ func (handlers *FeedHandlers) FetchPendingPost(c *gin.Context) {
 	}
 
 	response := gin.H{
-		"post": parsePendingPostResponse(handlers, *pendingPostData, headers[utils.HeadersMemberId], false,
-			versionCode, platformCode, apiRevampV1Check, memberRole),
+		"post": parsePendingPostResponse(handlers, loggedInUser, *pendingPostData),
 	}
 
-	response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
-		apiRevampV1Check)
+	response = addMetadataInResponse(handlers, loggedInUser, response)
 
 	// Generate success response
 	utils.GenerateSuccessResponse(c, response)
@@ -636,16 +647,27 @@ func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
 	// fetch url params and headers
 	headers := utils.GetHeaders(c)
 	userId := c.Param("user_id")
-	isCm := false
 
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
 	versionCode := headers[utils.HeadersAcceptVersion]
 	platformCode := headers[utils.HeadersPlatformCode]
+	memberRole := headers[utils.HeadersMemberRole]
+	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
+	}
+
+	loggedInUser := &LoggedInUserParams{
+		UserId:           userId,
+		CommunityId:      communityId,
+		IsCm:             isCm,
+		VersionCode:      versionCode,
+		PlatformCode:     platformCode,
+		ApiRevampCheckV1: apiRevampV1Check,
+		MemberRole:       memberRole,
 	}
 
 	// post filter data
@@ -681,8 +703,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
 		return
 	}
 
-	pendingPostResponse := parseMultiplePendingPostResponse(handlers, pendingPostResults, userId, isCm,
-		headers[utils.HeadersVersionCode], headers[utils.HeadersPlatformCode], apiRevampV1Check, utils.DefaultRole)
+	pendingPostResponse := parseMultiplePendingPostResponse(handlers, loggedInUser, pendingPostResults)
 
 	// response data
 	response := gin.H{
@@ -690,8 +711,7 @@ func (handlers *FeedHandlers) FetchUserCreatedPendingPosts(c *gin.Context) {
 		"total_count": pendingPostsResultsCount,
 	}
 
-	response = addMetadataInResponse(handlers, response, communityId, userId, platformCode, versionCode, false,
-		apiRevampV1Check)
+	response = addMetadataInResponse(handlers, loggedInUser, response)
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)
@@ -706,7 +726,7 @@ func (handlers *FeedHandlers) DeletePendingPost(c *gin.Context) {
 	userId := headers[utils.HeadersMemberId]
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

@@ -151,7 +151,7 @@ func (handlers *FeedHandlers) UpdateConnection(c *gin.Context) {
 	userId := c.Param("user_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

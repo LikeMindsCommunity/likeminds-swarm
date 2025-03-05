@@ -21,7 +21,7 @@ func (handlers *FeedHandlers) DeleteUserData(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
+	community_id := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if community_id == externalHelpers.DefaultCommunityId {
 		return
 	}

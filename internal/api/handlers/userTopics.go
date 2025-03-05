@@ -102,7 +102,7 @@ func (handlers *FeedHandlers) FetchUsersTopics(c *gin.Context) {
 	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// validate community id
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		utils.GeneralAPIValidationError(c, "Invalid community id")
 		return
@@ -304,7 +304,7 @@ func (handlers *FeedHandlers) UpdateUserTopics(c *gin.Context) {
 	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
 
 	// validate community id
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		utils.GeneralAPIValidationError(c, "Invalid community id")
 		return

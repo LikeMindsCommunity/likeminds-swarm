@@ -123,7 +123,20 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 	pollType, pollTypeExists := metaData["poll_type"]
 	pollVote, _ := GetPollVoteOfUUID(handlers, entityId, communityId, userId)
 
-	pollExpiryTime := metaData["expiry_time"].(float64)
+	pollExpiryTime := 0.0
+
+	switch v := metaData["expiry_time"].(type) {
+	case float64:
+		pollExpiryTime = v
+	case int:
+		pollExpiryTime = float64(v)
+	case int64:
+		pollExpiryTime = float64(v)
+	case int32:
+		pollExpiryTime = float64(v)
+	default:
+		pollExpiryTime = 0
+	}
 
 	toShowResults := false
 
@@ -163,9 +176,10 @@ func fetchPollVotesDataMap(handlers *FeedHandlers, entityId string, metaData map
 
 // Internal Method to parse LM meta object for response
 func parseLMMeta(handlers *FeedHandlers, entityId string, metaData map[string]interface{}, lmMeta map[string]interface{},
-	communityId int, userIsCm bool, userId string, parentEntityId string) map[string]interface{} {
-	widgetType, exists := lmMeta["type"]
+	communityId int, userIsCm bool, userId string, parentEntityId string,
+) map[string]interface{} {
 
+	widgetType, exists := lmMeta["type"]
 	if exists && widgetType == enums.ReplyPrivatelyLMWidget {
 		return lmMeta
 
@@ -246,7 +260,9 @@ func getAnswerTextForPoll(uniqueVotersOnPoll int64) string {
 }
 
 // Internal Method to parse Widget for response
-func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, userId string) requests.WidgetResponse {
+func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, communityId int, userIsCM bool, userId string,
+) requests.WidgetResponse {
+
 	var response requests.WidgetResponse
 
 	response.ID = widget.ID
@@ -262,6 +278,7 @@ func parseWidgetResponse(handlers *FeedHandlers, widget *entities.Widget, commun
 
 // Internal Method to fetch widgets using widgetIds and communityId
 func fetchWidgetsByIDs(helper interfaces.WidgetHelper, widgetIds []primitive.ObjectID, communityId int) ([]entities.Widget, error) {
+
 	// widget filter data
 	widgetFilterData := gin.H{
 		"_id": gin.H{
@@ -308,7 +325,7 @@ func (handlers *FeedHandlers) CreateWidget(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -483,7 +500,7 @@ func (handlers *FeedHandlers) FetchWidget(c *gin.Context) {
 	}
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -536,7 +553,7 @@ func (handlers *FeedHandlers) EditWidget(c *gin.Context) {
 	widgetId := c.Param("widget_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -577,7 +594,7 @@ func (handlers *FeedHandlers) DeleteWidget(c *gin.Context) {
 	widgetId := c.Param("widget_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -685,7 +702,7 @@ func (handlers *FeedHandlers) CreateLMWidget(c *gin.Context) {
 	headers := utils.GetHeaders(c)
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -733,7 +750,7 @@ func (handlers *FeedHandlers) EditLMWidget(c *gin.Context) {
 	widgetId := c.Param("widget_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

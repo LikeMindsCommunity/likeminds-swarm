@@ -22,6 +22,7 @@ type BlockUserCache struct {
 
 // Internal method to fetch block user list against userId from caravan service
 func GetUserBlockList(cacheHelper cache.Helper, userId string, communityId int) (*BlockUserCache, error) {
+
 	var blockUserResponse BlockUserResponse
 	blockUserValue := BlockUserCache{
 		BlockingUsers: []string{},

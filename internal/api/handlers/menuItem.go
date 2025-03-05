@@ -132,6 +132,7 @@ func GetIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *external
 
 // Exposed Method to get Post Menu for CMs who are not owners
 func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bool, externalEntities *externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
+
 	menuItems := []responses.MenuResponse{}
 
 	menuItemsConfig := externalHelpers.GetMenuItemsConfig(externalEntities.CommunityConfigurations)
@@ -166,6 +167,7 @@ func GetNotIsOwnerIsCmPostMenuItems(isPinned bool, isHidden bool, isEditCheck bo
 
 // Exposed Method to get Post Menu for members
 func GetNotIsOwnerNotIsCmPostMenuItems(isEditCheck bool, externalEntities *externalHelpers.ExternalEntities, isEntityOwnerBlocked bool) []responses.MenuResponse {
+
 	menuItems := []responses.MenuResponse{getMenuItem(constants.ReportPostMenuItemName, externalEntities)}
 
 	// if !isEntityOwnerBlocked {
@@ -223,65 +225,71 @@ func GetPendingPostMenuItems(isEditCheck bool, externalEntities *externalHelpers
 }
 
 // Internal Method to fetch menu items for a user on an Entity
-func getEntityMenuItems(entityType string, isCm bool, isOwner bool, isPinned bool, isHidden bool,
-	versionCode string, platformCode string, userId string, communityId int, cacheHelper cache.Helper, entityCreatorId string,
+func getEntityMenuItems(cacheHelper cache.Helper, loggedInUser *LoggedInUserParams, entityType string, isOwner bool,
+	isPinned bool, isHidden bool, entityCreatorId string,
 ) []responses.MenuResponse {
 
 	var output_menu_items []responses.MenuResponse
-	var externalEntities externalHelpers.ExternalEntities
+	externalEntities := &externalHelpers.ExternalEntities{}
 
-	isEditEnabled := utils.CheckVersion(utils.EditFeedEntityVersions, versionCode, platformCode)
+	isEditEnabled := utils.CheckVersion(utils.EditFeedEntityVersions, loggedInUser.VersionCode, loggedInUser.PlatformCode)
 
 	switch entityType {
 	case constants.PostEntityType:
-		// Get community configurations
-		communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(cacheHelper, userId, communityId)
 
-		if communityConfigurationResponse != nil {
-			externalEntities = externalHelpers.ExternalEntities{
-				CommunityConfigurations: communityConfigurationResponse.CommunityConfigurations,
+		// Get community configurations
+		communityConfigurations := loggedInUser.CommunityConfigurations
+		if communityConfigurations == nil {
+			communityConfigurationResponse, _ := externalHelpers.GetCommunityConfigurations(cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId)
+			if communityConfigurationResponse != nil {
+				communityConfigurations = communityConfigurationResponse.CommunityConfigurations
 			}
 		}
 
+		externalEntities.CommunityConfigurations = communityConfigurations
+
 		// Get users list who are blocked by userId or blocked the userId
-		blockUserValuesList, _ := externalHelpers.GetUserBlockList(cacheHelper, userId, communityId)
+		blockUserValuesList := loggedInUser.BlockedUsersList
+		if blockUserValuesList == nil {
+			blockUserValuesList, _ = externalHelpers.GetUserBlockList(cacheHelper, loggedInUser.UserId, loggedInUser.CommunityId)
+		}
 
 		isEntityOwnerBlocked := false
 		if len(utils.GetSimilarBetweenArray([]string{entityCreatorId}, blockUserValuesList.BlockedUsers)) > 0 {
 			isEntityOwnerBlocked = true
 		}
 
-		if isOwner && isCm {
-			output_menu_items = GetIsOwnerIsCmPostMenuItems(isPinned, isHidden, isEditEnabled, &externalEntities)
+		if isOwner && loggedInUser.IsCm {
+			output_menu_items = GetIsOwnerIsCmPostMenuItems(isPinned, isHidden, isEditEnabled, externalEntities)
 		}
 
-		if isOwner && !isCm {
-			output_menu_items = GetIsOwnerNotIsCmPostMenuItems(isEditEnabled, &externalEntities)
+		if isOwner && !loggedInUser.IsCm {
+			output_menu_items = GetIsOwnerNotIsCmPostMenuItems(isEditEnabled, externalEntities)
 		}
 
-		if !isOwner && isCm {
-			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(isPinned, isHidden, isEditEnabled, &externalEntities, isEntityOwnerBlocked)
+		if !isOwner && loggedInUser.IsCm {
+			output_menu_items = GetNotIsOwnerIsCmPostMenuItems(isPinned, isHidden, isEditEnabled, externalEntities, isEntityOwnerBlocked)
 		}
 
-		if !isOwner && !isCm {
-			output_menu_items = GetNotIsOwnerNotIsCmPostMenuItems(isEditEnabled, &externalEntities, isEntityOwnerBlocked)
+		if !isOwner && !loggedInUser.IsCm {
+			output_menu_items = GetNotIsOwnerNotIsCmPostMenuItems(isEditEnabled, externalEntities, isEntityOwnerBlocked)
 		}
 
 	case constants.CommentEntityType:
 		if isOwner {
-			output_menu_items = GetIsOwnerCommentMenuItems(isEditEnabled, &externalEntities)
+			output_menu_items = GetIsOwnerCommentMenuItems(isEditEnabled, externalEntities)
 		}
 
-		if !isOwner && isCm {
-			output_menu_items = GetNotIsOwnerIsCmCommentMenuItems(isEditEnabled, &externalEntities)
+		if !isOwner && loggedInUser.IsCm {
+			output_menu_items = GetNotIsOwnerIsCmCommentMenuItems(isEditEnabled, externalEntities)
 		}
 
-		if !isOwner && !isCm {
-			output_menu_items = GetNotIsOwnerNotIsCmCommentMenuItems(isEditEnabled, &externalEntities)
+		if !isOwner && !loggedInUser.IsCm {
+			output_menu_items = GetNotIsOwnerNotIsCmCommentMenuItems(isEditEnabled, externalEntities)
 		}
 
 	case constants.PendingPostEntityType:
-		output_menu_items = GetPendingPostMenuItems(isEditEnabled, &externalEntities)
+		output_menu_items = GetPendingPostMenuItems(isEditEnabled, externalEntities)
 	}
 
 	return output_menu_items

@@ -71,7 +71,9 @@ func GetCommunityConfigurationAgainstType(communityConfigurations []CommunityCon
 }
 
 // Exposed Method to fetch community configurations from cache and if not found then from API
-func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communityId int) (*CommunityConfirgurationResponse, error) {
+func GetCommunityConfigurations(cacheHelper cache.Helper, userId string, communityId int,
+) (*CommunityConfirgurationResponse, error) {
+
 	var communityConfigurationResponse CommunityConfirgurationResponse
 
 	// Get data from cache
