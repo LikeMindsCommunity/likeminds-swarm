@@ -72,7 +72,7 @@ func getUniversalFeedPostFilter(communityId int, userId string, excludedUserIds 
 // Exposed Method to fetch the Universal Feed for a User
 func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
-	versionCode := headers[utils.HeadersAcceptVersion]
+	versionCode := headers[utils.HeadersVersionCode]
 	platformCode := headers[utils.HeadersPlatformCode]
 	memberRole := headers[utils.HeadersMemberRole]
 
