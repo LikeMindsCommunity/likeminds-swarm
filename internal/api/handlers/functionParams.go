@@ -1,14 +1,18 @@
 package handlers
 
+import "github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+
 // Params Structure for Logged In User
 type LoggedInUserParams struct {
-	UserId           string
-	CommunityId      int
-	IsCm             bool
-	PlatformCode     string
-	VersionCode      string
-	ApiRevampCheckV1 bool
-	MemberRole       string
+	UserId                  string
+	CommunityId             int
+	IsCm                    bool
+	PlatformCode            string
+	VersionCode             string
+	ApiRevampCheckV1        bool
+	MemberRole              string
+	CommunityConfigurations []externalHelpers.CommunityConfiguration
+	BlockedUsersList        *externalHelpers.BlockUserCache
 }
 
 type PostImpressionsData struct {

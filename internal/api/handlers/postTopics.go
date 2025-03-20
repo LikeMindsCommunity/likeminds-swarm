@@ -137,7 +137,9 @@ func createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds []string) []map[
 	return postIdsFilterData
 }
 
-func getPostIdsBasedOnTopicsFilter(handlers *FeedHandlers, topicIds []string) ([]primitive.ObjectID, error) {
+func getPostIdsBasedOnTopicsFilter(handlers *FeedHandlers, topicIds []string,
+) ([]primitive.ObjectID, error) {
+
 	var postIds []primitive.ObjectID
 
 	postIdsFilterData := createFilterQueryToGetTopicIdsBasedOnTopicsFilter(topicIds)

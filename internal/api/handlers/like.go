@@ -213,7 +213,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 	isCm := utils.IsCMRole(memberRole)
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
+	community_id := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if community_id == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -387,7 +387,7 @@ func (handlers *FeedHandlers) FetchPostLikes(c *gin.Context) {
 	post_id := c.Param("post_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -444,7 +444,7 @@ func (handlers *FeedHandlers) LikeComment(c *gin.Context) {
 	comment_id := c.Param("comment_id")
 
 	// validation of api_key
-	community_id := externalHelpers.GetCommunityId(c)
+	community_id := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if community_id == externalHelpers.DefaultCommunityId {
 		return
 	}
@@ -623,7 +623,7 @@ func (handlers *FeedHandlers) FetchCommentLikes(c *gin.Context) {
 	comment_id := c.Param("comment_id")
 
 	// validation of api_key
-	communityId := externalHelpers.GetCommunityId(c)
+	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}

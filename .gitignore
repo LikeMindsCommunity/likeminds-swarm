@@ -22,8 +22,5 @@ __debug_bin
 #Go build binary
 likeminds-swarm
 
-#Environment file
-.env
-
 #Config directory
 config/*

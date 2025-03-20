@@ -88,7 +88,9 @@ func (helper *postHelper) EditPostHelper(postId primitive.ObjectID, text string,
 }
 
 // Exposed Helper Method to Find Post
-func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Post, error) {
+func (helper *postHelper) FindPostHelper(filter map[string]interface{}, filterOptions map[string]interface{},
+) ([]entities.Post, error) {
+
 	fOpts := mergeFilterOptions(filterOptions)
 
 	err := convertHexIdsToObjectIds(filter, []string{"_id"})
