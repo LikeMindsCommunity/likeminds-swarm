@@ -46,7 +46,7 @@ services:
     build:
       dockerfile: ./Dockerfile.swarm-beta
     ports:
-      - 8081:8081
+      - 8082:8081
     networks:
       - likeminds-network
     depends_on:
