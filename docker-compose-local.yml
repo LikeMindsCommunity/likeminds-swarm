@@ -28,6 +28,18 @@ services:
     networks:
       - likeminds-network
 
+  swarm_elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.0
+    container_name: swarm_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - 9201:9200
+    restart: unless-stopped
+    networks:
+      - likeminds-network
+
   swarm:
     container_name: swarm
     hostname: swarm
@@ -35,34 +47,19 @@ services:
       dockerfile: ./Dockerfile.swarm-beta
     ports:
       - 8081:8081
-    environment:
-      - REDIS_DSN=swarm_redis:6379
-      - ASYNQ_BROKER_ADDRESS=swarm_worker_redis:6379
-      - MONGODB_URI=mongodb://root:example@swarm_mongodb:27017/
-      - CARAVAN_SERVICE_URL=http://caravan:8000
-      - KETTLE_SERVICE_URL=http://auth:8080
-      - ELASTIC_SEARCH_HOST=caravan_elasticsearch
-    restart: unless-stopped
     networks:
       - likeminds-network
     depends_on:
       - swarm_mongodb
       - swarm_redis
       - swarm_worker_redis
-      - caravan_elasticsearch
+      - swarm_elasticsearch
 
   swarm_worker:
     container_name: swarm_worker
     hostname: swarm_worker
     build:
       dockerfile: ./Dockerfile.swarm-worker-beta
-    environment:
-      - REDIS_DSN=swarm_redis:6379
-      - ASYNQ_BROKER_ADDRESS=swarm_worker_redis:6379
-      - MONGODB_URI=mongodb://root:example@swarm_mongodb:27017/
-      - CARAVAN_SERVICE_URL=http://caravan:8000
-      - KETTLE_SERVICE_URL=http://auth:8080
-      - ELASTIC_SEARCH_HOST=caravan_elasticsearch
     restart: unless-stopped
     networks:
       - likeminds-network
@@ -70,7 +67,7 @@ services:
       - swarm_mongodb
       - swarm_redis
       - swarm_worker_redis
-      - caravan_elasticsearch
+      - swarm_elasticsearch
 
 networks:
   likeminds-network:
