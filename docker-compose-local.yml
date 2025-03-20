@@ -39,6 +39,11 @@ services:
     restart: unless-stopped
     networks:
       - likeminds-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   swarm:
     container_name: swarm
@@ -50,10 +55,14 @@ services:
     networks:
       - likeminds-network
     depends_on:
-      - swarm_mongodb
-      - swarm_redis
-      - swarm_worker_redis
-      - swarm_elasticsearch
+      swarm_mongodb:
+        condition: service_started
+      swarm_redis:
+        condition: service_started
+      swarm_worker_redis:
+        condition: service_started
+      swarm_elasticsearch:
+        condition: service_healthy
 
   swarm_worker:
     container_name: swarm_worker
@@ -64,10 +73,14 @@ services:
     networks:
       - likeminds-network
     depends_on:
-      - swarm_mongodb
-      - swarm_redis
-      - swarm_worker_redis
-      - swarm_elasticsearch
+      swarm_mongodb:
+        condition: service_started
+      swarm_redis:
+        condition: service_started
+      swarm_worker_redis:
+        condition: service_started
+      swarm_elasticsearch:
+        condition: service_healthy
 
 networks:
   likeminds-network:
