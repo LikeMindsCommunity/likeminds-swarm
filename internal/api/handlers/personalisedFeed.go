@@ -667,6 +667,9 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
+	queryPostIds := c.DefaultQuery("post_ids", "")
+	queryPostIdsArray := utils.ParseStringArrayParam(queryPostIds)
+
 	postIds := []string{}
 
 	if exists {
@@ -733,6 +736,25 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		"reposted_posts":    map[string]responses.PostResponse{},
 		"widgets":           map[string]requests.WidgetResponse{},
 		"filtered_comments": map[string]responses.CommentWithParentResponse{},
+	}
+
+	if len(queryPostIdsArray) > 0 {
+		// Create a map to track which IDs to exclude
+		excludeIds := map[string]bool{}
+		for _, postId := range queryPostIdsArray {
+			excludeIds[postId] = true
+		}
+
+		// Filter out postIds that are in queryPostIdsArray
+		filteredPostIds := []string{}
+		for _, postId := range postIds {
+			if !excludeIds[postId] {
+				filteredPostIds = append(filteredPostIds, postId)
+			}
+		}
+
+		// Add queryPostIdsArray at start and update postIds
+		postIds = append(queryPostIdsArray, filteredPostIds...)
 	}
 
 	postIdsLen := float64(len(postIds))
