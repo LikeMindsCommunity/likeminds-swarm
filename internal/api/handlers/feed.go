@@ -108,6 +108,9 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Parse widget ids string array
 	widgetIds := utils.ParseStringArrayParam(universalFeedRequest.WidgetIds)
 
+	// Parse post ids string array
+	postIds := utils.ParseStringArrayParam(universalFeedRequest.PostIds)
+
 	// Get users list who are blocked by userId or blocked the userId
 	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
@@ -123,9 +126,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// posts filter data
 	postFilterData := getUniversalFeedPostFilter(communityId, userId, excludedUserIds, loggedInUserParams.IsCm)
 
+	postObjectIdsList := []primitive.ObjectID{}
+
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
-		postObjectIdsList, err := getPostIdsBasedOnTopicsFilter(handlers, topicIds)
+		postObjectIdsList, err = getPostIdsBasedOnTopicsFilter(handlers, topicIds)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -147,6 +152,14 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 		postFilterData["_id"] = gin.H{
 			"$in": postObjectIdsList,
+		}
+
+	}
+
+	if len(postIds) > 0 {
+		postIdsObjectIds := helpers.ConvertIdsToObjectIds(postIds)
+		postFilterData["_id"] = gin.H{
+			"$in": append(postIdsObjectIds, postObjectIdsList...),
 		}
 	}
 
