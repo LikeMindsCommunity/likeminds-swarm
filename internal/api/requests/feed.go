@@ -5,6 +5,7 @@ type FetchUniversalFeedRequest struct {
 	IsCm      bool   `form:"user_is_cm"`
 	TopicIds  string `form:"topic_ids"`
 	WidgetIds string `form:"widget_ids"`
+	PostIds   string `form:"post_ids"`
 }
 
 // Request Structure for Fetch Explore Feed
