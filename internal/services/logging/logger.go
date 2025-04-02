@@ -2,14 +2,33 @@ package logging
 
 import (
 	coralogix "github.com/coralogix/go-coralogix-sdk"
+	"github.com/microsoft/ApplicationInsights-Go/appinsights"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	log                 *logrus.Logger
-	coralogixHookExists bool
+	log                 		*logrus.Logger
+	coralogixHookExists 		bool
+	appInsightsInitialized		bool
+	appInsightsClient			appinsights.TelemetryClient
 )
+
+func initializeApplicationInsights() {
+	instrumentationKey := environment.GoDotEnvVariable("AZURE_APPINSIGHTS_INSTRUMENTATION_KEY")
+
+	if len(instrumentationKey) == 0 {
+		log.Error("Invalid Application Insights Instrumentation Key, Cannot start Application Insights Logger")
+		return
+	}
+
+	appInsightsClient = appinsights.NewTelemetryClient(instrumentationKey)
+	appInsightsInitialized = true
+}
+
+func GetAppInsightsClient() appinsights.TelemetryClient {
+	return appInsightsClient
+}
 
 func addCoralogixHook(log *logrus.Logger) {
 	coralogixPrivateKey := environment.GoDotEnvVariable("CORALOGIX_PRIVATE_KEY")
@@ -44,6 +63,10 @@ func init() {
 	log.SetLevel(logrus.InfoLevel)
 	log.SetFormatter(&logrus.JSONFormatter{})
 
+	if !appInsightsInitialized {
+		initializeApplicationInsights()
+	}
+	
 	if !coralogixHookExists {
 		addCoralogixHook(log)
 	}
