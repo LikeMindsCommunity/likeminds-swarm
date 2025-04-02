@@ -70,6 +70,19 @@ func addSortingOptions(options map[string]interface{}, orderBy string, order int
 	return options
 }
 
+// Internal method to add sorting options to a pipeline from page filter options
+func addSortingOptionsToPipelineFromPageFilterOptions(pipeline []map[string]interface{}, pageFilterOptions map[string]interface{}, sortingOptions []string) []map[string]interface{} {
+	for _, optionKey := range sortingOptions {
+		if optionValue, ok := pageFilterOptions[optionKey]; ok {
+			pipeline = append(pipeline, gin.H{
+				optionKey: optionValue,
+			})
+		}
+	}
+
+	return pipeline
+}
+
 // Internal Method to generate filter from page params from an API
 func generatePageFilterOptions(c *gin.Context, sortKeyParam string, sortKeyOrderParam int) (map[string]interface{}, error) {
 

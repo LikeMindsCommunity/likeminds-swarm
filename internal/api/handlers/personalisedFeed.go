@@ -777,9 +777,29 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 			"community_id": communityId,
 		}
 
-		postsData, err := handlers.postHelper.FindPostHelper(postFilter, nil)
+		pipeline := []map[string]interface{}{
+			{"$match": postFilter},
+			getPostIdsOrderBasedOnListFilter(postObjectIds),
+		}
+
+		postAggregateResults, err := handlers.postHelper.AggregatePostHelper(pipeline)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		// Convert []gin.H to JSON
+		jsonData, err := json.Marshal(postAggregateResults)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		// Unmarshal JSON to []Post
+		var postsData []entities.Post
+		err = json.Unmarshal(jsonData, &postsData)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
 

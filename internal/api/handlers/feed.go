@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/requests"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"github.com/nateshr/likeminds-swarm/internal/helpers"
 	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
@@ -69,6 +71,30 @@ func getUniversalFeedPostFilter(communityId int, userId string, excludedUserIds 
 	return universalPostFilter
 }
 
+func getPostIdsOrderBasedOnListFilter(postIdsObjectIds []primitive.ObjectID) gin.H {
+	return gin.H{
+		"$addFields": gin.H{
+			"orderNumber": gin.H{
+				"$cond": gin.H{
+					"if": gin.H{
+						"$in": []interface{}{"$_id", postIdsObjectIds},
+					},
+					"then": gin.H{
+						"$subtract": []interface{}{
+							len(postIdsObjectIds),
+							gin.H{
+								"$indexOfArray": []interface{}{postIdsObjectIds, "$_id"},
+							},
+						},
+					},
+					"else": 0,
+				},
+			},
+		},
+	}
+
+}
+
 // Exposed Method to fetch the Universal Feed for a User
 func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	headers := utils.GetHeaders(c)
@@ -126,11 +152,9 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// posts filter data
 	postFilterData := getUniversalFeedPostFilter(communityId, userId, excludedUserIds, loggedInUserParams.IsCm)
 
-	postObjectIdsList := []primitive.ObjectID{}
-
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
-		postObjectIdsList, err = getPostIdsBasedOnTopicsFilter(handlers, topicIds)
+		postObjectIdsList, err := getPostIdsBasedOnTopicsFilter(handlers, topicIds)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -156,11 +180,22 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	}
 
+	// filter options
+	postFilterOptions, err := generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
+	if err != nil {
+		utils.GeneralAPIValidationError(c, err.Error())
+		return
+	}
+
+	pipeline := []map[string]interface{}{
+		{"$match": postFilterData},
+	}
+
 	if len(postIds) > 0 {
 		postIdsObjectIds := helpers.ConvertIdsToObjectIds(postIds)
-		postFilterData["_id"] = gin.H{
-			"$in": append(postIdsObjectIds, postObjectIdsList...),
-		}
+		pipeline = append(pipeline, getPostIdsOrderBasedOnListFilter(postIdsObjectIds))
+
+		postFilterOptions = addSortingOptions(postFilterOptions, "orderNumber", OrderTypeDescending)
 	}
 
 	// Add widget id filter if widget_ids param exists
@@ -178,19 +213,28 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 		postFilterData["attachments"] = widgetQuery
 	}
 
-	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
+	// Add post filter options
+	postFilterOptions = addSortingOptions(postFilterOptions, "created_at", OrderTypeDescending)
+	pipeline = addSortingOptionsToPipelineFromPageFilterOptions(pipeline, postFilterOptions, []string{"$sort", "$skip", "$limit"})
+
+	postAggregateResults, err := handlers.postHelper.AggregatePostHelper(pipeline)
+	if err != nil {
+		utils.GeneralAPIInternalError(c, err.Error())
+		return
+	}
+
+	// Convert []gin.H to JSON
+	jsonData, err := json.Marshal(postAggregateResults)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
-	// Add post filter options
-	postFilterOptions = addSortingOptions(postFilterOptions, "created_at", OrderTypeDescending)
-
-	postResults, err := handlers.postHelper.FindPostHelper(postFilterData, postFilterOptions)
+	// Unmarshal JSON to []Post
+	var postResults []entities.Post
+	err = json.Unmarshal(jsonData, &postResults)
 	if err != nil {
-		utils.GeneralAPIInternalError(c, err.Error())
+		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
 
