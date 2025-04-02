@@ -782,6 +782,14 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 			getPostIdsOrderBasedOnListFilter(postObjectIds),
 		}
 
+		postFilterOptions, err := generatePageFilterOptions(c, "orderNumber", OrderTypeDefault)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		pipeline = addSortingOptionsToPipelineFromPageFilterOptions(pipeline, postFilterOptions, []string{"$sort"})
+
 		postAggregateResults, err := handlers.postHelper.AggregatePostHelper(pipeline)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
