@@ -180,22 +180,32 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	}
 
-	// filter options
-	postFilterOptions, err := generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
-	if err != nil {
-		utils.GeneralAPIValidationError(c, err.Error())
-		return
-	}
-
 	pipeline := []map[string]interface{}{
 		{"$match": postFilterData},
 	}
+
+	var postFilterOptions map[string]interface{} = nil
 
 	if len(postIds) > 0 {
 		postIdsObjectIds := helpers.ConvertIdsToObjectIds(postIds)
 		pipeline = append(pipeline, getPostIdsOrderBasedOnListFilter(postIdsObjectIds))
 
-		postFilterOptions = addSortingOptions(postFilterOptions, "orderNumber", OrderTypeDescending)
+		postFilterOptions, err = generatePageFilterOptions(c, "orderNumber", OrderTypeDescending)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+	}
+
+	// filter options
+	if postFilterOptions == nil {
+		postFilterOptions, err = generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+	} else {
+		postFilterOptions = addSortingOptions(postFilterOptions, "is_pinned", OrderTypeDefault)
 	}
 
 	// Add widget id filter if widget_ids param exists
