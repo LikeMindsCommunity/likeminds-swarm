@@ -667,6 +667,9 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		return
 	}
 
+	queryPostIds := c.DefaultQuery("post_ids", "")
+	queryPostIdsArray := utils.ParseStringArrayParam(queryPostIds)
+
 	postIds := []string{}
 
 	if exists {
@@ -735,6 +738,25 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 		"filtered_comments": map[string]responses.CommentWithParentResponse{},
 	}
 
+	if len(queryPostIdsArray) > 0 {
+		// Create a map to track which IDs to exclude
+		excludeIds := map[string]bool{}
+		for _, postId := range queryPostIdsArray {
+			excludeIds[postId] = true
+		}
+
+		// Filter out postIds that are in queryPostIdsArray
+		filteredPostIds := []string{}
+		for _, postId := range postIds {
+			if !excludeIds[postId] {
+				filteredPostIds = append(filteredPostIds, postId)
+			}
+		}
+
+		// Add queryPostIdsArray at start and update postIds
+		postIds = append(queryPostIdsArray, filteredPostIds...)
+	}
+
 	postIdsLen := float64(len(postIds))
 
 	// slice postIds based on pagination
@@ -755,9 +777,37 @@ func (handlers *FeedHandlers) FetchPersonalisedFeed(c *gin.Context) {
 			"community_id": communityId,
 		}
 
-		postsData, err := handlers.postHelper.FindPostHelper(postFilter, nil)
+		pipeline := []map[string]interface{}{
+			{"$match": postFilter},
+			getPostIdsOrderBasedOnListFilter(postObjectIds),
+		}
+
+		postFilterOptions, err := generatePageFilterOptions(c, "orderNumber", OrderTypeDefault)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		pipeline = addSortingOptionsToPipelineFromPageFilterOptions(pipeline, postFilterOptions, []string{"$sort"})
+
+		postAggregateResults, err := handlers.postHelper.AggregatePostHelper(pipeline)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
+			return
+		}
+
+		// Convert []gin.H to JSON
+		jsonData, err := json.Marshal(postAggregateResults)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		// Unmarshal JSON to []Post
+		var postsData []entities.Post
+		err = json.Unmarshal(jsonData, &postsData)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
 
