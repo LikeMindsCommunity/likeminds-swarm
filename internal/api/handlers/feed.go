@@ -199,13 +199,13 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 
 	// filter options
 	if postFilterOptions == nil {
-		postFilterOptions, err = generatePageFilterOptions(c, "is_pinned", OrderTypeDefault)
+		postFilterOptions, err = generatePageFilterOptions(c, "is_pinned", OrderTypeDescending)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
 		}
 	} else {
-		postFilterOptions = addSortingOptions(postFilterOptions, "is_pinned", OrderTypeDefault)
+		postFilterOptions = addSortingOptions(postFilterOptions, "is_pinned", OrderTypeDescending)
 	}
 
 	// Add widget id filter if widget_ids param exists
