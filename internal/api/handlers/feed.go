@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/api/constants"
@@ -948,7 +949,85 @@ func getPostLikesCountAgainstUser(postHelper interfaces.PostHelper, userId strin
 }
 
 // Exposed Method to fetch user feed meta
+// func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
+// 	// fetch url params and headers
+// 	userId := c.Param("user_id")
+
+// 	// validation of api_key
+// 	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
+// 	if communityId == externalHelpers.DefaultCommunityId {
+// 		return
+// 	}
+
+// 	// post filter data
+// 	postFilterData := gin.H{
+// 		"user_id":      userId,
+// 		"is_deleted":   false,
+// 		"community_id": communityId,
+// 	}
+
+// 	// fetch posts count using helper method
+// 	postsCount, err := handlers.postHelper.CountPostHelper(postFilterData)
+// 	if err != nil {
+// 		utils.GeneralAPIValidationError(c, err.Error())
+// 		return
+// 	}
+
+// 	// comment filter data
+// 	commentFilterData := gin.H{
+// 		"user_id":      userId,
+// 		"is_deleted":   false,
+// 		"community_id": communityId,
+// 		"level":        0,
+// 	}
+
+// 	commentsCount, err := handlers.commentHelper.CountCommentHelper(commentFilterData)
+// 	if err != nil {
+// 		utils.GeneralAPIInternalError(c, err.Error())
+// 		return
+// 	}
+
+// 	// Get user post likes count data
+// 	userPostLikesCount, err := getPostLikesCountAgainstUser(handlers.postHelper, userId)
+// 	if err != nil {
+// 		utils.GeneralAPIInternalError(c, err.Error())
+// 		return
+// 	}
+
+// 	// Get user pending posts count
+// 	pendingPostCountFilter := gin.H{
+// 		"status": gin.H{
+// 			"$in": []string{
+// 				enums.UnderReview,
+// 				enums.Rejected,
+// 			},
+// 		},
+// 		"is_deleted": false,
+// 		"user_id":    userId,
+// 	}
+// 	userPendingPostsCount, err := handlers.pendingPostHelper.CountPendingPostHelper(pendingPostCountFilter)
+// 	if err != nil {
+// 		utils.GeneralAPIInternalError(c, err.Error())
+// 		return
+// 	}
+
+// 	// response data
+// 	finalResponse := gin.H{
+// 		"posts_count":         postsCount,
+// 		"comments_count":      commentsCount,
+// 		"posts_like_count":    userPostLikesCount,
+// 		"pending_posts_count": userPendingPostsCount,
+// 	}
+
+// 	// return final response
+// 	utils.GenerateSuccessResponse(c, finalResponse)
+// }
+
 func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
+
+	timestamp3 := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println(timestamp3 + " - timestamp3")
+
 	// fetch url params and headers
 	userId := c.Param("user_id")
 
@@ -957,6 +1036,9 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	if communityId == externalHelpers.DefaultCommunityId {
 		return
 	}
+
+	timestamp4 := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println(timestamp4 + " - timestamp4")
 
 	// post filter data
 	postFilterData := gin.H{
@@ -972,6 +1054,9 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		return
 	}
 
+	timestamp5 := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println(timestamp5 + " - timestamp5")
+
 	// comment filter data
 	commentFilterData := gin.H{
 		"user_id":      userId,
@@ -986,12 +1071,18 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		return
 	}
 
+	timestamp6 := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println(timestamp6 + " - timestamp6")
+
 	// Get user post likes count data
 	userPostLikesCount, err := getPostLikesCountAgainstUser(handlers.postHelper, userId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	timestamp7 := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println(timestamp7 + " - timestamp7")
 
 	// Get user pending posts count
 	pendingPostCountFilter := gin.H{
@@ -1009,6 +1100,9 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
+
+	timestamp8 := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println(timestamp8 + " - timestamp8")
 
 	// response data
 	finalResponse := gin.H{
