@@ -3,7 +3,7 @@
 FROM hibiken/asynqmon:latest
 
 # Set the default Redis address (can be overridden by environment variable)
-ENV REDIS_ADDR=redis-swarm-worker-prod.prod.likeminds:6379
+ENV REDIS_ADDR=redis-swarm-prod.prod.likeminds:6379
 
 # Command to run Asynqmon with the Redis address
 CMD ["asynqmon", "--port=8080", "--redis-addr=${REDIS_ADDR}", "--read-only=true"]
