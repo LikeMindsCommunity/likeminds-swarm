@@ -74,14 +74,14 @@ pipeline {
             steps {
                 sh '''
                     az acr login --name $ACR_NAME
-                    docker push $ACR_LOGIN_SERVER/likeminds-swarm-worker/swarm-worker-staging:swarm-worker-V$BUILD_NUMBER
+                    docker push $ACR_LOGIN_SERVER/likeminds-swarm/swarm-staging:swarm-V$BUILD_NUMBER
                 '''
             }
         }
         
         stage ('Remove Image from jenkins') {
             steps {
-                sh "docker rmi $ACR_LOGIN_SERVER/likeminds-swarm-worker/swarm-worker-staging:swarm-worker-V$BUILD_NUMBER"
+                sh "docker rmi $ACR_LOGIN_SERVER/likeminds-swarm/swarm-staging:swarm-V$BUILD_NUMBER"
             }
         }
 
