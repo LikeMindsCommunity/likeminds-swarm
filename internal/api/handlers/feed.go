@@ -881,74 +881,46 @@ func (handlers *FeedHandlers) FetchConnectionFeed(c *gin.Context) {
 }
 
 func getPostLikesCountAgainstUserQuery(userId string) []map[string]interface{} {
-	postLikesFilterData := []map[string]interface{}{}
-
-	// Add filter logic
-	postLikesFilterData = append(postLikesFilterData, gin.H{
-		"$match": gin.H{
-			"is_deleted": false,
-		},
-	})
-
-	// Add lookup logic
-	postLikesFilterData = append(postLikesFilterData, gin.H{
-		"$lookup": gin.H{
-			"from": "like",
-			"let": gin.H{
-				"postId": "$_id",
-			},
-			"pipeline": []gin.H{
-				{
-					"$match": gin.H{
-						"$expr": gin.H{
-							"$eq": []string{"$entity_id", "$$postId"},
-						},
-						"is_deleted": false,
-						"liked_by":   userId,
-					},
-				},
-			},
-			"as": "likes_data",
-		},
-	})
-
-	// Add group logic
-	postLikesFilterData = append(postLikesFilterData, gin.H{
-		"$group": gin.H{
-			"_id": "",
-			"total_likes_count": gin.H{
-				"$sum": gin.H{
-					"$size": "$likes_data",
-				},
+	postLikesFilterData := []map[string]interface{}{
+		{
+			"$match": gin.H{
+				"liked_by":    userId,
+				"is_deleted":  false,
+				"entity_type": "post",
 			},
 		},
-	})
+		{
+			"$count": "total_likes_count",
+		},
+	}
 
 	return postLikesFilterData
 
 }
 
-func getPostLikesCountAgainstUser(postHelper interfaces.PostHelper, userId string) (int32, error) {
+func getPostLikesCountAgainstUser(likeHelper interfaces.LikeHelper, userId string) (int32, error) {
 	var userPostLikesCount int32
 
 	userPostLikesFilterData := getPostLikesCountAgainstUserQuery(userId)
 
-	userPostLikesCountData, err := postHelper.AggregatePostHelper(userPostLikesFilterData)
+	userPostLikesCountData, err := likeHelper.AggregateLikeHelper(userPostLikesFilterData)
+
 	if err != nil {
 		return 0, err
 	}
+	fmt.Println("total likes count", userPostLikesCountData)
 
-	if len(userPostLikesCountData) > 0 {
-		if userPostLikesCountMap, ok := userPostLikesCountData[0]["total_likes_count"]; ok {
-			userPostLikesCount = userPostLikesCountMap.(int32)
+	if dataSlice, ok := userPostLikesCountData.([]gin.H); ok && len(dataSlice) > 0 {
+		if count, ok := dataSlice[0]["total_likes_count"]; ok {
+			userPostLikesCount = count.(int32) // assuming float64 as usual
 		}
 	}
 
 	return userPostLikesCount, nil
 }
 
-// Exposed Method to fetch user feed meta
 func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
+
 	// fetch url params and headers
 	userId := c.Param("user_id")
 
@@ -987,7 +959,7 @@ func (handlers *FeedHandlers) FetchUserFeedMeta(c *gin.Context) {
 	}
 
 	// Get user post likes count data
-	userPostLikesCount, err := getPostLikesCountAgainstUser(handlers.postHelper, userId)
+	userPostLikesCount, err := getPostLikesCountAgainstUser(handlers.likeHelper, userId)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
