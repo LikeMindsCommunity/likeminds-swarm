@@ -1,8 +1,6 @@
 package cache
 
 import (
-	"crypto/tls"
-
 	"github.com/go-redis/redis/v7"
 	"github.com/nateshr/likeminds-swarm/internal/services/environment"
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -21,11 +19,10 @@ func InitRedis() *redis.Client {
 		Addr: dsn,
 	})
 
-	serverEnviornment := environment.GoDotEnvVariable("SERVER_ENVIRONMENT")
-	if serverEnviornment == "load" {
-		client.Options().Password = password
-		client.Options().TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	}
+	client.Options().Password = password
+
+	// disabling tls config as using private hosted DNS zone in azure
+	// client.Options().TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 
 	_, err := client.Ping().Result()
 	if err != nil {
