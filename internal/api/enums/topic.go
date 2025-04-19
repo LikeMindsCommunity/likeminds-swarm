@@ -8,10 +8,24 @@ const (
 	OrderByNumberOfPostsDesc = "number_of_posts_desc"
 )
 
+const (
+	ONLY_CM_TOPIC_ACCESS  = "ONLY_CM"
+	EVERYONE_TOPIC_ACCESS = "EVERYONE"
+)
+
 // check if the order_by is valid
 func IsValidOrderByParam(order_by string) bool {
 	switch order_by {
 	case OrderByAlphabeticalAsc, OrderByPriorityDesc, OrderByCreatedAtDesc, OrderByNumberOfPostsDesc:
+		return true
+	}
+	return false
+}
+
+// check if the order_by is valid
+func IsValidTopicAccessParam(topic_access string) bool {
+	switch topic_access {
+	case ONLY_CM_TOPIC_ACCESS, EVERYONE_TOPIC_ACCESS:
 		return true
 	}
 	return false

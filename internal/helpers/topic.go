@@ -15,10 +15,10 @@ import (
 
 // Exposed Helper Method to Create Topic Instance
 func (helper *topicHelper) CreateTopicHelper(name string, is_enabled bool, priority float32, isSearchable bool, parentId primitive.ObjectID, parentName string,
-	allParentIds []primitive.ObjectID, level int, widgetId primitive.ObjectID, totalChildCount int, communityId int) (interface{}, error) {
+	allParentIds []primitive.ObjectID, level int, widgetId primitive.ObjectID, totalChildCount int, access string, communityId int) (interface{}, error) {
 
 	// Create a new Topic Document
-	topic := entities.NewTopic(name, is_enabled, priority, isSearchable, parentId, parentName, allParentIds, level, widgetId, totalChildCount, communityId)
+	topic := entities.NewTopic(name, is_enabled, priority, isSearchable, parentId, parentName, allParentIds, level, widgetId, totalChildCount, access, communityId)
 
 	// Insert the document in the collection
 	topicId, err := helper.topicRepository.Create(topic)
@@ -44,7 +44,7 @@ func (helper *topicHelper) CreateManyTopicsHelper(topicsRequest []requests.Creat
 			}
 		}
 
-		topics = append(topics, entities.NewTopic(topic.Name, *topic.IsEnabled, topic.Priority, *topic.IsSearchable, parentId, topic.ParentName, topic.AllParentIds, topic.Level, topic.WidgetId, topic.TotalChildCount, communityId))
+		topics = append(topics, entities.NewTopic(topic.Name, *topic.IsEnabled, topic.Priority, *topic.IsSearchable, parentId, topic.ParentName, topic.AllParentIds, topic.Level, topic.WidgetId, topic.TotalChildCount, topic.Access, communityId))
 	}
 
 	// Insert the documents in the collection

@@ -534,7 +534,7 @@ func (handlers *FeedHandlers) EditPendingPost(c *gin.Context) {
 		// convert topic_ids to object ids
 		topicIDs = helpers.ConvertIdsToObjectIds(editPendingPostRequest.TopicIds)
 
-		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false, true, editPendingPostRequest.UserIsCm)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
