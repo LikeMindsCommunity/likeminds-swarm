@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -203,7 +204,6 @@ func fetchUserLikedStatusForMultipleEntities(helper interfaces.LikeHelper, entit
 
 // Exposed Method to like a Post
 func (handlers *FeedHandlers) LikePost(c *gin.Context) {
-
 	// fetch headers and url params
 	headers := utils.GetHeaders(c)
 	memberRole := headers[utils.HeadersMemberRole]
@@ -220,50 +220,53 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 
 	// validation of request body
 	var likePostRequest requests.LikeRequest
-	c.ShouldBindJSON(&likePostRequest)
-
-	// check if custom creation timestamp is used
-	var useCustomCreationTimestamp bool = false
-	if likePostRequest.CreatedAt > 0 &&
-		float64(likePostRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		useCustomCreationTimestamp = true
+	if err := c.ShouldBindJSON(&likePostRequest); err != nil {
+		utils.GeneralAPIValidationError(c, "Invalid request body")
+		return
 	}
 
-	// Parallel fetching of post and like data using goroutines and channels
-	postChan := make(chan *entities.Post)
-	likeChan := make(chan []entities.Like)
-	errChan := make(chan error, 2)
+	// check if custom creation timestamp is used
+	useCustomCreationTimestamp := likePostRequest.CreatedAt > 0 &&
+		float64(likePostRequest.CreatedAt) <= float64(time.Now().UnixMilli())
 
-	go func() {
-		postData, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
-		if err != nil {
-			errChan <- err
-			return
-		}
-		postChan <- postData
-	}()
-
-	go func() {
-		likeData, err := fetchSpecificMemberLikesOnEntity(handlers.likeHelper, post_id, constants.PostEntityType,
-			headers[utils.HeadersMemberId])
-		if err != nil {
-			errChan <- err
-			return
-		}
-		likeChan <- likeData
-	}()
-
+	// parallel fetching using waitgroup
 	var postData *entities.Post
-	var like_results []entities.Like
+	var likeResults []entities.Like
+	var fetchErr error
+	var wg sync.WaitGroup
+	var mu sync.Mutex // protect shared data
 
-	for i := 0; i < 2; i++ {
-		select {
-		case postData = <-postChan:
-		case like_results = <-likeChan:
-		case err := <-errChan:
-			utils.GeneralAPIInternalError(c, err.Error())
+	wg.Add(2)
+
+	go utils.SafeGo(func() {
+		defer wg.Done()
+		pd, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil && fetchErr == nil {
+			fetchErr = err
 			return
 		}
+		postData = pd
+	})
+
+	go utils.SafeGo(func() {
+		defer wg.Done()
+		ld, err := fetchSpecificMemberLikesOnEntity(handlers.likeHelper, post_id, constants.PostEntityType, headers[utils.HeadersMemberId])
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil && fetchErr == nil {
+			fetchErr = err
+			return
+		}
+		likeResults = ld
+	})
+
+	wg.Wait()
+
+	if fetchErr != nil {
+		utils.GeneralAPIInternalError(c, fetchErr.Error())
+		return
 	}
 
 	// If post is hidden and user is not cm or creator, then throw error
@@ -272,8 +275,8 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		return
 	}
 
-	if len(like_results) == 0 {
-		// create like using the helper method
+	if len(likeResults) == 0 {
+		// create like
 		_, err := handlers.likeHelper.CreateLikeHelper(constants.PostEntityType, postData.ID,
 			headers[utils.HeadersMemberId], likePostRequest.CreatedAt)
 		if err != nil {
@@ -284,35 +287,32 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		if !useCustomCreationTimestamp && !postData.IsHidden {
 			createUserPostLikeActivity(handlers, postData, c, headers)
 
-			// Trigger post liked webhook
-			// update: converted to background task
-			go func() {
-				err := handlers.taskDistributor.TriggerPostLikedWebhook(post_id, headers[utils.HeadersMemberId], headers[utils.HeadersApiKey])
-				if err != nil {
-					logging.Error("Failed to trigger post liked webhook: ", err)
-				}
-			}()
+			// trigger webhook async
+			err := handlers.taskDistributor.TriggerPostLikedWebhook(post_id, headers[utils.HeadersMemberId], headers[utils.HeadersApiKey])
+			if err != nil {
+				logging.Error("Failed to trigger post liked webhook: ", err)
+			}
+
 		}
-
 	} else {
-		like_data := like_results[0]
+		likeData := likeResults[0]
 
-		// like update data
-		like_update_data := gin.H{
+		// toggle like
+		likeUpdate := gin.H{
 			"$set": gin.H{
-				"is_deleted": !like_data.IsDeleted,
+				"is_deleted": !likeData.IsDeleted,
 			},
 		}
 
 		// update like using the helper method
-		err := handlers.likeHelper.UpdateLikeByIdHelper(like_data.ID, like_update_data)
+		err := handlers.likeHelper.UpdateLikeByIdHelper(likeData.ID, likeUpdate)
 		if err != nil {
 			utils.GeneralAPIInternalError(c, err.Error())
 			return
 		}
 
 		if !useCustomCreationTimestamp && !postData.IsHidden {
-			if !like_data.IsDeleted {
+			if !likeData.IsDeleted {
 				deleteUserPostLikeActivity(handlers, postData, c, headers)
 			} else {
 				createUserPostLikeActivity(handlers, postData, c, headers)
