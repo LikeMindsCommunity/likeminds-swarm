@@ -40,6 +40,7 @@ type TopicIndex struct {
 	Level           int       `json:"level"`
 	WidgetId        string    `json:"widget_id"`
 	TotalChildCount int       `json:"total_child_count"`
+	Access          string    `json:"access"`
 	CommunityId     int       `json:"community_id"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`

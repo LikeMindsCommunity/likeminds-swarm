@@ -9,6 +9,7 @@ type CreateTopicRequest struct {
 	ParentId        string                 `json:"parent_id"`
 	IsEnabled       *bool                  `json:"is_enabled"`
 	Metadata        map[string]interface{} `json:"metadata"`
+	Access          string                 `json:"access"`
 	ParentName      string                 `json:"-"` // For Internal use
 	AllParentIds    []primitive.ObjectID   `json:"-"` // For Internal use
 	Level           int                    `json:"-"` // For Internal use
@@ -29,6 +30,7 @@ type EditTopicRequest struct {
 	Priority     *float32               `json:"priority"`
 	IsSearchable *bool                  `json:"is_searchable"`
 	Metadata     map[string]interface{} `json:"metadata"`
+	Access       string                 `json:"access"`
 }
 
 // Request Structure for Fetch Topic
