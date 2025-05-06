@@ -238,7 +238,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 
 	wg.Add(2)
 
-	go utils.SafeGo(func() {
+	utils.SafeGo(func() {
 		defer wg.Done()
 		pd, err := FetchPostData(handlers.postHelper, post_id, community_id, true, []string{})
 		mu.Lock()
@@ -250,7 +250,7 @@ func (handlers *FeedHandlers) LikePost(c *gin.Context) {
 		postData = pd
 	})
 
-	go utils.SafeGo(func() {
+	utils.SafeGo(func() {
 		defer wg.Done()
 		ld, err := fetchSpecificMemberLikesOnEntity(handlers.likeHelper, post_id, constants.PostEntityType, headers[utils.HeadersMemberId])
 		mu.Lock()
