@@ -164,7 +164,7 @@ func validateUpdateUserTopicsRequest(topicHelper interfaces.TopicHelper, userTop
 	topicsIds := append(topicsToAdd, topicsToRemove...)
 
 	// fetch enabled topics
-	topics, err := fetchTopicsByIDs(topicHelper, topicsIds, communityId, true)
+	topics, err := fetchTopicsByIDs(topicHelper, topicsIds, communityId, true, false, false)
 	if err != nil {
 		logging.Error("Error fetching topics: ", err)
 		return nil, nil, err
