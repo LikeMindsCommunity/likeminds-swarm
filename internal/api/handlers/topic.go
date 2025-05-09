@@ -599,7 +599,7 @@ func validateEditTopicRequest(handlers *FeedHandlers, topicId string, editTopicR
 		topicUpdateData["$set"].(gin.H)["name"] = editTopicRequest.Name
 	}
 
-	access := strings.Trim(topic.Access, " ")
+	access := strings.Trim(editTopicRequest.Access, " ")
 
 	if access != "" && enums.IsValidTopicAccessParam(access) {
 		topicUpdateData["$set"].(gin.H)["access"] = editTopicRequest.Access
