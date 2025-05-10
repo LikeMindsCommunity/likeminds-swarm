@@ -137,6 +137,18 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Parse post ids string array
 	postIds := utils.ParseStringArrayParam(universalFeedRequest.PostIds)
 
+	// Parse attachment types string array
+	originalAttachmentTypes := utils.ParseStringArrayParam(universalFeedRequest.AttachmentTypes)
+	attachmentTypes := []int{}
+
+	for _, attachmentType := range originalAttachmentTypes {
+		validAttachmentType := enums.AttachmentType(attachmentType)
+
+		if validAttachmentType.IsValid() {
+			attachmentTypes = append(attachmentTypes, validAttachmentType.ToInt())
+		}
+	}
+
 	// Get users list who are blocked by userId or blocked the userId
 	blockUserValuesList, err := externalHelpers.GetUserBlockList(handlers.cacheHelper, userId, communityId)
 	if err != nil {
@@ -152,9 +164,11 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// posts filter data
 	postFilterData := getUniversalFeedPostFilter(communityId, userId, excludedUserIds, loggedInUserParams.IsCm)
 
+	postObjectIdsList := []primitive.ObjectID{}
+
 	// Add topic id filter if topic_ids param exists
 	if len(topicIds) > 0 {
-		postObjectIdsList, err := getPostIdsBasedOnTopicsFilter(handlers, topicIds)
+		postObjectIdsList, err = getPostIdsBasedOnTopicsFilter(handlers, topicIds)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return
@@ -174,10 +188,36 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 			return
 		}
 
+	}
+
+	// Add attachments filter if attachment_types param exists
+	if len(attachmentTypes) > 0 {
+		postObjectIdsList, err = getPostIdsBasedOnAttachmentTypesFilter(handlers, attachmentTypes, postObjectIdsList)
+		if err != nil {
+			utils.GeneralAPIValidationError(c, err.Error())
+			return
+		}
+
+		if len(postObjectIdsList) == 0 {
+			finalParsedResponse := gin.H{
+				"posts":             []responses.PostResponse{},
+				"topics":            map[string]responses.TopicResponse{},
+				"widgets":           map[string]requests.WidgetResponse{},
+				"reposted_posts":    map[string]responses.PostResponse{},
+				"filtered_comments": map[string]responses.CommentWithParentResponse{},
+			}
+
+			// return final response
+			utils.GenerateSuccessResponse(c, finalParsedResponse)
+			return
+		}
+
+	}
+
+	if len(postObjectIdsList) > 0 {
 		postFilterData["_id"] = gin.H{
 			"$in": postObjectIdsList,
 		}
-
 	}
 
 	pipeline := []map[string]interface{}{
