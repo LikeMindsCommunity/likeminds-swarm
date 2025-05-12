@@ -843,26 +843,46 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 
 		if !isCreatorTagged {
-			activityID, err := handlers.CreateActivity(
-				postData.CommunityId,
-				[]string{userId},
-				postData.UserId,
-				constants.PostEntity,
-				postData.ID,
-				postData.UserId,
-				constants.CommentOnPost,
-				ctaData,
-				false, false, commentId.(primitive.ObjectID), "")
-			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
-				return
-			}
+			// activityID, err := handlers.CreateActivity(
+			// 	postData.CommunityId,
+			// 	[]string{userId},
+			// 	postData.UserId,
+			// 	constants.PostEntity,
+			// 	postData.ID,
+			// 	postData.UserId,
+			// 	constants.CommentOnPost,
+			// 	ctaData,
+			// 	false, false, commentId.(primitive.ObjectID), "")
+			// if err != nil {
+			// 	utils.GeneralAPIInternalError(c, err.Error())
+			// 	return
+			// }
 
-			if activityID != nil {
-				handlers.CreateAlsoCommentedActivity(activityID, postData, headers, ctaData)
-				if err := handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode); err != nil {
-					logging.Error("Failed to enqueue send notification : ", err)
-				}
+			// if activityID != nil {
+			// 	handlers.CreateAlsoCommentedActivity(activityID, postData, headers, ctaData)
+			// 	if err := handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode); err != nil {
+			// 		logging.Error("Failed to enqueue send notification : ", err)
+			// 	}
+			// }
+
+			if err := handlers.taskDistributor.AsyncCreateActivityAndSendNotification(
+				func() (interface{}, error) {
+					return handlers.CreateActivity(
+						postData.CommunityId,
+						[]string{userId},
+						postData.UserId,
+						constants.PostEntity,
+						postData.ID,
+						postData.UserId,
+						constants.CommentOnPost,
+						ctaData,
+						false, false, commentId.(primitive.ObjectID), "")
+				},
+				platformCode,
+				versionCode,
+			); err != nil {
+				logging.Error("Tag activity creation and send notification failed:", err)
+				return
 			}
 		}
 
