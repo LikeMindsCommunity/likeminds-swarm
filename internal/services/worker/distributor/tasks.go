@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -320,25 +320,58 @@ func (distributor *RedisTaskDistributor) AsyncSendNotification(activityID primit
 	return nil
 }
 
-// Task Distributor for "task:TaskCreateActivityAndSentNotification"
-func (distributor *RedisTaskDistributor) AsyncCreateActivityAndSendNotification(
-	createActivityFn func() (interface{}, error),
-	platformCode string,
-	versionCode string,
-	opts ...asynq.Option,
-) error {
-	activityID, err := createActivityFn()
-	if err != nil {
-		logging.Error("Tag activity failed:", err)
-		return err
+// Task Distributor for "task:TaskSendNotification"
+func (distributor *RedisTaskDistributor) AsyncCreateActivityAndSendNotification(communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool, actionByEntityId primitive.ObjectID, activityText string, platformCode string, versionCode string, opts ...asynq.Option) error {
+
+	payload := worker.PayloadCreateActivityAndSendNotification{
+		CommunityID:      communityID,
+		ActionBy:         actionBy,
+		ActionOn:         actionOn,
+		EntityType:       entityType,
+		EntityID:         entityID,
+		EntityOwnerID:    entityOwnerID,
+		Action:           action,
+		CtaData:          ctaData,
+		IsRead:           isRead,
+		IsDeleted:        isDeleted,
+		ActionByEntityId: actionByEntityId,
+		ActivityText:     activityText,
+		PlatformCode:     platformCode,
+		VersionCode:      versionCode,
 	}
 
-	if activityID != nil {
-		err := distributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
-		if err != nil {
-			logging.Error("Failed to enqueue send notification:", err)
-		}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncCreateActivityAndSendNotification, jsonPayload, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task %v", err)
 	}
 
 	return nil
 }
+
+// // Task Distributor for "task:TaskCreateActivityAndSentNotification"
+// func (distributor *RedisTaskDistributor) AsyncCreateActivityAndSendNotification(
+// 	createActivityFn func() (interface{}, error),
+// 	platformCode string,
+// 	versionCode string,
+// 	opts ...asynq.Option,
+// ) error {
+// 	activityID, err := createActivityFn()
+// 	if err != nil {
+// 		logging.Error("Tag activity failed:", err)
+// 		return err
+// 	}
+
+// 	if activityID != nil {
+// 		err := distributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
+// 		if err != nil {
+// 			logging.Error("Failed to enqueue send notification:", err)
+// 		}
+// 	}
+
+// 	return nil
+// }

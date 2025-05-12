@@ -157,3 +157,29 @@ func (processor *RedisTaskProcessor) sendNotification(ctx context.Context, task 
 func (processor *RedisTaskProcessor) computeCommunityDefaultFeed(ctx context.Context, task *asynq.Task) error {
 	return handlers.AsyncComputeCommunityDefaultFeed(processor.feedHandlers)
 }
+
+// Task to createActivity and send notification
+func (processor *RedisTaskProcessor) createActivityAndSendNotificationBackgroundTask(ctx context.Context, task *asynq.Task) error {
+
+	payload := worker.PayloadCreateActivityAndSendNotification{}
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	// return handlers.createActivityAndSendNotification(*processor.feedHandlers, payload.ActivityID, payload.PlatformCode, payload.VersionCode)
+	return processor.feedHandlers.CreateActivityAndSendNotification(
+		payload.CommunityID,
+		payload.ActionBy,
+		payload.ActionOn,
+		payload.EntityType,
+		payload.EntityID,
+		payload.EntityOwnerID,
+		payload.Action,
+		payload.CtaData,
+		payload.IsRead,
+		payload.IsDeleted,
+		payload.ActionByEntityId,
+		payload.ActivityText,
+		payload.PlatformCode,
+		payload.VersionCode)
+}

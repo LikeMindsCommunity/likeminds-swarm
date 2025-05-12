@@ -820,18 +820,15 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		for _, member := range taggedMembers {
 
 			err := handlers.taskDistributor.AsyncCreateActivityAndSendNotification(
-				func() (interface{}, error) {
-					return handlers.CreateActivity(
-						postData.CommunityId,
-						[]string{userId},
-						member,
-						constants.CommentEntity,
-						commentId.(primitive.ObjectID),
-						postData.UserId,
-						constants.TaggedInPostComment,
-						ctaData,
-						false, false, primitive.NilObjectID, "")
-				},
+				postData.CommunityId,
+				[]string{userId},
+				member,
+				constants.CommentEntity,
+				commentId.(primitive.ObjectID),
+				postData.UserId,
+				constants.TaggedInPostComment,
+				ctaData,
+				false, false, primitive.NilObjectID, "",
 				platformCode,
 				versionCode,
 			)
@@ -866,18 +863,15 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			// }
 
 			if err := handlers.taskDistributor.AsyncCreateActivityAndSendNotification(
-				func() (interface{}, error) {
-					return handlers.CreateActivity(
-						postData.CommunityId,
-						[]string{userId},
-						postData.UserId,
-						constants.PostEntity,
-						postData.ID,
-						postData.UserId,
-						constants.CommentOnPost,
-						ctaData,
-						false, false, commentId.(primitive.ObjectID), "")
-				},
+				postData.CommunityId,
+				[]string{userId},
+				postData.UserId,
+				constants.PostEntity,
+				postData.ID,
+				postData.UserId,
+				constants.CommentOnPost,
+				ctaData,
+				false, false, commentId.(primitive.ObjectID), "",
 				platformCode,
 				versionCode,
 			); err != nil {
@@ -1860,4 +1854,26 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 			}
 		}
 	}
+}
+
+func (handlers *FeedHandlers) CreateActivityAndSendNotification(
+	communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool, actionByEntityId primitive.ObjectID, activityText string, platformCode string, versionCode string) error {
+
+	activityID, err := handlers.CreateActivity(
+		communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, ctaData, isRead, isDeleted, actionByEntityId, activityText)
+	if err != nil {
+		logging.Error("Tag activity failed:", err)
+		return err
+	}
+
+	if activityID != nil {
+		// err := distributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
+		err := SendNotification(*handlers, activityID.(primitive.ObjectID), platformCode, versionCode)
+
+		if err != nil {
+			logging.Error("Failed to enqueue send notification:", err)
+		}
+	}
+
+	return nil
 }
