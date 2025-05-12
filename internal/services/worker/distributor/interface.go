@@ -20,4 +20,8 @@ type FeedTaskDistributor interface {
 	AsyncEditPostTasks(postId string, opts ...asynq.Option) error
 	AsyncDeletePostTasks(postId string, opts ...asynq.Option) error
 	AsyncSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error
+	AsyncCreateActivityAndSendNotification(createActivityFn func() (interface{}, error),
+		platformCode string,
+		versionCode string,
+		opts ...asynq.Option) error
 }

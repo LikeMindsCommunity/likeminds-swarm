@@ -7,6 +7,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/nateshr/likeminds-swarm/internal/api/enums"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -314,6 +315,29 @@ func (distributor *RedisTaskDistributor) AsyncSendNotification(activityID primit
 	_, err = worker.EnqueueTaskToQueue(distributor.client, worker.TaskAsyncSendNotification, jsonPayload, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue task %v", err)
+	}
+
+	return nil
+}
+
+// Task Distributor for "task:TaskCreateActivityAndSentNotification"
+func (distributor *RedisTaskDistributor) AsyncCreateActivityAndSendNotification(
+	createActivityFn func() (interface{}, error),
+	platformCode string,
+	versionCode string,
+	opts ...asynq.Option,
+) error {
+	activityID, err := createActivityFn()
+	if err != nil {
+		logging.Error("Tag activity failed:", err)
+		return err
+	}
+
+	if activityID != nil {
+		err := distributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
+		if err != nil {
+			logging.Error("Failed to enqueue send notification:", err)
+		}
 	}
 
 	return nil

@@ -816,33 +816,30 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 
 		// Parallelize tagging activities
 		// will only help when more than 1 user is tagged.
-		var wg sync.WaitGroup
 
 		for _, member := range taggedMembers {
-			wg.Add(1)
-			go func(member string) {
-				defer wg.Done()
 
-				activityID, err := handlers.CreateActivity(
-					postData.CommunityId,
-					[]string{userId},
-					member,
-					constants.CommentEntity,
-					commentId.(primitive.ObjectID),
-					postData.UserId,
-					constants.TaggedInPostComment,
-					ctaData,
-					false, false, primitive.NilObjectID, "")
-				if err != nil {
-					logging.Error("Tag activity failed:", err)
-					return
-				}
-				if activityID != nil {
-					if err := handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode); err != nil {
-						logging.Error("Failed to enqueue send notification : ", err)
-					}
-				}
-			}(member)
+			err := handlers.taskDistributor.AsyncCreateActivityAndSendNotification(
+				func() (interface{}, error) {
+					return handlers.CreateActivity(
+						postData.CommunityId,
+						[]string{userId},
+						member,
+						constants.CommentEntity,
+						commentId.(primitive.ObjectID),
+						postData.UserId,
+						constants.TaggedInPostComment,
+						ctaData,
+						false, false, primitive.NilObjectID, "")
+				},
+				platformCode,
+				versionCode,
+			)
+
+			if err != nil {
+				logging.Error("Tag activity creation and send notification failed:", err)
+				return
+			}
 		}
 
 		if !isCreatorTagged {
@@ -894,18 +891,41 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		"success": true,
 	}
 
-	// fetch comment response data
-	fetchCommentResponse, err := fetchCommentData(handlers, loggedInUser, commentId.(primitive.ObjectID).Hex(), postId,
-		commentFilterOptions, false, excludedUserIds)
-	if err == nil {
-		response["comment"] = fetchCommentResponse
-	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	// Parse comments to fetch widget_ids``
-	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, userId)
+	wg.Add(2)
+
+	utils.SafeGo(func() {
+		// fetch comment response data
+		defer wg.Done()
+
+		fetchCommentResponse, err := fetchCommentData(handlers, loggedInUser, commentId.(primitive.ObjectID).Hex(), postId,
+			commentFilterOptions, false, excludedUserIds)
+		if err == nil {
+			mu.Lock() // we are using mutex because maps are not thread-safe in go.
+			response["comment"] = fetchCommentResponse
+			mu.Unlock()
+		}
+	})
+
+	utils.SafeGo(func() {
+		defer wg.Done()
+
+		// Parse comments to fetch widget_ids``
+		widgets := getWidgetDataFromFeedResponse(handlers, response, communityId, false, userId)
+
+		mu.Lock() // again, we are using mutex because maps are not thread-safe in go.
+		response["widgets"] = widgets
+		mu.Unlock()
+	})
+
+	wg.Wait()
 
 	// Delete top liked comments data in post from cache
-	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId))
+	utils.SafeGo(func() {
+		handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId))
+	})
 
 	// return final response
 	c.JSON(http.StatusOK, response)
