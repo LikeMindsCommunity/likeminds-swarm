@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -694,6 +695,7 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	versionCode := headers[utils.HeadersVersionCode]
 	platformCode := headers[utils.HeadersPlatformCode]
 	memberRole := headers[utils.HeadersMemberRole]
+	apiKey := headers[utils.HeadersApiKey]
 
 	isCm := utils.IsCMRole(memberRole)
 	apiRevampV1Check := utils.ApiRevampCheckV1(headers[utils.HeadersAcceptVersion])
@@ -747,15 +749,11 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// check if custom creation timestamp is used
-	var useCustomCreationTimestamp bool = false
-	if createCommentRequest.CreatedAt > 0 &&
-		float64(createCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli()) {
-		useCustomCreationTimestamp = true
-	}
+	useCustomCreationTimestamp := createCommentRequest.CreatedAt > 0 &&
+		float64(createCommentRequest.CreatedAt) <= float64(time.Now().UnixMilli())
 
 	// validate create comment request
-	err = validateCreateCommentRequest(handlers, communityId, &createCommentRequest, apiRevampV1Check)
-	if err != nil {
+	if err := validateCreateCommentRequest(handlers, communityId, &createCommentRequest, apiRevampV1Check); err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
 	}
@@ -774,9 +772,16 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// create comment using the helper method
-	commentId, err := handlers.commentHelper.CreateCommentHelper(createCommentRequest.Text, postData.ID, communityId,
-		constants.CommentBaseLevel, headers[utils.HeadersMemberId], createCommentRequest.TempID, createCommentRequest.CreatedAt,
-		createCommentRequest.Attachments)
+	commentId, err := handlers.commentHelper.CreateCommentHelper(
+		createCommentRequest.Text,
+		postData.ID,
+		communityId,
+		constants.CommentBaseLevel,
+		userId,
+		createCommentRequest.TempID,
+		createCommentRequest.CreatedAt,
+		createCommentRequest.Attachments,
+	)
 	if err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
@@ -791,18 +796,16 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// update comment data using helper method
-	err = handlers.commentHelper.EditCommentHelper(commentId.(primitive.ObjectID), createCommentRequest.Text, updatedAttachments, false)
-	if err != nil {
+	if err := handlers.commentHelper.EditCommentHelper(commentId.(primitive.ObjectID), createCommentRequest.Text, updatedAttachments, false); err != nil {
 		utils.GeneralAPIInternalError(c, err.Error())
 		return
 	}
 
+	// tagging and activity
 	taggedMembers := createCommentRequest.UUIDs
-
-	var isCreatorTagged bool = false
+	isCreatorTagged := slices.Contains(taggedMembers, postData.UserId)
 
 	if !useCustomCreationTimestamp && !postData.IsHidden {
-
 		// cta data for activity
 		ctaData := gin.H{
 			"entity_type": constants.CommentEntityType,
@@ -810,58 +813,59 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 			"comment_id":  commentId.(primitive.ObjectID).Hex(),
 		}
 
-		for _, member := range taggedMembers {
-			if member == postData.UserId {
-				isCreatorTagged = true
-			}
+		// Parallelize tagging activities
+		// will only help when more than 1 user is tagged.
 
-			// create tag activity
-			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]}, member,
-				constants.CommentEntity, commentId.(primitive.ObjectID), postData.UserId, constants.TaggedInPostComment, ctaData,
-				false, false, primitive.NilObjectID, "")
+		for _, member := range taggedMembers {
+
+			err := handlers.taskDistributor.AsyncCreateActivityAndSendNotification(
+				postData.CommunityId,
+				[]string{userId},
+				member,
+				constants.CommentEntity,
+				commentId.(primitive.ObjectID),
+				postData.UserId,
+				constants.TaggedInPostComment,
+				ctaData,
+				false, false, primitive.NilObjectID, "",
+				platformCode,
+				versionCode,
+			)
+
 			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
+				logging.Error("Tag activity creation and send notification failed:", err)
 				return
 			}
-
-			if activityID != nil {
-				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
-				if err != nil {
-					logging.Error("Failed to enqueue send notification : ", err)
-				}
-			}
-
 		}
 
 		if !isCreatorTagged {
-			activityID, err := handlers.CreateActivity(postData.CommunityId, []string{headers[utils.HeadersMemberId]},
-				postData.UserId, constants.PostEntity, postData.ID, postData.UserId, constants.CommentOnPost, ctaData,
-				false, false, commentId.(primitive.ObjectID), "")
-			if err != nil {
-				utils.GeneralAPIInternalError(c, err.Error())
+
+			if err := handlers.taskDistributor.AsyncCreateActivityAndSendNotification(
+				postData.CommunityId,
+				[]string{userId},
+				postData.UserId,
+				constants.PostEntity,
+				postData.ID,
+				postData.UserId,
+				constants.CommentOnPost,
+				ctaData,
+				false, false, commentId.(primitive.ObjectID), "",
+				platformCode,
+				versionCode,
+			); err != nil {
+				logging.Error("Tag activity creation and send notification failed:", err)
 				return
-			}
-
-			if activityID != nil {
-				handlers.CreateAlsoCommentedActivity(activityID, postData, headers, ctaData)
-
-				err = handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), headers[utils.HeadersPlatformCode], headers[utils.HeadersVersionCode])
-				if err != nil {
-					logging.Error("Failed to enqueue send notification : ", err)
-				}
 			}
 		}
 
 		// trigger comment added webhook
-		err = handlers.taskDistributor.TriggerCommentAddedWebhook(commentId.(primitive.ObjectID).Hex(), headers[utils.HeadersApiKey])
-		if err != nil {
+		if err := handlers.taskDistributor.TriggerCommentAddedWebhook(commentId.(primitive.ObjectID).Hex(), apiKey); err != nil {
 			logging.Error("Error triggering comment added webhook", err)
 		}
 
+		// trigger comment tagged webhook
 		if len(taggedMembers) > 0 {
-			// trigger comment tagged webhook
-			err = handlers.taskDistributor.TriggerCommentTaggedWebhook(commentId.(primitive.ObjectID).Hex(), taggedMembers, headers[utils.HeadersApiKey])
-			if err != nil {
+			if err := handlers.taskDistributor.TriggerCommentTaggedWebhook(commentId.(primitive.ObjectID).Hex(), taggedMembers, apiKey); err != nil {
 				logging.Error("Error triggering comment tagged webhook", err)
 			}
 		}
@@ -879,7 +883,6 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		"success": true,
 	}
 
-	// fetch comment response data
 	fetchCommentResponse, err := fetchCommentData(handlers, loggedInUser, commentId.(primitive.ObjectID).Hex(), postId,
 		commentFilterOptions, false, excludedUserIds)
 	if err == nil {
@@ -887,10 +890,12 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 	}
 
 	// Parse comments to fetch widget_ids``
-	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, headers[utils.HeadersMemberId])
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, userId)
 
 	// Delete top liked comments data in post from cache
-	handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId))
+	utils.SafeGo(func() {
+		handlers.cacheHelper.Del(fmt.Sprintf(cache.PostTopLikedCommentKey, communityId, postId))
+	})
 
 	// return final response
 	c.JSON(http.StatusOK, response)
@@ -1805,4 +1810,25 @@ func (handlers *FeedHandlers) CreateAlsoCommentedActivity(activityID interface{}
 			}
 		}
 	}
+}
+
+func (handlers *FeedHandlers) CreateActivityAndSendNotification(
+	communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool, actionByEntityId primitive.ObjectID, activityText string, platformCode string, versionCode string) error {
+
+	activityID, err := handlers.CreateActivity(
+		communityID, actionBy, actionOn, entityType, entityID, entityOwnerID, action, ctaData, isRead, isDeleted, actionByEntityId, activityText)
+	if err != nil {
+		logging.Error("Tag activity failed:", err)
+		return err
+	}
+
+	if activityID != nil {
+		err := SendNotification(*handlers, activityID.(primitive.ObjectID), platformCode, versionCode)
+
+		if err != nil {
+			logging.Error("Failed to enqueue send notification:", err)
+		}
+	}
+
+	return nil
 }

@@ -2,6 +2,7 @@ package distributor
 
 import (
 	"github.com/hibiken/asynq"
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -20,4 +21,7 @@ type FeedTaskDistributor interface {
 	AsyncEditPostTasks(postId string, opts ...asynq.Option) error
 	AsyncDeletePostTasks(postId string, opts ...asynq.Option) error
 	AsyncSendNotification(activityID primitive.ObjectID, platformCode string, versionCode string, opts ...asynq.Option) error
+	AsyncCreateActivityAndSendNotification(
+		communityID int, actionBy []string, actionOn string, entityType constants.EntityType, entityID primitive.ObjectID, entityOwnerID string, action constants.ActivityAction, ctaData map[string]interface{}, isRead bool, isDeleted bool, actionByEntityId primitive.ObjectID, activityText string, platformCode string, versionCode string,
+		opts ...asynq.Option) error
 }
