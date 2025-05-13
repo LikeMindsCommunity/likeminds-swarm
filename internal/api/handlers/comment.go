@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -840,27 +839,6 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		}
 
 		if !isCreatorTagged {
-			// activityID, err := handlers.CreateActivity(
-			// 	postData.CommunityId,
-			// 	[]string{userId},
-			// 	postData.UserId,
-			// 	constants.PostEntity,
-			// 	postData.ID,
-			// 	postData.UserId,
-			// 	constants.CommentOnPost,
-			// 	ctaData,
-			// 	false, false, commentId.(primitive.ObjectID), "")
-			// if err != nil {
-			// 	utils.GeneralAPIInternalError(c, err.Error())
-			// 	return
-			// }
-
-			// if activityID != nil {
-			// 	handlers.CreateAlsoCommentedActivity(activityID, postData, headers, ctaData)
-			// 	if err := handlers.taskDistributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode); err != nil {
-			// 		logging.Error("Failed to enqueue send notification : ", err)
-			// 	}
-			// }
 
 			if err := handlers.taskDistributor.AsyncCreateActivityAndSendNotification(
 				postData.CommunityId,
@@ -905,36 +883,14 @@ func (handlers *FeedHandlers) CommentPost(c *gin.Context) {
 		"success": true,
 	}
 
-	var wg sync.WaitGroup
-	var mu sync.Mutex
+	fetchCommentResponse, err := fetchCommentData(handlers, loggedInUser, commentId.(primitive.ObjectID).Hex(), postId,
+		commentFilterOptions, false, excludedUserIds)
+	if err == nil {
+		response["comment"] = fetchCommentResponse
+	}
 
-	wg.Add(2)
-
-	utils.SafeGo(func() {
-		// fetch comment response data
-		defer wg.Done()
-
-		fetchCommentResponse, err := fetchCommentData(handlers, loggedInUser, commentId.(primitive.ObjectID).Hex(), postId,
-			commentFilterOptions, false, excludedUserIds)
-		if err == nil {
-			mu.Lock() // we are using mutex because maps are not thread-safe in go.
-			response["comment"] = fetchCommentResponse
-			mu.Unlock()
-		}
-	})
-
-	utils.SafeGo(func() {
-		defer wg.Done()
-
-		// Parse comments to fetch widget_ids``
-		widgets := getWidgetDataFromFeedResponse(handlers, response, communityId, false, userId)
-
-		mu.Lock() // again, we are using mutex because maps are not thread-safe in go.
-		response["widgets"] = widgets
-		mu.Unlock()
-	})
-
-	wg.Wait()
+	// Parse comments to fetch widget_ids``
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, false, userId)
 
 	// Delete top liked comments data in post from cache
 	utils.SafeGo(func() {
@@ -1867,7 +1823,6 @@ func (handlers *FeedHandlers) CreateActivityAndSendNotification(
 	}
 
 	if activityID != nil {
-		// err := distributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
 		err := SendNotification(*handlers, activityID.(primitive.ObjectID), platformCode, versionCode)
 
 		if err != nil {

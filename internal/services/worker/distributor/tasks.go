@@ -352,26 +352,3 @@ func (distributor *RedisTaskDistributor) AsyncCreateActivityAndSendNotification(
 
 	return nil
 }
-
-// // Task Distributor for "task:TaskCreateActivityAndSentNotification"
-// func (distributor *RedisTaskDistributor) AsyncCreateActivityAndSendNotification(
-// 	createActivityFn func() (interface{}, error),
-// 	platformCode string,
-// 	versionCode string,
-// 	opts ...asynq.Option,
-// ) error {
-// 	activityID, err := createActivityFn()
-// 	if err != nil {
-// 		logging.Error("Tag activity failed:", err)
-// 		return err
-// 	}
-
-// 	if activityID != nil {
-// 		err := distributor.AsyncSendNotification(activityID.(primitive.ObjectID), platformCode, versionCode)
-// 		if err != nil {
-// 			logging.Error("Failed to enqueue send notification:", err)
-// 		}
-// 	}
-
-// 	return nil
-// }

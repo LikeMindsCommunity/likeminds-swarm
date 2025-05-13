@@ -166,7 +166,6 @@ func (processor *RedisTaskProcessor) createActivityAndSendNotificationBackground
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	// return handlers.createActivityAndSendNotification(*processor.feedHandlers, payload.ActivityID, payload.PlatformCode, payload.VersionCode)
 	return processor.feedHandlers.CreateActivityAndSendNotification(
 		payload.CommunityID,
 		payload.ActionBy,
