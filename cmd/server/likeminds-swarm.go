@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	AppVersion     string = "1.39.3" // Application Version
+	AppVersion     string = "1.39.4" // Application Version
 	GinPortAddress string = ":8080"  // Gin Port Address
 )
 

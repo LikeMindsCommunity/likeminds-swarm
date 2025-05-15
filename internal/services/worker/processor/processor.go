@@ -29,6 +29,7 @@ func (processor *RedisTaskProcessor) Run() error {
 	mux.HandleFunc(worker.TaskAsyncEditPostTasks, processor.editPostBackgroundTasks)
 	mux.HandleFunc(worker.TaskAsyncDeletePostTasks, processor.deletePostBackgroundTasks)
 	mux.HandleFunc(worker.TaskAsyncSendNotification, processor.sendNotification)
+	mux.HandleFunc(worker.TaskAsyncCreateActivityAndSendNotification, processor.createActivityAndSendNotificationBackgroundTask)
 	mux.HandleFunc(worker.TaskAsyncCommunityDefaultFeed, processor.computeCommunityDefaultFeed)
 
 	return processor.server.Run(mux)
