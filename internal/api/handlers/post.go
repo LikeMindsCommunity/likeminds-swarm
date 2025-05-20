@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -1662,9 +1663,33 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 		"post": fetchPostData,
 	}
 
-	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
-	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
+	var (
+		topics  map[string]responses.TopicResponse
+		reposts map[string]responses.PostResponse
+		widgets map[string]requests.WidgetResponse
+		wg      sync.WaitGroup
+	)
+
+	wg.Add(3)
+
+	utils.SafeGo(func() {
+		defer wg.Done()
+		topics = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	})
+	utils.SafeGo(func() {
+		defer wg.Done()
+		reposts = getOriginalPostForReposts(handlers, loggedInUser, response)
+	})
+	utils.SafeGo(func() {
+		defer wg.Done()
+		widgets = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
+	})
+
+	wg.Wait()
+
+	response["topics"] = topics
+	response["reposted_posts"] = reposts
+	response["widgets"] = widgets
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)
