@@ -1028,10 +1028,24 @@ func fetchPostWithReplies(handlers *FeedHandlers, loggedInUser *LoggedInUserPara
 		return postWithRepliesResponse, err
 	}
 
-	postResponse := parseSinglePostResponse(handlers, postData, loggedInUser)
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults,
-		loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1,
-		handlers.cacheHelper, loggedInUser.MemberRole)
+	var (
+		postResponse    responses.PostResponse
+		repliesResponse []responses.CommentResponse
+		wg              sync.WaitGroup
+	)
+
+	wg.Add(2)
+	utils.SafeGo(func() {
+		defer wg.Done()
+		postResponse = parseSinglePostResponse(handlers, postData, loggedInUser)
+	})
+	utils.SafeGo(func() {
+		defer wg.Done()
+		repliesResponse = parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults,
+			loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1,
+			handlers.cacheHelper, loggedInUser.MemberRole)
+	})
+	wg.Wait()
 
 	postWithRepliesResponse.PostResponse = postResponse
 	postWithRepliesResponse.Replies = repliesResponse
@@ -1666,11 +1680,10 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 	var (
 		topics  map[string]responses.TopicResponse
 		reposts map[string]responses.PostResponse
-		widgets map[string]requests.WidgetResponse
 		wg      sync.WaitGroup
 	)
 
-	wg.Add(3)
+	wg.Add(2)
 
 	utils.SafeGo(func() {
 		defer wg.Done()
@@ -1680,16 +1693,12 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 		defer wg.Done()
 		reposts = getOriginalPostForReposts(handlers, loggedInUser, response)
 	})
-	utils.SafeGo(func() {
-		defer wg.Done()
-		widgets = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
-	})
 
 	wg.Wait()
 
 	response["topics"] = topics
 	response["reposted_posts"] = reposts
-	response["widgets"] = widgets
+	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// return final response
 	utils.GenerateSuccessResponse(c, response)
