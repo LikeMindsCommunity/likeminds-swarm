@@ -803,3 +803,65 @@ func getWidgetIdsFromAttachments(attachments []responses.AttachmentResponse) []p
 
 	return finalWidgetIds
 }
+
+// Create the filter query to fetch the post ids based on attachment types
+func createFilterQueryToGetPostIdsBasedOnAttachmentTypesFilter(attachmentTypes []int, postObjectIds []primitive.ObjectID) []map[string]interface{} {
+	postIdsFilterData := []map[string]interface{}{}
+	attachmentTypesFilterQuery := []map[string]int{}
+
+	for _, attachmentType := range attachmentTypes {
+		attachmentTypesFilterQuery = append(attachmentTypesFilterQuery, map[string]int{"attachments.attachment_type": attachmentType})
+	}
+
+	// Add match query
+	matchQuery := gin.H{
+		"$and": attachmentTypesFilterQuery,
+	}
+
+	if len(postObjectIds) > 0 {
+		matchQuery["_id"] = gin.H{
+			"$in": postObjectIds,
+		}
+	}
+
+	postIdsFilterData = append(postIdsFilterData, gin.H{
+		"$match": matchQuery,
+	})
+
+	return postIdsFilterData
+}
+
+// Get post ids based on atatchemnt types
+func getPostIdsBasedOnAttachmentTypesFilter(handlers *FeedHandlers, attachmentTypes []int, postObjectIds []primitive.ObjectID,
+) ([]primitive.ObjectID, error) {
+
+	var postIds []primitive.ObjectID
+
+	pipeline := createFilterQueryToGetPostIdsBasedOnAttachmentTypesFilter(attachmentTypes, postObjectIds)
+
+	postAggregateResults, err := handlers.postHelper.AggregatePostHelper(pipeline)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert []gin.H to JSON
+	jsonData, err := json.Marshal(postAggregateResults)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal JSON to []Post
+	var postsData []entities.Post
+	err = json.Unmarshal(jsonData, &postsData)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(postsData) > 0 {
+		for _, postData := range postsData {
+			postIds = append(postIds, postData.ID)
+		}
+	}
+
+	return postIds, nil
+}

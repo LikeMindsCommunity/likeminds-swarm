@@ -2,10 +2,11 @@ package requests
 
 // Request Structure for Universal Feed
 type FetchUniversalFeedRequest struct {
-	IsCm      bool   `form:"user_is_cm"`
-	TopicIds  string `form:"topic_ids"`
-	WidgetIds string `form:"widget_ids"`
-	PostIds   string `form:"post_ids"`
+	IsCm            bool   `form:"user_is_cm"`
+	TopicIds        string `form:"topic_ids"`
+	WidgetIds       string `form:"widget_ids"`
+	PostIds         string `form:"post_ids"`
+	AttachmentTypes string `form:"attachment_types,omitempty"`
 }
 
 // Request Structure for Fetch Explore Feed
