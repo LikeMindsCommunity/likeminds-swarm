@@ -275,7 +275,7 @@ func GetTopicIdsFilterQuery(topicIds []string, communityId int) string {
 
 // Exposed method to create topic search query
 func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool,
-	isEnabled bool, minPosts int, orderByParams []string, parentTopicId string, isCM bool) string {
+	isEnabled bool, minPosts int, orderByParams []string, parentTopicId string, isCM bool, memberRole string) string {
 
 	from := pageSize * (page - 1)
 
@@ -346,10 +346,12 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 
 	var accessStringArray string
 
-	if isCM {
+	if memberRole == utils.CMRole {
 		accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
-	} else {
+	} else if memberRole == utils.MemberRole {
 		accessStringArray = utils.ParseStringArrayToString([]string{enums.EVERYONE_TOPIC_ACCESS, ""})
+	} else {
+		accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
 	}
 
 	accessQuery := fmt.Sprintf(`,{
