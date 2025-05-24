@@ -1,26 +1,28 @@
 package worker
 
 import (
+	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 	"github.com/nateshr/likeminds-swarm/internal/api/responses"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Task Names for each task type
 const (
-	BrokerConnectionTest              = "task:BrokerConnectionTest"
-	TaskSendWebhookRequestWithPayload = "task:SendWebhookRequestWithPayload"
-	TaskTriggerPostCreationWebhook    = "task:TriggerPostCreationWebhook"
-	TaskTriggerPostLikedWebhook       = "task:TriggerPostLikedWebhook"
-	TaskTriggerPostPinnedWebhook      = "task:TriggerPostPinnedWebhook"
-	TaskTriggerPostTaggedWebhook      = "task:TriggerPostTaggedWebhook"
-	TaskTriggerCommentAddedWebhook    = "task:TriggerCommentAddedWebhook"
-	TaskTriggerCommentReactWebhook    = "task:TriggerCommentReactWebhook"
-	TaskTriggerCommentTaggedWebhook   = "task:TriggerCommentTaggedWebhook"
-	TaskAsyncCreatePostTasks          = "task:AsyncCreatePostTasks"
-	TaskAsyncEditPostTasks            = "task:AsyncEditPostTasks"
-	TaskAsyncDeletePostTasks          = "task:AsnycDeletePostTasks"
-	TaskAsyncSendNotification         = "task:AsyncSendNotification"
-	TaskAsyncCommunityDefaultFeed     = "task:AsyncCommunityDefaultFeed"
+	BrokerConnectionTest                       = "task:BrokerConnectionTest"
+	TaskSendWebhookRequestWithPayload          = "task:SendWebhookRequestWithPayload"
+	TaskTriggerPostCreationWebhook             = "task:TriggerPostCreationWebhook"
+	TaskTriggerPostLikedWebhook                = "task:TriggerPostLikedWebhook"
+	TaskTriggerPostPinnedWebhook               = "task:TriggerPostPinnedWebhook"
+	TaskTriggerPostTaggedWebhook               = "task:TriggerPostTaggedWebhook"
+	TaskTriggerCommentAddedWebhook             = "task:TriggerCommentAddedWebhook"
+	TaskTriggerCommentReactWebhook             = "task:TriggerCommentReactWebhook"
+	TaskTriggerCommentTaggedWebhook            = "task:TriggerCommentTaggedWebhook"
+	TaskAsyncCreatePostTasks                   = "task:AsyncCreatePostTasks"
+	TaskAsyncEditPostTasks                     = "task:AsyncEditPostTasks"
+	TaskAsyncDeletePostTasks                   = "task:AsnycDeletePostTasks"
+	TaskAsyncSendNotification                  = "task:AsyncSendNotification"
+	TaskAsyncCommunityDefaultFeed              = "task:AsyncCommunityDefaultFeed"
+	TaskAsyncCreateActivityAndSendNotification = "task:AsyncCreateActivityAndSendNotification"
 )
 
 // Payload for the task to trigger post creation webhook
@@ -88,4 +90,22 @@ type PayloadSendNotification struct {
 	ActivityID   primitive.ObjectID `json:"activity_id"`
 	PlatformCode string             `json:"platform_code"`
 	VersionCode  string             `json:"version_code"`
+}
+
+// Payload for create activiy and send notification
+type PayloadCreateActivityAndSendNotification struct {
+	CommunityID      int                      `json:"community_id"`
+	ActionBy         []string                 `json:"action_by"`
+	ActionOn         string                   `json:"action_on"`
+	EntityType       constants.EntityType     `json:"entity_type"`
+	EntityID         primitive.ObjectID       `json:"entity_id"`
+	EntityOwnerID    string                   `json:"entitiy_owner_id"`
+	Action           constants.ActivityAction `json:"action"`
+	CtaData          map[string]interface{}   `json:"cta_data"`
+	IsRead           bool                     `json:"is_read"`
+	IsDeleted        bool                     `json:"is_deleted"`
+	ActionByEntityId primitive.ObjectID       `json:"action_entity_id"`
+	ActivityText     string                   `json:"activity_text"`
+	PlatformCode     string                   `json:"platform_code"`
+	VersionCode      string                   `json:"version_code"`
 }
