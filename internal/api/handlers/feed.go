@@ -137,15 +137,16 @@ func (handlers *FeedHandlers) FetchUniversalFeed(c *gin.Context) {
 	// Parse post ids string array
 	postIds := utils.ParseStringArrayParam(universalFeedRequest.PostIds)
 
-	// Parse attachment types string array
-	originalAttachmentTypes := utils.ParseStringArrayParam(universalFeedRequest.AttachmentTypes)
 	attachmentTypes := []int{}
 
-	for _, attachmentType := range originalAttachmentTypes {
-		validAttachmentType := enums.AttachmentType(attachmentType)
+	// Parse attachment types string array
+	if universalFeedRequest.FeedType != "" {
+		feedType := enums.FeedType(universalFeedRequest.FeedType)
+		attachmentTypes = feedType.GetAttachmentsList()
 
-		if validAttachmentType.IsValid() {
-			attachmentTypes = append(attachmentTypes, validAttachmentType.ToInt())
+		if len(attachmentTypes) == 0 {
+			utils.GeneralAPIValidationError(c, "Invalid feed type")
+			return
 		}
 	}
 
