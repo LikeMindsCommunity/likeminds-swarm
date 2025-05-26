@@ -219,6 +219,7 @@ func ParseTopicIndexData(postHelper interfaces.PostHelper, Topic *entities.Topic
 		ParentName:      Topic.ParentName,
 		Level:           Topic.Level,
 		TotalChildCount: Topic.TotalChildCount,
+		Access:          Topic.Access,
 		CreatedAt:       Topic.CreatedAt,
 		UpdatedAt:       Topic.UpdatedAt,
 	}
@@ -274,7 +275,7 @@ func GetTopicIdsFilterQuery(topicIds []string, communityId int) string {
 
 // Exposed method to create topic search query
 func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool,
-	isEnabled bool, minPosts int, orderByParams []string, parentTopicId string) string {
+	isEnabled bool, minPosts int, orderByParams []string, parentTopicId string, isCM bool) string {
 
 	from := pageSize * (page - 1)
 
@@ -343,6 +344,20 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		}`
 	}
 
+	var accessStringArray string
+
+	if isCM {
+		accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
+	} else {
+		accessStringArray = utils.ParseStringArrayToString([]string{enums.EVERYONE_TOPIC_ACCESS, ""})
+	}
+
+	accessQuery := fmt.Sprintf(`,{
+		"terms": {
+			"access.keyword": %s
+		}
+	}`, accessStringArray)
+
 	return fmt.Sprintf(`
 	{
 		"from": %d,
@@ -357,10 +372,11 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 					%s
 					%s
 					%s
+					%s
 				]
 			}
 		}
-	}`, from, pageSize, sortQuery, communityQuery, isEnabledQuery, searchQuery, minPostsQuery, parentTopicQuery, levelQuery)
+	}`, from, pageSize, sortQuery, communityQuery, isEnabledQuery, searchQuery, minPostsQuery, parentTopicQuery, levelQuery, accessQuery)
 }
 
 func getSortQueryFromOrderByParams(orderByParams []string) string {

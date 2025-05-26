@@ -21,7 +21,7 @@ type TopicRepository interface {
 
 // Interface for Topic Helper
 type TopicHelper interface {
-	CreateTopicHelper(name string, is_enabled bool, priority float32, isSearchable bool, parentId primitive.ObjectID, parentName string, allParentIds []primitive.ObjectID, level int, widgetId primitive.ObjectID, totalChildCount int, communityId int) (interface{}, error)
+	CreateTopicHelper(name string, is_enabled bool, priority float32, isSearchable bool, parentId primitive.ObjectID, parentName string, allParentIds []primitive.ObjectID, level int, widgetId primitive.ObjectID, totalChildCount int, access string, communityId int) (interface{}, error)
 	CreateManyTopicsHelper(topicsRequest []requests.CreateTopicRequest, communityId int) ([]primitive.ObjectID, error)
 	FindTopicHelper(filter map[string]interface{}, filterOptions map[string]interface{}) ([]entities.Topic, error)
 	UpdateTopicByIdHelper(topicId primitive.ObjectID, update map[string]interface{}, updateTimestamp bool) error

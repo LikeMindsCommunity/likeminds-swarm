@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -199,7 +200,7 @@ func fetchAndParseTopicsForResponse(topicHelper interfaces.TopicHelper, topicIds
 ) (map[string]responses.TopicResponse, error) {
 
 	// Fetch topics using topic Ids
-	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false)
+	topics, err := fetchTopicsByIDs(topicHelper, topicIds, communityId, false, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1027,10 +1028,24 @@ func fetchPostWithReplies(handlers *FeedHandlers, loggedInUser *LoggedInUserPara
 		return postWithRepliesResponse, err
 	}
 
-	postResponse := parseSinglePostResponse(handlers, postData, loggedInUser)
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults,
-		loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1,
-		handlers.cacheHelper, loggedInUser.MemberRole)
+	var (
+		postResponse    responses.PostResponse
+		repliesResponse []responses.CommentResponse
+		wg              sync.WaitGroup
+	)
+
+	wg.Add(2)
+	utils.SafeGo(func() {
+		defer wg.Done()
+		postResponse = parseSinglePostResponse(handlers, postData, loggedInUser)
+	})
+	utils.SafeGo(func() {
+		defer wg.Done()
+		repliesResponse = parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults,
+			loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1,
+			handlers.cacheHelper, loggedInUser.MemberRole)
+	})
+	wg.Wait()
 
 	postWithRepliesResponse.PostResponse = postResponse
 	postWithRepliesResponse.Replies = repliesResponse
@@ -1294,7 +1309,7 @@ func validateCreatePostRequest(handlers *FeedHandlers, userId string, communityI
 
 	// validate if topic_ids are valid
 	if len(topicIDs) > 0 {
-		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false, true, postRequest.UserIsCm)
 		if err != nil {
 			return nil, err
 		}
@@ -1662,8 +1677,27 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 		"post": fetchPostData,
 	}
 
-	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
+	var (
+		topics  map[string]responses.TopicResponse
+		reposts map[string]responses.PostResponse
+		wg      sync.WaitGroup
+	)
+
+	wg.Add(2)
+
+	utils.SafeGo(func() {
+		defer wg.Done()
+		topics = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	})
+	utils.SafeGo(func() {
+		defer wg.Done()
+		reposts = getOriginalPostForReposts(handlers, loggedInUser, response)
+	})
+
+	wg.Wait()
+
+	response["topics"] = topics
+	response["reposted_posts"] = reposts
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// return final response
@@ -1759,7 +1793,7 @@ func (handlers *FeedHandlers) EditPost(c *gin.Context) {
 		// convert topic_ids to object ids
 		topicIDs = helpers.ConvertIdsToObjectIds(editPostRequest.TopicIds)
 
-		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+		topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false, true, editPostRequest.UserIsCm)
 		if err != nil {
 			utils.GeneralAPIValidationError(c, err.Error())
 			return

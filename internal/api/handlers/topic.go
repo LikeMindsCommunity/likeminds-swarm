@@ -34,6 +34,7 @@ func parseTopicResponse(topic *entities.Topic) responses.TopicResponse {
 	response.IsSearchable = topic.IsSearchable
 	response.ParentName = topic.ParentName
 	response.Level = topic.Level
+	response.Access = topic.Access
 
 	if topic.ParentId != primitive.NilObjectID {
 		response.ParentId = topic.ParentId.Hex()
@@ -73,7 +74,8 @@ func fetchTopicByID(helper interfaces.TopicHelper, topicId string, communityId i
 }
 
 // Internal Method to fetch topics using topic_ids and community_id
-func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int, filterEnabled bool) ([]entities.Topic, error) {
+func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.ObjectID, communityId int, filterEnabled bool,
+	checkAccessLevel bool, isCm bool) ([]entities.Topic, error) {
 
 	// topic filter data
 	topicsFilterData := gin.H{
@@ -85,6 +87,18 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 
 	if filterEnabled {
 		topicsFilterData["is_enabled"] = filterEnabled
+	}
+
+	if checkAccessLevel {
+		if isCm {
+			topicsFilterData["access"] = gin.H{
+				"$in": []string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""},
+			}
+		} else {
+			topicsFilterData["access"] = gin.H{
+				"$in": []string{enums.EVERYONE_TOPIC_ACCESS, ""},
+			}
+		}
 	}
 
 	// fetch topic using helper method
@@ -102,7 +116,7 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 
 	// throw error if Names or Topics are empty
 	if len(createTopicsRequest.Names) == 0 && len(createTopicsRequest.Topics) == 0 {
-		return nil, fmt.Errorf("send names or topics to create new topics")
+		return nil, fmt.Errorf("Send names or topics to create new topics")
 	}
 
 	// Update Topics array with names if names are sent instead of topics meta
@@ -123,6 +137,12 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 		createTopicsRequest.Topics[i].Name = strings.Trim(topic.Name, " ")
 		if createTopicsRequest.Topics[i].Name == "" {
 			return nil, fmt.Errorf("can't Create Topic With Empty Name")
+		}
+
+		access := strings.Trim(topic.Access, " ")
+
+		if access != "" && !enums.IsValidTopicAccessParam(access) {
+			return nil, fmt.Errorf("Invalid value %s in access", access)
 		}
 
 		topicNames[i] = createTopicsRequest.Topics[i].Name
@@ -152,7 +172,7 @@ func validateAndUpdateCreateTopicsRequest(topicHelper interfaces.TopicHelper, cr
 		parentIds = utils.RemoveDuplicatesFromObjectIDSlice(parentIds)
 
 		// fetch and validate parent topics
-		parentTopics, err := fetchTopicsByIDs(topicHelper, parentIds, communityId, false)
+		parentTopics, err := fetchTopicsByIDs(topicHelper, parentIds, communityId, false, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +272,7 @@ func createTopicsAfterValidation(handlers *FeedHandlers, topicsRequest []request
 	}
 
 	// fetch newly created topic objects from db using IDs
-	topicsData, err := fetchTopicsByIDs(handlers.topicHelper, topicIds, communityId, false)
+	topicsData, err := fetchTopicsByIDs(handlers.topicHelper, topicIds, communityId, false, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -511,7 +531,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 
 			// fetch child topics of parent
 			topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType, fetchTopicRequest.Search,
-				communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, parentTopic.ID)
+				communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, parentTopic.ID, isCM)
 			esResponse := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
 			childTopics := processTopicSearchData(esResponse)
 
@@ -523,7 +543,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 
 		// ES query to search topics
 		topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType,
-			fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, "")
+			fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, "", isCM)
 
 		// execute the query
 		esResponse := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
@@ -577,6 +597,12 @@ func validateEditTopicRequest(handlers *FeedHandlers, topicId string, editTopicR
 		}
 
 		topicUpdateData["$set"].(gin.H)["name"] = editTopicRequest.Name
+	}
+
+	access := strings.Trim(editTopicRequest.Access, " ")
+
+	if access != "" && enums.IsValidTopicAccessParam(access) {
+		topicUpdateData["$set"].(gin.H)["access"] = editTopicRequest.Access
 	}
 
 	// Update set object with is_enabled field, if changed
@@ -701,7 +727,7 @@ func editTopicInternal(handlers *FeedHandlers, topicUpdateData gin.H, metadata m
 	return topic, nil
 }
 
-func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, deleteTopicsRequest requests.DeleteTopicsRequest,
+func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, deleteTopicsRequest requests.DeleteTopicsRequest, isCM bool,
 ) ([]primitive.ObjectID, []primitive.ObjectID, []primitive.ObjectID, error) {
 
 	// convert topic_ids to object ids
@@ -713,7 +739,7 @@ func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, delete
 	}
 
 	// fetch all the topics by topic ids sent in request
-	topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false)
+	topics, err := fetchTopicsByIDs(handlers.topicHelper, topicIDs, communityId, false, true, isCM)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -749,6 +775,11 @@ func validateDeleteTopicsRequest(handlers *FeedHandlers, communityId int, delete
 // Exposed Method to Delete Topics
 func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 
+	//fetch headers
+	headers := utils.GetHeaders(c)
+
+	isCM := utils.IsCMRole(headers[utils.HeadersMemberRole])
+
 	// validation of api_key
 	communityId := externalHelpers.GetCommunityId(c, handlers.cacheHelper)
 	if communityId == externalHelpers.DefaultCommunityId {
@@ -762,7 +793,7 @@ func (handlers *FeedHandlers) DeleteTopics(c *gin.Context) {
 		return
 	}
 
-	topicIDs, widgetIDs, parentIds, err := validateDeleteTopicsRequest(handlers, communityId, deleteTopicsRequest)
+	topicIDs, widgetIDs, parentIds, err := validateDeleteTopicsRequest(handlers, communityId, deleteTopicsRequest, isCM)
 	if err != nil {
 		utils.GeneralAPIValidationError(c, err.Error())
 		return
@@ -855,7 +886,7 @@ func decrementChildCountForParentTopics(topicHelper interfaces.TopicHelper, esHe
 		}
 	}
 
-	parentTopics, err := fetchTopicsByIDs(topicHelper, parentIds, communityId, false)
+	parentTopics, err := fetchTopicsByIDs(topicHelper, parentIds, communityId, false, false, false)
 	if err != nil {
 		logging.Error(err.Error())
 	}

@@ -11,6 +11,7 @@ type TopicResponse struct {
 	ParentName   string   `json:"parent_name"`
 	AllParentIds []string `json:"all_parent_ids"`
 	Level        int      `json:"level"`
+	Access       string   `json:"access"`
 	WidgetId     string   `json:"widget_id"`
 }
 
