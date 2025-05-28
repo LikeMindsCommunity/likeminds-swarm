@@ -34,6 +34,7 @@ const (
 const (
 	GuestRole   string = "GUEST"
 	CMRole      string = "CM"
+	MemberRole  string = "MEMBER"
 	DefaultRole string = ""
 )
 
