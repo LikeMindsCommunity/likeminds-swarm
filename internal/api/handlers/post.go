@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nateshr/likeminds-swarm/internal/services/logging"
@@ -1027,10 +1028,24 @@ func fetchPostWithReplies(handlers *FeedHandlers, loggedInUser *LoggedInUserPara
 		return postWithRepliesResponse, err
 	}
 
-	postResponse := parseSinglePostResponse(handlers, postData, loggedInUser)
-	repliesResponse := parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults,
-		loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1,
-		handlers.cacheHelper, loggedInUser.MemberRole)
+	var (
+		postResponse    responses.PostResponse
+		repliesResponse []responses.CommentResponse
+		wg              sync.WaitGroup
+	)
+
+	wg.Add(2)
+	utils.SafeGo(func() {
+		defer wg.Done()
+		postResponse = parseSinglePostResponse(handlers, postData, loggedInUser)
+	})
+	utils.SafeGo(func() {
+		defer wg.Done()
+		repliesResponse = parseMultipleCommentResponse(handlers.likeHelper, handlers.commentHelper, commentResults,
+			loggedInUser.UserId, loggedInUser.IsCm, loggedInUser.VersionCode, loggedInUser.PlatformCode, loggedInUser.ApiRevampCheckV1,
+			handlers.cacheHelper, loggedInUser.MemberRole)
+	})
+	wg.Wait()
 
 	postWithRepliesResponse.PostResponse = postResponse
 	postWithRepliesResponse.Replies = repliesResponse
@@ -1662,8 +1677,27 @@ func (handlers *FeedHandlers) FetchPost(c *gin.Context) {
 		"post": fetchPostData,
 	}
 
-	response["topics"] = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
-	response["reposted_posts"] = getOriginalPostForReposts(handlers, loggedInUser, response)
+	var (
+		topics  map[string]responses.TopicResponse
+		reposts map[string]responses.PostResponse
+		wg      sync.WaitGroup
+	)
+
+	wg.Add(2)
+
+	utils.SafeGo(func() {
+		defer wg.Done()
+		topics = getTopicDataFromPosts(handlers.topicHelper, response, communityId)
+	})
+	utils.SafeGo(func() {
+		defer wg.Done()
+		reposts = getOriginalPostForReposts(handlers, loggedInUser, response)
+	})
+
+	wg.Wait()
+
+	response["topics"] = topics
+	response["reposted_posts"] = reposts
 	response["widgets"] = getWidgetDataFromFeedResponse(handlers, response, communityId, isCm, headers[utils.HeadersMemberId])
 
 	// return final response

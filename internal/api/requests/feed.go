@@ -6,6 +6,7 @@ type FetchUniversalFeedRequest struct {
 	TopicIds  string `form:"topic_ids"`
 	WidgetIds string `form:"widget_ids"`
 	PostIds   string `form:"post_ids"`
+	FeedType  string `form:"feed_type"`
 }
 
 // Request Structure for Fetch Explore Feed

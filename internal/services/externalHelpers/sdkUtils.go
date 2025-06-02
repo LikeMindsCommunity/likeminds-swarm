@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nateshr/likeminds-swarm/internal/services/cache"
@@ -45,7 +46,7 @@ func getCommunityIdAgainstApiKeyFromCache(cacheHelper cache.Helper, apiKey strin
 func setCommunityIdAgainstApiKeyInCache(cacheHelper cache.Helper, apiKey string, communityId int) {
 
 	cacheKey := fmt.Sprintf(cache.CommunityIdAgainstApiKeyCacheKey, apiKey)
-	if err := cacheHelper.Set(cacheKey, communityId, cache.CommunityIdAgainstApiKeyCacheTTL).Err(); err != nil {
+	if err := cacheHelper.Set(cacheKey, communityId, cache.CommunityIdAgainstApiKeyCacheTTL*time.Hour).Err(); err != nil {
 		logging.Error(fmt.Sprintf("error setting community_id in cache for api-key: %s", apiKey))
 	}
 }
