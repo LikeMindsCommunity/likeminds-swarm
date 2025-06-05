@@ -345,38 +345,6 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		}`
 	}
 
-	// var accessStringArray string
-
-	// if memberRole == utils.CMRole {
-	// 	accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
-	// } else if memberRole == utils.MemberRole {
-	// 	accessStringArray = utils.ParseStringArrayToString([]string{enums.EVERYONE_TOPIC_ACCESS, ""})
-	// } else {
-	// 	accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
-	// }
-
-	// accessQuery := fmt.Sprintf(`,
-	// {
-	//   "bool": {
-	//     "should": [
-	//       {
-	//         "terms": {
-	//           "access.keyword": %s
-	//         }
-	//       },
-	//       {
-	//         "bool": {
-	//           "must_not": {
-	//             "exists": {
-	//               "field": "access"
-	//             }
-	//           }
-	//         }
-	//       }
-	//     ]
-	//   }
-	// }`, accessStringArray)
-
 	var accessQuery string
 	var accessValues []string
 
@@ -389,7 +357,6 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		accessValues = []string{enums.EVERYONE_TOPIC_ACCESS, ""}
 	}
 
-	// if accessValues != nil {
 	accessStringArray := utils.ParseStringArrayToString(accessValues)
 	accessQuery = fmt.Sprintf(`,
 		{
