@@ -345,37 +345,76 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		}`
 	}
 
-	var accessStringArray string
+	// var accessStringArray string
 
-	if memberRole == utils.CMRole {
-		accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
-	} else if memberRole == utils.MemberRole {
-		accessStringArray = utils.ParseStringArrayToString([]string{enums.EVERYONE_TOPIC_ACCESS, ""})
-	} else {
-		accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
+	// if memberRole == utils.CMRole {
+	// 	accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
+	// } else if memberRole == utils.MemberRole {
+	// 	accessStringArray = utils.ParseStringArrayToString([]string{enums.EVERYONE_TOPIC_ACCESS, ""})
+	// } else {
+	// 	accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
+	// }
+
+	// accessQuery := fmt.Sprintf(`,
+	// {
+	//   "bool": {
+	//     "should": [
+	//       {
+	//         "terms": {
+	//           "access.keyword": %s
+	//         }
+	//       },
+	//       {
+	//         "bool": {
+	//           "must_not": {
+	//             "exists": {
+	//               "field": "access"
+	//             }
+	//           }
+	//         }
+	//       }
+	//     ]
+	//   }
+	// }`, accessStringArray)
+
+	var accessQuery string
+	var accessValues []string
+
+	switch memberRole {
+	case utils.CMRole:
+		accessValues = []string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""}
+	case utils.MemberRole:
+		accessValues = []string{enums.EVERYONE_TOPIC_ACCESS, ""}
+	default:
+		accessValues = nil // no filter applied
 	}
 
-	accessQuery := fmt.Sprintf(`,
-	{
-	  "bool": {
-	    "should": [
-	      {
-	        "terms": {
-	          "access.keyword": %s
-	        }
-	      },
-	      {
-	        "bool": {
-	          "must_not": {
-	            "exists": {
-	              "field": "access"
-	            }
-	          }
-	        }
-	      }
-	    ]
-	  }
-	}`, accessStringArray)
+	if accessValues != nil {
+		accessStringArray := utils.ParseStringArrayToString(accessValues)
+		accessQuery = fmt.Sprintf(`,
+		{
+		  "bool": {
+		    "should": [
+		      {
+		        "terms": {
+		          "access.keyword": %s
+		        }
+		      },
+		      {
+		        "bool": {
+		          "must_not": {
+		            "exists": {
+		              "field": "access"
+		            }
+		          }
+		        }
+		      }
+		    ]
+		  }
+		}`, accessStringArray)
+	} else {
+		accessQuery = ""
+	}
 
 	return fmt.Sprintf(`
 	{
