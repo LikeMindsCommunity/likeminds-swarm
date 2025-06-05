@@ -386,12 +386,12 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 	case utils.MemberRole:
 		accessValues = []string{enums.EVERYONE_TOPIC_ACCESS, ""}
 	default:
-		accessValues = nil // no filter applied
+		accessValues = []string{enums.EVERYONE_TOPIC_ACCESS, ""}
 	}
 
-	if accessValues != nil {
-		accessStringArray := utils.ParseStringArrayToString(accessValues)
-		accessQuery = fmt.Sprintf(`,
+	// if accessValues != nil {
+	accessStringArray := utils.ParseStringArrayToString(accessValues)
+	accessQuery = fmt.Sprintf(`,
 		{
 		  "bool": {
 		    "should": [
@@ -412,9 +412,6 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		    ]
 		  }
 		}`, accessStringArray)
-	} else {
-		accessQuery = ""
-	}
 
 	return fmt.Sprintf(`
 	{
