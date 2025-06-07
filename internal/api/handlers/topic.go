@@ -531,7 +531,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 
 			// fetch child topics of parent
 			topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType, fetchTopicRequest.Search,
-				communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, parentTopic.ID, isCM)
+				communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, parentTopic.ID, isCM, fetchTopicRequest.MemberRole)
 			esResponse := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)
 			childTopics := processTopicSearchData(esResponse)
 
@@ -543,7 +543,7 @@ func (handlers *FeedHandlers) FetchTopics(c *gin.Context) {
 
 		// ES query to search topics
 		topicQuery := GetTopicFilterQuery(page, pageSize, fetchTopicRequest.SearchType,
-			fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, "", isCM)
+			fetchTopicRequest.Search, communityId, filterIsEnabled, isEnabled, minPosts, orderByParams, "", isCM, fetchTopicRequest.MemberRole)
 
 		// execute the query
 		esResponse := handlers.esHelper.ExecuteQuery(topicQuery, constants.TopicIndexName)

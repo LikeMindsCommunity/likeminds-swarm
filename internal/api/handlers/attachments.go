@@ -815,7 +815,7 @@ func createFilterQueryToGetPostIdsBasedOnAttachmentTypesFilter(attachmentTypes [
 
 	// Add match query
 	matchQuery := gin.H{
-		"$and": attachmentTypesFilterQuery,
+		"$or": attachmentTypesFilterQuery,
 	}
 
 	if len(postObjectIds) > 0 {

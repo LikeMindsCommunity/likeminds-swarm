@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"math"
 	"strconv"
@@ -68,11 +67,10 @@ func GetRedisClientOpts() *asynq.RedisClientOpt {
 		Addr: brokerAddress,
 	}
 
-	serverEnviornment := environment.GoDotEnvVariable("SERVER_ENVIRONMENT")
-	if serverEnviornment == "load" {
-		redisClientOpt.Password = environment.GoDotEnvVariable("ASYNQ_BROKER_PASSWORD")
-		redisClientOpt.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	}
+	redisClientOpt.Password = environment.GoDotEnvVariable("ASYNQ_BROKER_PASSWORD")
+
+	// disabling tls config as using private hosted DNS zone in azure
+	// redisClientOpt.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 
 	return &redisClientOpt
 }

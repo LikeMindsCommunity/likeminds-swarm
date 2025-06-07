@@ -41,6 +41,7 @@ type FetchTopicRequest struct {
 	MinPosts   string `form:"min_posts"`
 	ParentIds  string `form:"parent_ids"`
 	OrderBy    string `form:"order_by"`
+	MemberRole string `form:"member_role"`
 }
 
 // Request Structure for Delete Topics
