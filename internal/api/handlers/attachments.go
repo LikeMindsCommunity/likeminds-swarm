@@ -807,10 +807,28 @@ func getWidgetIdsFromAttachments(attachments []responses.AttachmentResponse) []p
 // Create the filter query to fetch the post ids based on attachment types
 func createFilterQueryToGetPostIdsBasedOnAttachmentTypesFilter(attachmentTypes []int, postObjectIds []primitive.ObjectID) []map[string]interface{} {
 	postIdsFilterData := []map[string]interface{}{}
-	attachmentTypesFilterQuery := []map[string]int{}
+	attachmentTypesFilterQuery := []map[string]interface{}{}
+
+	hasNegativeOne := false
 
 	for _, attachmentType := range attachmentTypes {
-		attachmentTypesFilterQuery = append(attachmentTypesFilterQuery, map[string]int{"attachments.attachment_type": attachmentType})
+		if attachmentType == -1 {
+			hasNegativeOne = true
+			continue // Skip adding -1 to match "attachments.attachment_type"
+		}
+
+		attachmentTypesFilterQuery = append(attachmentTypesFilterQuery, map[string]interface{}{
+			"attachments.attachment_type": attachmentType,
+		})
+	}
+
+	// If -1 is present, add an additional filter to include documents
+	// where "attachments" field doesn't exist or is null
+	if hasNegativeOne {
+		attachmentTypesFilterQuery = append(attachmentTypesFilterQuery,
+			map[string]interface{}{"attachments": gin.H{"$exists": false}},
+			map[string]interface{}{"attachments": nil},
+		)
 	}
 
 	// Add match query
