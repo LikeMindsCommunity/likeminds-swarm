@@ -2,7 +2,8 @@ package enums
 
 // constants for attachment_type
 const (
-	ImageWidget int = iota + 1
+	NoAttachment int = iota
+	ImageWidget
 	VideoWidget
 	DocumentWidget
 	LinkWidget

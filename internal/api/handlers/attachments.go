@@ -809,12 +809,12 @@ func createFilterQueryToGetPostIdsBasedOnAttachmentTypesFilter(attachmentTypes [
 	postIdsFilterData := []map[string]interface{}{}
 	attachmentTypesFilterQuery := []map[string]interface{}{}
 
-	hasNegativeOne := false
+	includePostsWithoutAttachment := false
 
 	for _, attachmentType := range attachmentTypes {
-		if attachmentType == -1 {
-			hasNegativeOne = true
-			continue // Skip adding -1 to match "attachments.attachment_type"
+		if attachmentType == enums.NoAttachment {
+			includePostsWithoutAttachment = true
+			continue // Skip adding NoAttachment to match "attachments.attachment_type"
 		}
 
 		attachmentTypesFilterQuery = append(attachmentTypesFilterQuery, map[string]interface{}{
@@ -822,9 +822,9 @@ func createFilterQueryToGetPostIdsBasedOnAttachmentTypesFilter(attachmentTypes [
 		})
 	}
 
-	// If -1 is present, add an additional filter to include documents
+	// If NoAttachment is present, add an additional filter to include documents
 	// where "attachments" field doesn't exist or is null
-	if hasNegativeOne {
+	if includePostsWithoutAttachment {
 		attachmentTypesFilterQuery = append(attachmentTypesFilterQuery,
 			map[string]interface{}{"attachments": gin.H{"$exists": false}},
 			map[string]interface{}{"attachments": nil},
