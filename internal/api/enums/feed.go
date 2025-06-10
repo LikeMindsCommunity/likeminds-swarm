@@ -21,9 +21,9 @@ const (
 func (ft FeedType) GetAttachmentsList() []int {
 	switch ft {
 	case SocialFeedType:
-		return []int{ImageWidget, VideoWidget, DocumentWidget, LinkWidget, CustomWidget, PollWidget, ArticleWidget, PostWidget, RepostWidget, GIFWidget}
+		return []int{ImageWidget, VideoWidget, DocumentWidget, LinkWidget, CustomWidget, PollWidget, ArticleWidget, PostWidget, RepostWidget, GIFWidget, NoAttachment}
 	case QnAFeedType:
-		return []int{ImageWidget, VideoWidget, DocumentWidget, LinkWidget, CustomWidget, PollWidget, ArticleWidget, PostWidget, RepostWidget, GIFWidget}
+		return []int{ImageWidget, VideoWidget, DocumentWidget, LinkWidget, CustomWidget, PollWidget, ArticleWidget, PostWidget, RepostWidget, GIFWidget, NoAttachment}
 	case VideoFeedType:
 		return []int{ReelWidget}
 	}
