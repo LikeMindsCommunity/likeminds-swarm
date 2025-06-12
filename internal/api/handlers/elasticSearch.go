@@ -273,7 +273,8 @@ func GetTopicIdsFilterQuery(topicIds []string, communityId int) string {
 	}`, communityId, utils.ParseStringArrayToString(topicIds))
 }
 
-// Exposed method to create topic search query
+// Exposed method to create topic search query.
+// Note : Everytime a new field is added in mongodb, it doesn't cause any problem there but it sometimes causes problem in elastic search because in older documents the newly added field is null. So take care of this
 func GetTopicFilterQuery(page int, pageSize int, searchType string, search string, communityId int, filterIsEnabled bool,
 	isEnabled bool, minPosts int, orderByParams []string, parentTopicId string, isCM bool, memberRole string) string {
 
@@ -344,21 +345,40 @@ func GetTopicFilterQuery(page int, pageSize int, searchType string, search strin
 		}`
 	}
 
-	var accessStringArray string
+	var accessQuery string
+	var accessValues []string
 
-	if memberRole == utils.CMRole {
-		accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
-	} else if memberRole == utils.MemberRole {
-		accessStringArray = utils.ParseStringArrayToString([]string{enums.EVERYONE_TOPIC_ACCESS, ""})
-	} else {
-		accessStringArray = utils.ParseStringArrayToString([]string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""})
+	switch memberRole {
+	case utils.CMRole:
+		accessValues = []string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""}
+	case utils.MemberRole:
+		accessValues = []string{enums.EVERYONE_TOPIC_ACCESS, ""}
+	default:
+		accessValues = []string{enums.EVERYONE_TOPIC_ACCESS, ""}
 	}
 
-	accessQuery := fmt.Sprintf(`,{
-		"terms": {
-			"access.keyword": %s
-		}
-	}`, accessStringArray)
+	accessStringArray := utils.ParseStringArrayToString(accessValues)
+	accessQuery = fmt.Sprintf(`,
+		{
+		  "bool": {
+		    "should": [
+		      {
+		        "terms": {
+		          "access.keyword": %s
+		        }
+		      },
+		      {
+		        "bool": {
+		          "must_not": {
+		            "exists": {
+		              "field": "access"
+		            }
+		          }
+		        }
+		      }
+		    ]
+		  }
+		}`, accessStringArray)
 
 	return fmt.Sprintf(`
 	{
