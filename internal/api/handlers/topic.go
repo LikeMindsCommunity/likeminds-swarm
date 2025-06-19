@@ -92,11 +92,11 @@ func fetchTopicsByIDs(helper interfaces.TopicHelper, topicIds []primitive.Object
 	if checkAccessLevel {
 		if isCm {
 			topicsFilterData["access"] = gin.H{
-				"$in": []string{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, ""},
+				"$in": []interface{}{enums.ONLY_CM_TOPIC_ACCESS, enums.EVERYONE_TOPIC_ACCESS, "", nil},
 			}
 		} else {
 			topicsFilterData["access"] = gin.H{
-				"$in": []string{enums.EVERYONE_TOPIC_ACCESS, ""},
+				"$in": []interface{}{enums.EVERYONE_TOPIC_ACCESS, "", nil},
 			}
 		}
 	}
