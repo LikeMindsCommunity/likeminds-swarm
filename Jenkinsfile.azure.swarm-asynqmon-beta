@@ -63,7 +63,7 @@ pipeline {
         stage ('Build Asynqmon Image') {
           steps {
             sh '''
-              docker build -f Dockerfile.swarm-asynqmon-beta -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:V$BUILD_NUMBER .
+              docker build -f Dockerfile.swarm-asynqmon-beta -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
             '''
           }
         }
@@ -71,7 +71,7 @@ pipeline {
         stage ('Push Asynqmon Image') {
           steps {
             sh '''
-              docker push $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:V$BUILD_NUMBER
+              docker push $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER
             '''
           }
         }
