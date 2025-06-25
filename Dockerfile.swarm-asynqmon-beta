@@ -3,7 +3,7 @@
 FROM hibiken/asynqmon:latest
 
 # Set the default Redis address (can be overridden by environment variable)
-ENV REDIS_ADDR=redis-swarm-worker-beta.staging.likeminds:6379
+# We are already downloading .env from Azure Blob to while building the image.
 
 # Command to run Asynqmon with the Redis address
-CMD ["asynqmon", "--port=8080", "--redis-addr=${REDIS_ADDR}", "--read-only=true"]
+CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
