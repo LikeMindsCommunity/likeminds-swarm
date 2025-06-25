@@ -60,13 +60,39 @@ pipeline {
             }
         }
 
-        stage ('Build Asynqmon Image') {
+        stage('Build Image') {
           steps {
-            sh '''
-              docker build -f Dockerfile.swarm-asynqmon-beta -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
-            '''
+              script {
+                  // Read the .env file from the configured DOWNLOAD_PATH
+                  def envContent = readFile(env.DOWNLOAD_PATH)
+                  def envMap = [:]
+                  envContent.split('\n').each {
+                      def line = it.trim()
+                      if (line && !line.startsWith('#') && line.contains('=')) {
+                          def (key, value) = line.split('=', 2)
+                          envMap[key.trim()] = value.trim()
+                      }
+                  }
+
+                  // Extract required variables (dynamically)
+                  def redisAddress = envMap['ASYNQ_BROKER_ADDRESS']
+                  def redisPassword = envMap['ASYNQ_BROKER_PASSWORD']
+
+                  // Echo only safe values (avoid printing passwords)
+                  echo "Using Redis address: ${redisAddress}"
+
+                  // Build the Docker image with dynamic build args
+                  sh """
+                    docker build \
+                      --build-arg ASYNQ_BROKER_ADDRESS=${redisAddress} \
+                      --build-arg ASYNQ_BROKER_PASSWORD=${redisPassword} \
+                      -f Dockerfile.swarm-asynqmon-beta \
+                      -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
+                  """
+              }
           }
-        }
+      }
+
         
         stage ('Push Asynqmon Image') {
           steps {

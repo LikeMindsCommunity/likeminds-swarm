@@ -6,4 +6,13 @@ FROM hibiken/asynqmon:latest
 # We are already downloading .env from Azure Blob to while building the image.
 
 # Command to run Asynqmon with the Redis address
-CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
+# CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
+
+
+ARG ASYNQ_BROKER_ADDRESS
+ARG ASYNQ_BROKER_PASSWORD
+
+ENV ASYNQ_BROKER_ADDRESS=$ASYNQ_BROKER_ADDRESS
+ENV ASYNQ_BROKER_PASSWORD=$ASYNQ_BROKER_PASSWORD
+
+CMD sh -c 'asynqmon --port=8080 --redis-addr=$ASYNQ_BROKER_ADDRESS --redis-password=$ASYNQ_BROKER_PASSWORD --read-only=true'
