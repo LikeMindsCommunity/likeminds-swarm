@@ -1,8 +1,10 @@
 
 #!/bin/bash
 
-# redis-cli -h likeminds-staging-redis-swarm-worker.privatelink.redis.cache.windows.net -p 6379 -a oWjJkbKCdZAS5XBLTNUYlTlBGeUCuJc1aAzCaLPiuBk=
-# Optional: Echo to see what it's using (for debug, not in prod)
+set -a
+. ./cmd/server/config/.env
+set +a
+
 echo "Redis Address: $ASYNQ_BROKER_ADDRESS"
 echo "Starting Asynqmon..."
 
