@@ -63,18 +63,21 @@ pipeline {
         stage('Build Image') {
           steps {
             sh '''
-                set -a
-                . ${DOWNLOAD_PATH}
-                set +a
+    
+              ASYNQ_BROKER_ADDRESS=$(grep "^ASYNQ_BROKER_ADDRESS=" ${DOWNLOAD_PATH} | cut -d '=' -f2-)
+              ASYNQ_BROKER_PASSWORD=$(grep "^ASYNQ_BROKER_PASSWORD=" ${DOWNLOAD_PATH} | cut -d '=' -f2-)
 
-                docker build \
-                  --build-arg ASYNQ_BROKER_ADDRESS="$ASYNQ_BROKER_ADDRESS" \
-                  --build-arg ASYNQ_BROKER_PASSWORD="$ASYNQ_BROKER_PASSWORD" \
-                  -f Dockerfile.swarm-asynqmon-beta \
-                  -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
+              echo "Using Redis address: ${ASYNQ_BROKER_ADDRESS}"
+
+              docker build \
+                --build-arg ASYNQ_BROKER_ADDRESS="${ASYNQ_BROKER_ADDRESS}" \
+                --build-arg ASYNQ_BROKER_PASSWORD="${ASYNQ_BROKER_PASSWORD}" \
+                -f Dockerfile.swarm-asynqmon-beta \
+                -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
             '''
-        }
+          }
       }
+
 
         stage('Push Image') {
           steps {
