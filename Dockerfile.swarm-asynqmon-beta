@@ -9,12 +9,18 @@ FROM hibiken/asynqmon:latest
 # CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
 
 
-# ARG ASYNQ_BROKER_ADDRESS
-# ARG ASYNQ_BROKER_PASSWORD
+ARG ASYNQ_BROKER_ADDRESS
+ARG ASYNQ_BROKER_PASSWORD
 
-# ENV ASYNQ_BROKER_ADDRESS=$ASYNQ_BROKER_ADDRESS
-# ENV ASYNQ_BROKER_PASSWORD=$ASYNQ_BROKER_PASSWORD
+ENV ASYNQ_BROKER_ADDRESS=$ASYNQ_BROKER_ADDRESS
+ENV ASYNQ_BROKER_PASSWORD=$ASYNQ_BROKER_PASSWORD
 
-COPY start-asynqmon.sh /start.sh
-RUN chmod +x /start.sh
-CMD ["/start.sh"]
+RUN echo "ASYNQ_BROKER_ADDRESS=${ASYNQ_BROKER_ADDRESS}" 
+RUN echo "ASYNQ_BROKER_PASSWORD=${ASYNQ_BROKER_PASSWORD}" 
+
+CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
+
+
+# COPY start-asynqmon.sh /start.sh
+# RUN chmod +x /start.sh
+# CMD ["/start.sh"]
