@@ -64,7 +64,7 @@ pipeline {
           steps {
             sh '''
                 set -a
-                source ${DOWNLOAD_PATH}
+                . ${DOWNLOAD_PATH}
                 set +a
 
                 docker build \
