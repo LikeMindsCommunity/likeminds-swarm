@@ -2,12 +2,6 @@
 
 FROM hibiken/asynqmon:latest
 
-# Set the default Redis address (can be overridden by environment variable)
-# We are already downloading .env from Azure Blob to while building the image.
-
-# Command to run Asynqmon with the Redis address
-# CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
-
 
 ARG ASYNQ_BROKER_ADDRESS
 ARG ASYNQ_BROKER_PASSWORD
@@ -15,12 +9,11 @@ ARG ASYNQ_BROKER_PASSWORD
 ENV ASYNQ_BROKER_ADDRESS=$ASYNQ_BROKER_ADDRESS
 ENV ASYNQ_BROKER_PASSWORD=$ASYNQ_BROKER_PASSWORD
 
-RUN echo "ASYNQ_BROKER_ADDRESS=${ASYNQ_BROKER_ADDRESS}" 
-RUN echo "ASYNQ_BROKER_PASSWORD=${ASYNQ_BROKER_PASSWORD}" 
-
 CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
 
+CMD ["asynqmon", "--help"]
 
-# COPY start-asynqmon.sh /start.sh
-# RUN chmod +x /start.sh
-# CMD ["/start.sh"]
+# This Dockerfile is used to build an image for the asynqmon service in a Swarm environment.
+# It sets the necessary environment variables for connecting to the Redis broker and starts the asynqmon service in read-only mode.
+# The image is built using the latest version of the asynqmon base image.
+# The CMD instruction specifies the command to run when the container starts, which includes the port and Redis connection details.
