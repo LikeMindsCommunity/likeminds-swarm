@@ -11,8 +11,6 @@ ENV ASYNQ_BROKER_PASSWORD=$ASYNQ_BROKER_PASSWORD
 
 CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
 
-CMD ["asynqmon", "--help"]
-
 # This Dockerfile is used to build an image for the asynqmon service in a Swarm environment.
 # It sets the necessary environment variables for connecting to the Redis broker and starts the asynqmon service in read-only mode.
 # The image is built using the latest version of the asynqmon base image.

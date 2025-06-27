@@ -64,8 +64,10 @@ pipeline {
           steps {
             sh '''
     
-              ASYNQ_BROKER_ADDRESS=$(grep "^ASYNQ_BROKER_ADDRESS=" ${DOWNLOAD_PATH} | cut -d '=' -f2-)
-              ASYNQ_BROKER_PASSWORD=$(grep "^ASYNQ_BROKER_PASSWORD=" ${DOWNLOAD_PATH} | cut -d '=' -f2-)
+              ASYNQ_BROKER_ADDRESS=$(grep "^ASYNQ_BROKER_ADDRESS=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
+              ASYNQ_BROKER_PASSWORD=$(grep "^ASYNQ_BROKER_PASSWORD=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
+
+              echo "ASYNQ_BROKER_ADDRESS: $ASYNQ_BROKER_ADDRESS"
 
               docker build \
                 --build-arg ASYNQ_BROKER_ADDRESS="${ASYNQ_BROKER_ADDRESS}" \
