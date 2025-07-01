@@ -73,7 +73,7 @@ pipeline {
                 --build-arg REDIS_ADDR=$ASYNQ_BROKER_ADDRESS \
                 --build-arg REDIS_PASSWORD=$ASYNQ_BROKER_PASSWORD \
                 -f Dockerfile.swarm-asynqmon-beta \
-                -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
+                -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-production:swarm-asynqmon-V$BUILD_NUMBER .
               set -x
               echo 'silent build of swarm-asynqmon image successful'
             '''
