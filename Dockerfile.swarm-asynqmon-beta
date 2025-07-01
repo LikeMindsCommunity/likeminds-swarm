@@ -2,11 +2,10 @@
 
 FROM hibiken/asynqmon:latest
 
-
 ARG ASYNQ_BROKER_ADDRESS
 ARG ASYNQ_BROKER_PASSWORD
 
-ENV ASYNQ_BROKER_ADDRESS=$ASYNQ_BROKER_ADDRESS
+ENV ASYNQ_BROKER_ADDRESS=likeminds-staging-redis-swarm-worker.privatelink.redis.cache.windows.net:6379
 ENV ASYNQ_BROKER_PASSWORD=$ASYNQ_BROKER_PASSWORD
 
 CMD ["asynqmon", "--port=8080", "--redis-addr=${ASYNQ_BROKER_ADDRESS}", "--redis-password=${ASYNQ_BROKER_PASSWORD}", "--read-only=true"]
