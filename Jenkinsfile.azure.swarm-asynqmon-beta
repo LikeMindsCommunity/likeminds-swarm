@@ -63,7 +63,7 @@ pipeline {
         stage('Build Image') {
           steps {
             sh '''
-    
+              set +x
               ASYNQ_BROKER_ADDRESS=$(grep "^ASYNQ_BROKER_ADDRESS=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
               ASYNQ_BROKER_PASSWORD=$(grep "^ASYNQ_BROKER_PASSWORD=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
 
@@ -74,6 +74,8 @@ pipeline {
                 --build-arg REDIS_PASSWORD=$ASYNQ_BROKER_PASSWORD \
                 -f Dockerfile.swarm-asynqmon-beta \
                 -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
+              set -x
+              echo 'silent build of swarm-asynqmon image successful'
             '''
           }
       }

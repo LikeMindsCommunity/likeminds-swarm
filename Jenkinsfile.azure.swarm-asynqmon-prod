@@ -63,7 +63,19 @@ pipeline {
         stage ('Build Asynqmon Image') {
           steps {
             sh '''
-              docker build -f Dockerfile.swarm-asynqmon-prod -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-production:swarm-asynqmon-V$BUILD_NUMBER .
+              set +x
+              ASYNQ_BROKER_ADDRESS=$(grep "^ASYNQ_BROKER_ADDRESS=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
+              ASYNQ_BROKER_PASSWORD=$(grep "^ASYNQ_BROKER_PASSWORD=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
+
+              echo "ASYNQ_BROKER_ADDRESS: $ASYNQ_BROKER_ADDRESS"
+
+              docker build \
+                --build-arg REDIS_ADDR=$ASYNQ_BROKER_ADDRESS \
+                --build-arg REDIS_PASSWORD=$ASYNQ_BROKER_PASSWORD \
+                -f Dockerfile.swarm-asynqmon-beta \
+                -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
+              set -x
+              echo 'silent build of swarm-asynqmon image successful'
             '''
           }
         }
