@@ -70,6 +70,7 @@ pipeline {
               echo "ASYNQ_BROKER_ADDRESS: $ASYNQ_BROKER_ADDRESS"
 
               docker build \
+                --build-arg REDIS_PASSWORD=$ASYNQ_BROKER_PASSWORD \
                 -f Dockerfile.swarm-asynqmon-beta \
                 -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-staging:swarm-asynqmon-V$BUILD_NUMBER .
             '''
