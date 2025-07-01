@@ -2,11 +2,12 @@
 
 FROM hibiken/asynqmon:latest
 
+ARG REDIS_ADDR
 ARG REDIS_PASSWORD
 
 # Set the default Redis address (can be overridden by environment variable)
-ENV REDIS_ADDR=likeminds-staging-redis-swarm-worker.privatelink.redis.cache.windows.net:6379
+ENV REDIS_ADDR=$REDIS_ADDR
 ENV REDIS_PASSWORD=$REDIS_PASSWORD
 
 # Command to run Asynqmon with the Redis address
-CMD ["asynqmon", "--port=8080", "--redis-addr=${REDIS_ADDR}", "--redis-password=${REDIS_PASSWORD}" "--read-only=true"]
+CMD ["asynqmon", "--port=8080", "--redis-addr=${REDIS_ADDR}", "--redis-password=${REDIS_PASSWORD}", "--read-only=true"]
