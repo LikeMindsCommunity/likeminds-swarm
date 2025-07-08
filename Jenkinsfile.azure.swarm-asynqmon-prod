@@ -91,12 +91,11 @@ pipeline {
         stage ("Update Tag and Push Helm Chart") {
           steps {
             script {
-              // git branch: 'LM-13485-azure-migration', url: 'git@github.com:LikeMindsCommunity/LikeMinds-Infra-Config.git'
-              git branch: 'change/LM-13849-adding_azure_swarm_asynqmon_staging_helm_chart', url: 'git@github.com:LikeMindsCommunity/LikeMinds-Infra-Config.git'
+              git branch: 'LM-13485-azure-migration', url: 'git@github.com:LikeMindsCommunity/LikeMinds-Infra-Config.git'
               sh 'sed -i "s/tag: swarm-asynqmon-V[0-9]*/tag: swarm-asynqmon-V${BUILD_NUMBER}/g" ./azure/production/swarm-asynqmon-prod/values.yaml'
               sh "git add ./azure/production/swarm-asynqmon-prod/values.yaml"
               sh 'git commit -m "Update Asynqmon Prod Image Tag"'
-              sh "git push origin change/LM-13849-adding_azure_swarm_asynqmon_staging_helm_chart"
+              sh "git push origin LM-13485-azure-migration"
             }
           }
         }
