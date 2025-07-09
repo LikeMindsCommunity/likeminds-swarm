@@ -1,0 +1,104 @@
+pipeline {
+    agent any
+
+    environment {
+        // Azure Blob Storage Credentials
+        AZURE_STORAGE_ACCOUNT = 'likemindsprodstorage'
+        AZURE_STORAGE_CONTAINER = 'likeminds-production-configs'
+        BLOB_NAME = 'swarm-prod/swarm-prod-dot-env-private'
+        DOWNLOAD_PATH = './cmd/server/config/.env'
+
+        // Azure Container Registry Credentials
+        ACR_NAME = 'likemindsproductionregistry'
+        ACR_LOGIN_SERVER = 'likemindsproductionregistry.azurecr.io'
+    }
+
+    stages {
+        stage("Checkout code") {
+            steps {
+                checkout scm
+            }
+         }
+        
+        stage('Login to Azure') {
+            steps {
+                withCredentials([string(credentialsId: 'likeminds-production-service-principal-jenkins-credentials', variable: 'AZURE_CREDENTIALS')]) {          
+                    sh '''
+                        set +x
+                        echo $AZURE_CREDENTIALS > azure_credentials.json
+                        az login --service-principal -u "$(jq -r .clientId azure_credentials.json)" \
+                                -p "$(jq -r .clientSecret azure_credentials.json)" \
+                                --tenant "$(jq -r .tenantId azure_credentials.json)"
+                        set -x
+                        echo 'silent login to azure successful'
+                    '''
+                }
+            }
+        }
+
+        stage('Download File from Azure Blob') {
+            steps {
+                sh '''
+                    az storage blob download --account-name $AZURE_STORAGE_ACCOUNT \
+                    --container-name $AZURE_STORAGE_CONTAINER \
+                    --name $BLOB_NAME \
+                    --file $DOWNLOAD_PATH \
+                    --auth-mode login
+                '''
+            }
+        }
+
+        stage('Login to ACR') {
+            steps {
+                sh '''
+                    set +x
+                    docker login $ACR_LOGIN_SERVER -u "$(jq -r .clientId azure_credentials.json)" \
+                    -p "$(jq -r .clientSecret azure_credentials.json)"
+                    set -x
+                    echo 'silent login to ACR successful'
+                '''
+            }
+        }
+
+        stage ('Build Asynqmon Image') {
+          steps {
+            sh '''
+              set +x
+              ASYNQ_BROKER_ADDRESS=$(grep "^ASYNQ_BROKER_ADDRESS=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
+              ASYNQ_BROKER_PASSWORD=$(grep "^ASYNQ_BROKER_PASSWORD=" ${DOWNLOAD_PATH} | cut -d '=' -f2- | tr -d '"')
+
+              echo "ASYNQ_BROKER_ADDRESS: $ASYNQ_BROKER_ADDRESS"
+
+              docker build \
+                --build-arg REDIS_ADDR=$ASYNQ_BROKER_ADDRESS \
+                --build-arg REDIS_PASSWORD=$ASYNQ_BROKER_PASSWORD \
+                -f Dockerfile.swarm-asynqmon-beta \
+                -t $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-production:swarm-asynqmon-V$BUILD_NUMBER .
+              set -x
+              echo 'silent build of swarm-asynqmon image successful'
+            '''
+          }
+        }
+        
+        stage ('Push Asynqmon Image') {
+          steps {
+            sh '''
+              docker push $ACR_LOGIN_SERVER/likeminds-swarm-asynqmon/swarm-asynqmon-production:swarm-asynqmon-V$BUILD_NUMBER
+            '''
+          }
+        }
+        
+        stage ("Update Tag and Push Helm Chart") {
+          steps {
+            script {
+              git branch: 'LM-13485-azure-migration', url: 'git@github.com:LikeMindsCommunity/LikeMinds-Infra-Config.git'
+              sh 'sed -i "s/tag: swarm-asynqmon-V[0-9]*/tag: swarm-asynqmon-V${BUILD_NUMBER}/g" ./azure/production/swarm-asynqmon-prod/values.yaml'
+              sh "git add ./azure/production/swarm-asynqmon-prod/values.yaml"
+              sh 'git commit -m "Update Asynqmon Prod Image Tag"'
+              sh "git push origin LM-13485-azure-migration"
+            }
+          }
+        }
+
+    }
+}
