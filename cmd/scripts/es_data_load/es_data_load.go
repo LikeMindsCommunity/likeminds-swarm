@@ -100,7 +100,7 @@ func syncCollection(ctx context.Context, db *mongo.Database, esHelper searchElas
 
 // connectMongo creates and returns a MongoDB client
 func connectMongo(uri string) (*mongo.Client, context.Context, context.CancelFunc, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		cancel()
