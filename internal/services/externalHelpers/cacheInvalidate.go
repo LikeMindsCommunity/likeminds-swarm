@@ -3,8 +3,8 @@ package externalHelpers
 import (
 	"net/http"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 // InvalidateKettleCache | deletes the cache for the given keyPattern in kettle service

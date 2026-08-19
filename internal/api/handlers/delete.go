@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/nateshr/likeminds-swarm/internal/helpers"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/helpers"
+	log "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/requests"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/requests"
-	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 // Exposed method to delete user data including all user posts & comments

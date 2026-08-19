@@ -1,9 +1,9 @@
 package scheduler
 
 import (
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/worker"
 	"github.com/hibiken/asynq"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
 
 // Task to register the crom job tasks

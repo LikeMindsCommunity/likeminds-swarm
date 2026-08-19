@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/environment"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/hibiken/asynq"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 // Queue Names

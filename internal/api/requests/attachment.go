@@ -1,6 +1,6 @@
 package requests
 
-import "github.com/nateshr/likeminds-swarm/internal/api/enums"
+import "github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
 
 // OG Tags Structure
 type OGTagsRequest struct {

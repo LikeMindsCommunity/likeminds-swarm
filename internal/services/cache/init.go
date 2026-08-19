@@ -1,9 +1,9 @@
 package cache
 
 import (
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/environment"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/go-redis/redis/v7"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 // InitRedis | initialises a connection pool to redis cache

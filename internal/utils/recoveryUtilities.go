@@ -3,7 +3,7 @@ package utils
 import (
 	"runtime/debug"
 
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 )
 
 // SafeGo starts a new goroutine with panic recovery

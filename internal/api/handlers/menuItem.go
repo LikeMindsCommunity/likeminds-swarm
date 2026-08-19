@@ -3,11 +3,11 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/responses"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/cache"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 )
 
 func getMenuItem(menuItemName string, externalEntities *externalHelpers.ExternalEntities) responses.MenuResponse {

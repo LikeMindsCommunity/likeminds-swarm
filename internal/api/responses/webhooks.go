@@ -1,8 +1,8 @@
 package responses
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/api/requests"
-	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/requests"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/externalHelpers"
 )
 
 // Webhook payload structure

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 func SendMail(userId string, mail_recipients []string, subject string, body string) {

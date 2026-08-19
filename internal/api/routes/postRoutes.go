@@ -1,8 +1,8 @@
 package routes
 
 import (
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/handlers"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
 )
 
 // Exposed Method to expose Post Routes

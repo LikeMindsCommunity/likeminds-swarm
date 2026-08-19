@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker/distributor"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/interfaces"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/cache"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/searchElastic"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/worker/distributor"
 )
 
 // Feed Handlers structure for all Helper classes

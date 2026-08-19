@@ -1,6 +1,6 @@
 package handlers
 
-import "github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
+import "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/externalHelpers"
 
 // Params Structure for Logged In User
 type LoggedInUserParams struct {

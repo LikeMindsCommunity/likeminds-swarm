@@ -1,6 +1,6 @@
 package enums
 
-import "github.com/nateshr/likeminds-swarm/internal/api/constants"
+import "github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
 
 // EntityType | defines enum for activity entities
 type EntityType string

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 // construct query from JSON string to be executed in ElasticSearch

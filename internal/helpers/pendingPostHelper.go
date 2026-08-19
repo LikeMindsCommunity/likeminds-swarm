@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/requests"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/entities"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/interfaces"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/requests"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

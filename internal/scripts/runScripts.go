@@ -3,9 +3,9 @@ package scripts
 import (
 	"fmt"
 
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	log "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 
-	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/handlers"
 )
 
 func RunScripts(handlers *handlers.FeedHandlers, scriptName string) {

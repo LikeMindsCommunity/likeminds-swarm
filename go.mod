@@ -1,4 +1,4 @@
-module github.com/nateshr/likeminds-swarm
+module github.com/LikeMindsCommunity/likeminds-swarm
 
 go 1.19
 

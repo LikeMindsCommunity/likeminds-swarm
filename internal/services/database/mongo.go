@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/environment"
+	log "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

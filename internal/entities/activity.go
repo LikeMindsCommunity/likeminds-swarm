@@ -3,7 +3,7 @@ package entities
 import (
 	"time"
 
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
