@@ -3,10 +3,10 @@ package helpers
 import (
 	"context"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/entities"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/interfaces"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

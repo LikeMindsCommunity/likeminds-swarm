@@ -1,9 +1,9 @@
 package processor
 
 import (
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/handlers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/worker"
 	"github.com/hibiken/asynq"
-	"github.com/nateshr/likeminds-swarm/internal/api/handlers"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 )
 
 // Run | Method to register task handlers and run the server

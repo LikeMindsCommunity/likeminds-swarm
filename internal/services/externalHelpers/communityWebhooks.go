@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/cache"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/environment"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 )
 
 type CommunityWebhook struct {

@@ -3,10 +3,10 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
-	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/entities"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

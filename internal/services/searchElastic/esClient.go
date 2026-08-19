@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/environment"
+	log "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 
 	// Import the Elasticsearch library packages
 	"github.com/elastic/go-elasticsearch/v7"

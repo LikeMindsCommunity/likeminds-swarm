@@ -3,15 +3,15 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/responses"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/entities"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/interfaces"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/externalHelpers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
-	"github.com/nateshr/likeminds-swarm/internal/services/externalHelpers"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

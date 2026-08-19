@@ -1,9 +1,9 @@
 package interfaces
 
 import (
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/responses"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/entities"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

@@ -3,13 +3,13 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
-	"github.com/nateshr/likeminds-swarm/internal/helpers"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/entities"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/helpers"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/interfaces"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/searchElastic"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

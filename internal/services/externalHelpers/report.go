@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 type PushReportResponse struct {

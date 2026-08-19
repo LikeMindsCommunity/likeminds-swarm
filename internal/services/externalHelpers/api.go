@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/environment"
 )
 
 type BodyType int

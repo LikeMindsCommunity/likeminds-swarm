@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 type DeleteCacheRequest struct {

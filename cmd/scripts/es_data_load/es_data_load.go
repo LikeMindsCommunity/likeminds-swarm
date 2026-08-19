@@ -11,9 +11,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/services/environment"
-	"github.com/nateshr/likeminds-swarm/internal/services/searchElastic"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/environment"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/searchElastic"
 )
 
 // syncCollection fetches all docs from MongoDB and indexes them into Elasticsearch

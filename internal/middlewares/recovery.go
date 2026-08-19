@@ -1,8 +1,8 @@
 package middlewares
 
 import (
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 // CustomRecoveryMiddleware is a Gin middleware to handle panics

@@ -1,7 +1,7 @@
 package responses
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
 )
 
 // Response Structure for OG Tags

@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/cache"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 )
 
 type FetchBotUserResponse struct {

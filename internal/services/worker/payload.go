@@ -1,8 +1,8 @@
 package worker
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/responses"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

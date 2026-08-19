@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/cache"
+	log "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

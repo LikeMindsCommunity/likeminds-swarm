@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

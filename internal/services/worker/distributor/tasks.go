@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/responses"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/worker"
 	"github.com/hibiken/asynq"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
-	"github.com/nateshr/likeminds-swarm/internal/api/responses"
-	"github.com/nateshr/likeminds-swarm/internal/services/worker"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

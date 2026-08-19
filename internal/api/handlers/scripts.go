@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
+	log "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
 )
 
 func (handlers *FeedHandlers) IndexAllPostData() error {

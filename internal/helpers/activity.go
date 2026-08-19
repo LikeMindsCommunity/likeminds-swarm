@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/entities"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/interfaces"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/cache"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/entities"
-	"github.com/nateshr/likeminds-swarm/internal/interfaces"
-	"github.com/nateshr/likeminds-swarm/internal/services/cache"
-	"github.com/nateshr/likeminds-swarm/internal/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

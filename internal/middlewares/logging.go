@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/gin-gonic/gin"
-	"github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 // responseBodyWriter | Custom Response Writer

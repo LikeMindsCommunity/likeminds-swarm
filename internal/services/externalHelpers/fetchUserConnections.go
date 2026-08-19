@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	log "github.com/LikeMindsCommunity/likeminds-swarm/internal/services/logging"
 	"github.com/gin-gonic/gin"
-	log "github.com/nateshr/likeminds-swarm/internal/services/logging"
 )
 
 // Structure for Connection Object

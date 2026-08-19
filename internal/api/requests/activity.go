@@ -1,8 +1,8 @@
 package requests
 
 import (
-	"github.com/nateshr/likeminds-swarm/internal/api/constants"
-	"github.com/nateshr/likeminds-swarm/internal/api/enums"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/constants"
+	"github.com/LikeMindsCommunity/likeminds-swarm/internal/api/enums"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
