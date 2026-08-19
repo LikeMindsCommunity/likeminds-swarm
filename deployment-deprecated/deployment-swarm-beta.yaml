@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: "likeminds-swarm-beta-1"
-        image: "asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:45ffd92"
+        image: "asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/LikeMindsCommunity/likeminds-swarm/swarm-beta:45ffd92"
         resources:
           requests:
             memory: "1000Mi"

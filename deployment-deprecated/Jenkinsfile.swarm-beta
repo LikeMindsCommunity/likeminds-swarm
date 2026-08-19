@@ -21,7 +21,7 @@ pipeline {
             steps{
                 script{
                     sh 'gcloud auth configure-docker asia.gcr.io'
-                    sh 'docker build -f Dockerfile.swarm-beta -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:${BUILD_NUMBER} . '
+                    sh 'docker build -f Dockerfile.swarm-beta -t asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/LikeMindsCommunity/likeminds-swarm/swarm-beta:${BUILD_NUMBER} . '
                     }
                 }
             }
@@ -29,7 +29,7 @@ pipeline {
             steps{
                 script{
                     sh 'gcloud auth configure-docker asia.gcr.io'
-                    sh 'docker push asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/nateshr/likeminds-swarm/swarm-beta:${BUILD_NUMBER}'
+                    sh 'docker push asia.gcr.io/likeminds-nonprod-prj-24e1/github.com/LikeMindsCommunity/likeminds-swarm/swarm-beta:${BUILD_NUMBER}'
                       }
                  }
             }
