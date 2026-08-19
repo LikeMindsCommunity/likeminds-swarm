@@ -6,7 +6,7 @@ version: 0.0
 os: linux
 #files:
 #  - source: /scripts/build_auth.sh
-#    destination: /home/ec2-user/LikeMinds-Swarm/scripts
+#    destination: /home/ec2-user/likeminds-swarm/scripts
 #permissions:
 #  - object: /
 #    pattern: "**"
